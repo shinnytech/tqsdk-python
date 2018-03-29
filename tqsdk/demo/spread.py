@@ -38,7 +38,7 @@ class DemoSpread:
                 "BOTH_TASK_FINSISH": lambda: self.tm.is_finish(task_a) and self.tm.is_finish(task_b),
             }
             if wait_subtask_finish["ANY_TASK_ERROR"]:
-                continue
+                break
         print ("finish")
 
     def run(self):

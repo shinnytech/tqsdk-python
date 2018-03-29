@@ -172,7 +172,7 @@ class TaskManager:
         task_id = uuid.uuid4().hex
         try:
             self.tasks[task_id] = [task_generator, None]
-            self._set_task_condition(task_id, task_generator.next())
+            self._set_task_condition(task_id, task_generator.send(None))
         except Exception as e:
             logging.log(logging.WARNING, "exception when start_task: " + str(e) + traceback.format_exc())
             self.error_tasks[task_id] = e
@@ -233,10 +233,10 @@ class TaskManager:
         通常将此函数作为 data_update_hook 传给 TqApi.run(), 以便在api接口收到数据后调度各task
         """
         finished_task = set()
-        for task_id, (task_func, wait_conditions) in self.tasks.items():
+        for task_id in list(self.tasks.keys()):
             need_trigger = False
             wait_result = {}
-            for cond_name, cond_expr in wait_conditions.items():
+            for cond_name, cond_expr in self.tasks[task_id][1].items():
                 if cond_name == "TIMEOUT":
                     v = time.time() > cond_expr
                 else:
@@ -246,7 +246,7 @@ class TaskManager:
                     need_trigger = True
             if need_trigger:
                 try:
-                    wait_condition = task_func.send(wait_result)
+                    wait_condition = self.tasks[task_id][0].send(wait_result)
                     self._set_task_condition(task_id, wait_condition)
                 except StopIteration:
                     finished_task.add(task_id)
