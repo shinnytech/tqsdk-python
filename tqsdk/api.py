@@ -685,7 +685,7 @@ class SerialDataProxy(object):
         last_id = self.serial_root.get("last_id", None)
         if not last_id:
             return []
-        array = [self.serial_root.setdefault("data", SortedDict()).get(u"%d" % i, self.null_kline).get(name) for i in range(last_id - self.width, last_id)]
+        array = [self.serial_root.setdefault("data", SortedDict()).get(u"%d" % i, self.null_kline).get(name) for i in range(last_id - self.width + 1, last_id + 1)]
         return array
 
     def __getitem__(self, key):

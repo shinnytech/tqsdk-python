@@ -1,0 +1,12 @@
+get_account 拿到的不是refrence, 运行中不会更新
+    其它get是否有同样问题待测
+on_timer时epoch不更新, 导致多次 is_changing 误判
+
+K线
+on_timer 触发 on_update 效果不好, 需寻找方案
+
+
+希望补同步机制
+希望补登录接口
+demo需要继续补一下
+参数传错时, 需要给出较好的提示
