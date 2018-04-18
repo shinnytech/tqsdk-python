@@ -41,7 +41,7 @@ class TqApi(object):
         self.client = None  # websocket客户端
         self.requests = []  # 请求缓存
         self.quote_symbol_list = []
-        self.epoch = 0
+        self.epoch = 1
         self.account_id = account_id
         self.hook_on_data_update = None
 
@@ -634,6 +634,7 @@ class TqApi(object):
         return uuid.uuid4().hex
 
     def _on_timer(self):
+        self.epoch += 1
         self.hook_on_data_update()
         tornado.ioloop.IOLoop.current().call_later(0.1, self._on_timer)
 
