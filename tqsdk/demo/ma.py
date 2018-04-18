@@ -10,22 +10,23 @@ class DemoMa:
         self.api = TqApi()
 
     def task_main(self):
-        print ("start")
+        print("start")
         symbol = "SHFE.cu1805"
         kline_serial_5s = self.api.get_kline_serial(symbol, 5)
-        kline_serial_1m = self.api.get_kline_serial(symbol, 5 * 60)
+        kline_serial_1m = self.api.get_kline_serial(symbol, 60)
         while True:
             yield {
                 "KLINE_DATA_UPDATED": lambda: self.api.is_changing(kline_serial_1m) or self.api.is_changing(kline_serial_5s),
             }
-            # 计算最近15秒均价
+            # 计算最近3根5秒线均价
             average_price_15s = (kline_serial_5s[-1]["close"] + kline_serial_5s[-2]["close"] + kline_serial_5s[-3]["close"]) / 3
-            # 计算最近30分钟均价
-            average_price_30m = sum(kline_serial_1m.close[-30:-1]) / 30
+            # 计算最近30根1分钟线均价
+            average_price_30m = sum(kline_serial_1m.close[-30:]) / 30
             # 如果条件符合
+            print("average_price_15s", average_price_15s, "average_price_30m", average_price_30m)
             if average_price_15s > average_price_30m:
                 self.api.insert_order(symbol=symbol, direction="BUY", offset="OPEN", volume=1, limit_price=5000)
-        print ("finish")
+        print("finish")
 
     def run(self):
         self.tm.start_task(self.task_main())
