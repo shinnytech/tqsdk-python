@@ -43,10 +43,26 @@ class TqApi(object):
         self.quote_symbol_list = []
         self.epoch = 1
         self.account_id = account_id
-        self.hook_on_data_update = None
+        self.update_hooks = []
+        self.timer_hooks = []
 
     # ----------------------------------------------------------------------
-    def run(self, data_update_hook):
+    def add_callback(self, callback_func, hook_timer=False):
+        """
+        注册回调函数, 当API收到数据包或定时器触发时, 会调用callback_func
+
+        Args:
+           callback_func (function): 一个回调函数, 无参数. 每当从天勤主进程接收到数据包后, 都会触发此回调函数, 用于运行用户业务代码
+           hook_timer (bool): 是否需要在timer时触发 callback_func 回调
+
+        可以多次调用此函数以添加多个回调函数, 将依添加顺序依次触发
+        """
+        self.update_hooks.append(callback_func)
+        if hook_timer:
+            self.timer_hooks.append(callback_func)
+
+    # ----------------------------------------------------------------------
+    def run(self, data_update_hook=None):
         """
         启动主消息循环
 
@@ -57,7 +73,8 @@ class TqApi(object):
 
         注意: 此函数一旦运行, 将不会结束返回. 用户应当在提供的回调函数 data_update_hook 中处理业务, 而不能将代码写在 run() 之后
         """
-        self.hook_on_data_update = data_update_hook
+        if data_update_hook:
+            self.add_callback(data_update_hook)
         self._start()
         tornado.ioloop.IOLoop.current().call_later(0.1, self._on_timer)
         tornado.ioloop.IOLoop.current().start()
@@ -605,7 +622,8 @@ class TqApi(object):
                 if k != "_epoch":
                     self.account_id = k
                     break
-        self.hook_on_data_update()
+        for h in self.update_hooks:
+            h()
 
     def _merge_obj(self, result, obj):
         for key, value in obj.items():
@@ -635,7 +653,8 @@ class TqApi(object):
 
     def _on_timer(self):
         self.epoch += 1
-        self.hook_on_data_update()
+        for h in self.timer_hooks:
+            h()
         tornado.ioloop.IOLoop.current().call_later(0.1, self._on_timer)
 
 

@@ -6,8 +6,8 @@ from tqsdk.task import TaskManager
 
 class DemoMa:
     def __init__(self):
-        self.tm = TaskManager()
         self.api = TqApi()
+        self.tm = TaskManager(self.api)
 
     def task_main(self):
         print("start")
@@ -30,7 +30,7 @@ class DemoMa:
 
     def run(self):
         self.tm.start_task(self.task_main())
-        self.api.run(self.tm.trigger)
+        self.api.run()
 
 
 if __name__ == "__main__":

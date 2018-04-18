@@ -7,8 +7,8 @@ from tqsdk.tools import make_order_until_all_matched
 
 class DemoSpread:
     def __init__(self):
-        self.tm = TaskManager()
         self.api = TqApi()
+        self.tm = TaskManager(self.api)
 
     def task_main(self):
         print ("start")
@@ -43,7 +43,7 @@ class DemoSpread:
 
     def run(self):
         self.tm.start_task(self.task_main())
-        self.api.run(self.tm.trigger)
+        self.api.run()
 
 
 if __name__ == "__main__":

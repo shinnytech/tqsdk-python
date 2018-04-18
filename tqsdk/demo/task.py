@@ -6,8 +6,8 @@ from tqsdk.task import TaskManager
 
 class DemoTask:
     def __init__(self):
-        self.tm = TaskManager()
         self.api = TqApi()
+        self.tm = TaskManager(self.api)
 
     def task_main(self):
         print ("start")
@@ -15,7 +15,7 @@ class DemoTask:
         while True:
             wait_result = yield {
                 "QUOTE_CHANGED": lambda: self.api.is_changing(quote),
-                "TIMEOUT": 0.5,
+                "TIMEOUT": 0.2,
             }
             if wait_result["QUOTE_CHANGED"]:
                 print("Quote", quote)
@@ -24,7 +24,7 @@ class DemoTask:
 
     def run(self):
         self.tm.start_task(self.task_main())
-        self.api.run(self.tm.trigger)
+        self.api.run()
 
 
 if __name__ == "__main__":

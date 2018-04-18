@@ -155,9 +155,11 @@ class TaskManager:
 
     通常情况下, 一个进程中有一个TaskManager的实例, 它负责维护所有运行中的协程, 并根据条件调度运行
     """
-    def __init__(self):
+    def __init__(self, api=None):
         self.tasks = {}
         self.error_tasks = {}
+        if api:
+            api.add_callback(self.trigger, True)
 
     def start_task(self, task_generator):
         """
