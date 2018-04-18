@@ -18,12 +18,6 @@ setup(name='tqsdk',
       },
       install_requires=["tornado>=4.3",
                         "sortedcontainers>=1.5.7",
-                        "jsonpointer>=2.0",
                         ],
-      # entry_points={
-      #     'console_scripts': [
-      #         'run_efcommon = efcommon.start:main',
-      #     ],
-      # },
       )
 

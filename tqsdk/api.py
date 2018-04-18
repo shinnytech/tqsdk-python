@@ -21,7 +21,6 @@ import uuid
 import tornado
 from tornado import websocket
 from sortedcontainers import SortedDict
-from jsonpointer import resolve_pointer
 
 
 class TqApi(object):
@@ -404,7 +403,7 @@ class TqApi(object):
         """
         if not self.account_id:
             raise ValueError("account_id is invalid")
-        return resolve_pointer(self.data, '/trade/' + self.account_id + '/accounts/CNY', {})
+        return self._get_obj('trade', self.account_id, 'accounts', 'CNY')
 
     # ----------------------------------------------------------------------
     def get_position(self, symbol=None):
@@ -467,8 +466,8 @@ class TqApi(object):
         if not self.account_id:
             raise ValueError("account_id is invalid")
         if symbol:
-            return resolve_pointer(self.data, '/trade/' + self.account_id + '/positions/' + symbol, {})
-        return resolve_pointer(self.data, '/trade/' + self.account_id + '/positions', {})
+            return self._get_obj('trade', self.account_id, 'positions', symbol)
+        return self._get_obj('trade', self.account_id, 'positions')
 
     # ----------------------------------------------------------------------
     def get_order(self, order_id=None):
@@ -527,8 +526,8 @@ class TqApi(object):
         if not self.account_id:
             raise ValueError("account_id is invalid")
         if order_id:
-            return resolve_pointer(self.data, '/trade/' + self.account_id + '/orders/' + order_id, {})
-        return resolve_pointer(self.data, '/trade/' + self.account_id + '/orders', {})
+            return self._get_obj('trade', self.account_id, 'orders', order_id)
+        return self._get_obj('trade', self.account_id, 'orders')
 
     # ----------------------------------------------------------------------
     def is_changing(self, obj):
@@ -621,6 +620,12 @@ class TqApi(object):
                 result[key] = value
         result["_epoch"] = self.epoch
 
+    def _get_obj(self, *path):
+        d = self.data
+        for n in path:
+            d = d.setdefault(n, {})
+        return d
+
     def _generate_chart_id(self, symbol, duration_seconds):
         chart_id = "PYSDK_" + uuid.uuid4().hex
         return chart_id
@@ -629,7 +634,7 @@ class TqApi(object):
         return uuid.uuid4().hex
 
     def _on_timer(self):
-        self.hook_on_data_update();
+        self.hook_on_data_update()
         tornado.ioloop.IOLoop.current().call_later(0.1, self._on_timer)
 
 
