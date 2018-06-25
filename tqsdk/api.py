@@ -20,7 +20,6 @@ import json
 import uuid
 import tornado
 from tornado import websocket
-from sortedcontainers import SortedDict
 
 
 class TqApi(object):
@@ -29,55 +28,34 @@ class TqApi(object):
 
     通常情况下, 一个进程中应该有一个TqApi的实例, 它负责维护到天勤终端的网络连接, 从天勤终端接收行情及账户数据, 并在内存中维护数据存储池
     """
-    def __init__(self, account_id=None):
+    def __init__(self, account_id):
         """
         创建天勤接口实例
 
         Args:
            account_id (str):  指定交易账号, 若不指定, 则默认为已登录的第一个交易账号
         """
-        self.data = {"trade": {}, "quotes": {}}  # 数据存储
-
+        self.data = {"_path": []}  # 数据存储
+        self.diffs = [] # 每次收到更新数据的数组
+        self.loop = tornado.ioloop.IOLoop.current()
         self.client = None  # websocket客户端
-        self.requests = []  # 请求缓存
         self.quote_symbol_list = []
-        self.epoch = 1
         self.account_id = account_id
-        self.update_hooks = []
-        self.timer_hooks = []
+        self.loop.run_sync(self._connect, timeout=30)
 
     # ----------------------------------------------------------------------
-    def add_callback(self, callback_func, hook_timer=False):
-        """
-        注册回调函数, 当API收到数据包或定时器触发时, 会调用callback_func
-
-        Args:
-           callback_func (function): 一个回调函数, 无参数. 每当从天勤主进程接收到数据包后, 都会触发此回调函数, 用于运行用户业务代码
-           hook_timer (bool): 是否需要在timer时触发 callback_func 回调
-
-        可以多次调用此函数以添加多个回调函数, 将依添加顺序依次触发
-        """
-        self.update_hooks.append(callback_func)
-        if hook_timer:
-            self.timer_hooks.append(callback_func)
-
-    # ----------------------------------------------------------------------
-    def run(self, data_update_hook=None):
+    def peek_message(self):
         """
         启动主消息循环
 
         调用此函数将在当前线程阻塞式地运行一个消息循环, 用来处理与天勤主进程间的数据收发任务.
 
         Args:
-           data_update_hook (function): 一个回调函数, 每当从天勤主进程接收到数据包后, 都会触发此回调函数, 用于运行用户业务代码
+           data_update_hook (function/list of function): 一个回调函数, 每当从天勤主进程接收到数据包后, 都会触发此回调函数, 用于运行用户业务代码
 
         注意: 此函数一旦运行, 将不会结束返回. 用户应当在提供的回调函数 data_update_hook 中处理业务, 而不能将代码写在 run() 之后
         """
-        if data_update_hook:
-            self.add_callback(data_update_hook)
-        self._start()
-        tornado.ioloop.IOLoop.current().call_later(0.1, self._on_timer)
-        tornado.ioloop.IOLoop.current().start()
+        return self.loop.run_sync(self._peek_message)
 
     # ----------------------------------------------------------------------
     def get_quote(self, symbol):
@@ -145,27 +123,27 @@ class TqApi(object):
                 "aid": "subscribe_quote",
                 "ins_list": s
             })
-        return self.data.setdefault("quotes", {}).setdefault(symbol, {
+        return _get_obj(self.data, ["quotes", symbol], {
             "datetime": "",
             "ask_price1": float("nan"),
+            "ask_volume1": 0,
             "bid_price1": float("nan"),
+            "bid_volume1": 0,
             "last_price": float("nan"),
-            "upper_limit": float("nan"),
-            "lower_limit": float("nan"),
             "highest": float("nan"),
             "lowest": float("nan"),
-            "average": float("nan"),
             "open": float("nan"),
             "close": float("nan"),
-            "settlement": float("nan"),
-            "pre_close": float("nan"),
-            "pre_settlement": float("nan"),
-            "bid_volume1": 0,
-            "ask_volume1": 0,
+            "average": float("nan"),
             "volume": 0,
-            "amount": 0,
+            "amount": float("nan"),
             "open_interest": 0,
+            "settlement": float("nan"),
+            "upper_limit": float("nan"),
+            "lower_limit": float("nan"),
             "pre_open_interest": 0,
+            "pre_settlement": float("nan"),
+            "pre_close": float("nan"),
         })
 
     # ----------------------------------------------------------------------
@@ -229,8 +207,7 @@ class TqApi(object):
             "view_width": data_length,
         }
         self._send_json(req)
-        s = self.data.setdefault("klines", {}).setdefault(symbol, {}).setdefault(str(dur_id), {})
-        return SerialDataProxy(s, data_length)
+        return KlineSerialDataProxy(_get_obj(self.data, ["klines", symbol, str(dur_id)]), data_length)
 
     # ----------------------------------------------------------------------
     def get_tick_serial(self, symbol, data_length=200, chart_id=None):
@@ -289,11 +266,10 @@ class TqApi(object):
             "view_width": data_length,
         }
         self._send_json(req)
-        s = self.data.setdefault("ticks", {}).setdefault(symbol, {})
-        return SerialDataProxy(s, data_length)
+        return TickSerialDataProxy(_get_obj(self.data, ["ticks", symbol]), data_length)
 
     # ----------------------------------------------------------------------
-    def insert_order(self, symbol, direction, offset, volume, limit_price, order_id=None):
+    def insert_order(self, symbol, direction, offset, volume, limit_price=None, order_id=None):
         """
         发送下单指令
 
@@ -335,14 +311,18 @@ class TqApi(object):
         (exchange_id, instrument_id) = symbol.split(".", 1)
         msg = {
             "aid": "insert_order",
+            "user_id": self.account_id,
             "order_id": order_id,
             "exchange_id": exchange_id,
             "instrument_id": instrument_id,
             "direction": direction,
             "offset": offset,
             "volume": volume,
-            "price_type": "LIMIT",
-            "limit_price": limit_price
+            "price_type": "MARKET" if limit_price is None else "LIMIT",
+            "volume_condition": "ANY" if limit_price is None else "ALL",
+            "time_condition": "IOC" if limit_price is None else "GTC",
+            "hedge_flag": "SPECULATION",
+            "limit_price": limit_price,
         }
         self._send_json(msg)
         order = msg.copy()
@@ -382,6 +362,7 @@ class TqApi(object):
             order_id = order_or_order_id
         msg = {
             "aid": "cancel_order",
+            "user_id": self.account_id,
             "order_id": order_id,
         }
         self._send_json(msg)
@@ -420,7 +401,7 @@ class TqApi(object):
         """
         if not self.account_id:
             raise ValueError("account_id is invalid")
-        return self._get_obj('trade', self.account_id, 'accounts', 'CNY')
+        return _get_obj(self.data, ["trade", self.account_id, "accounts", "CNY"])
 
     # ----------------------------------------------------------------------
     def get_position(self, symbol=None):
@@ -483,8 +464,8 @@ class TqApi(object):
         if not self.account_id:
             raise ValueError("account_id is invalid")
         if symbol:
-            return self._get_obj('trade', self.account_id, 'positions', symbol)
-        return self._get_obj('trade', self.account_id, 'positions')
+            return _get_obj(self.data, ["trade", self.account_id, "positions", symbol])
+        return _get_obj(self.data, ["trade", self.account_id, "positions"])
 
     # ----------------------------------------------------------------------
     def get_order(self, order_id=None):
@@ -543,18 +524,19 @@ class TqApi(object):
         if not self.account_id:
             raise ValueError("account_id is invalid")
         if order_id:
-            return self._get_obj('trade', self.account_id, 'orders', order_id)
-        return self._get_obj('trade', self.account_id, 'orders')
+            return _get_obj(self.data, ["trade", self.account_id, "orders", order_id])
+        return _get_obj(self.data, ["trade", self.account_id, "orders"])
 
     # ----------------------------------------------------------------------
-    def is_changing(self, obj):
+    def is_changing(self, obj, key=None):
         """
         判定obj最近是否有更新
 
-        每当TqApi从天勤主进程接收到数据包后, 都会通过 data_update_hook 回调函数调用用户业务代码. 用户代码中如果需要判断特定obj是否被本次数据包更新, 可以使用 is_changing 函数判定
+        每当TqApi从天勤主进程接收到数据包后, 都会通过 data_update_hook 回调函数调用用户业务代码. 用户代码中如果需要判断特定obj或其中某个字段是否被本次数据包更新, 可以使用 is_changing 函数判定
 
         Args:
             obj (any): 任意业务对象, 包括 get_quote 返回的 quote, get_kline_serial 返回的 k_serial, get_account 返回的 account 等
+            key (str/list of str): 需要判断的字段
 
         Returns:
             bool: 如果指定的obj被本次数据包修改了, 返回 True, 否则返回 False.
@@ -575,74 +557,73 @@ class TqApi(object):
             ('SHFE.cu1805 tick serial changed? ', False)
             ...
         """
-        if not obj:
+        if obj is None:
             return False
-        if isinstance(obj, SerialDataProxy):
-            return obj.serial_root.get("_epoch", 0) == self.epoch
-        return obj.get("_epoch", 0) == self.epoch
+        if not isinstance(key, list):
+            key = [key] if key else []
+        try:
+            path = obj.serial_root["_path"] if isinstance(obj, SerialDataProxy) else obj["_path"]
+        except KeyError:
+            return False
+        for diff in self.diffs:
+            if self._is_key_exist(diff, path, key):
+                return True
+        return False
+
+    def _is_key_exist(self, diff, path, key):
+        for p in path:
+            if not isinstance(diff, dict) or p not in diff:
+                return False
+            diff = diff[p]
+        if not isinstance(diff, dict):
+            return False
+        for k in key:
+            if k in diff:
+                return True
+        return len(key) == 0
 
     # ----------------------------------------------------------------------
-    @tornado.gen.coroutine
-    def _start(self):
+    async def _connect(self):
         """启动websocket客户端"""
-        self.client = yield tornado.websocket.websocket_connect(url="ws://127.0.0.1:7777/")
+        self.client = await tornado.websocket.websocket_connect(url="ws://192.168.1.241:7777/")
 
-        # 发出所有缓存的请求
-        for req in self.requests:
-            self.client.write_message(req)
-        self.requests = []
+        # 收取截面数据后返回
+        while self.data.get("mdhis_more_data", True):
+            await self._peek_message()
 
+    async def _peek_message(self):
         # 协程式读取数据
-        while True:
-            msg = yield self.client.read_message()
-            self._on_receive_msg(msg)
+        msg = await self.client.read_message()
+        return self._on_receive_msg(msg)
 
     def _send_json(self, obj):
         """向天勤主进程发送JSON包"""
         s = json.dumps(obj)
 
-        # 如果已经创建了客户端则直接发出请求
-        if self.client:
-            self.client.write_message(s)
-        # 否则缓存在请求缓存中
-        else:
-            self.requests.append(s)
+        self.client.write_message(s)
 
     def _on_receive_msg(self, msg):
         """收到数据推送"""
+        if msg is None:
+            raise Exception("接收数据失败，请检查客户端及网络是否正常")
         pack = json.loads(msg)
-        if "data" not in pack:
-            return
-        self.epoch += 1
-        datas = pack["data"]
-        for data in datas:
-            self._merge_obj(self.data, data)
-        if not self.account_id and len(self.data["trade"]) > 0:
-            for k in self.data["trade"].keys():
-                if k != "_epoch":
-                    self.account_id = k
-                    break
-        for h in self.update_hooks:
-            h()
+        if "data" in pack:
+            self.diffs = pack["data"]
+            for data in self.diffs:
+                self._merge_obj(self.data, data)
+        return True
 
     def _merge_obj(self, result, obj):
-        for key, value in obj.items():
-            if key == "_epoch":
-                continue
-            if value is None:
+        for key in list(obj.keys()):
+            if obj[key] is None:
                 result.pop(key, None)
-            elif isinstance(value, dict):
-                target = result.setdefault(key, SortedDict())
-                self._merge_obj(target, value)
+            elif isinstance(obj[key], dict):
+                target = _get_obj(result, [key])
+                self._merge_obj(target, obj[key])
+            elif key in result and result[key] == obj[key]:
+                obj.pop(key)
             else:
-                result[key] = value
-        result["_epoch"] = self.epoch
-
-    def _get_obj(self, *path):
-        d = self.data
-        for n in path:
-            d = d.setdefault(n, {})
-        return d
+                result[key] = obj[key]
 
     def _generate_chart_id(self, symbol, duration_seconds):
         chart_id = "PYSDK_" + uuid.uuid4().hex
@@ -650,12 +631,6 @@ class TqApi(object):
 
     def _generate_order_id(self):
         return uuid.uuid4().hex
-
-    def _on_timer(self):
-        self.epoch += 1
-        for h in self.timer_hooks:
-            h()
-        tornado.ioloop.IOLoop.current().call_later(0.1, self._on_timer)
 
 
 class SerialDataProxy(object):
@@ -684,36 +659,68 @@ class SerialDataProxy(object):
         # cs = [3245, 3421, 4345, ...]
 
     """
-    def __init__(self, serial_root, width):
+    def __init__(self, serial_root, width, default):
         self.serial_root = serial_root
         self.width = width
-        self.null_kline = {
-            "datetime": 0,
-            "open": float("nan"),
-            "high": float("nan"),
-            "low": float("nan"),
-            "close": float("nan"),
-            "volume": float("nan"),
-            "open_oi": float("nan"),
-            "close_oi": float("nan"),
-        }
+        self.default = default
+        self.attr = list(self.default.keys())
 
     def __getattr__(self, name):
-        if name not in ['datetime', 'open', 'high', 'low', 'close', 'volume', 'open_oi', 'close_oi']:
+        if name not in self.attr:
             return []
         last_id = self.serial_root.get("last_id", None)
         if not last_id:
             return []
-        array = [self.serial_root.setdefault("data", SortedDict()).get(u"%d" % i, self.null_kline).get(name) for i in range(last_id - self.width + 1, last_id + 1)]
-        return array
+        return [self[i][name] for i in range(last_id - self.width + 1, last_id + 1)]
 
     def __getitem__(self, key):
         last_id = self.serial_root.get("last_id", None)
         if not last_id:
-            return self.null_kline
+            return self.default.copy()
         if key < 0:
             id = last_id + 1 + key
         else:
             id = last_id - self.width + 1 + key
-        return self.serial_root.setdefault("data", SortedDict()).get(u"%d" % id, self.null_kline)
+        return _get_obj(self.serial_root, ["data", str(id)], default=self.default.copy())
 
+class KlineSerialDataProxy(SerialDataProxy):
+    def __init__(self, serial_root, width):
+        SerialDataProxy.__init__(self, serial_root, width, {
+            "datetime":0,
+            "open": float("nan"),
+            "high": float("nan"),
+            "low": float("nan"),
+            "close": float("nan"),
+            "volume":0,
+            "open_oi":0,
+            "close_oi":0,
+        })
+
+class TickSerialDataProxy(SerialDataProxy):
+    def __init__(self, serial_root, width):
+        SerialDataProxy.__init__(self, serial_root, width, {
+            "datetime":0,
+            "last_price": float("nan"),
+            "average": float("nan"),
+            "highest": float("nan"),
+            "lowest": float("nan"),
+            "ask_price1": float("nan"),
+            "ask_volume1":0,
+            "bid_price1": float("nan"),
+            "bid_volume1":0,
+            "volume":0,
+            "amount": float("nan"),
+            "open_interest":0,
+        })
+
+def _get_obj(root, path, default=None):
+    #todo: support nested dict for default value
+    d = root
+    for i in range(len(path)):
+        if path[i] not in d:
+            dv = {} if i != len(path) - 1 or default is None else default
+            if isinstance(dv, dict):
+                dv["_path"] = d["_path"] + [path[i]]
+            d[path[i]] = dv
+        d = d[path[i]]
+    return d
