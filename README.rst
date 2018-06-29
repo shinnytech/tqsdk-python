@@ -1,7 +1,7 @@
 Introduction
 =================================================
 
-TqSdk 是配合天勤终端使用的一套开源 python 框架. 依托天勤高度简化设计的 websocket/json 接口, TqSdk 支持用户使用较少的工作量构建量化交易或分析程序.
+TqSdk 是一套依托 `DIFF协议 (Differential Information Flow for Finance) <https://github.com/shinnytech/diff>`_ 的开源 python 框架. 它支持用户使用较少的工作量构建量化交易或分析程序.
 
 与其它 python 框架相比, TqSdk 致力于在以下几方面为用户提供价值:
 
@@ -39,11 +39,11 @@ Install
 
 * windows或linux系统
 * python 2.7+ 或 python3.5+
-* 安装天勤终端 0.8 以上版本
+* 安装 `天勤终端 <http://www.tq18.cn>`_ 0.8 以上版本
 
 从github下载 tqsdk::
 
-    git clone https://github.com/tianqin18/tqsdk-python.git
+    git clone https://github.com/shinnytech/tqsdk-python.git
 
 
 安装::
