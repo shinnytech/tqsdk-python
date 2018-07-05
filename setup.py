@@ -16,8 +16,6 @@ setup(name='tqsdk',
       include_package_data=True,
       package_data={
       },
-      install_requires=["tornado>=5.0.1",
-                        "sortedcontainers>=1.5.7",
-                        ],
+      python_requires='>=3.6',
+      install_requires=["websockets>=5.0.1"],
       )
-

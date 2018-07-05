@@ -1,4 +1,4 @@
-task
+lib
 ====================================================
-.. automodule:: tqsdk.task
+.. automodule:: tqsdk.lib
     :members:

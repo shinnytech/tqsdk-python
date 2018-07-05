@@ -39,8 +39,8 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'TianQin Python SDK'
-copyright = u'2018, TianQIn'
-author = u'TianQIn'
+copyright = u'2018, TianQin'
+author = u'TianQin'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -160,3 +160,5 @@ texinfo_documents = [
 intersphinx_mapping = {'https://docs.python.org/': None}
 
 autodoc_member_order = "bysource"
+
+autoclass_content = 'both'
