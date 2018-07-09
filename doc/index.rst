@@ -7,7 +7,8 @@ Python SDK
     :maxdepth: 2
 
     intro.rst
+    install.rst
+    tutorial.rst
     api.rst
-    task.rst
-    tools.rst
+    lib.rst
 
