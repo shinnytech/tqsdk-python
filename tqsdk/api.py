@@ -662,7 +662,7 @@ class TqApi(object):
 
             可能输出 ""(空字符串), 表示还没有收到该合约的行情
         """
-        if asyncio.Task.current_task() is not None:
+        if self.loop.is_running():
             raise Exception("不能在协程中调用 wait_update, 如需在协程中等待业务数据更新请使用 register_update_notify")
         deadline = None if timeout is None else time.time() + timeout
         update_task = self.create_task(self.update_chans[0].recv())
@@ -831,6 +831,10 @@ class TqApi(object):
     def _send_json(self, obj):
         """向天勤主进程发送JSON包"""
         self.send_chan.send_nowait(json.dumps(obj))
+        if not self.loop.is_running():
+            self.loop.call_soon(self.loop.stop)
+            self.loop.run_forever()
+
 
     async def _on_receive_msg(self, msg):
         """收到数据推送"""
