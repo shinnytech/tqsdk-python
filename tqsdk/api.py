@@ -45,6 +45,8 @@ class TqApi(object):
         self.send_chan = TqChan()  # websocket发送队列
         self.update_chans = [TqChan(last_only=True)]  # 业务数据更新所需要通知的队列，第一个元素用于wait_update
         self.tasks = set()  # 由api维护的所有根task，不包含子task，子task由其父task维护
+        if sys.platform.startswith('win'):
+            self.create_task(self._windows_patch())  # Windows系统下asyncio不支持KeyboardInterrupt的临时补丁
         self.create_task(self._connect())  # 启动websocket连接
         self.wait_update(timeout=30)  # 等待连接成功并收取截面数据
 
@@ -295,7 +297,7 @@ class TqApi(object):
                     "offset": "OPEN", # 开平标志, OPEN=开仓, CLOSE=平仓, CLOSETODAY=平今
                     "volume_orign": 6, # 总报单手数
                     "volume_left": 3, # 未成交手数
-                    "price_type": "LIMIT", # 价格类型, MARKET=市价, LIMIT=限价
+                    "price_type": "LIMIT", # 价格类型, ANY=市价, LIMIT=限价
                     "limit_price": 45000, # 委托价格, 仅当 price_type = LIMIT 时有效
                     "status": "ALIVE", # 委托单状态, ALIVE=有效, FINISHED=已完
                     "insert_date_time": 1928374000000000, # 下单时间(按北京时间)，自unix epoch(1970-01-01 00:00:00 GMT)以来的纳秒数
@@ -331,7 +333,7 @@ class TqApi(object):
             "direction": direction,
             "offset": offset,
             "volume": volume,
-            "price_type": "MARKET" if limit_price is None else "LIMIT",
+            "price_type": "ANY" if limit_price is None else "LIMIT",
             "volume_condition": "ANY" if limit_price is None else "ALL",
             "time_condition": "IOC" if limit_price is None else "GTC",
             "hedge_flag": "SPECULATION",
@@ -424,7 +426,7 @@ class TqApi(object):
                     "withdraw": 42344, # 本交易日内的出金金额
                     "commission": 123, # 本交易日内交纳的手续费
                     "preminum": 123, # 本交易日内交纳的权利金
-                    "float_profit": 8910.231, # 持仓盈亏
+                    "float_profit": 8910.231, # 浮动盈亏
                     "risk_ratio": 0.048482375, # 风险度
                     "margin": 11232.23, # 占用资金
                     "frozen_margin": 12345, # 冻结保证金
@@ -437,7 +439,7 @@ class TqApi(object):
 
         Example::
 
-            # 获取当前持仓盈亏
+            # 获取当前浮动盈亏
             from tqsdk.api import TqApi
 
             api = TqApi("SIM")
@@ -492,8 +494,8 @@ class TqApi(object):
                     "open_cost_long": 3203.5, # 多头开仓市值
                     "open_cost_short": 3100.5, # 空头开仓市值
                     "margin": 32324.4, # 占用保证金
-                    "float_profit_long": 32324.4, # 多头持仓盈亏
-                    "float_profit_short": 32324.4, # 空头持仓盈亏
+                    "float_profit_long": 32324.4, # 多头浮动盈亏
+                    "float_profit_short": 32324.4, # 空头浮动盈亏
                     "volume_long_today": 5, # 多头今仓手数
                     "volume_long_his": 5, # 多头老仓手数
                     "volume_long_frozen": 5, # 多头持仓冻结
@@ -526,7 +528,7 @@ class TqApi(object):
 
         Example::
 
-            # 获取 DCE.m1809 当前持仓盈亏
+            # 获取 DCE.m1809 当前浮动盈亏
             from tqsdk.api import TqApi
 
             api = TqApi("SIM")
@@ -587,7 +589,7 @@ class TqApi(object):
                     "offset": "OPEN", # 开平标志, OPEN=开仓, CLOSE=平仓, CLOSETODAY=平今
                     "volume_orign": 6, # 总报单手数
                     "volume_left": 3, # 未成交手数
-                    "price_type": "LIMIT", # 价格类型, MARKET=市价, LIMIT=限价
+                    "price_type": "LIMIT", # 价格类型, ANY=市价, LIMIT=限价
                     "limit_price": 45000, # 委托价格, 仅当 price_type = LIMIT 时有效
                     "status": "ALIVE", # 委托单状态, ALIVE=有效, FINISHED=已完
                     "insert_date_time": 1928374000000000, # 下单时间(按北京时间)，自unix epoch(1970-01-01 00:00:00 GMT)以来的纳秒数
@@ -804,6 +806,11 @@ class TqApi(object):
         return chan
 
     # ----------------------------------------------------------------------
+    async def _windows_patch(self):
+        """Windows系统下asyncio不支持KeyboardInterrupt的临时补丁, 详见 https://bugs.python.org/issue23057"""
+        while True:
+            await asyncio.sleep(1)
+
     async def _connect(self):
         """启动websocket客户端"""
         async with websockets.connect("ws://127.0.0.1:7777/", max_size=None) as client:
