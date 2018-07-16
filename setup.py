@@ -3,12 +3,12 @@ __author__ = 'yangyang'
 
 import setuptools
 
-with open("README.rst", "r") as fh:
+with open("README.rst", mode="r", encoding='utf-8') as fh:
     long_description = fh.read()
 
 setuptools.setup(
     name='tqsdk',
-    version="0.8.2",
+    version="0.8.3",
     description='TianQin SDK',
     author='TianQin',
     author_email='tianqincn@gmail.com',

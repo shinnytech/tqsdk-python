@@ -4,7 +4,6 @@ __author__ = 'yangyang'
 
 import csv
 from datetime import datetime
-from tqsdk.api import TqApi
 
 
 class DataDownloader:
@@ -82,57 +81,67 @@ class DataDownloader:
             path = ["klines", symbol, str(self.dur_nano)] if self.dur_nano != 0 else ["ticks", symbol]
             serial = self.api._get_obj(self.api.data, path)
             serials.append(serial)
-        with open(self.csv_file_name, 'w', newline='') as csvfile:
-            csv_writer = csv.writer(csvfile, dialect='excel')
-            async with self.api.register_update_notify() as update_chan:
-                async for _ in update_chan:
-                    if not (chart_info.items() <= self.api._get_obj(chart, ["state"]).items()):
-                        # 当前请求还没收齐回应, 不应继续处理
-                        continue
-                    left_id = chart.get("left_id", -1)
-                    right_id = chart.get("right_id", -1)
-                    if left_id == -1 or right_id == -1 or self.api.data.get("mdhis_more_data", True):
-                        # 定位信息还没收到, 或数据序列还没收到
-                        continue
-                    # 检查副合约的数据是否收到
-                    binding_data = True
-                    for i in range(1, len(self.symbol_list)):
-                        symbol = self.symbol_list[i]
-                        if symbol not in serials[0].get("binding", {}):
-                            binding_data = False
-                    if not binding_data:
-                        continue
-                    if current_id is None:
-                        current_id = left_id
-                    while current_id <= right_id:
-                        item = serials[0]["data"].get(str(current_id), {})
-                        if item.get("datetime", 0) == 0 or item['datetime'] > self.end_dt_nano:
-                            # 当前 id 已超出 last_id 或k线数据的时间已经超过用户限定的右端
-                            return
-                        if len(csv_header) == 0:
-                            # 写入文件头
-                            csv_header = ["datetime"]
-                            for symbol in self.symbol_list:
-                                for col in data_cols:
-                                    csv_header.append(symbol+"."+col)
-                            csv_writer.writerow(csv_header)
-                        row = [self._nano_to_str(item["datetime"])]
-                        for col in data_cols:
-                            row.append(self._get_value(item, col))
+        try:
+            with open(self.csv_file_name, 'w', newline='') as csvfile:
+                csv_writer = csv.writer(csvfile, dialect='excel')
+                async with self.api.register_update_notify() as update_chan:
+                    async for _ in update_chan:
+                        if not (chart_info.items() <= self.api._get_obj(chart, ["state"]).items()):
+                            # 当前请求还没收齐回应, 不应继续处理
+                            continue
+                        left_id = chart.get("left_id", -1)
+                        right_id = chart.get("right_id", -1)
+                        if left_id == -1 or right_id == -1 or self.api.data.get("mdhis_more_data", True):
+                            # 定位信息还没收到, 或数据序列还没收到
+                            continue
+                        # 检查副合约的数据是否收到
+                        binding_data = True
                         for i in range(1, len(self.symbol_list)):
                             symbol = self.symbol_list[i]
-                            tid = serials[0]["binding"][symbol].get(str(current_id), -1)
-                            k = {} if tid == -1 else serials[i]["data"].get(str(tid), {})
+                            if symbol not in serials[0].get("binding", {}):
+                                binding_data = False
+                        if not binding_data:
+                            continue
+                        if current_id is None:
+                            current_id = left_id
+                        while current_id <= right_id:
+                            item = serials[0]["data"].get(str(current_id), {})
+                            if item.get("datetime", 0) == 0 or item['datetime'] > self.end_dt_nano:
+                                # 当前 id 已超出 last_id 或k线数据的时间已经超过用户限定的右端
+                                return
+                            if len(csv_header) == 0:
+                                # 写入文件头
+                                csv_header = ["datetime"]
+                                for symbol in self.symbol_list:
+                                    for col in data_cols:
+                                        csv_header.append(symbol+"."+col)
+                                csv_writer.writerow(csv_header)
+                            row = [self._nano_to_str(item["datetime"])]
                             for col in data_cols:
-                                row.append(self._get_value(k, col))
-                        csv_writer.writerow(row)
-                        current_id += 1
-                        self.current_dt_nano = item['datetime']
-                    # 当前 id 已超出订阅范围, 需重新订阅后续数据
-                    chart_info.pop("focus_datetime", None)
-                    chart_info.pop("focus_position", None)
-                    chart_info["left_kline_id"] = current_id
-                    self.api._send_json(chart_info)
+                                row.append(self._get_value(item, col))
+                            for i in range(1, len(self.symbol_list)):
+                                symbol = self.symbol_list[i]
+                                tid = serials[0]["binding"][symbol].get(str(current_id), -1)
+                                k = {} if tid == -1 else serials[i]["data"].get(str(tid), {})
+                                for col in data_cols:
+                                    row.append(self._get_value(k, col))
+                            csv_writer.writerow(row)
+                            current_id += 1
+                            self.current_dt_nano = item['datetime']
+                        # 当前 id 已超出订阅范围, 需重新订阅后续数据
+                        chart_info.pop("focus_datetime", None)
+                        chart_info.pop("focus_position", None)
+                        chart_info["left_kline_id"] = current_id
+                        self.api._send_json(chart_info)
+        finally:
+            # 释放chart资源
+            self.api._send_json({
+                "aid": "set_chart",
+                "chart_id": chart_info["chart_id"],
+                "ins_list": "",
+                "duration": self.dur_nano,
+                "view_width": 2000,
+            })
 
     @staticmethod
     def _get_value(obj, key):
@@ -148,14 +157,3 @@ class DataDownloader:
         s = dt.strftime('%Y-%m-%d %H:%M:%S')
         s += '.' + str(int(nano % 1000000000)).zfill(9)
         return s
-
-
-if __name__ == "__main__":
-    api = TqApi("SIM")
-    kd = DataDownloader(api, symbol_list=["SHFE.cu1805", "SHFE.cu1807", "CFFEX.IC1803"], dur_sec=60,
-                        start_dt=datetime(2018, 1, 1), end_dt=datetime(2018, 6, 1), csv_file_name="kline.csv")
-    td = DataDownloader(api, symbol_list=["CFFEX.T1809"], dur_sec=0,
-                        start_dt=datetime(2018, 1, 1), end_dt=datetime(2018, 8, 1), csv_file_name="tick.csv")
-    while not kd.is_finished() or not td.is_finished():
-        api.wait_update()
-        print("progress: kline: %.2f%% tick:%.2f%%" % (kd.get_progress(), td.get_progress()))
