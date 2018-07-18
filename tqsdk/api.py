@@ -48,7 +48,7 @@ class TqApi(object):
         if sys.platform.startswith('win'):
             self.create_task(self._windows_patch())  # Windows系统下asyncio不支持KeyboardInterrupt的临时补丁
         self.create_task(self._connect())  # 启动websocket连接
-        self.wait_update(timeout=30)  # 等待连接成功并收取截面数据
+        self.wait_update(timeout=60)  # 等待连接成功并收取截面数据
 
     # ----------------------------------------------------------------------
     def get_quote(self, symbol):
@@ -334,8 +334,8 @@ class TqApi(object):
             "offset": offset,
             "volume": volume,
             "price_type": "ANY" if limit_price is None else "LIMIT",
-            "volume_condition": "ANY" if limit_price is None else "ALL",
-            "time_condition": "IOC" if limit_price is None else "GTC",
+            "volume_condition": "ANY",
+            "time_condition": "IOC" if limit_price is None else "GFD",
             "hedge_flag": "SPECULATION",
             "limit_price": limit_price,
         }

@@ -6,14 +6,9 @@
 * python3.6+
 * 安装天勤终端 0.8 以上版本
 
-从github下载 tqsdk::
-
-    git clone https://github.com/shinnytech/tqsdk-python.git
-
-
 安装::
 
-    python setup.py install
+    pip install tqsdk
 
 
 运行:
@@ -22,4 +17,4 @@
 
     * 运行demo目录下的任一程序::
 
-        python demo/t10.py
+        python -m tqsdk.demo.t10

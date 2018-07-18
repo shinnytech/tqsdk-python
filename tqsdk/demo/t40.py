@@ -5,12 +5,12 @@ __author__ = 'chengzhi'
 from tqsdk.api import TqApi
 
 api = TqApi("SIM")
-# 获得 cu1812 的持仓引用，当持仓有变化时 position 中的字段会对应更新
-position = api.get_position("SHFE.cu1812")
+# 获得 m1901 的持仓引用，当持仓有变化时 position 中的字段会对应更新
+position = api.get_position("DCE.m1901")
 # 获得资金账户引用，当账户有变化时 account 中的字段会对应更新
 account = api.get_account()
 # 下单并返回委托单的引用，当该委托单有变化时 order 中的字段会对应更新
-order = api.insert_order(symbol="SHFE.cu1812", direction="BUY", offset="OPEN", volume=5)
+order = api.insert_order(symbol="DCE.m1901", direction="BUY", offset="OPEN", volume=5)
 
 while True:
     api.wait_update()
