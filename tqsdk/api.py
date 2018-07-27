@@ -23,20 +23,22 @@ import time
 import asyncio
 import websockets
 
-
 class TqApi(object):
     """
     天勤接口及数据管理类.
 
     通常情况下, 一个进程中应该有一个TqApi的实例, 它负责维护到天勤终端的网络连接, 从天勤终端接收行情及账户数据, 并在内存中维护数据存储池
     """
-    def __init__(self, account_id):
+    def __init__(self, account_id, url="ws://127.0.0.1:7777"):
         """
         创建天勤接口实例
 
         Args:
             account_id (str): 指定交易账号, 实盘交易填写期货公司提供的帐号, 使用软件内置的模拟交易填写"SIM"
+            
+            url (str): 指定天勤软件 websocket 地址
         """
+        self.ws_url = url
         self.data = {"_path": []}  # 数据存储
         self.diffs = []  # 每次收到更新数据的数组
         self.loop = asyncio.get_event_loop()
@@ -813,7 +815,7 @@ class TqApi(object):
 
     async def _connect(self):
         """启动websocket客户端"""
-        async with websockets.connect("ws://127.0.0.1:7777/", max_size=None) as client:
+        async with websockets.connect(self.ws_url, max_size=None) as client:
             send_task = self.create_task(self._send_handler(client))
             try:
                 async for msg in client:

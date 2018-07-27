@@ -9,6 +9,7 @@ Python SDK
     intro.rst
     install.rst
     tutorial.rst
+    advanced.rst
     api.rst
     lib.rst
 
