@@ -12,7 +12,7 @@
 使用前, 需要在本机先启动一个天勤终端进程(版本 0.8 以上):
 
     * 天勤行情终端下载: http://www.shinnytech.com/tianqin
-    * 天勤使用文档: http://doc.tq18.cn/tq/latest/
+    * 天勤使用文档: http://doc.shinnytech.com/tq/index.html
 """
 __author__ = 'chengzhi'
 

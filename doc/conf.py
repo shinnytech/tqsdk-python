@@ -76,7 +76,6 @@ todo_include_todos = False
 # a list of builtin themes.
 # html_theme = 'classic'
 html_theme = 'bizstyle'
-# html_theme = 'alabaster'
 
 # html_theme_options = {}
 # html_sidebars = {

@@ -51,13 +51,13 @@ GitHub 下载项目源码后安装::
 1. 启动天勤终端, 并登录模拟交易。
 2. 运行 demo 程序。
 
-.. code-block:: cmd
+.. code-block:: bash
 
     $ python -m tqsdk.demo.t10
 
 或者：
 
-.. code-block:: command
+.. code-block:: bash
 
     $ python -m tqsdk.demo.t10 -a 192.168.1.71
 

@@ -1,6 +1,6 @@
 .. _pysdk:
 
-Python SDK
+TianQin Python SDK
 ========================================
 
 .. toctree::
