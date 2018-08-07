@@ -12,7 +12,8 @@
 使用前, 需要在本机先启动一个天勤终端进程(版本 0.8 以上):
 
     * 天勤行情终端下载: http://www.shinnytech.com/tianqin
-    * 天勤使用文档: http://doc.shinnytech.com/tq/index.html
+    * 天勤使用文档: http://doc.shinnytech.com/tq/latest/
+    * PYTHON SDK使用文档: http://doc.shinnytech.com/pysdk/latest/
 """
 __author__ = 'chengzhi'
 
@@ -38,7 +39,7 @@ class TqApi(object):
             
             url (str): 指定天勤软件 websocket 地址
         """
-        self.ws_url = url
+        self.ws_url = url  # 天勤终端的地址
         self.data = {"_path": []}  # 数据存储
         self.diffs = []  # 每次收到更新数据的数组
         self.loop = asyncio.get_event_loop()
@@ -226,8 +227,8 @@ class TqApi(object):
 
                 {
                     'datetime': 1501074872000000000L, # tick从交易所发出的时间(按北京时间)，自unix epoch(1970-01-01 00:00:00 GMT)以来的纳秒数
-                    'trading_day': 1501084800000000000L, #交易日, 格式同上
                     'last_price': 3887, # 最新价
+                    'average': 3420.11 # 当日均价
                     'bid_price1': 3881, # 买一价
                     'ask_price1': 3886, # 卖一价
                     'bid_volume1': 5, # 买一量
@@ -488,14 +489,12 @@ class TqApi(object):
                 {
                     "exchange_id": "SHFE", # 交易所
                     "instrument_id": "cu1801", # 交易所内的合约代码
-                    "volume_long": 5, # 多头持仓手数
-                    "volume_short": 5, # 空头持仓手数
-                    "hedge_flag": "SPEC", # 套保标记
                     "open_price_long": 3203.5, # 多头开仓均价
                     "open_price_short": 3100.5, # 空头开仓均价
                     "open_cost_long": 3203.5, # 多头开仓市值
                     "open_cost_short": 3100.5, # 空头开仓市值
-                    "margin": 32324.4, # 占用保证金
+                    "margin_long": 32324.4, # 多头占用保证金
+                    "margin_short": 32324.4, # 空头占用保证金
                     "float_profit_long": 32324.4, # 多头浮动盈亏
                     "float_profit_short": 32324.4, # 空头浮动盈亏
                     "volume_long_today": 5, # 多头今仓手数
@@ -549,14 +548,12 @@ class TqApi(object):
             return self._get_obj(self.data, ["trade", self.account_id, "positions", symbol], {
                 "exchange_id": symbol.split(".", 1)[0],
                 "instrument_id": symbol.split(".", 1)[1],
-                "volume_long": 0,
-                "volume_short": 0,
-                "hedge_flag": "",
                 "open_price_long": 0,
                 "open_price_short": 0,
                 "open_cost_long": 0,
                 "open_cost_short": 0,
-                "margin": 0,
+                "margin_long": 0,
+                "margin_short": 0,
                 "float_profit_long": 0,
                 "float_profit_short": 0,
                 "volume_long_today": 0,
