@@ -150,12 +150,12 @@ class TqApi(object):
             "pre_settlement": float("nan"),
             "pre_close": float("nan"),
             'price_tick': float("nan"),
-            'price_decs': float("nan"),
-            'volume_multiple': float("nan"),
-            'max_limit_order_volume': float("nan"),
-            'max_market_order_volume': float("nan"),
-            'min_limit_order_volume': float("nan"),
-            'min_market_order_volume': float("nan"),
+            'price_decs': 0,
+            'volume_multiple': 0,
+            'max_limit_order_volume': 0,
+            'max_market_order_volume': 0,
+            'min_limit_order_volume': 0,
+            'min_market_order_volume': 0,
             'change': float("nan"),
             'change_percent': float("nan")
         })
