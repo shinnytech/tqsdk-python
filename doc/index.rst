@@ -12,4 +12,5 @@ TianQin Python SDK
     advanced.rst
     api.rst
     lib.rst
+    faq.rst
 
