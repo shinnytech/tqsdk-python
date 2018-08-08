@@ -6,7 +6,7 @@ from tqsdk.api import TqChan
 
 class TargetPosTask:
     """目标持仓 task, 该 task 可以将指定合约调整到目标头寸"""
-	def __init__(self, api, symbol, price="ACTIVE",init_pos=0, trade_chan=None, settle_yesterday_first=True):
+	def __init__(self, api, symbol, price="ACTIVE",init_pos=0,init_pos_today=0, trade_chan=None, settle_yesterday_first=True):
 		"""
         创建目标持仓task实例
 
@@ -17,7 +17,7 @@ class TargetPosTask:
             init_pos (int): [可选]初始持仓，默认为0 (全部持仓)
             init_pos_today (int): [可选]初始持仓，默认为0 (此字段只有上期所合约有效: 持今仓)
             trade_chan (TqChan): [可选]成交通知channel, 当有成交发生时会将成交手数(多头为正数，空头为负数)发到该channel上
-			settle_yesterday_first(bool):是否优先平昨
+	    settle_yesterday_first(bool):是否优先平昨
         """
 		self.settle_yes_first=settle_yesterday_first
         self.api = api
