@@ -90,6 +90,15 @@ class TqApi(object):
                     'pre_close': 6106.0, # 昨收盘价
                     'pre_settlement': 6142.0 #  昨结算价
                     'pre_open_interest': 616620, # 昨持仓量
+                    'price_tick': 10.0, # 合约价格单位
+                    'price_decs': 0, # 合约价格小数位数
+                    'volume_multiple': 5, # 合约乘数
+                    'max_limit_order_volume': 500, # 最大限价单手数
+                    'max_market_order_volume': 0, # 最大市价单手数
+                    'min_limit_order_volume': 1, # 最小限价单手数
+                    'min_market_order_volume': 0, # 最小市价单手数
+                    'change': nan,  # 涨跌
+                    'change_percent': nan, # 涨跌幅
                 }
 
             注意: 在 tqsdk 还没有收到行情数据包时, 此对象中各项内容为 NaN 或 0
@@ -140,6 +149,15 @@ class TqApi(object):
             "pre_open_interest": 0,
             "pre_settlement": float("nan"),
             "pre_close": float("nan"),
+            'price_tick': float("nan"),
+            'price_decs': float("nan"),
+            'volume_multiple': float("nan"),
+            'max_limit_order_volume': float("nan"),
+            'max_market_order_volume': float("nan"),
+            'min_limit_order_volume': float("nan"),
+            'min_market_order_volume': float("nan"),
+            'change': float("nan"),
+            'change_percent': float("nan")
         })
 
     # ----------------------------------------------------------------------
@@ -191,6 +209,7 @@ class TqApi(object):
             50960.0
             ...
         """
+        duration_seconds = int(duration_seconds) # 转成整数
         if not chart_id:
             chart_id = self._generate_chart_id(symbol, duration_seconds)
         if data_length > 8964:
@@ -259,6 +278,8 @@ class TqApi(object):
         """
         if not chart_id:
             chart_id = self._generate_chart_id(symbol, 0)
+        if data_length > 8964:
+            data_length = 8964
         req = {
             "aid": "set_chart",
             "chart_id": chart_id,

@@ -5,8 +5,8 @@ __author__ = 'chengzhi'
 from tqsdk.api import TqChan
 
 class TargetPosTask:
-    """目标持仓task, 该task可以将指定合约调整到目标头寸"""
-    def __init__(self, api, symbol, price="ACTIVE", init_pos=0, trade_chan=None):
+    """目标持仓 task, 该 task 可以将指定合约调整到目标头寸"""
+    def __init__(self, api, symbol, price="ACTIVE", init_pos=0, init_pos_today=0, trade_chan=None):
         """
         创建目标持仓task实例
 
@@ -17,14 +17,17 @@ class TargetPosTask:
 
             price (str): [可选]下单方式, ACTIVE=对价下单, PASSIVE=挂价下单
 
-            init_pos (int): [可选]初始持仓，默认为0
-
+            init_pos (int): [可选]初始持仓，默认为0 (全部持仓)
+            
+            init_pos_today (int): [可选]初始持仓，默认为0 (此字段只有上期所合约有效: 持今仓)
+            
             trade_chan (TqChan): [可选]成交通知channel, 当有成交发生时会将成交手数(多头为正数，空头为负数)发到该channel上
         """
         self.api = api
         self.symbol = symbol
         self.price = price
         self.init_pos = init_pos
+        self.init_pos_today = init_pos_today
         self.pos_chan = TqChan(last_only=True)
         self.trade_chan = trade_chan if trade_chan is not None else TqChan()
         self.task = self.api.create_task(self._target_pos_task())
@@ -51,13 +54,43 @@ class TargetPosTask:
         self.pos_chan.put_nowait(volume)
 
     async def _target_pos_task(self):
-        """负责调整目标持仓的task"""
+        """
+        负责调整目标持仓的task
+        上期所区分平今平昨，先平今仓
+        """
         current_pos = self.init_pos
+        current_pos_today = self.init_pos_today
         async for target_pos in self.pos_chan:
-            if (current_pos < 0 and target_pos > current_pos) or (current_pos > 0 and target_pos < current_pos):
-                # 平仓
+            # 平仓
+            if self.symbol.startswith('SHFE'):
+                if (current_pos < 0 and target_pos > current_pos) or (current_pos > 0 and target_pos < current_pos):
+                    vol = min(abs(target_pos - current_pos), abs(current_pos))
+                    if vol <= abs(current_pos_today):
+                        insert_order_until_all_traded_task = InsertOrderUntilAllTradedTask(self.api, self.symbol,
+                                                                                           "BUY" if current_pos < 0 else "SELL",
+                                                                                           "CLOSETODAY", vol, price=self.price,
+                                                                                           trade_chan=self.trade_chan)
+                        await insert_order_until_all_traded_task.task
+                        current_pos_today += vol if current_pos_today < 0 else -vol
+                        current_pos += vol if current_pos < 0 else -vol
+                    else:
+                        insert_order_until_all_traded_task = InsertOrderUntilAllTradedTask(self.api, self.symbol,
+                                                                                           "BUY" if current_pos < 0 else "SELL",
+                                                                                           "CLOSETODAY", abs(current_pos_today),
+                                                                                           price=self.price,
+                                                                                           trade_chan=self.trade_chan)
+                        insert_order_until_all_traded_task_his = InsertOrderUntilAllTradedTask(self.api, self.symbol,
+                                                                                           "BUY" if current_pos < 0 else "SELL",
+                                                                                           "CLOSE", vol - abs(current_pos_today),
+                                                                                           price=self.price,
+                                                                                           trade_chan=self.trade_chan)
+                        await insert_order_until_all_traded_task.task
+                        await insert_order_until_all_traded_task_his.task
+                        current_pos += vol if current_pos < 0 else -vol
+                        current_pos_today += abs(current_pos_today) if current_pos_today < 0 else -abs(current_pos_today)
+            elif (current_pos < 0 and target_pos > current_pos) or (current_pos > 0 and target_pos < current_pos):
                 vol = min(abs(target_pos-current_pos), abs(current_pos))
-                insert_order_until_all_traded_task = InsertOrderUntilAllTradedTask(self.api, self.symbol, "BUY" if current_pos < 0 else "SELL", "CLOSE", vol, price = self.price, trade_chan=self.trade_chan)
+                insert_order_until_all_traded_task = InsertOrderUntilAllTradedTask(self.api, self.symbol, "BUY" if current_pos < 0 else "SELL", "CLOSE", vol, price=self.price, trade_chan=self.trade_chan)
                 await insert_order_until_all_traded_task.task
                 current_pos += vol if current_pos < 0 else -vol
             if target_pos != current_pos:
