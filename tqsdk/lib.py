@@ -3,12 +3,13 @@
 __author__ = 'chengzhi'
 
 from tqsdk.api import TqChan
+from asyncio import gather
 
-class TargetPosTask:
+class TargetPosTask(object):
     """目标持仓 task, 该 task 可以将指定合约调整到目标头寸"""
-    def __init__(self, api, symbol, price="ACTIVE", init_pos=0, init_pos_today=0, trade_chan=None):
+    def __init__(self, api, symbol, price="ACTIVE", init_pos=None, init_pos_today=None, settle_yesterday_first=False, trade_chan=None):
         """
-        创建目标持仓task实例
+        创建目标持仓task实例，负责调整归属于该task的持仓(默认为整个账户的该合约净持仓)
 
         Args:
             api (TqApi): TqApi实例，该task依托于指定api下单/撤单
@@ -17,17 +18,21 @@ class TargetPosTask:
 
             price (str): [可选]下单方式, ACTIVE=对价下单, PASSIVE=挂价下单
 
-            init_pos (int): [可选]初始持仓，默认为0 (全部持仓)
-            
-            init_pos_today (int): [可选]初始持仓，默认为0 (此字段只有上期所合约有效: 持今仓)
-            
+            init_pos (int): [可选]初始总持仓，默认整个账户的该合约净持仓
+
+            init_pos_today (int): [可选]初始今仓，只有上期所合约需要设置该值，默认为整个账户的该合约今净持仓
+
+            settle_yesterday_first(bool):[可选]是否优先平昨
+
             trade_chan (TqChan): [可选]成交通知channel, 当有成交发生时会将成交手数(多头为正数，空头为负数)发到该channel上
         """
+        super(TargetPosTask, self).__init__()
         self.api = api
         self.symbol = symbol
         self.price = price
-        self.init_pos = init_pos
-        self.init_pos_today = init_pos_today
+        self.current_pos = init_pos
+        self.current_pos_today = init_pos_today
+        self.settle_yesterday_first = settle_yesterday_first
         self.pos_chan = TqChan(last_only=True)
         self.trade_chan = trade_chan if trade_chan is not None else TqChan()
         self.task = self.api.create_task(self._target_pos_task())
@@ -53,52 +58,60 @@ class TargetPosTask:
         """
         self.pos_chan.put_nowait(volume)
 
+    def _init_position(self):
+        '''初始化当前持仓'''
+        pos = self.api.get_position(self.symbol)
+        if self.current_pos is None:
+            self.current_pos = pos["volume_long_today"] + pos["volume_long_his"] - pos["volume_short_today"] - pos["volume_short_his"]
+        if self.current_pos_today is None:
+            self.current_pos_today = pos["volume_long_today"] - pos["volume_short_today"]
+        # 总净持仓=今净持仓+昨净持仓
+        # 这里为了避免处理锁仓的情况，会将今净持仓调整为与总净持仓同向并小于等于总净持仓，即总净持仓中有多少手是今仓
+        # 如果今净持仓与昨净持仓同向，不需要调整。如果不同向，当今净持仓与总净持仓同向时今净持仓=总净持仓，否则等于0
+        # 即将今净持仓调整到 0 与 总净持仓 之间
+        self.current_pos_today = max(self.current_pos_today, min(0, self.current_pos))
+        self.current_pos_today = min(self.current_pos_today, max(0, self.current_pos))
+
+    async def _open_position(self, vol):
+        '''开仓'''
+        open_task = InsertOrderUntilAllTradedTask(self.api,self.symbol, "BUY" if vol > 0 else "SELL","OPEN", abs(vol), price=self.price, trade_chan=self.trade_chan)
+        self.current_pos += vol
+        self.current_pos_today += vol
+        await open_task.task
+
+    async def _settle_position(self, vol):
+        '''平仓'''
+        close_tasks = []
+        dir = "BUY" if vol > 0 else "SELL"
+        offsets = ["CLOSE"]
+        if self.symbol.startswith("SHFE"):
+            offsets = ["CLOSE", "CLOSETODAY"] if self.settle_yesterday_first else ["CLOSETODAY", "CLOSE"]
+        for offset in offsets:
+            if offset == "CLOSE":
+                order_vol = abs(vol) if not self.symbol.startswith("SHFE") else min(abs(self.current_pos - self.current_pos_today), abs(vol))
+            else:
+                order_vol = min(abs(self.current_pos_today), abs(vol))
+            if order_vol != 0:
+                close_tasks.append(InsertOrderUntilAllTradedTask(self.api, self.symbol, dir, offset, order_vol, price=self.price, trade_chan=self.trade_chan))
+                vol -= order_vol if dir == "BUY" else -order_vol
+                self.current_pos += order_vol if dir == "BUY" else -order_vol
+                if offset == "CLOSETODAY":
+                    self.current_pos_today += order_vol if dir == "BUY" else -order_vol
+        await gather(*[each.task for each in close_tasks])
+
     async def _target_pos_task(self):
-        """
-        负责调整目标持仓的task
-        上期所区分平今平昨，先平今仓
-        """
-        current_pos = self.init_pos
-        current_pos_today = self.init_pos_today
+        """负责调整目标持仓的task"""
+        self._init_position()
         async for target_pos in self.pos_chan:
-            # 平仓
-            if self.symbol.startswith('SHFE'):
-                if (current_pos < 0 and target_pos > current_pos) or (current_pos > 0 and target_pos < current_pos):
-                    vol = min(abs(target_pos - current_pos), abs(current_pos))
-                    if vol <= abs(current_pos_today):
-                        insert_order_until_all_traded_task = InsertOrderUntilAllTradedTask(self.api, self.symbol,
-                                                                                           "BUY" if current_pos < 0 else "SELL",
-                                                                                           "CLOSETODAY", vol, price=self.price,
-                                                                                           trade_chan=self.trade_chan)
-                        await insert_order_until_all_traded_task.task
-                        current_pos_today += vol if current_pos_today < 0 else -vol
-                        current_pos += vol if current_pos < 0 else -vol
-                    else:
-                        insert_order_until_all_traded_task = InsertOrderUntilAllTradedTask(self.api, self.symbol,
-                                                                                           "BUY" if current_pos < 0 else "SELL",
-                                                                                           "CLOSETODAY", abs(current_pos_today),
-                                                                                           price=self.price,
-                                                                                           trade_chan=self.trade_chan)
-                        insert_order_until_all_traded_task_his = InsertOrderUntilAllTradedTask(self.api, self.symbol,
-                                                                                           "BUY" if current_pos < 0 else "SELL",
-                                                                                           "CLOSE", vol - abs(current_pos_today),
-                                                                                           price=self.price,
-                                                                                           trade_chan=self.trade_chan)
-                        await insert_order_until_all_traded_task.task
-                        await insert_order_until_all_traded_task_his.task
-                        current_pos += vol if current_pos < 0 else -vol
-                        current_pos_today += abs(current_pos_today) if current_pos_today < 0 else -abs(current_pos_today)
-            elif (current_pos < 0 and target_pos > current_pos) or (current_pos > 0 and target_pos < current_pos):
-                vol = min(abs(target_pos-current_pos), abs(current_pos))
-                insert_order_until_all_traded_task = InsertOrderUntilAllTradedTask(self.api, self.symbol, "BUY" if current_pos < 0 else "SELL", "CLOSE", vol, price=self.price, trade_chan=self.trade_chan)
-                await insert_order_until_all_traded_task.task
-                current_pos += vol if current_pos < 0 else -vol
-            if target_pos != current_pos:
+            # 先平仓再开仓，否则可能会出现账户资金不足的情况
+            if (self.current_pos < 0 and target_pos > self.current_pos) or (self.current_pos > 0 and target_pos < self.current_pos):
+                # 平仓
+                vol = min(abs(target_pos-self.current_pos), abs(self.current_pos))
+                await self._settle_position(vol if self.current_pos < 0 else -vol)
+            if target_pos != self.current_pos:
                 # 开仓
-                vol = target_pos-current_pos
-                insert_order_until_all_traded_task = InsertOrderUntilAllTradedTask(self.api, self.symbol, "BUY" if vol > 0 else "SELL", "OPEN", abs(vol), price = self.price, trade_chan=self.trade_chan)
-                await insert_order_until_all_traded_task.task
-                current_pos += vol
+                vol = target_pos-self.current_pos
+                await self._open_position(vol)
 
 
 class InsertOrderUntilAllTradedTask:
