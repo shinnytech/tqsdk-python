@@ -9,8 +9,8 @@ TianQin Python SDK
     intro.rst
     install.rst
     tutorial.rst
-    advanced.rst
+    faq.rst
+    version.rst
     api.rst
     lib.rst
-    faq.rst
 
