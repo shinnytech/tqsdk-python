@@ -48,7 +48,7 @@ class TqApi(object):
         self.send_chan = TqChan()  # websocket发送队列
         self.update_chans = [TqChan(last_only=True)]  # 业务数据更新所需要通知的队列，第一个元素用于wait_update
         self.tasks = set()  # 由api维护的所有根task，不包含子task，子task由其父task维护
-        if sys.platform.startswith('win'):
+        if sys.platform.startswith("win"):
             self.create_task(self._windows_patch())  # Windows系统下asyncio不支持KeyboardInterrupt的临时补丁
         self.create_task(self._connect())  # 启动websocket连接
         self.wait_update(timeout=60)  # 等待连接成功并收取截面数据
@@ -70,35 +70,36 @@ class TqApi(object):
             dict: 返回如下结构所示的一个 dict 对象的引用, 当行情更新时, 此对象的内容被自动更新::
 
                 {
-                    'datetime': '2017-07-26 23:04:21.000001', # tick从交易所发出的时间(北京时间)
-                    'last_price': 6122.0, # 最新价
-                    'bid_price1': 6121.0, # 买一价
-                    'ask_price1': 6122.0, # 卖一价
-                    'bid_volume1': 54, # 买一量
-                    'ask_volume1': 66, # 卖一量
-                    'upper_limit': 6388.0, # 涨停价
-                    'lower_limit': 5896.0, # 跌停价
-                    'volume': 89252, # 成交量
-                    'amount': 5461329880.0, # 成交额
-                    'open_interest': 616424, # 持仓量
-                    'highest': 6129.0, # 当日最高价
-                    'lowest': 6101.0, # 当日最低价
-                    'average': 6119.0, # 当日均价
-                    'open': 6102.0, # 开盘价
-                    'close': '-', # 收盘价
-                    'settlement': '-', # 结算价
-                    'pre_close': 6106.0, # 昨收盘价
-                    'pre_settlement': 6142.0 #  昨结算价
-                    'pre_open_interest': 616620, # 昨持仓量
-                    'price_tick': 10.0, # 合约价格单位
-                    'price_decs': 0, # 合约价格小数位数
-                    'volume_multiple': 5, # 合约乘数
-                    'max_limit_order_volume': 500, # 最大限价单手数
-                    'max_market_order_volume': 0, # 最大市价单手数
-                    'min_limit_order_volume': 1, # 最小限价单手数
-                    'min_market_order_volume': 0, # 最小市价单手数
-                    'change': nan,  # 涨跌
-                    'change_percent': nan, # 涨跌幅
+                    "datetime": "2017-07-26 23:04:21.000001", # tick从交易所发出的时间(北京时间)
+                    "last_price": 6122.0, # 最新价
+                    "bid_price1": 6121.0, # 买一价
+                    "ask_price1": 6122.0, # 卖一价
+                    "bid_volume1": 54, # 买一量
+                    "ask_volume1": 66, # 卖一量
+                    "upper_limit": 6388.0, # 涨停价
+                    "lower_limit": 5896.0, # 跌停价
+                    "volume": 89252, # 成交量
+                    "amount": 5461329880.0, # 成交额
+                    "open_interest": 616424, # 持仓量
+                    "highest": 6129.0, # 当日最高价
+                    "lowest": 6101.0, # 当日最低价
+                    "average": 6119.0, # 当日均价
+                    "open": 6102.0, # 开盘价
+                    "close": "-", # 收盘价
+                    "settlement": "-", # 结算价
+                    "pre_close": 6106.0, # 昨收盘价
+                    "pre_settlement": 6142.0 #  昨结算价
+                    "pre_open_interest": 616620, # 昨持仓量
+                    "price_tick": 10.0, # 合约价格单位
+                    "price_decs": 0, # 合约价格小数位数
+                    "volume_multiple": 5, # 合约乘数
+                    "max_limit_order_volume": 500, # 最大限价单手数
+                    "max_market_order_volume": 0, # 最大市价单手数
+                    "min_limit_order_volume": 1, # 最小限价单手数
+                    "min_market_order_volume": 0, # 最小市价单手数
+                    "underlying_symbol": "", # 标的合约
+                    "change": nan,  # 涨跌
+                    "change_percent": nan, # 涨跌幅
                 }
 
             注意: 在 tqsdk 还没有收到行情数据包时, 此对象中各项内容为 NaN 或 0
@@ -149,15 +150,16 @@ class TqApi(object):
             "pre_open_interest": 0,
             "pre_settlement": float("nan"),
             "pre_close": float("nan"),
-            'price_tick': float("nan"),
-            'price_decs': 0,
-            'volume_multiple': 0,
-            'max_limit_order_volume': 0,
-            'max_market_order_volume': 0,
-            'min_limit_order_volume': 0,
-            'min_market_order_volume': 0,
-            'change': float("nan"),
-            'change_percent': float("nan")
+            "price_tick": float("nan"),
+            "price_decs": 0,
+            "volume_multiple": 0,
+            "max_limit_order_volume": 0,
+            "max_market_order_volume": 0,
+            "min_limit_order_volume": 0,
+            "min_market_order_volume": 0,
+            "underlying_symbol": "",
+            "change": float("nan"),
+            "change_percent": float("nan")
         })
 
     # ----------------------------------------------------------------------
@@ -182,14 +184,14 @@ class TqApi(object):
             其中每个数据项的格式如下::
 
                 {
-                    'datetime': 1501080715000000000L, # K线起点时间(按北京时间)，自unix epoch(1970-01-01 00:00:00 GMT)以来的纳秒数
-                    'open': 51450, # K线起始时刻的最新价
-                    'high': 51450, # K线时间范围内的最高价
-                    'low': 51450, # K线时间范围内的最低价
-                    'close': 51450, # K线结束时刻的最新价
-                    'volume': 0, # K线时间范围内的成交量
-                    'open_oi': 27354, # K线起始时刻的持仓量
-                    'close_oi': 27354 # K线结束时刻的持仓量
+                    "datetime": 1501080715000000000L, # K线起点时间(按北京时间)，自unix epoch(1970-01-01 00:00:00 GMT)以来的纳秒数
+                    "open": 51450, # K线起始时刻的最新价
+                    "high": 51450, # K线时间范围内的最高价
+                    "low": 51450, # K线时间范围内的最低价
+                    "close": 51450, # K线结束时刻的最新价
+                    "volume": 0, # K线时间范围内的成交量
+                    "open_oi": 27354, # K线起始时刻的持仓量
+                    "close_oi": 27354 # K线结束时刻的持仓量
                 }
 
         Example::
@@ -245,18 +247,18 @@ class TqApi(object):
             其中每个数据项的格式如下::
 
                 {
-                    'datetime': 1501074872000000000L, # tick从交易所发出的时间(按北京时间)，自unix epoch(1970-01-01 00:00:00 GMT)以来的纳秒数
-                    'last_price': 3887, # 最新价
-                    'average': 3420.11 # 当日均价
-                    'bid_price1': 3881, # 买一价
-                    'ask_price1': 3886, # 卖一价
-                    'bid_volume1': 5, # 买一量
-                    'ask_volume1': 1, #卖一量
-                    'highest': 3887, # 当日最高价
-                    'lowest': 3886,    # 当日最低价
-                    'volume': 6, # 成交量
-                    'amount': 19237841.0 # 成交额
-                    'open_interest': 1796 # 持仓量
+                    "datetime": 1501074872000000000L, # tick从交易所发出的时间(按北京时间)，自unix epoch(1970-01-01 00:00:00 GMT)以来的纳秒数
+                    "last_price": 3887, # 最新价
+                    "average": 3420.11 # 当日均价
+                    "bid_price1": 3881, # 买一价
+                    "ask_price1": 3886, # 卖一价
+                    "bid_volume1": 5, # 买一量
+                    "ask_volume1": 1, #卖一量
+                    "highest": 3887, # 当日最高价
+                    "lowest": 3886,    # 当日最低价
+                    "volume": 6, # 成交量
+                    "amount": 19237841.0 # 成交额
+                    "open_interest": 1796 # 持仓量
                 },
 
         Example::
