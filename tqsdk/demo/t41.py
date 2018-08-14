@@ -2,8 +2,9 @@
 #  -*- coding: utf-8 -*-
 
 from tqsdk.api import TqApi
+from tqsdk.demo.config import user_id, url
 
-api = TqApi("SIM")
+api = TqApi(user_id, url)
 # 获得 rb1810 的持仓引用，
 quote = api.get_quote("SHFE.rb1810")
 # 下单平仓单
@@ -13,6 +14,7 @@ order = api.insert_order(symbol="SHFE.rb1810",
                          offset="CLOSETODAY",
                          limit_price=quote["last_price"],
                          volume=2)
+position = api.get_position("SHFE.rb1810")
 
 while True:
     api.wait_update()

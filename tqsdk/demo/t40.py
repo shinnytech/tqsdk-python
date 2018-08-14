@@ -3,8 +3,10 @@
 __author__ = 'chengzhi'
 
 from tqsdk.api import TqApi
+from tqsdk.demo.config import user_id, url
 
-api = TqApi("SIM")
+api = TqApi(user_id, url)
+
 # 获得 m1901 的持仓引用，当持仓有变化时 position 中的字段会对应更新
 position = api.get_position("DCE.m1901")
 # 获得资金账户引用，当账户有变化时 account 中的字段会对应更新
