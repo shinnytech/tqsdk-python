@@ -3,8 +3,9 @@
 __author__ = 'chengzhi'
 
 from tqsdk.api import TqApi
+from tqsdk.demo.config import user_id, url
 
-api = TqApi("SIM")
+api = TqApi(user_id, url)
 quote = api.get_quote("SHFE.cu1812")
 
 while True:

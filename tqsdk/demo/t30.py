@@ -3,9 +3,10 @@
 __author__ = 'chengzhi'
 
 from tqsdk.api import TqApi
+from tqsdk.demo.config import user_id, url
 import datetime
 
-api = TqApi("SIM")
+api = TqApi(user_id, url)
 # 获得cu1812 tick序列的引用
 ticks = api.get_tick_serial("SHFE.cu1812")
 # 获得cu1812 10秒K线的引用
