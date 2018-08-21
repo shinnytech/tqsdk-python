@@ -110,7 +110,7 @@ class TargetPosTask(object):
                     if tdAvailable<=0:  #如果没有今仓直接到下一种offset
                         continue
                     close_today_volume=min(volume_to_order, tdAvailable)
-                    order_task=InsertOrderUntilAllTradedTask(self.api, self.symbol, dir, offset="CLOSETODAY",volume=close_today_volume, price=self.price,trade_chan=self.trade_chan)
+                    order_task=InsertOrderUntilAllTradedTask(self.api, self.symbol, dir, offset="CLOSETODAY" if (self.symbol.startswith("SHFE") or self.symbol.startswith("INE")) else "CLOSE",volume=close_today_volume, price=self.price,trade_chan=self.trade_chan)
                     all_tasks.append(order_task)
                     volume_to_order-=close_today_volume  #报单任务减去已经发出的数量
                     self.current_pos+=(close_today_volume if delta_volume>0 else -close_today_volume)
