@@ -5,9 +5,10 @@ __author__ = 'chengzhi'
 from tqsdk.api import TqChan
 from asyncio import gather
 
+
 class TargetPosTask(object):
     """目标持仓 task, 该 task 可以将指定合约调整到目标头寸"""
-    def __init__(self, api, symbol, price="ACTIVE", init_pos=None, init_pos_today=None, settle_yesterday_first=False, trade_chan=None):
+    def __init__(self, api, symbol, price="ACTIVE", init_pos=None, offset_priority="今昨,开", trade_chan=None):
         """
         创建目标持仓task实例，负责调整归属于该task的持仓(默认为整个账户的该合约净持仓)
 
@@ -18,21 +19,25 @@ class TargetPosTask(object):
 
             price (str): [可选]下单方式, ACTIVE=对价下单, PASSIVE=挂价下单
 
-            init_pos (int): [可选]初始总持仓，默认整个账户的该合约净持仓
+            init_pos (int): [可选]初始持仓，默认整个账户的该合净持仓
 
-            init_pos_today (int): [可选]初始今仓，只有上期所合约需要设置该值，默认为整个账户的该合约今净持仓
-
-            settle_yesterday_first(bool):[可选]是否优先平昨
+            offset_priority (str): [可选]开平仓顺序，昨=平昨仓，今=平今仓，开=开仓，逗号=等待之前操作完成
+                                   对于下单指令区分平今/昨的交易所(如上期所)，按照今/昨仓的数量计算是否能平今/昨仓
+                                   对于下单指令不区分平今/昨的交易所(如中金所)，按照“先平当日新开仓，再平历史仓”的规则计算是否能平今/昨仓
+                                   * "今昨,开" 表示先平今仓，再平昨仓，等待平仓完成后开仓，对于没有单向大边的品种避免了开仓保证金不足
+                                   * "今昨开" 表示先平今仓，再平昨仓，并开仓，所有指令同时发出，适合有单向大边的品种
+                                   * "昨开" 表示先平昨仓，再开仓，禁止平今仓，适合股指这样平今手续费较高的品种
 
             trade_chan (TqChan): [可选]成交通知channel, 当有成交发生时会将成交手数(多头为正数，空头为负数)发到该channel上
         """
         super(TargetPosTask, self).__init__()
         self.api = api
         self.symbol = symbol
+        self.exchange = symbol.split(".")[0]
         self.price = price
+        self.pos = self.api.get_position(self.symbol)
         self.current_pos = init_pos
-        self.current_pos_today = init_pos_today
-        self.settle_yesterday_first = settle_yesterday_first
+        self.offset_priority = offset_priority
         self.pos_chan = TqChan(last_only=True)
         self.trade_chan = trade_chan if trade_chan is not None else TqChan()
         self.task = self.api.create_task(self._target_pos_task())
@@ -59,60 +64,53 @@ class TargetPosTask(object):
         self.pos_chan.put_nowait(volume)
 
     def _init_position(self):
-        '''初始化当前持仓'''
-        pos = self.api.get_position(self.symbol)
+        """初始化当前持仓"""
         if self.current_pos is None:
-            self.current_pos = pos["volume_long_today"] + pos["volume_long_his"] - pos["volume_short_today"] - pos["volume_short_his"]
-        if self.current_pos_today is None:
-            self.current_pos_today = pos["volume_long_today"] - pos["volume_short_today"]
-        # 总净持仓=今净持仓+昨净持仓
-        # 这里为了避免处理锁仓的情况，会将今净持仓调整为与总净持仓同向并小于等于总净持仓，即总净持仓中有多少手是今仓
-        # 如果今净持仓与昨净持仓同向，不需要调整。如果不同向，当今净持仓与总净持仓同向时今净持仓=总净持仓，否则等于0
-        # 即将今净持仓调整到 0 与 总净持仓 之间
-        self.current_pos_today = max(self.current_pos_today, min(0, self.current_pos))
-        self.current_pos_today = min(self.current_pos_today, max(0, self.current_pos))
+            self.current_pos = self.pos["volume_long_today"] + self.pos["volume_long_his"] - self.pos["volume_short_today"] - self.pos["volume_short_his"]
 
-    async def _open_position(self, vol):
-        '''开仓'''
-        open_task = InsertOrderUntilAllTradedTask(self.api,self.symbol, "BUY" if vol > 0 else "SELL","OPEN", abs(vol), price=self.price, trade_chan=self.trade_chan)
-        self.current_pos += vol
-        self.current_pos_today += vol
-        await open_task.task
-
-    async def _settle_position(self, vol):
-        '''平仓'''
-        close_tasks = []
-        dir = "BUY" if vol > 0 else "SELL"
-        offsets = ["CLOSE"]
-        if self.symbol.startswith("SHFE"):
-            offsets = ["CLOSE", "CLOSETODAY"] if self.settle_yesterday_first else ["CLOSETODAY", "CLOSE"]
-        for offset in offsets:
-            if offset == "CLOSE":
-                order_vol = abs(vol) if not self.symbol.startswith("SHFE") else min(abs(self.current_pos - self.current_pos_today), abs(vol))
-            else:
-                order_vol = min(abs(self.current_pos_today), abs(vol))
-            if order_vol != 0:
-                close_tasks.append(InsertOrderUntilAllTradedTask(self.api, self.symbol, dir, offset, order_vol, price=self.price, trade_chan=self.trade_chan))
-                vol -= order_vol if dir == "BUY" else -order_vol
-                self.current_pos += order_vol if dir == "BUY" else -order_vol
-                if offset == "CLOSETODAY":
-                    self.current_pos_today += order_vol if dir == "BUY" else -order_vol
-        await gather(*[each.task for each in close_tasks])
+    def _get_order(self, offset, vol):
+        """获得可平手数"""
+        if vol > 0:  # 买单(增加净持仓)
+            order_dir = "BUY"
+            ydAvailable=self.pos["volume_short_his"] - (self.pos["volume_short_frozen"] - self.pos["volume_short_frozen_today"])  # 昨空可用
+            tdAvailable=self.pos["volume_short_today"] - self.pos["volume_short_frozen_today"]  # 今空可用
+        else:  # 卖单
+            order_dir = "SELL"
+            ydAvailable=self.pos["volume_long_his"] - (self.pos["volume_long_frozen"] - self.pos["volume_long_frozen_today"])  # 昨多可用
+            tdAvailable=self.pos["volume_long_today"] - self.pos["volume_long_frozen_today"]  # 今多可用
+        if offset == "昨":
+            order_offset = "CLOSE"
+            order_volume = min(abs(vol), ydAvailable if self.exchange == "SHFE" or self.exchange == "INE" or tdAvailable == 0 else 0)
+        elif offset == "今":
+            order_offset = "CLOSETODAY" if self.exchange == "SHFE" or self.exchange == "INE" else "CLOSE"
+            order_volume = min(abs(vol), tdAvailable if self.exchange == "SHFE" or self.exchange == "INE" else tdAvailable + ydAvailable)
+        elif offset == "开":
+            order_offset = "OPEN"
+            order_volume = abs(vol)
+        else:
+            order_offset = ""
+            order_volume = 0
+        return order_offset, order_dir, order_volume
 
     async def _target_pos_task(self):
         """负责调整目标持仓的task"""
         self._init_position()
         async for target_pos in self.pos_chan:
-            # 先平仓再开仓，否则可能会出现账户资金不足的情况
-            if (self.current_pos < 0 and target_pos > self.current_pos) or (self.current_pos > 0 and target_pos < self.current_pos):
-                # 平仓
-                vol = min(abs(target_pos-self.current_pos), abs(self.current_pos))
-                await self._settle_position(vol if self.current_pos < 0 else -vol)
-            if target_pos != self.current_pos:
-                # 开仓
-                vol = target_pos-self.current_pos
-                await self._open_position(vol)
-
+            # 确定调仓增减方向
+            delta_volume = target_pos - self.current_pos
+            all_tasks = []
+            for each_priority in self.offset_priority + ",":  # 按不同模式的优先级顺序报出不同的offset单，股指(“昨开”)平昨优先从不平今就先报平昨，原油平今优先("今昨开")就报平今
+                if each_priority == ",":
+                    await gather(*[each.task for each in all_tasks])
+                    all_tasks =[]
+                    continue
+                order_offset, order_dir, order_volume = self._get_order(each_priority, delta_volume)
+                if order_volume == 0:  # 如果没有则直接到下一种offset
+                    continue
+                order_task = InsertOrderUntilAllTradedTask(self.api, self.symbol, order_dir, offset=order_offset,volume=order_volume, price=self.price,trade_chan=self.trade_chan)
+                all_tasks.append(order_task)
+                delta_volume -= order_volume if order_dir == "BUY" else -order_volume
+            self.current_pos = target_pos
 
 class InsertOrderUntilAllTradedTask:
     """追价下单task, 该task会在行情变化后自动撤单重下，直到全部成交"""
@@ -158,10 +156,12 @@ class InsertOrderUntilAllTradedTask:
                 check_chan = TqChan(last_only=True)
                 check_task = self.api.create_task(self._check_price(check_chan, limit_price, order))
                 await insert_order_task.task
-                await check_chan.close()
-                await check_task
                 order = insert_order_task.order_chan.recv_latest(order)
                 self.volume = order["volume_left"]
+                if self.volume != 0 and not check_task.done():
+                    raise Exception("遇到错单: %s %s %s %d手 %f" % (self.symbol, self.direction, self.offset, self.volume, limit_price))
+                await check_chan.close()
+                await check_task
 
     def _get_price(self):
         """根据最新行情和下单方式计算出最优的下单价格"""
