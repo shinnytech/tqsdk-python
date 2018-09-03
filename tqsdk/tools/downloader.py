@@ -94,19 +94,15 @@ class DataDownloader:
                         if left_id == -1 or right_id == -1 or self.api.data.get("mdhis_more_data", True):
                             # 定位信息还没收到, 或数据序列还没收到
                             continue
-                        # 检查副合约的数据是否收到
-                        binding_data = True
-                        for i in range(1, len(self.symbol_list)):
-                            symbol = self.symbol_list[i]
-                            if symbol not in serials[0].get("binding", {}):
-                                binding_data = False
-                        if not binding_data:
-                            continue
+                        for serial in serials:
+                            # 检查合约的数据是否收到
+                            if serial.get("last_id", -1) == -1:
+                                continue
                         if current_id is None:
                             current_id = left_id
                         while current_id <= right_id:
                             item = serials[0]["data"].get(str(current_id), {})
-                            if item.get("datetime", 0) == 0 or item['datetime'] > self.end_dt_nano:
+                            if item.get("datetime", 0) == 0 or item["datetime"] > self.end_dt_nano:
                                 # 当前 id 已超出 last_id 或k线数据的时间已经超过用户限定的右端
                                 return
                             if len(csv_header) == 0:
@@ -121,13 +117,13 @@ class DataDownloader:
                                 row.append(self._get_value(item, col))
                             for i in range(1, len(self.symbol_list)):
                                 symbol = self.symbol_list[i]
-                                tid = serials[0]["binding"][symbol].get(str(current_id), -1)
+                                tid = serials[0].get("binding", {}).get(symbol, {}).get(str(current_id), -1)
                                 k = {} if tid == -1 else serials[i]["data"].get(str(tid), {})
                                 for col in data_cols:
                                     row.append(self._get_value(k, col))
                             csv_writer.writerow(row)
                             current_id += 1
-                            self.current_dt_nano = item['datetime']
+                            self.current_dt_nano = item["datetime"]
                         # 当前 id 已超出订阅范围, 需重新订阅后续数据
                         chart_info.pop("focus_datetime", None)
                         chart_info.pop("focus_position", None)
