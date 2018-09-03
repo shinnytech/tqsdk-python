@@ -4,7 +4,8 @@ __author__ = 'chengzhi'
 
 from tqsdk.api import TqApi
 
-api = TqApi("SIM")
+# 可以指定debug选项将调试信息写入指定的文件中
+api = TqApi("SIM", debug="debug.log")
 quote = api.get_quote("SHFE.cu1812")
 
 while True:

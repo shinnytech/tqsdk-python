@@ -32,3 +32,5 @@ while True:
             print("最新价小于MA: 市价平仓")
             api.insert_order(symbol="DCE.m1901", direction="SELL", offset="CLOSE", volume=5)
             break
+# 关闭api,释放相应资源
+api.close()

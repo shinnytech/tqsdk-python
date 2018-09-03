@@ -38,8 +38,8 @@ class TargetPosTask(object):
         self.pos = self.api.get_position(self.symbol)
         self.current_pos = init_pos
         self.offset_priority = offset_priority
-        self.pos_chan = TqChan(last_only=True)
-        self.trade_chan = trade_chan if trade_chan is not None else TqChan()
+        self.pos_chan = TqChan(self.api, last_only=True)
+        self.trade_chan = trade_chan if trade_chan is not None else TqChan(self.api)
         self.task = self.api.create_task(self._target_pos_task())
 
     def set_target_volume(self, volume):
@@ -61,7 +61,7 @@ class TargetPosTask(object):
                 api.wait_update()
                 target_pos.set_target_volume(5)
         """
-        self.pos_chan.put_nowait(volume)
+        self.pos_chan.send_nowait(volume)
 
     def _init_position(self):
         """初始化当前持仓"""
@@ -139,7 +139,7 @@ class InsertOrderUntilAllTradedTask:
         self.offset = offset
         self.volume = volume
         self.price = price
-        self.trade_chan = trade_chan if trade_chan is not None else TqChan()
+        self.trade_chan = trade_chan if trade_chan is not None else TqChan(self.api)
         self.quote = self.api.get_quote(self.symbol)
         self.task = self.api.create_task(self._run())
 
@@ -153,7 +153,7 @@ class InsertOrderUntilAllTradedTask:
                 limit_price = self._get_price()
                 insert_order_task = InsertOrderTask(self.api, self.symbol, self.direction, self.offset, self.volume, limit_price = limit_price, trade_chan = self.trade_chan)
                 order = await insert_order_task.order_chan.recv()
-                check_chan = TqChan(last_only=True)
+                check_chan = TqChan(self.api, last_only=True)
                 check_task = self.api.create_task(self._check_price(check_chan, limit_price, order))
                 await insert_order_task.task
                 order = insert_order_task.order_chan.recv_latest(order)
@@ -216,8 +216,8 @@ class InsertOrderTask:
         self.offset = offset
         self.volume = volume
         self.limit_price = limit_price
-        self.order_chan = order_chan if order_chan is not None else TqChan()
-        self.trade_chan = trade_chan if trade_chan is not None else TqChan()
+        self.order_chan = order_chan if order_chan is not None else TqChan(self.api)
+        self.trade_chan = trade_chan if trade_chan is not None else TqChan(self.api)
         self.task = self.api.create_task(self._run())
 
     async def _run(self):

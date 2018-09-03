@@ -50,7 +50,7 @@
     :linenos:
 
 
-+ 使用 TargetPosTask，目标持仓模型下单，通过参数 `init_pos`(全部持仓) `init_pos_today`(今仓) 设置初始持仓。
++ 使用 TargetPosTask，目标持仓模型下单，通过参数 `offset_priority` 设置平今平昨优先级。
 
 .. literalinclude:: ../tqsdk/demo/t71.py
     :caption: python demo/t71.py
