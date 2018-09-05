@@ -7,7 +7,6 @@ from tqsdk.lib import TargetPosTask
 
 '''
 连续3根阴线就做空，连续3根阳线就做多，否则空仓
-目标持仓模型 - 上期所优先平今
 '''
 
 api = TqApi("SIM")
@@ -22,8 +21,10 @@ while True:
     api.wait_update()
     # 只有在新创建出K线时才判断开平仓条件
     if api.is_changing(klines[-1], "datetime"):
-        # 将K线转为DataFrame, 跳过最后一根刚生成的K线
+        # 将K线转为pandas.DataFrame, 跳过最后一根刚生成的K线
         df = klines.to_dataframe()[:-1]
+        # 比较收盘价和开盘价，判断是阳线还是阴线
+        # df["close"] 为收盘价序列, df["open"] 为开盘价序列, ">"(pandas.Series.gt) 返回收盘价是否大于开盘价的一个新序列
         up = df["close"] > df["open"]
         down = df["close"] < df["open"]
         if all(up):

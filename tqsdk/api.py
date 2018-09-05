@@ -889,7 +889,7 @@ class TqApi(object):
             "frozen_commission": float("nan"),  # 0.0 (冻结手续费)
             "commission": float("nan"),  # 123.0 (本交易日内交纳的手续费)
             "frozen_premium": float("nan"),  # 0.0 (冻结权利金)
-            "preminum": float("nan"),  # 0.0 (本交易日内交纳的权利金)
+            "premium": float("nan"),  # 0.0 (本交易日内交纳的权利金)
             "deposit": float("nan"),  # 1234.0 (本交易日内的入金金额)
             "withdraw": float("nan"),  # 890.0 (本交易日内的出金金额)
             "risk_ratio": float("nan"),  # 0.048482375 (风险度)

@@ -74,6 +74,15 @@
     :language: python
     :linenos:
 
+.. _tutorial_t71:
+
+简单趋势策略
+-------------------------------------------------
+.. literalinclude:: ../tqsdk/demo/t71.py
+    :caption: python demo/t71.py
+    :language: python
+    :linenos:
+
 .. _tutorial_t80:
 
 价差回归策略
