@@ -697,7 +697,8 @@ class TqApi(object):
         if not isinstance(obj, list):
             obj = [obj] if obj else [self.data]
         for o in obj:
-            o["_listener"].add(chan)
+            listener = o.serial_root["_listener"] if isinstance(o, SerialDataProxy) else o["_listener"]
+            listener.add(chan)
         return chan
 
     # ----------------------------------------------------------------------
