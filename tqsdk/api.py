@@ -868,7 +868,7 @@ class TqApi(object):
             "ask_volume1": 0,  # 3 (卖一量)
             "bid_price1": float("nan"),  # 3881.0 (买一价)
             "bid_volume1": 0,  # 18 (买一量)
-            "volume": 7823,  # (成交量)
+            "volume": 0,  # 7823 (当日成交量)
             "amount": float("nan"),  # 19237841.0 (成交额)
             "open_interest": 0,  # 1941 (持仓量)
         }
@@ -1030,6 +1030,37 @@ class SerialDataProxy(object):
         return TqApi._get_obj(self.serial_root, ["data", str(data_id)], self.default)
 
     def to_dataframe(self):
+        """
+        将当前该序列中的数据转换为 pandas.DataFrame
+
+        Returns:
+            pandas.DataFrame: 每行是一条行情数据
+
+            注意: 返回的 DataFrame 反映的是当前的行情数据，不会自动更新，当行情数据有变化后需要重新调用 to_dataframe
+
+        Example::
+
+            # 判断K线是否为阳线
+            from tqsdk.api import TqApi
+
+            api = TqApi("SIM")
+            k_serial = api.get_kline_serial("SHFE.cu1812", 60)
+            while True:
+                api.wait_update()
+                df = k_serial.to_dataframe()
+                print(df["close"] > df["open"])
+
+            # 预计的输出是这样的:
+            0       True
+            1       True
+            2      False
+                   ...
+            197    False
+            198     True
+            199    False
+            Length: 200, dtype: bool
+            ...
+        """
         import pandas as pd
         rows = {}
         for i in range(0, self.width):
