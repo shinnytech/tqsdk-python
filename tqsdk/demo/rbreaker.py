@@ -26,7 +26,8 @@ def get_index_line(klines):
     bSetup = pivot - (high - low)  # 观察买入价
     sBreak = low - 2 * (high - pivot)  # 突破卖出价
 
-    print("已计算新标志线", pivot, bBreak, sSetup, sEnter, bEnter, bSetup, sBreak)
+    print("已计算新标志线: ", "\n枢轴点", pivot, "\n突破买入价", bBreak, "\n观察卖出价", sSetup,
+          "\n反转卖出价", sEnter, "\n反转买入价", bEnter, "\n观察买入价", bSetup, "\n突破卖出价", sBreak)
     return pivot, bBreak, sSetup, sEnter, bEnter, bSetup, sBreak
 
 
