@@ -37,7 +37,7 @@ klines = api.get_kline_serial(symbol, 24*60*60)  # 86400: 使用日线
 position = api.get_position(symbol)
 target_pos = TargetPosTask(api, symbol)
 target_pos_value = position["volume_long"] - position["volume_short"]  # 目标净持仓数
-open_position_price = quote["last_price"]  # 开仓价
+open_position_price = position["open_price_long"] if target_pos_value > 0 else position["open_price_short"]  # 开仓价
 pivot, bBreak, sSetup, sEnter, bEnter, bSetup, sBreak = get_index_line(klines)  # 七条标准线
 
 while True:
