@@ -96,7 +96,7 @@ while True:
 
 print("临近本交易日收盘: 平仓")
 target_pos.set_target_volume(0)  # 平仓
-time = time.time()
-while api.wait_update(deadline=time + 60):  # 等待60秒
+deadline = time.time() + 60
+while api.wait_update(deadline=deadline):  # 等待60秒
     pass
 api.close()
