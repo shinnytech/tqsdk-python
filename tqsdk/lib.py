@@ -22,11 +22,13 @@ class TargetPosTask(object):
             init_pos (int): [可选]初始持仓，默认整个账户的该合净持仓
 
             offset_priority (str): [可选]开平仓顺序，昨=平昨仓，今=平今仓，开=开仓，逗号=等待之前操作完成
+
                                    对于下单指令区分平今/昨的交易所(如上期所)，按照今/昨仓的数量计算是否能平今/昨仓
+
                                    对于下单指令不区分平今/昨的交易所(如中金所)，按照“先平当日新开仓，再平历史仓”的规则计算是否能平今/昨仓
-                                   * "今昨,开" 表示先平今仓，再平昨仓，等待平仓完成后开仓，对于没有单向大边的品种避免了开仓保证金不足
-                                   * "今昨开" 表示先平今仓，再平昨仓，并开仓，所有指令同时发出，适合有单向大边的品种
-                                   * "昨开" 表示先平昨仓，再开仓，禁止平今仓，适合股指这样平今手续费较高的品种
+                                       * "今昨,开" 表示先平今仓，再平昨仓，等待平仓完成后开仓，对于没有单向大边的品种避免了开仓保证金不足
+                                       * "今昨开" 表示先平今仓，再平昨仓，并开仓，所有指令同时发出，适合有单向大边的品种
+                                       * "昨开" 表示先平昨仓，再开仓，禁止平今仓，适合股指这样平今手续费较高的品种
 
             trade_chan (TqChan): [可选]成交通知channel, 当有成交发生时会将成交手数(多头为正数，空头为负数)发到该channel上
         """
@@ -112,7 +114,7 @@ class TargetPosTask(object):
                 delta_volume -= order_volume if order_dir == "BUY" else -order_volume
             self.current_pos = target_pos
 
-class InsertOrderUntilAllTradedTask:
+class InsertOrderUntilAllTradedTask(object):
     """追价下单task, 该task会在行情变化后自动撤单重下，直到全部成交"""
     def __init__(self, api, symbol, direction, offset, volume, price = "ACTIVE", trade_chan = None):
         """
@@ -155,13 +157,15 @@ class InsertOrderUntilAllTradedTask:
                 order = await insert_order_task.order_chan.recv()
                 check_chan = TqChan(self.api, last_only=True)
                 check_task = self.api.create_task(self._check_price(check_chan, limit_price, order))
-                await insert_order_task.task
-                order = insert_order_task.order_chan.recv_latest(order)
-                self.volume = order["volume_left"]
-                if self.volume != 0 and not check_task.done():
-                    raise Exception("遇到错单: %s %s %s %d手 %f" % (self.symbol, self.direction, self.offset, self.volume, limit_price))
-                await check_chan.close()
-                await check_task
+                try:
+                    await insert_order_task.task
+                    order = insert_order_task.order_chan.recv_latest(order)
+                    self.volume = order["volume_left"]
+                    if self.volume != 0 and not check_task.done():
+                        raise Exception("遇到错单: %s %s %s %d手 %f" % (self.symbol, self.direction, self.offset, self.volume, limit_price))
+                finally:
+                    await check_chan.close()
+                    await check_task
 
     def _get_price(self):
         """根据最新行情和下单方式计算出最优的下单价格"""
@@ -175,6 +179,8 @@ class InsertOrderUntilAllTradedTask:
         if limit_price != limit_price:
             limit_price = price_list[1]
         if limit_price != limit_price:
+            limit_price = self.quote["last_price"]
+        if limit_price != limit_price:
             limit_price = self.quote["pre_close"]
         return limit_price
 
@@ -187,7 +193,7 @@ class InsertOrderUntilAllTradedTask:
                     self.api.cancel_order(order)
                     break
 
-class InsertOrderTask:
+class InsertOrderTask(object):
     """下单task"""
     def __init__(self, api, symbol, direction, offset, volume, limit_price=None, order_chan = None, trade_chan = None):
         """

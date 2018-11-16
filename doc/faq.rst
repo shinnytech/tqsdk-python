@@ -71,6 +71,18 @@ TqSdk 使用了 python3 的原生协程和异步通讯库 asyncio，部分 IDE �
     :linenos:
 
 
+.. _faq-backtesting:
+
+如何回测策略？
+--------------------------------------------------------------------------------------------------------
+
+在创建 TqApi 实例时可以传入 TqBacktest 启用回测功能
+
+.. literalinclude:: ../tqsdk/demo/backtest.py
+    :caption: python demo/backtest.py
+    :language: python
+    :linenos:
+
 
 .. _pip文档: https://pip.pypa.io/en/stable/quickstart/
 .. _天勤客户端下载地址: http://www.shinnytech.com/tianqin

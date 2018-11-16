@@ -4,5 +4,6 @@ __author__ = 'chengzhi'
 __version__ = '0.8.6'
 name = "tqsdk"
 
-import tqsdk.api
-import tqsdk.lib
+from tqsdk.api import *
+from tqsdk.lib import *
+from tqsdk.backtest import *

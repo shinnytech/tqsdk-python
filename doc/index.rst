@@ -11,6 +11,5 @@ TianQin Python SDK
     tutorial.rst
     faq.rst
     version.rst
-    api.rst
-    lib.rst
+    reference.rst
 

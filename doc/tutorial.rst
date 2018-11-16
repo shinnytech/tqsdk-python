@@ -91,3 +91,12 @@
     :caption: python demo/t80.py
     :language: python
     :linenos:
+
+.. _tutorial_backtest:
+
+策略回测
+-------------------------------------------------
+.. literalinclude:: ../tqsdk/demo/backtest.py
+    :caption: python demo/backtest.py
+    :language: python
+    :linenos:

@@ -30,9 +30,9 @@ class TqApi(object):
     """
     天勤接口及数据管理类.
 
-    通常情况下, 一个进程中应该有一个TqApi的实例, 它负责维护到天勤终端的网络连接, 从天勤终端接收行情及账户数据, 并在内存中维护数据存储池
+    通常情况下, 一个进程中应该只有一个TqApi的实例, 它负责维护到天勤终端的网络连接, 从天勤终端接收行情及账户数据, 并在内存中维护数据存储池
     """
-    def __init__(self, account_id, url="ws://127.0.0.1:7777", debug=None):
+    def __init__(self, account_id, url=None, backtest=None, debug=None):
         """
         创建天勤接口实例
 
@@ -41,9 +41,10 @@ class TqApi(object):
             
             url (str): [可选]指定天勤软件 websocket 地址, 默认为本机
 
+            backtest (TqBacktest): [可选]传入 TqBacktest 对象将进入回测模式
+
             debug(str): [可选]将调试信息输出到指定文件, 默认不输出
         """
-        self.ws_url = url  # 天勤终端的地址
         self.loop = asyncio.new_event_loop()  # 创建一个新的ioloop, 避免和其他框架/环境产生干扰
         self.quote_symbols = set()  # 订阅的实时行情列表
         self.account_id = account_id  # 交易帐号id
@@ -53,9 +54,9 @@ class TqApi(object):
             fh = logging.FileHandler(filename=debug)
             fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
             self.logger.addHandler(fh)
-        self.send_chan = TqChan(self)  # websocket发送队列
-        self.wait_update_chan = TqChan(self, last_only=True)  # wait_update等待业务数据更新所需要通知的队列
-        self.data = {"_path": [], "_listener": set([self.wait_update_chan])}  # 数据存储
+        self.send_chan, self.recv_chan  = TqChan(self), TqChan(self)  # 消息收发队列
+        self.event_rev, self.check_rev = 0, 0  # 回测需要行情和交易 lockstep, 而 asyncio 没有将内部的 _ready 队列暴露出来
+        self.data = {"_path": [], "_listener": set()}  # 数据存储
         self.diffs = []  # 自上次wait_update返回后收到更新数据的数组
         self.prototype = {
             "quotes": {
@@ -63,11 +64,19 @@ class TqApi(object):
             },
             "klines": {
                 "*": {
-                    "*": self._gen_kline_prototype(),  # K线的数据原型
+                    "*": {
+                        "data": {
+                            "*": self._gen_kline_prototype(),  # K线的数据原型
+                        }
+                    }
                 }
             },
             "ticks": {
-                "*": self._gen_tick_prototype(),  # Tick的数据原型
+                "*": {
+                    "data": {
+                        "*": self._gen_tick_prototype(),  # Tick的数据原型
+                    }
+                }
             },
             "trade": {
                 "*": {
@@ -87,12 +96,24 @@ class TqApi(object):
             },
         }  # 各业务数据的原型, 用于决定默认值及将收到的数据转为特定的类型
         self.tasks = set()  # 由api维护的所有根task，不包含子task，子task由其父task维护
+        self.exceptions = []  # 由api维护的所有task抛出的例外
+        self.wait_timeout = False  # wait_update 是否触发超时
         if sys.platform.startswith("win"):
             self.create_task(self._windows_patch())  # Windows系统下asyncio不支持KeyboardInterrupt的临时补丁
-        self.create_task(self._connect())  # 启动websocket连接
+        self.create_task(self._connect(url, self.send_chan, self.recv_chan))  # 启动websocket连接
+        if backtest:  # 通常 api 是直接连接到 websocket 上, 如果启用了回测, 则在这中间插入 TqBacktest, api 将从 TqBacktest 收发数据
+            ws_send_chan, ws_recv_chan = self.send_chan, self.recv_chan
+            self.send_chan, self.recv_chan = TqChan(self), TqChan(self)
+            self.create_task(backtest._run(self, self.send_chan, self.recv_chan, ws_send_chan, ws_recv_chan))
         deadline = time.time() + 60
-        while self.data.get("mdhis_more_data", True):
-            self.wait_update(deadline=deadline)  # 等待连接成功并收取截面数据
+        try:
+            while self.data.get("mdhis_more_data", True):  # 等待连接成功并收取截面数据
+                if not self.wait_update(deadline=deadline):
+                    raise Exception("接收数据超时，请检查客户端及网络是否正常")
+        except:
+            self.close()
+            raise
+        self.diffs = []  # 截面数据不算做更新数据
 
     # ----------------------------------------------------------------------
     def close(self):
@@ -108,9 +129,11 @@ class TqApi(object):
             with closing(TqApi("SIM")) as api:
                 api.insert_order(symbol="DCE.m1901", direction="BUY", offset="OPEN", volume=3)
         """
+        self._run_until_idle()  # 由于有的处于 ready 状态 task 可能需要报撤单, 因此一直运行到没有 ready 状态的 task
         for task in self.tasks:
             task.cancel()
-        self.loop.run_until_complete(asyncio.wait(self.tasks))
+        while self.tasks:  # 等待 task 执行完成
+            self._run_once()
         self.loop.run_until_complete(self.loop.shutdown_asyncgens())
         self.loop.close()
 
@@ -159,7 +182,7 @@ class TqApi(object):
         if symbol not in self.quote_symbols:
             self.quote_symbols.add(symbol)
             s = ",".join(self.quote_symbols)
-            self._send_json({
+            self.send_chan.send_nowait({
                 "aid": "subscribe_quote",
                 "ins_list": s
             })
@@ -209,7 +232,7 @@ class TqApi(object):
         """
         duration_seconds = int(duration_seconds) # 转成整数
         if not chart_id:
-            chart_id = self._generate_chart_id(symbol, duration_seconds)
+            chart_id = self._generate_chart_id("realtime", symbol, duration_seconds)
         if data_length > 8964:
             data_length = 8964
         dur_id = duration_seconds * 1000000000
@@ -220,8 +243,8 @@ class TqApi(object):
             "duration": dur_id,
             "view_width": data_length,
         }
-        self._send_json(req)
-        return SerialDataProxy(self._get_obj(self.data, ["klines", symbol, str(dur_id)]), data_length, self.prototype["klines"]["*"]["*"])
+        self.send_chan.send_nowait(req)
+        return SerialDataProxy(self._get_obj(self.data, ["klines", symbol, str(dur_id)]), data_length, self.prototype["klines"]["*"]["*"]["data"]["*"])
 
     # ----------------------------------------------------------------------
     def get_tick_serial(self, symbol, data_length=200, chart_id=None):
@@ -264,7 +287,7 @@ class TqApi(object):
             ...
         """
         if not chart_id:
-            chart_id = self._generate_chart_id(symbol, 0)
+            chart_id = self._generate_chart_id("realtime", symbol, 0)
         if data_length > 8964:
             data_length = 8964
         req = {
@@ -274,8 +297,8 @@ class TqApi(object):
             "duration": 0,
             "view_width": data_length,
         }
-        self._send_json(req)
-        return SerialDataProxy(self._get_obj(self.data, ["ticks", symbol]), data_length, self.prototype["ticks"]["*"])
+        self.send_chan.send_nowait(req)
+        return SerialDataProxy(self._get_obj(self.data, ["ticks", symbol]), data_length, self.prototype["ticks"]["*"]["data"]["*"])
 
     # ----------------------------------------------------------------------
     def insert_order(self, symbol, direction, offset, volume, limit_price=None, order_id=None):
@@ -342,7 +365,7 @@ class TqApi(object):
             msg["price_type"] = "LIMIT"
             msg["time_condition"] = "GFD"
             msg["limit_price"] = limit_price
-        self._send_json(msg)
+        self.send_chan.send_nowait(msg)
         order = self._get_obj(self.data, ["trade", self.account_id, "orders", order_id], self.prototype["trade"]["*"]["orders"]["*"])
         order.update({
             "order_id": order_id,
@@ -405,7 +428,7 @@ class TqApi(object):
             "user_id": self.account_id,
             "order_id": order_id,
         }
-        self._send_json(msg)
+        self.send_chan.send_nowait(msg)
 
     # ----------------------------------------------------------------------
     def get_account(self):
@@ -553,21 +576,22 @@ class TqApi(object):
         if self.loop.is_running():
             raise Exception("不能在协程中调用 wait_update, 如需在协程中等待业务数据更新请使用 register_update_notify")
         self.diffs = []
-        update_task = self.create_task(self.wait_update_chan.recv())
+        self.wait_timeout = False
+        # 先尝试执行各个task,再请求下个业务数据
+        self._run_until_idle()
+        self.send_chan.send_nowait({"aid":"peek_message"})
+        deadline_handle = None if deadline is None else self.loop.call_later(deadline - time.time(), self._set_wait_timeout)
+        update_task = self.create_task(self._fetch_msg())
         try:
-            while not update_task.done():
-                timeout = None if deadline is None else max(deadline - time.time(), 0)
-                done, pending = self.loop.run_until_complete(asyncio.wait(self.tasks, timeout=timeout, return_when=asyncio.FIRST_COMPLETED))
-                if len(done) == 0 and len(self.diffs) == 0:
-                    return False
-                self.tasks.difference_update(done)
-                # 取出已完成任务的结果，如果执行过程中遇到例外会在这里抛出
-                for t in done:
-                    t.result()
-            return True
+            while not self.wait_timeout and not self.diffs:
+                self._run_once()
+            return len(self.diffs) != 0
         finally:
+            for d in self.diffs:
+                self._merge_diff(self.data, d, self.prototype)
+            if deadline_handle:
+                deadline_handle.cancel()
             update_task.cancel()
-            self.tasks.discard(update_task)
 
     # ----------------------------------------------------------------------
     def is_changing(self, obj, key=None):
@@ -649,8 +673,10 @@ class TqApi(object):
             hello world
         """
         task = self.loop.create_task(coro)
+        self.event_rev += 1
         if asyncio.Task.current_task(loop=self.loop) is None:
             self.tasks.add(task)
+            task.add_done_callback(self._on_task_done)
         return task
 
     # ----------------------------------------------------------------------
@@ -702,42 +728,73 @@ class TqApi(object):
         return chan
 
     # ----------------------------------------------------------------------
+    def _run_once(self):
+        if not self.exceptions:
+            self.loop.run_forever()
+        if self.exceptions:
+            raise self.exceptions.pop(0)
+
+    def _run_until_idle(self):
+        while self.check_rev != self.event_rev:
+            check_handle = self.loop.call_soon(self._check_event, self.event_rev)
+            try:
+                self._run_once()
+            finally:
+                check_handle.cancel()
+
+    def _check_event(self, rev):
+        self.check_rev = rev
+        self.loop.stop()
+
+    def _set_wait_timeout(self):
+        self.wait_timeout = True
+        self.loop.stop()
+
+    def _on_task_done(self, task):
+        try:
+            exception = task.exception()
+            if exception:
+                self.exceptions.append(exception)
+        except asyncio.CancelledError:
+            pass
+        finally:
+            self.tasks.remove(task)
+            self.loop.stop()
+
     async def _windows_patch(self):
         """Windows系统下asyncio不支持KeyboardInterrupt的临时补丁, 详见 https://bugs.python.org/issue23057"""
         while True:
             await asyncio.sleep(1)
 
-    async def _connect(self):
+    async def _connect(self, url, send_chan, recv_chan):
         """启动websocket客户端"""
-        async with websockets.connect(self.ws_url, max_size=None) as client:
-            send_task = self.create_task(self._send_handler(client))
+        async with websockets.connect(url if url else "ws://127.0.0.1:7777", max_size=None) as client:
+            send_task = self.create_task(self._send_handler(client, send_chan))
             try:
                 async for msg in client:
-                    self.logger.debug("message received: %s", msg)
-                    self._on_receive_msg(msg)
+                    self.logger.debug("websocket message received: %s", msg)
+                    await recv_chan.put(json.loads(msg))
             except websockets.exceptions.ConnectionClosed:
                 print("网络连接断开，请检查客户端及网络是否正常", file=sys.stderr)
                 raise
             finally:
-                send_task.cancel()
+                await recv_chan.close()
+                await send_chan.close()
+                await send_task
 
-    async def _send_handler(self, client):
+    async def _send_handler(self, client, send_chan):
         """websocket客户端数据发送协程"""
-        async for msg in self.send_chan:
+        async for pack in send_chan:
+            msg = json.dumps(pack)
             await client.send(msg)
-            self.logger.debug("message sent: %s", msg)
+            self.logger.debug("websocket message sent: %s", msg)
 
-    def _send_json(self, obj):
-        """向天勤主进程发送JSON包"""
-        self.send_chan.send_nowait(json.dumps(obj))
-
-    def _on_receive_msg(self, msg):
-        """收到数据推送"""
-        pack = json.loads(msg)
-        data = pack.get("data", [])
-        self.diffs.extend(data)
-        for d in data:
-            self._merge_diff(self.data, d, self.prototype)
+    async def _fetch_msg(self):
+        while not self.diffs:
+            pack = await self.recv_chan.recv()
+            if pack is None:
+                return
+            self.diffs.extend(pack.get("data", []))
 
     @staticmethod
     def _merge_diff(result, diff, prototype):
@@ -971,9 +1028,9 @@ class TqApi(object):
         }
 
     @staticmethod
-    def _generate_chart_id(symbol, duration_seconds):
+    def _generate_chart_id(module, symbol, duration_seconds):
         """生成chart id"""
-        chart_id = "PYSDK_" + uuid.uuid4().hex
+        chart_id = "PYSDK_" + module + "_" + uuid.uuid4().hex
         return chart_id
 
     @staticmethod
@@ -1078,6 +1135,7 @@ class TqChan(asyncio.Queue):
             last_only (bool): 为True时只存储最后一个发送到channel的对象
         """
         asyncio.Queue.__init__(self, loop=api.loop)
+        self.api = api
         self.last_only = last_only
         self.closed = False
 
@@ -1087,8 +1145,10 @@ class TqChan(asyncio.Queue):
 
         关闭后send将不起作用,recv在收完剩余数据后会立即返回None
         """
-        self.closed = True
-        await asyncio.Queue.put(self, None)
+        if not self.closed:
+            self.api.event_rev += 1
+            self.closed = True
+            await asyncio.Queue.put(self, None)
 
     async def send(self, item):
         """
@@ -1098,6 +1158,7 @@ class TqChan(asyncio.Queue):
             item (any): 待发送的对象
         """
         if not self.closed:
+            self.api.event_rev += 1
             if self.last_only:
                 while not self.empty():
                     asyncio.Queue.get_nowait(self)
@@ -1114,6 +1175,7 @@ class TqChan(asyncio.Queue):
             asyncio.QueueFull: 如果channel已满则会抛出 asyncio.QueueFull
         """
         if not self.closed:
+            self.api.event_rev += 1
             if self.last_only:
                 while not self.empty():
                     asyncio.Queue.get_nowait(self)
