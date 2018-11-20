@@ -1072,19 +1072,52 @@ class SerialDataProxy(object):
         self.width = width
         self.default = default
         self.attr = list(self.default.keys())
+        self.ready = False
 
     def __getattr__(self, name):
         return [self[i][name] for i in range(0, self.width)]
 
     def __getitem__(self, key):
         last_id = self.serial_root.get("last_id", None)
-        if not last_id:
+        if last_id is None:
             return self.default.copy()
         if key < 0:
             data_id = last_id + 1 + key
         else:
             data_id = last_id - self.width + 1 + key
         return TqApi._get_obj(self.serial_root, ["data", str(data_id)], self.default)
+
+    def is_ready(self):
+        """
+        判断是否已经从服务器收到了所有订阅的数据
+
+        Returns:
+            bool: 返回 True 表示已经从服务器收到了所有订阅的数据
+
+        Example::
+
+            # 判断是否已经从服务器收到了最后 3000 根 SHFE.cu1812 的分钟线数据
+            from tqsdk import TqApi
+
+            api = TqApi("SIM")
+            k_serial = api.get_kline_serial("SHFE.cu1812", 60, data_length=3000)
+            while True:
+                api.wait_update()
+                print(k_serial.is_ready())
+
+            # 预计的输出是这样的:
+            False
+            False
+            True
+            True
+            ...
+        """
+        if not self.ready:
+            last_id = self.serial_root.get("last_id", None)
+            data = self.serial_root.get("data", None)
+            if last_id is not None and data is not None:
+                self.ready = all([not self.default.items() <= data.get(str(i), self.default).items() for i in range(max(last_id - self.width + 1, 0), last_id + 1)])
+        return self.ready
 
     def to_dataframe(self):
         """
