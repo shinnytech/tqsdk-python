@@ -4,6 +4,7 @@ __author__ = 'limin'
 
 import json
 import talib
+import time
 from tqsdk import TqApi, TargetPosTask
 
 '''
