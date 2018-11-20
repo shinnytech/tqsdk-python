@@ -2,7 +2,7 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'chengzhi'
 
-from tqsdk.api import TqApi
+from tqsdk import TqApi
 
 # 可以指定debug选项将调试信息写入指定的文件中
 api = TqApi("SIM", debug="debug.log")

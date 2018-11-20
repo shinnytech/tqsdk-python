@@ -2,8 +2,7 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'yanqiong'
 
-from tqsdk.api import TqApi
-from tqsdk.lib import TargetPosTask
+from tqsdk import TqApi, TargetPosTask
 
 '''
 连续3根阴线就做空，连续3根阳线就做多，否则空仓

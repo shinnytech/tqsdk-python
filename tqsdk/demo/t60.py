@@ -2,7 +2,7 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'chengzhi'
 
-from tqsdk.api import TqApi
+from tqsdk import TqApi
 
 '''
 如果当前价格大于10秒K线的MA15则开多仓

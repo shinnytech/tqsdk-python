@@ -2,8 +2,7 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'chengzhi'
 
-from tqsdk.api import TqApi
-from tqsdk.lib import TargetPosTask
+from tqsdk import TqApi, TargetPosTask
 
 '''
 价差回归

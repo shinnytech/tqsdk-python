@@ -4,8 +4,7 @@ __author__ = 'limin'
 
 import json
 import talib
-from tqsdk.api import *
-from tqsdk.lib import TargetPosTask
+from tqsdk import TqApi, TargetPosTask
 
 '''
 海龟策略

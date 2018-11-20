@@ -33,8 +33,8 @@ class DataDownloader:
 
             from datetime import datetime
             from contextlib import closing
-            from tqsdk.api import TqApi
-            from tqsdk.tools.downloader import DataDownloader
+            from tqsdk import TqApi
+            from tqsdk.tools import DataDownloader
 
             api = TqApi("SIM")
             download_tasks = {}

@@ -2,7 +2,7 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'chengzhi'
 
-from tqsdk.api import TqApi
+from tqsdk import TqApi
 import datetime
 
 api = TqApi("SIM")

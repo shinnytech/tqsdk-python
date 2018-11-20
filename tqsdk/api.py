@@ -123,7 +123,7 @@ class TqApi(object):
         Example::
 
             # m1901开多3手
-            from tqsdk.api import TqApi
+            from tqsdk import TqApi
             from contextlib import closing
 
             with closing(TqApi("SIM")) as api:
@@ -164,7 +164,7 @@ class TqApi(object):
         Example::
 
             # 获取 SHFE.cu1812 合约的报价
-            from tqsdk.api import TqApi
+            from tqsdk import TqApi
 
             api = TqApi("SIM")
             quote = api.get_quote("SHFE.cu1812")
@@ -216,7 +216,7 @@ class TqApi(object):
         Example::
 
             # 获取 SHFE.cu1812 的1分钟线
-            from tqsdk.api import TqApi
+            from tqsdk import TqApi
 
             api = TqApi("SIM")
             k_serial = api.get_kline_serial("SHFE.cu1812", 60)
@@ -272,7 +272,7 @@ class TqApi(object):
         Example::
 
             # 获取 SHFE.cu1812 的Tick序列
-            from tqsdk.api import TqApi
+            from tqsdk import TqApi
 
             api = TqApi("SIM")
             serial = api.get_tick_serial("SHFE.cu1812")
@@ -330,7 +330,7 @@ class TqApi(object):
         Example::
 
             # 市价开3手 DCE.m1809 多仓
-            from tqsdk.api import TqApi
+            from tqsdk import TqApi
 
             api = TqApi("SIM")
             order = api.insert_order(symbol="DCE.m1809", direction="BUY", offset="OPEN", volume=3)
@@ -390,7 +390,7 @@ class TqApi(object):
         Example::
 
             # 挂价开3手 DCE.m1809 多仓, 如果价格变化则撤单重下，直到全部成交
-            from tqsdk.api import TqApi
+            from tqsdk import TqApi
 
             api = TqApi("SIM")
             quote = api.get_quote("DCE.m1809")
@@ -449,7 +449,7 @@ class TqApi(object):
         Example::
 
             # 获取当前浮动盈亏
-            from tqsdk.api import TqApi
+            from tqsdk import TqApi
 
             api = TqApi("SIM")
             account = api.get_account()
@@ -489,7 +489,7 @@ class TqApi(object):
         Example::
 
             # 获取 DCE.m1809 当前浮动盈亏
-            from tqsdk.api import TqApi
+            from tqsdk import TqApi
 
             api = TqApi("SIM")
             position = api.get_position("DCE.m1809")
@@ -531,7 +531,7 @@ class TqApi(object):
         Example::
 
             # 获取当前总挂单手数
-            from tqsdk.api import TqApi
+            from tqsdk import TqApi
 
             api = TqApi("SIM")
             orders = api.get_order()
@@ -564,7 +564,7 @@ class TqApi(object):
 
         注意: 由于存在网络延迟, 因此有数据更新不代表之前发出的所有请求都被处理了, 例如::
 
-            from tqsdk.api import TqApi
+            from tqsdk import TqApi
 
             api = TqApi("SIM")
             quote = api.get_quote("SHFE.cu1812")
@@ -614,7 +614,7 @@ class TqApi(object):
         Example::
 
             # 追踪 SHFE.cu1812 的最新价更新
-            from tqsdk.api import TqApi
+            from tqsdk import TqApi
 
             api = TqApi("SIM")
             quote = api.get_quote("SHFE.cu1812")
@@ -658,7 +658,7 @@ class TqApi(object):
 
             # 一个简单的task
             import asyncio
-            from tqsdk.api import TqApi
+            from tqsdk import TqApi
 
             async def hello():
                 await asyncio.sleep(3)
@@ -698,7 +698,7 @@ class TqApi(object):
         Example::
 
             # 获取 SHFE.cu1812 合约的报价
-            from tqsdk.api import TqApi
+            from tqsdk import TqApi
 
             async def demo():
                 quote = api.get_quote("SHFE.cu1812")
@@ -1098,7 +1098,7 @@ class SerialDataProxy(object):
         Example::
 
             # 判断K线是否为阳线
-            from tqsdk.api import TqApi
+            from tqsdk import TqApi
 
             api = TqApi("SIM")
             k_serial = api.get_kline_serial("SHFE.cu1812", 60)

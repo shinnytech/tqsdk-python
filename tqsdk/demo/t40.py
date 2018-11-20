@@ -2,7 +2,7 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'chengzhi'
 
-from tqsdk.api import TqApi
+from tqsdk import TqApi
 
 api = TqApi("SIM")
 # 获得 m1901 的持仓引用，当持仓有变化时 position 中的字段会对应更新

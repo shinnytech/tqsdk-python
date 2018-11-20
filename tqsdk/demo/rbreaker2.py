@@ -2,8 +2,7 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'limin'
 
-from tqsdk.api import *
-from tqsdk.lib import TargetPosTask
+from tqsdk import TqApi, TargetPosTask
 
 '''
 R-Breaker策略(非隔夜留仓: 在每日收盘前，对所持合约进行平仓)

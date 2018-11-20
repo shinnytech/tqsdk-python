@@ -4,8 +4,8 @@ __author__ = 'chengzhi'
 
 from datetime import datetime
 from contextlib import closing
-from tqsdk.api import TqApi
-from tqsdk.tools.downloader import DataDownloader
+from tqsdk import TqApi
+from tqsdk.tools import DataDownloader
 
 api = TqApi("SIM")
 # 下载从 2018-01-01凌晨6点 到 2018-06-01下午4点 的 cu1805 分钟线数据

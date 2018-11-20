@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #  -*- coding: utf-8 -*-
 
-from tqsdk.api import TqApi
+from tqsdk import TqApi
 
 api = TqApi("SIM")
 # 开仓两手并等待完成

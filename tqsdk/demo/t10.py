@@ -2,7 +2,7 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'chengzhi'
 
-from tqsdk.api import TqApi
+from tqsdk import TqApi
 
 # 创建API实例，需要指定交易帐号，如果使用天勤自带的模拟功能则填写"SIM"
 api = TqApi("SIM")
