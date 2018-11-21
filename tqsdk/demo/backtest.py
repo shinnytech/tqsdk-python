@@ -4,7 +4,7 @@ __author__ = 'chengzhi'
 
 from datetime import datetime
 from contextlib import closing
-from tqsdk import TqApi,TqBacktest, TargetPosTask
+from tqsdk import TqApi, TqBacktest, TargetPosTask
 
 '''
 如果当前价格大于5分钟K线的MA15则开多仓
