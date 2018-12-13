@@ -41,8 +41,8 @@ Python 3.6+
 --------------------------------------------------------------------------------------------------------
 
 TqSdk 使用了 python3 的原生协程和异步通讯库 asyncio，部分 IDE 不支持 asyncio，例如:
- * spyder: 详见 https://github.com/spyder-ide/spyder/issues/7096
- * jupyter: 详见 https://github.com/jupyter/notebook/issues/3397
+* spyder: 详见 https://github.com/spyder-ide/spyder/issues/7096
+* jupyter: 详见 https://github.com/jupyter/notebook/issues/3397
 
 可以直接运行示例代码(例如: "python demo/t10.py")，或使用支持 asyncio 的 IDE (例如: pycharm)
 
@@ -119,9 +119,9 @@ TqSdk 会自动重连服务器, 不需要特殊处理。但是断线时报的单
 --------------------------------------------------------------------------------------------------------
 您可以使用天勤终端提供的复盘功能：
 
- * 从 `天勤客户端下载地址`_ 下载并安装 **天勤终端**
- * 参见: `历史复盘`_ 进入复盘模式
- * 创建 TqApi 实例时 account 参数填写 "SIM" 即可在所选的历史日期下测试策略
+* 从 `天勤客户端下载地址`_ 下载并安装 **天勤终端**
+* 参见: `历史复盘`_ 进入复盘模式
+* 创建 TqApi 实例时 account 参数填写 "SIM" 即可在所选的历史日期下测试策略
 
 
 .. _faq-pycharm-windows-stop-finally:
@@ -132,11 +132,11 @@ TqSdk 会自动重连服务器, 不需要特殊处理。但是断线时报的单
 
 可以在运行策略前对 PyCharm 进行相关设置:
 
- * 单击 "Run" 设置按钮
- * 选择 "Edit Configurations..." 选项
- * 在左侧导航栏中选中该策略代码的py文件
- * 勾选 "Emulate terminal in output console"
- * 点击 "OK" 确认
+* 单击 "Run" 设置按钮
+* 选择 "Edit Configurations..." 选项
+* 在左侧导航栏中选中该策略代码的py文件
+* 勾选 "Emulate terminal in output console"
+* 点击 "OK" 确认
 
 
 .. _pip文档: https://pip.pypa.io/en/stable/quickstart/
