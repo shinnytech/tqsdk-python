@@ -4,7 +4,7 @@
 =================================================
 这一部分文档介绍 TqSdk 的安装. 在安装 TqSdk 前, 你需要先准备适当的环境和Python包管理工具, 包括:
 
-* Python 3.6 以上版本
+* Python 3.6 或以上版本
 * Windows 7 以上版本, 或 Linux
 
 如果你的电脑上还没有安装适当版本的python, 请参考 `Python 安装指南 <https://docs.python-guide.org/starting/installation/>`_

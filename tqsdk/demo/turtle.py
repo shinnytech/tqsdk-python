@@ -5,7 +5,7 @@ __author__ = 'limin'
 import json
 import talib
 import time
-from tqsdk import TqApi, TargetPosTask
+from tqsdk import TqApi, TqSim, TargetPosTask
 
 '''
 海龟策略
@@ -121,7 +121,7 @@ class Turtle:
 
 
 if __name__ == "__main__":
-    turtle = Turtle("SIM", "SHFE.au1812")
+    turtle = Turtle(TqSim(), "SHFE.au1812")
     try:
         turtle.state = json.load(open("turtle_state.json", "r"))  # 读取数据: 本策略目标净持仓数,上一次开仓价
     except FileNotFoundError:

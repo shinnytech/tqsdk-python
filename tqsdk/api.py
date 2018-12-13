@@ -3,17 +3,15 @@
 """
 天勤接口的PYTHON封装, 提供以下功能
 
-    * 连接天勤终端的websocket扩展接口, 从天勤终端接收行情及交易推送数据
+    * 连接行情和交易服务器或天勤终端的websocket扩展接口, 接收行情及交易推送数据
     * 在内存中存储管理一份完整的业务数据(行情+交易), 并在接收到新数据包时更新内存数据
     * 通过一批函数接口, 支持用户代码访问业务数据
     * 发送交易指令
 
 
-使用前, 需要在本机先启动一个天勤终端进程(版本 0.8 以上):
-
+    * PYTHON SDK使用文档: http://doc.shinnytech.com/pysdk/latest/
     * 天勤行情终端下载: http://www.shinnytech.com/tianqin
     * 天勤使用文档: http://doc.shinnytech.com/tq/latest/
-    * PYTHON SDK使用文档: http://doc.shinnytech.com/pysdk/latest/
 """
 __author__ = 'chengzhi'
 
@@ -24,91 +22,93 @@ import time
 import logging
 import copy
 import asyncio
+import functools
 import websockets
+import requests
+from .__version__ import __version__
+from tqsdk.sim import TqSim
+
 
 class TqApi(object):
     """
     天勤接口及数据管理类.
 
-    通常情况下, 一个进程中应该只有一个TqApi的实例, 它负责维护到天勤终端的网络连接, 从天勤终端接收行情及账户数据, 并在内存中维护数据存储池
+    通常情况下, 一个线程中应该只有一个TqApi的实例, 它负责维护网络连接, 接收行情及账户数据, 并在内存中维护业务数据截面
     """
-    def __init__(self, account_id, url=None, backtest=None, debug=None):
+    def __init__(self, account, url=None, backtest=None, debug=None):
         """
         创建天勤接口实例
 
         Args:
-            account_id (str): 指定交易账号, 实盘交易填写期货公司提供的帐号, 使用软件内置的模拟交易填写"SIM"
-            
-            url (str): [可选]指定天勤软件 websocket 地址, 默认为本机
+            account (TqAccount/TqSim/str): 交易账号:
+                * TqAccount: 使用实盘帐号, 直连行情和交易服务器(不通过天勤终端), 需提供期货公司/帐号/密码
 
-            backtest (TqBacktest): [可选]传入 TqBacktest 对象将进入回测模式
+                * TqSim: 使用 Api 自带的模拟功能, 直连行情服务器或连接天勤终端(例如使用历史复盘进行测试)接收行情数据
 
-            debug(str): [可选]将调试信息输出到指定文件, 默认不输出
+                * str: 连接天勤终端, 实盘交易填写期货公司提供的帐号, 使用天勤终端内置的模拟交易填写"SIM", 需先在天勤终端内登录交易
+
+            url (str): [可选]指定服务器的地址
+                * 当 account 为 TqAccount 类型时, 可以通过该参数指定交易服务器地址, 默认使用 opemtd.shinnytech.com. 行情始终使用 openmd.shinnytech.com
+
+                * 当 account 为 TqSim 类型时, 可以通过该参数指定行情服务器地址, 默认使用 openmd.shinnytech.com, 可以指定为天勤终端的地址
+
+                * 当 account 为 str 类型时, 可以通过该参数指定天勤终端的地址, 默认本机
+
+            backtest (TqBacktest): [可选]传入 TqBacktest 对象将进入回测模式, 回测模式下会将帐号转为 TqSim 并只连接 openmd.shinnytech.com 接收行情数据
+
+            debug(str): [可选]将调试信息输出到指定文件, 默认不输出.
+
+        Example::
+
+            # 使用实盘帐号直连行情和交易服务器
+            from tqsdk import TqApi, TqAccount
+            api = TqApi(TqAccount("H海通期货", "022631", "123456"))
+
+            # 使用实盘帐号连接天勤终端(需先在天勤终端内登录交易)
+            from tqsdk import TqApi
+            api = TqApi("022631")
+
+            # 使用模拟帐号直连行情和交易服务器
+            from tqsdk import TqApi, TqSim
+            api = TqApi(TqSim())
+
+            # 进行策略回测
+            from datetime import date
+            from tqsdk import TqApi, TqSim, TqBacktest
+            api = TqApi(TqSim(), backtest=TqBacktest(start_dt=date(2018, 5, 1), end_dt=date(2018, 10, 1)))
         """
-        self.loop = asyncio.new_event_loop()  # 创建一个新的ioloop, 避免和其他框架/环境产生干扰
-        self.quote_symbols = set()  # 订阅的实时行情列表
-        self.account_id = account_id  # 交易帐号id
+        self.loop = asyncio.new_event_loop()  # 创建一个新的 ioloop, 避免和其他框架/环境产生干扰
+        # 回测需要行情和交易 lockstep, 而 asyncio 没有将内部的 _ready 队列暴露出来, 因此 monkey patch call_soon 函数用来判断是否有任务等待执行
+        self.loop.call_soon = functools.partial(self._call_soon, self.loop.call_soon)
+        self.event_rev, self.check_rev = 0, 0
+        self.quotes = set()  # 订阅的实时行情列表
+        self.account = account  # 交易帐号
+        self.account_id = account if isinstance(account, str) else account.account_id
         self.logger = logging.getLogger("TqApi")  # 调试信息输出
         if debug:
             self.logger.setLevel(logging.DEBUG)
+            sh = logging.StreamHandler()
+            sh.setLevel(logging.INFO)
+            sh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+            self.logger.addHandler(sh)
             fh = logging.FileHandler(filename=debug)
             fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
             self.logger.addHandler(fh)
-        self.send_chan, self.recv_chan  = TqChan(self), TqChan(self)  # 消息收发队列
-        self.event_rev, self.check_rev = 0, 0  # 回测需要行情和交易 lockstep, 而 asyncio 没有将内部的 _ready 队列暴露出来
+        self.send_chan, self.recv_chan = TqChan(self), TqChan(self)  # 消息收发队列
         self.data = {"_path": [], "_listener": set()}  # 数据存储
         self.diffs = []  # 自上次wait_update返回后收到更新数据的数组
-        self.prototype = {
-            "quotes": {
-                "*": self._gen_quote_prototype(),  # 行情的数据原型
-            },
-            "klines": {
-                "*": {
-                    "*": {
-                        "data": {
-                            "*": self._gen_kline_prototype(),  # K线的数据原型
-                        }
-                    }
-                }
-            },
-            "ticks": {
-                "*": {
-                    "data": {
-                        "*": self._gen_tick_prototype(),  # Tick的数据原型
-                    }
-                }
-            },
-            "trade": {
-                "*": {
-                    "accounts": {
-                        "*": self._gen_account_prototype(),  # 账户的数据原型
-                    },
-                    "orders": {
-                        "*": self._gen_order_prototype(),  # 委托单的数据原型
-                    },
-                    "trades": {
-                        "*": self._gen_trade_prototype(),  # 成交的数据原型
-                    },
-                    "positions": {
-                        "*": self._gen_position_prototype(),  # 持仓的数据原型
-                    }
-                }
-            },
-        }  # 各业务数据的原型, 用于决定默认值及将收到的数据转为特定的类型
+        self.prototype = self._gen_prototype()  # 各业务数据的原型, 用于决定默认值及将收到的数据转为特定的类型
         self.tasks = set()  # 由api维护的所有根task，不包含子task，子task由其父task维护
         self.exceptions = []  # 由api维护的所有task抛出的例外
         self.wait_timeout = False  # wait_update 是否触发超时
         if sys.platform.startswith("win"):
             self.create_task(self._windows_patch())  # Windows系统下asyncio不支持KeyboardInterrupt的临时补丁
-        self.create_task(self._connect(url, self.send_chan, self.recv_chan))  # 启动websocket连接
-        if backtest:  # 通常 api 是直接连接到 websocket 上, 如果启用了回测, 则在这中间插入 TqBacktest, api 将从 TqBacktest 收发数据
-            ws_send_chan, ws_recv_chan = self.send_chan, self.recv_chan
-            self.send_chan, self.recv_chan = TqChan(self), TqChan(self)
-            self.create_task(backtest._run(self, self.send_chan, self.recv_chan, ws_send_chan, ws_recv_chan))
+        self.create_task(self._notify_watcher())  # 监控服务器发送的通知
+        self._setup_connection(url, backtest)  # 初始化通讯连接
         deadline = time.time() + 60
         try:
-            while self.data.get("mdhis_more_data", True):  # 等待连接成功并收取截面数据
-                if not self.wait_update(deadline=deadline):
+            while self.data.get("mdhis_more_data", True) or self.data.get("trade", {}).get(self.account_id, {}).get("trade_more_data", True):
+                if not self.wait_update(deadline=deadline):  # 等待连接成功并收取截面数据
                     raise Exception("接收数据超时，请检查客户端及网络是否正常")
         except:
             self.close()
@@ -123,10 +123,10 @@ class TqApi(object):
         Example::
 
             # m1901开多3手
-            from tqsdk import TqApi
+            from tqsdk import TqApi, TqSim
             from contextlib import closing
 
-            with closing(TqApi("SIM")) as api:
+            with closing(TqApi(TqSim())) as api:
                 api.insert_order(symbol="DCE.m1901", direction="BUY", offset="OPEN", volume=3)
         """
         self._run_until_idle()  # 由于有的处于 ready 状态 task 可能需要报撤单, 因此一直运行到没有 ready 状态的 task
@@ -164,9 +164,9 @@ class TqApi(object):
         Example::
 
             # 获取 SHFE.cu1812 合约的报价
-            from tqsdk import TqApi
+            from tqsdk import TqApi, TqSim
 
-            api = TqApi("SIM")
+            api = TqApi(TqSim())
             quote = api.get_quote("SHFE.cu1812")
             while True:
                 api.wait_update()
@@ -179,14 +179,13 @@ class TqApi(object):
             24575.0
             ...
         """
-        if symbol not in self.quote_symbols:
-            self.quote_symbols.add(symbol)
-            s = ",".join(self.quote_symbols)
+        if symbol not in self.quotes:
+            self.quotes.add(symbol)
             self.send_chan.send_nowait({
                 "aid": "subscribe_quote",
-                "ins_list": s
+                "ins_list": ",".join(self.quotes),
             })
-        return self._get_obj(self.data, ["quotes", symbol], self.prototype["quotes"]["*"])
+        return self._get_obj(self.data, ["quotes", symbol], self.prototype["quotes"]["@"])
 
     # ----------------------------------------------------------------------
     def get_kline_serial(self, symbol, duration_seconds, data_length=200, chart_id=None):
@@ -216,9 +215,9 @@ class TqApi(object):
         Example::
 
             # 获取 SHFE.cu1812 的1分钟线
-            from tqsdk import TqApi
+            from tqsdk import TqApi, TqSim
 
-            api = TqApi("SIM")
+            api = TqApi(TqSim())
             k_serial = api.get_kline_serial("SHFE.cu1812", 60)
             while True:
                 api.wait_update()
@@ -230,7 +229,7 @@ class TqApi(object):
             50960.0
             ...
         """
-        duration_seconds = int(duration_seconds) # 转成整数
+        duration_seconds = int(duration_seconds)  # 转成整数
         if not chart_id:
             chart_id = self._generate_chart_id("realtime", symbol, duration_seconds)
         if data_length > 8964:
@@ -244,7 +243,7 @@ class TqApi(object):
             "view_width": data_length,
         }
         self.send_chan.send_nowait(req)
-        return SerialDataProxy(self._get_obj(self.data, ["klines", symbol, str(dur_id)]), data_length, self.prototype["klines"]["*"]["*"]["data"]["*"])
+        return SerialDataProxy(self._get_obj(self.data, ["klines", symbol, str(dur_id)]), data_length, self.prototype["klines"]["*"]["*"]["data"]["@"])
 
     # ----------------------------------------------------------------------
     def get_tick_serial(self, symbol, data_length=200, chart_id=None):
@@ -272,9 +271,9 @@ class TqApi(object):
         Example::
 
             # 获取 SHFE.cu1812 的Tick序列
-            from tqsdk import TqApi
+            from tqsdk import TqApi, TqSim
 
-            api = TqApi("SIM")
+            api = TqApi(TqSim())
             serial = api.get_tick_serial("SHFE.cu1812")
             while True:
                 api.wait_update()
@@ -298,7 +297,7 @@ class TqApi(object):
             "view_width": data_length,
         }
         self.send_chan.send_nowait(req)
-        return SerialDataProxy(self._get_obj(self.data, ["ticks", symbol]), data_length, self.prototype["ticks"]["*"]["data"]["*"])
+        return SerialDataProxy(self._get_obj(self.data, ["ticks", symbol]), data_length, self.prototype["ticks"]["*"]["data"]["@"])
 
     # ----------------------------------------------------------------------
     def insert_order(self, symbol, direction, offset, volume, limit_price=None, order_id=None):
@@ -330,9 +329,9 @@ class TqApi(object):
         Example::
 
             # 市价开3手 DCE.m1809 多仓
-            from tqsdk import TqApi
+            from tqsdk import TqApi, TqSim
 
-            api = TqApi("SIM")
+            api = TqApi(TqSim())
             order = api.insert_order(symbol="DCE.m1809", direction="BUY", offset="OPEN", volume=3)
             while True:
                 api.wait_update()
@@ -366,7 +365,7 @@ class TqApi(object):
             msg["time_condition"] = "GFD"
             msg["limit_price"] = limit_price
         self.send_chan.send_nowait(msg)
-        order = self._get_obj(self.data, ["trade", self.account_id, "orders", order_id], self.prototype["trade"]["*"]["orders"]["*"])
+        order = self._get_obj(self.data, ["trade", self.account_id, "orders", order_id], self.prototype["trade"]["*"]["orders"]["@"])
         order.update({
             "order_id": order_id,
             "exchange_id": exchange_id,
@@ -390,9 +389,9 @@ class TqApi(object):
         Example::
 
             # 挂价开3手 DCE.m1809 多仓, 如果价格变化则撤单重下，直到全部成交
-            from tqsdk import TqApi
+            from tqsdk import TqApi, TqSim
 
-            api = TqApi("SIM")
+            api = TqApi(TqSim())
             quote = api.get_quote("DCE.m1809")
             order = {}
 
@@ -449,9 +448,9 @@ class TqApi(object):
         Example::
 
             # 获取当前浮动盈亏
-            from tqsdk import TqApi
+            from tqsdk import TqApi, TqSim
 
-            api = TqApi("SIM")
+            api = TqApi(TqSim())
             account = api.get_account()
             while True:
                 api.wait_update()
@@ -463,7 +462,7 @@ class TqApi(object):
             2080.0
             ...
         """
-        return self._get_obj(self.data, ["trade", self.account_id, "accounts", "CNY"], self.prototype["trade"]["*"]["accounts"]["*"])
+        return self._get_obj(self.data, ["trade", self.account_id, "accounts", "CNY"], self.prototype["trade"]["*"]["accounts"]["@"])
 
     # ----------------------------------------------------------------------
     def get_position(self, symbol=None):
@@ -489,9 +488,9 @@ class TqApi(object):
         Example::
 
             # 获取 DCE.m1809 当前浮动盈亏
-            from tqsdk import TqApi
+            from tqsdk import TqApi, TqSim
 
-            api = TqApi("SIM")
+            api = TqApi(TqSim())
             position = api.get_position("DCE.m1809")
             while True:
                 api.wait_update()
@@ -504,7 +503,7 @@ class TqApi(object):
             ...
         """
         if symbol:
-            return self._get_obj(self.data, ["trade", self.account_id, "positions", symbol], self.prototype["trade"]["*"]["positions"]["*"])
+            return self._get_obj(self.data, ["trade", self.account_id, "positions", symbol], self.prototype["trade"]["*"]["positions"]["@"])
         return self._get_obj(self.data, ["trade", self.account_id, "positions"])
 
     # ----------------------------------------------------------------------
@@ -531,9 +530,9 @@ class TqApi(object):
         Example::
 
             # 获取当前总挂单手数
-            from tqsdk import TqApi
+            from tqsdk import TqApi, TqSim
 
-            api = TqApi("SIM")
+            api = TqApi(TqSim())
             orders = api.get_order()
             while True:
                 api.wait_update()
@@ -546,7 +545,7 @@ class TqApi(object):
             ...
         """
         if order_id:
-            return self._get_obj(self.data, ["trade", self.account_id, "orders", order_id], self.prototype["trade"]["*"]["orders"]["*"])
+            return self._get_obj(self.data, ["trade", self.account_id, "orders", order_id], self.prototype["trade"]["*"]["orders"]["@"])
         return self._get_obj(self.data, ["trade", self.account_id, "orders"])
 
     # ----------------------------------------------------------------------
@@ -564,9 +563,9 @@ class TqApi(object):
 
         注意: 由于存在网络延迟, 因此有数据更新不代表之前发出的所有请求都被处理了, 例如::
 
-            from tqsdk import TqApi
+            from tqsdk import TqApi, TqSim
 
-            api = TqApi("SIM")
+            api = TqApi(TqSim())
             quote = api.get_quote("SHFE.cu1812")
             api.wait_update()
             print(quote["datetime"])
@@ -579,7 +578,7 @@ class TqApi(object):
         self.wait_timeout = False
         # 先尝试执行各个task,再请求下个业务数据
         self._run_until_idle()
-        self.send_chan.send_nowait({"aid":"peek_message"})
+        self.send_chan.send_nowait({"aid": "peek_message"})
         deadline_handle = None if deadline is None else self.loop.call_later(deadline - time.time(), self._set_wait_timeout)
         update_task = self.create_task(self._fetch_msg())
         try:
@@ -614,9 +613,9 @@ class TqApi(object):
         Example::
 
             # 追踪 SHFE.cu1812 的最新价更新
-            from tqsdk import TqApi
+            from tqsdk import TqApi, TqSim
 
-            api = TqApi("SIM")
+            api = TqApi(TqSim())
             quote = api.get_quote("SHFE.cu1812")
             while True:
                 api.wait_update()
@@ -658,13 +657,13 @@ class TqApi(object):
 
             # 一个简单的task
             import asyncio
-            from tqsdk import TqApi
+            from tqsdk import TqApi, TqSim
 
             async def hello():
                 await asyncio.sleep(3)
                 print("hello world")
 
-            api = TqApi("SIM")
+            api = TqApi(TqSim())
             api.create_task(hello())
             while True:
                 api.wait_update()
@@ -673,7 +672,6 @@ class TqApi(object):
             hello world
         """
         task = self.loop.create_task(coro)
-        self.event_rev += 1
         if asyncio.Task.current_task(loop=self.loop) is None:
             self.tasks.add(task)
             task.add_done_callback(self._on_task_done)
@@ -698,7 +696,7 @@ class TqApi(object):
         Example::
 
             # 获取 SHFE.cu1812 合约的报价
-            from tqsdk import TqApi
+            from tqsdk import TqApi, TqSim
 
             async def demo():
                 quote = api.get_quote("SHFE.cu1812")
@@ -706,7 +704,7 @@ class TqApi(object):
                     async for _ in update_chan:
                         print(quote["last_price"])
 
-            api = TqApi("SIM")
+            api = TqApi(TqSim())
             api.create_task(demo())
             while True:
                 api.wait_update()
@@ -728,15 +726,75 @@ class TqApi(object):
         return chan
 
     # ----------------------------------------------------------------------
+    def _call_soon(self, org_call_soon, callback, *args, **kargs):
+        """ioloop.call_soon的补丁, 用来追踪是否有任务完成并等待执行"""
+        self.event_rev += 1
+        return org_call_soon(callback, *args, **kargs)
+
+    def _setup_connection(self, url, backtest):
+        """初始化数据连接"""
+        if backtest:  # 如果处于回测模式则将帐号转为模拟帐号，并直接连接 openmd
+            if not isinstance(self.account, TqSim):
+                self.account = TqSim(account_id=self.account_id)
+            url = None
+        if isinstance(self.account, str):  # 如果帐号类型是字符串，则连接天勤客户端
+            self.recv_chan.send_nowait({"aid":"rtn_data","data":[{"trade":{self.account_id:{"trade_more_data": False}}}]})  # 天勤以 mdhis_more_data 来标记账户截面发送结束
+            self.create_task(self._connect(url if url else "ws://127.0.0.1:7777/", self.send_chan, self.recv_chan))  # 启动到天勤客户端的连接
+        else:
+            # 默认连接 opemmd, 除非使用模拟帐号并指定了 url (例如: 使用模拟帐号连接天勤客户端使用历史复盘)
+            ws_md_send_chan, ws_md_recv_chan = TqChan(self), TqChan(self)
+            md_url = url if url and isinstance(self.account, TqSim) else "wss://openmd.shinnytech.com/t/md/front/mobile"
+            ws_md_recv_chan.send_nowait({
+                "aid": "rtn_data",
+                "data": [{"quotes": self._fetch_symbol_info("https://openmd.shinnytech.com/t/md/symbols/latest.json")}]
+            })  # 获取合约信息
+            self.create_task(self._connect(md_url, ws_md_send_chan, ws_md_recv_chan))  # 启动行情websocket连接
+            if backtest:  # 如果处于回测模式，则将行情连接对接到 backtest 上
+                bt_send_chan, bt_recv_chan = TqChan(self), TqChan(self)
+                self.create_task(backtest._run(self, bt_send_chan, bt_recv_chan, ws_md_send_chan, ws_md_recv_chan))
+                ws_md_send_chan, ws_md_recv_chan = bt_send_chan, bt_recv_chan
+            if isinstance(self.account, TqSim):
+                self.create_task(self.account._run(self, self.send_chan, self.recv_chan, ws_md_send_chan, ws_md_recv_chan))
+            else:
+                ws_td_send_chan, ws_td_recv_chan = TqChan(self), TqChan(self)
+                td_url = url if url else "wss://opentd.shinnytech.com/trade/user0"
+                self.create_task(self._connect(td_url, ws_td_send_chan, ws_td_recv_chan))  # 启动交易websocket连接
+                self.create_task(self.account._run(self, self.send_chan, self.recv_chan, ws_md_send_chan, ws_md_recv_chan, ws_td_send_chan, ws_td_recv_chan))
+
+    def _fetch_symbol_info(self, url):
+        """获取合约信息"""
+        rsp = requests.get(url, headers={"Accept": "application/json"}, timeout=30)
+        rsp.raise_for_status()
+        return {
+            k: {
+                "margin": v.get("margin"),
+                "commission": v.get("commission"),
+                "price_tick": v["price_tick"],
+                "price_decs": v["price_decs"],
+                "volume_multiple": v["volume_multiple"],
+                "max_limit_order_volume": v.get("max_limit_order_volume", 0),
+                "max_market_order_volume": v.get("max_market_order_volume", 0),
+                "min_limit_order_volume": v.get("min_limit_order_volume", 0),
+                "min_market_order_volume": v.get("min_market_order_volume", 0),
+                "underlying_symbol": v.get("underlying_symbol", ""),
+                "strike_price": v.get("strike_price", float("nan")),
+                "change": None,
+                "change_percent": None,
+                "expired": v["expired"],
+            } for k, v in rsp.json().items()
+        }
+
     def _run_once(self):
+        """执行 ioloop 直到 ioloop.stop 被调用"""
         if not self.exceptions:
             self.loop.run_forever()
         if self.exceptions:
             raise self.exceptions.pop(0)
 
     def _run_until_idle(self):
+        """执行 ioloop 直到没有待执行任务"""
         while self.check_rev != self.event_rev:
-            check_handle = self.loop.call_soon(self._check_event, self.event_rev)
+            check_handle = self.loop.call_soon(self._check_event, self.event_rev+1)
             try:
                 self._run_once()
             finally:
@@ -751,6 +809,7 @@ class TqApi(object):
         self.loop.stop()
 
     def _on_task_done(self, task):
+        """当由 api 维护的 task 执行完成后取出运行中遇到的例外并停止 ioloop"""
         try:
             exception = task.exception()
             if exception:
@@ -766,28 +825,62 @@ class TqApi(object):
         while True:
             await asyncio.sleep(1)
 
+    async def _notify_watcher(self):
+        """将从服务器收到的通知打印出来"""
+        processed_notify = set()
+        notify = self._get_obj(self.data, ["notify"])
+        async with self.register_update_notify(notify) as update_chan:
+            async for _ in update_chan:
+                all_notifies = {k for k in notify if not k.startswith("_")}
+                notifies = all_notifies - processed_notify
+                processed_notify = all_notifies
+                for n in notifies:
+                    self.logger.info("通知: %s", notify[n]["content"])
+
     async def _connect(self, url, send_chan, recv_chan):
         """启动websocket客户端"""
-        async with websockets.connect(url if url else "ws://127.0.0.1:7777", max_size=None) as client:
-            send_task = self.create_task(self._send_handler(client, send_chan))
+        resend_request = {}  # 重连时需要重发的请求
+        while True:
             try:
-                async for msg in client:
-                    self.logger.debug("websocket message received: %s", msg)
-                    await recv_chan.put(json.loads(msg))
-            except websockets.exceptions.ConnectionClosed:
-                print("网络连接断开，请检查客户端及网络是否正常", file=sys.stderr)
-                raise
-            finally:
-                await recv_chan.close()
-                await send_chan.close()
-                await send_task
+                async with websockets.connect(url, max_size=None, extra_headers={"User-Agent": "tqsdk-python %s" % __version__}) as client:
+                    if resend_request:
+                        self.logger.warning("与 %s 的网络连接已恢复", url)
+                    send_task = self.create_task(self._send_handler(client, url, resend_request, send_chan))
+                    try:
+                        async for msg in client:
+                            self.logger.debug("websocket message received from %s: %s", url, msg)
+                            await recv_chan.send(json.loads(msg))
+                    finally:
+                        send_task.cancel()
+                        await send_task
+            # 希望做到的效果是遇到网络问题可以断线重连, 但是可能抛出的例外太多了(TimeoutError,socket.gaierror等), 又没有文档或工具可以理出 try 代码中所有可能遇到的例外
+            # 而这里的 except 又需要处理所有子函数及子函数的子函数等等可能抛出的例外, 因此这里只能遇到问题之后再补, 并且无法避免 false positive 和 false negative
+            except (websockets.exceptions.ConnectionClosed, OSError):
+                self.logger.warning("与 %s 的网络连接断开，请检查客户端及网络是否正常", url)
+            await asyncio.sleep(10)
 
-    async def _send_handler(self, client, send_chan):
+    async def _send_handler(self, client, url, resend_request, send_chan):
         """websocket客户端数据发送协程"""
-        async for pack in send_chan:
-            msg = json.dumps(pack)
-            await client.send(msg)
-            self.logger.debug("websocket message sent: %s", msg)
+        try:
+            for msg in resend_request.values():
+                await client.send(msg)
+                self.logger.debug("websocket init message sent to %s: %s", url, msg)
+            async for pack in send_chan:
+                msg = json.dumps(pack)
+                aid = pack.get("aid")
+                if aid == "subscribe_quote":
+                    resend_request["subscribe_quote"] = msg
+                elif aid == "set_chart":
+                    if pack["ins_list"]:
+                        resend_request[pack["chart_id"]] = msg
+                    else:
+                        resend_request.pop(pack["chart_id"], None)
+                elif aid == "req_login":
+                    resend_request["req_login"] = msg
+                await client.send(msg)
+                self.logger.debug("websocket message sent to %s: %s", url, msg)
+        except asyncio.CancelledError:  # 取消任务不抛出异常，不然等待者无法区分是该任务抛出的取消异常还是有人直接取消等待者
+            pass
 
     async def _fetch_msg(self):
         while not self.diffs:
@@ -806,10 +899,17 @@ class TqApi(object):
                 dv = result.pop(key, None)
                 TqApi._notify_update(dv, True)
             elif isinstance(diff[key], dict):
-                target = TqApi._get_obj(result, [key])
-                tpt = prototype.get("*", {})
+                default = None
                 if key in prototype:
                     tpt = prototype[key]
+                elif "*" in prototype:
+                    tpt = prototype["*"]
+                elif "@" in prototype:
+                    tpt = prototype["@"]
+                    default = tpt
+                else:
+                    tpt = {}
+                target = TqApi._get_obj(result, [key], default=default)
                 TqApi._merge_diff(target, diff[key], tpt)
                 if len(diff[key]) == 0:
                     del diff[key]
@@ -859,6 +959,47 @@ class TqApi(object):
             if k in diff:
                 return True
         return len(key) == 0
+
+    @staticmethod
+    def _gen_prototype():
+        """所有业务数据的原型"""
+        return {
+            "quotes": {
+                "@": TqApi._gen_quote_prototype(),  # 行情的数据原型
+            },
+            "klines": {
+                "*": {
+                    "*": {
+                        "data": {
+                            "@": TqApi._gen_kline_prototype(),  # K线的数据原型
+                        }
+                    }
+                }
+            },
+            "ticks": {
+                "*": {
+                    "data": {
+                        "@": TqApi._gen_tick_prototype(),  # Tick的数据原型
+                    }
+                }
+            },
+            "trade": {
+                "*": {
+                    "accounts": {
+                        "@": TqApi._gen_account_prototype(),  # 账户的数据原型
+                    },
+                    "orders": {
+                        "@": TqApi._gen_order_prototype(),  # 委托单的数据原型
+                    },
+                    "trades": {
+                        "@": TqApi._gen_trade_prototype(),  # 成交的数据原型
+                    },
+                    "positions": {
+                        "@": TqApi._gen_position_prototype(),  # 持仓的数据原型
+                    }
+                }
+            },
+        }
 
     @staticmethod
     def _gen_quote_prototype():
@@ -936,7 +1077,7 @@ class TqApi(object):
         return {
             "currency": "",  # "CNY" (币种)
             "pre_balance": float("nan"),  # 9912934.78 (昨日账户权益)
-            "static_balance":float("nan"),  # (静态权益)
+            "static_balance": float("nan"),  # (静态权益)
             "balance": float("nan"),  # 9963216.55 (账户权益)
             "available": float("nan"),  # 9480176.15 (可用资金)
             "float_profit": float("nan"),  # 8910.0 (浮动盈亏)
@@ -958,19 +1099,19 @@ class TqApi(object):
         """委托单的数据原型"""
         return {
             "order_id": "",  # "123" (委托单ID, 对于一个用户的所有委托单，这个ID都是不重复的)
-            "exchange_order_id":"",  # "1928341" (交易所单号)
+            "exchange_order_id": "",  # "1928341" (交易所单号)
             "exchange_id": "",  # "SHFE" (交易所)
             "instrument_id": "",  # "rb1901" (交易所内的合约代码)
             "direction": "",  # "BUY" (下单方向, BUY=买, SELL=卖)
             "offset": "",  # "OPEN" (开平标志, OPEN=开仓, CLOSE=平仓, CLOSETODAY=平今)
-            "volume_orign":0,  # 10 (总报单手数)
-            "volume_left":0,  # 5 (未成交手数)
+            "volume_orign": 0,  # 10 (总报单手数)
+            "volume_left": 0,  # 5 (未成交手数)
             "limit_price": float("nan"),  # 4500.0 (委托价格, 仅当 price_type = LIMIT 时有效)
             "price_type": "",  # "LIMIT" (价格类型, ANY=市价, LIMIT=限价)
             "volume_condition": "",  # "ANY" (手数条件, ANY=任何数量, MIN=最小数量, ALL=全部数量)
             "time_condition": "",  # "GFD" (时间条件, IOC=立即完成，否则撤销, GFS=本节有效, GFD=当日有效, GTC=撤销前有效, GFA=集合竞价有效)
             "insert_date_time": 0,  # 1501074872000000000 (下单时间(按北京时间)，自unix epoch(1970-01-01 00:00:00 GMT)以来的纳秒数)
-            "last_msg":"",  # "报单成功" (委托单状态信息)
+            "last_msg": "",  # "报单成功" (委托单状态信息)
             "status": "",  # "ALIVE" (委托单状态, ALIVE=有效, FINISHED=已完)
         }
 
@@ -980,7 +1121,7 @@ class TqApi(object):
         return {
             "order_id": "",  # "123" (委托单ID, 对于一个用户的所有委托单，这个ID都是不重复的)
             "trade_id": "",  # "123|19723" (成交ID, 对于一个用户的所有成交，这个ID都是不重复的)
-            "exchange_trade_id":"",  # "829414" (交易所成交号)
+            "exchange_trade_id": "",  # "829414" (交易所成交号)
             "exchange_id": "",  # "SHFE" (交易所)
             "instrument_id": "",  # "rb1901" (交易所内的合约代码)
             "direction": "",  # "BUY" (下单方向, BUY=买, SELL=卖)
@@ -1038,6 +1179,80 @@ class TqApi(object):
         """生成order id"""
         return uuid.uuid4().hex
 
+    @staticmethod
+    def _get_trading_day_start_time(trading_day):
+        """给定交易日, 获得交易日起始时间"""
+        begin_mark = 631123200000000000  # 1990-01-01
+        start_time = trading_day - 21600000000000  # 6小时
+        week_day = (start_time - begin_mark) // 86400000000000 % 7
+        if week_day >= 5:
+            start_time -= 86400000000000 * (week_day-4)
+        return start_time
+
+    @staticmethod
+    def _get_trading_day_end_time(trading_day):
+        """给定交易日, 获得交易日结束时间"""
+        return trading_day + 64799999999999  # 18小时
+
+    @staticmethod
+    def _get_trading_day_from_timestamp(timestamp):
+        """给定时间, 获得其所属的交易日"""
+        begin_mark = 631123200000000000  # 1990-01-01
+        days = (timestamp - begin_mark) // 86400000000000  # 自 1990-01-01 以来的天数
+        if (timestamp - begin_mark) % 86400000000000 >= 64800000000000:  # 大于18点, 天数+1
+            days += 1
+        week_day = days % 7
+        if week_day >= 5:  # 如果是周末则移到星期一
+            days += 7 - week_day
+        return begin_mark + days * 86400000000000
+
+
+class TqAccount(object):
+    """天勤实盘类"""
+    def __init__(self, broker_id, account_id, password):
+        """
+        创建天勤实盘实例
+
+        Args:
+            broker_id (str): 期货公司, 可以在天勤终端中查看期货公司名称
+
+            account_id (str): 帐号
+
+            password (str): 密码
+        """
+        self.broker_id = broker_id
+        self.account_id = account_id
+        self.password = password
+
+    async def _run(self, api, api_send_chan, api_recv_chan, md_send_chan, md_recv_chan, td_send_chan, td_recv_chan):
+        await td_send_chan.send({
+            "aid": "req_login",
+            "bid": self.broker_id,
+            "user_name": self.account_id,
+            "password": self.password,
+        })
+        md_task = api.create_task(self._md_handler(api_recv_chan, md_send_chan, md_recv_chan))
+        td_task = api.create_task(self._td_handler(api_recv_chan, td_send_chan, td_recv_chan))
+        try:
+            async for pack in api_send_chan:
+                if pack["aid"] == "subscribe_quote" or pack["aid"] == "set_chart":
+                    await md_send_chan.send(pack)
+                elif pack["aid"] != "peek_message":
+                    await td_send_chan.send(pack)
+        finally:
+            md_task.cancel()
+            td_task.cancel()
+
+    async def _md_handler(self, api_recv_chan, md_send_chan, md_recv_chan):
+        async for pack in md_recv_chan:
+            await md_send_chan.send({"aid":"peek_message"})
+            await api_recv_chan.send(pack)
+
+    async def _td_handler(self, api_recv_chan, td_send_chan, td_recv_chan):
+        async for pack in td_recv_chan:
+            await td_send_chan.send({"aid":"peek_message"})
+            await api_recv_chan.send(pack)
+
 
 class SerialDataProxy(object):
     """
@@ -1078,8 +1293,8 @@ class SerialDataProxy(object):
         return [self[i][name] for i in range(0, self.width)]
 
     def __getitem__(self, key):
-        last_id = self.serial_root.get("last_id", None)
-        if last_id is None:
+        last_id = self.serial_root.get("last_id", -1)
+        if last_id == -1:
             return self.default.copy()
         if key < 0:
             data_id = last_id + 1 + key
@@ -1097,9 +1312,9 @@ class SerialDataProxy(object):
         Example::
 
             # 判断是否已经从服务器收到了最后 3000 根 SHFE.cu1812 的分钟线数据
-            from tqsdk import TqApi
+            from tqsdk import TqApi, TqSim
 
-            api = TqApi("SIM")
+            api = TqApi(TqSim())
             k_serial = api.get_kline_serial("SHFE.cu1812", 60, data_length=3000)
             while True:
                 api.wait_update()
@@ -1113,9 +1328,9 @@ class SerialDataProxy(object):
             ...
         """
         if not self.ready:
-            last_id = self.serial_root.get("last_id", None)
+            last_id = self.serial_root.get("last_id", -1)
             data = self.serial_root.get("data", None)
-            if last_id is not None and data is not None:
+            if last_id != -1 and data is not None:
                 self.ready = all([not self.default.items() <= data.get(str(i), self.default).items() for i in range(max(last_id - self.width + 1, 0), last_id + 1)])
         return self.ready
 
@@ -1131,9 +1346,9 @@ class SerialDataProxy(object):
         Example::
 
             # 判断K线是否为阳线
-            from tqsdk import TqApi
+            from tqsdk import TqApi, TqSim
 
-            api = TqApi("SIM")
+            api = TqApi(TqSim())
             k_serial = api.get_kline_serial("SHFE.cu1812", 60)
             while True:
                 api.wait_update()
@@ -1179,7 +1394,6 @@ class TqChan(asyncio.Queue):
         关闭后send将不起作用,recv在收完剩余数据后会立即返回None
         """
         if not self.closed:
-            self.api.event_rev += 1
             self.closed = True
             await asyncio.Queue.put(self, None)
 
@@ -1191,7 +1405,6 @@ class TqChan(asyncio.Queue):
             item (any): 待发送的对象
         """
         if not self.closed:
-            self.api.event_rev += 1
             if self.last_only:
                 while not self.empty():
                     asyncio.Queue.get_nowait(self)
@@ -1208,7 +1421,6 @@ class TqChan(asyncio.Queue):
             asyncio.QueueFull: 如果channel已满则会抛出 asyncio.QueueFull
         """
         if not self.closed:
-            self.api.event_rev += 1
             if self.last_only:
                 while not self.empty():
                     asyncio.Queue.get_nowait(self)

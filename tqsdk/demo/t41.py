@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 #  -*- coding: utf-8 -*-
 
-from tqsdk import TqApi
+from tqsdk import TqApi, TqSim
 
-api = TqApi("SIM")
+api = TqApi(TqSim())
 # 开仓两手并等待完成
 order = api.insert_order(symbol="SHFE.rb1901", direction="BUY", offset="OPEN", limit_price=4310,volume=2)
 while order["status"] != "FINISHED":

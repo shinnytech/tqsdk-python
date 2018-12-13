@@ -2,7 +2,7 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'limin'
 
-from tqsdk import TqApi, TargetPosTask
+from tqsdk import TqApi, TqSim, TargetPosTask
 
 '''
 Dual Thrust策略
@@ -27,7 +27,7 @@ def dual_thrust(quote, klines):
     return buy_line, sell_line
 
 
-api = TqApi("SIM")
+api = TqApi(TqSim())
 quote = api.get_quote(symbol)
 klines = api.get_kline_serial(symbol, 24*60*60)  # 86400使用日线
 target_pos = TargetPosTask(api, symbol)

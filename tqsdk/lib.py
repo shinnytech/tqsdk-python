@@ -54,9 +54,9 @@ class TargetPosTask(object):
         Example::
 
             # 设置 rb1810 持仓为多头5手
-            from tqsdk import TqApi, TargetPosTask
+            from tqsdk import TqApi, TqSim, TargetPosTask
 
-            api = TqApi("SIM")
+            api = TqApi(TqSim())
             target_pos = TargetPosTask(api, "SHFE.rb1810")
             while True:
                 api.wait_update()
@@ -161,7 +161,7 @@ class InsertOrderUntilAllTradedTask(object):
                     order = insert_order_task.order_chan.recv_latest(order)
                     self.volume = order["volume_left"]
                     if self.volume != 0 and not check_task.done():
-                        raise Exception("遇到错单: %s %s %s %d手 %f" % (self.symbol, self.direction, self.offset, self.volume, limit_price))
+                        raise Exception("遇到错单: %s %s %s %d手 %f %s" % (self.symbol, self.direction, self.offset, self.volume, limit_price, order["last_msg"]))
                 finally:
                     await check_chan.close()
                     await check_task

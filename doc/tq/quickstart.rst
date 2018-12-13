@@ -24,9 +24,14 @@ TqSdk 是配合 **天勤终端** 使用的一套开源 Python 量化交易框架
 天勤终端安装成功后, 双击桌面图标运行, 应该看到如下所示的界面:
 
 
-要将您基于TqSdk开发的Python程序连接到天勤终端, 您需要在创建TqApi时指定::
+要将您基于TqSdk开发的Python程序连接到天勤终端, 您需要在创建TqApi时指定交易帐号。
+实盘交易填写期货公司提供的帐号, 使用天勤终端内置的模拟交易填写"SIM", 并先在天勤终端内登录交易::
 
-    api = TqApi("SIM", backtest=TqBacktest(start_dt=datetime(2018, 5, 1), end_dt=datetime(2018, 10, 1)))
+    # 模拟交易填写"SIM"
+    api = TqApi("SIM")
+    # 实盘交易填写期货公司提供的帐号, 例如
+    api = TqApi("022631")
+
 
 
 将你的Python程序连接到天勤终端

@@ -33,10 +33,10 @@ class DataDownloader:
 
             from datetime import datetime
             from contextlib import closing
-            from tqsdk import TqApi
+            from tqsdk import TqApi, TqSim
             from tqsdk.tools import DataDownloader
 
-            api = TqApi("SIM")
+            api = TqApi(TqSim())
             download_tasks = {}
             # 下载从 2018-01-01 到 2018-09-01 的 SR901 日线数据
             download_tasks["SR_daily"] = DataDownloader(api, symbol_list="CZCE.SR901", dur_sec=24*60*60,

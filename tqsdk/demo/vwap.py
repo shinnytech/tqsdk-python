@@ -3,9 +3,11 @@
 __author__ = 'limin'
 
 import datetime
-from tqsdk import TqApi, TargetPosTask
+from tqsdk import TqApi, TqSim, TargetPosTask
 
-
+'''
+Volume Weighted Average Price策略
+'''
 time_cell = 5*60  # 等时长下单的时间单元, 单位: 秒
 target_volume = 300  # 目标交易手数 (>0: 多头, <0: 空头)
 symbol = "DCE.jd1905"  # 交易合约代码
@@ -13,7 +15,7 @@ history_day_length = 20  # 使用多少天的历史数据用来计算每个时�
 time_slot_start = datetime.time(9, 35)  # 计划交易时段起始时间点
 time_slot_end = datetime.time(10, 50)  # 计划交易时段终点时间点
 
-api = TqApi("SIM")
+api = TqApi(TqSim())
 # 根据 history_day_length 推算出需要订阅的历史数据长度, 需要注意history_day_length与time_cell的比例关系以避免超过订阅限制
 klines = api.get_kline_serial(symbol, time_cell, data_length=int(10*60*60/time_cell*history_day_length))
 target_pos = TargetPosTask(api, symbol)
@@ -32,7 +34,7 @@ def get_kline_time(kline_datetime):
 def get_market_day(kline_datetime):
     """获取k线所对应的交易日"""
     kline_dt = datetime.datetime.fromtimestamp(kline_datetime//1000000000)  # 每根k线的日期和时间
-    if kline_dt.hour > 18:  # 当天18点以后: 移到下一个交易日
+    if kline_dt.hour >= 18:  # 当天18点以后: 移到下一个交易日
         kline_dt = kline_dt + datetime.timedelta(days=1)
     while kline_dt.weekday() >= 5:  # 是周六或周日,移到周一
         kline_dt = kline_dt + datetime.timedelta(days=1)

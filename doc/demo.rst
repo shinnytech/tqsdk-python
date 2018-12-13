@@ -19,5 +19,8 @@
 
 交易策略
 --------------------------------------------------------------------------------------------------------
-* `rbreaker.py <https://github.com/shinnytech/tqsdk-python/blob/master/tqsdk/demo/rbreaker.py>`_ - rbreaker
+* `turtle.py <https://github.com/shinnytech/tqsdk-python/blob/master/tqsdk/demo/turtle.py>`_ - 海龟策略
+* `dualthrust.py <https://github.com/shinnytech/tqsdk-python/blob/master/tqsdk/demo/dualthrust.py>`_ - Dual Thrust
+* `rbreaker.py <https://github.com/shinnytech/tqsdk-python/blob/master/tqsdk/demo/rbreaker.py>`_ - R-Breaker
+* `vwap.py <https://github.com/shinnytech/tqsdk-python/blob/master/tqsdk/demo/vwap.py>`_ - Volume Weighted Average Price
 

@@ -2,13 +2,13 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'chengzhi'
 
-from tqsdk import TqApi
+from tqsdk import TqApi, TqSim
 
 '''
 如果当前价格大于10秒K线的MA15则开多仓
 如果小于则平仓
 '''
-api = TqApi("SIM")
+api = TqApi(TqSim())
 # 获得 m1901 10秒K线的引用
 klines = api.get_kline_serial("DCE.m1901", 10)
 

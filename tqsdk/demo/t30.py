@@ -2,10 +2,10 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'chengzhi'
 
-from tqsdk import TqApi
+from tqsdk import TqApi, TqSim
 import datetime
 
-api = TqApi("SIM")
+api = TqApi(TqSim())
 # 获得cu1812 tick序列的引用
 ticks = api.get_tick_serial("SHFE.cu1812")
 # 获得cu1812 10秒K线的引用

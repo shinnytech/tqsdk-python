@@ -2,7 +2,7 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'limin'
 
-from tqsdk import TqApi, TargetPosTask
+from tqsdk import TqApi, TqSim, TargetPosTask
 
 '''
 R-Breaker策略(非隔夜留仓: 在每日收盘前，对所持合约进行平仓)
@@ -31,7 +31,7 @@ def get_index_line(klines):
     return pivot, bBreak, sSetup, sEnter, bEnter, bSetup, sBreak
 
 
-api = TqApi("SIM")
+api = TqApi(TqSim())
 quote = api.get_quote(symbol)
 klines = api.get_kline_serial(symbol, 24*60*60)  # 86400: 使用日线
 position = api.get_position(symbol)

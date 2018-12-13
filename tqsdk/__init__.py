@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 #  -*- coding: utf-8 -*-
 __author__ = 'chengzhi'
-__version__ = '0.8.7'
 name = "tqsdk"
 
-from tqsdk.api import *
-from tqsdk.lib import *
-from tqsdk.backtest import *
+from .__version__ import __version__
+from tqsdk.api import TqApi, TqAccount, SerialDataProxy, TqChan
+from tqsdk.lib import TargetPosTask, InsertOrderUntilAllTradedTask, InsertOrderTask
+from tqsdk.backtest import TqBacktest
+from tqsdk.sim import TqSim
+from tqsdk.exceptions import BacktestFinished
