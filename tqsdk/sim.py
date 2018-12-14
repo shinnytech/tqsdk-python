@@ -272,6 +272,8 @@ class TqSim(object):
             self._send_position(position)
 
     def _report(self):
+        if not self.trade_log:
+            return
         max_balance = 0
         max_drawdown = 0
         daily_yield = []
