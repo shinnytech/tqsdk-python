@@ -15,14 +15,16 @@ class TqSim(object):
 
     模拟交易不会有部分成交的情况, 要成交就是全部成交
     """
-    def __init__(self, init_balance=1000000.0):
+    def __init__(self, init_balance=1000000.0, account_id="TQSIM"):
         """
         创建天勤模拟交易类
 
         Args:
             init_balance (float): [可选]初始资金, 默认为一百万
+
+            account_id (str): [可选]帐号, 默认为 "TQSIM"
         """
-        self.account_id = "TQSIM"
+        self.account_id = account_id
         self.init_balance = init_balance
 
     async def _run(self, api, api_send_chan, api_recv_chan, md_send_chan, md_recv_chan):
