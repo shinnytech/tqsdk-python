@@ -16,29 +16,28 @@ TqSdk 是一套依托 `DIFF协议 (Differential Information Flow for Finance) <h
     * 策略运行中用到的所有数据都在内存中, 且不需读写锁, 避免读写过程引入延时
     * 所有行情及交易接口都返回 object refrence, 一次调用获取, 内容可自动更新
     * 统一易用的超时及异常管理机制
-    * tqsdk本身仅2个py文件, 代码总量约1000行, 便于学习和修改
 
-3. 通过天勤的预置功能为用户代码提供支持, 避免用户在非核心功能上花费时间精力
+3. 可通过搭配天勤终端为用户代码提供支持, 避免用户在非核心功能上花费时间精力
 
     * 通过历史复盘及模拟交易功能, 将用户程序带回特定历史环境测试
     * 在天勤终端中构建自定义组合, 并获得组合的报价和K线数据
     * 提供委托单/成交/持仓情况监控的UI界面
-    * 允许用户向软件中的图表提供额外的技术指标
 
 
-TqSdk 主要包括2个组件
+TqSdk 主要包括的组件如下:
 
 * api: 一个结合了网络通讯和全内存数据管理的接口, 提供了基础的行情和交易功能
-* lib: 基于api构建的常用功能函数库
+* lib: 基于api构建的常用功能函数库(例如: 目标持仓模型)
+* sim: 提供模拟交易功能, 并可输出交易报告
+* backtest.py: 提供回测功能, 支持逐tick回测
 
 
 Install
 -------------------------------------------------
-安装前准备:
+系统要求:
 
-* windows或linux系统
-* python3.6+
-* 安装 `天勤终端 <http://www.shinnytech.com/tianqin>`_ 0.8 以上版本
+* Windows 或 Linux
+* Python 3.6+
 
 直接使用pip安装::
 
@@ -49,11 +48,11 @@ Install
     git clone https://github.com/shinnytech/tqsdk-python.git
     python setup.py install
 
+另外如果希望使用自定义组合, 历史复盘等 **天勤终端** 提供的功能, 可以参见: `与天勤终端配合工作 <http://doc.shinnytech.com/pysdk/latest/tq/index.html>`_
+
 
 Run
 -------------------------------------------------
-启动天勤终端, 并登录交易(模拟或实盘)
-
 运行demo目录下的任一程序::
 
     python demo/t10.py
