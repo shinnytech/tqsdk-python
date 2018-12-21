@@ -15,14 +15,16 @@ class TqSim(object):
 
     模拟交易不会有部分成交的情况, 要成交就是全部成交
     """
-    def __init__(self, init_balance=1000000.0):
+    def __init__(self, init_balance=1000000.0, account_id="TQSIM"):
         """
         创建天勤模拟交易类
 
         Args:
             init_balance (float): [可选]初始资金, 默认为一百万
+
+            account_id (str): [可选]帐号, 默认为 "TQSIM"
         """
-        self.account_id = "TQSIM"
+        self.account_id = account_id
         self.init_balance = init_balance
 
     async def _run(self, api, api_send_chan, api_recv_chan, md_send_chan, md_recv_chan):
@@ -272,6 +274,8 @@ class TqSim(object):
             self._send_position(position)
 
     def _report(self):
+        if not self.trade_log:
+            return
         max_balance = 0
         max_drawdown = 0
         daily_yield = []
@@ -292,13 +296,16 @@ class TqSim(object):
         rf = 0.0001
         stddev = statistics.pstdev(daily_yield, mu=mean)
         sharpe_ratio = 250**(1/2) * (mean - rf) / stddev if stddev else float("inf")
+        ror = self.account["balance"] / self.init_balance
+        annual_yield = ror**(250/len(self.trade_log))
         self.logger.warning("模拟交易账户资金")
         for d in sorted(self.trade_log.keys()):
             account = self.trade_log[d]["account"]
             self.logger.warning("日期:%s,账户权益:%.2f,可用资金:%.2f,浮动盈亏:%.2f,持仓盈亏:%.2f,平仓盈亏:%.2f,保证金:%.2f,手续费:%.2f,风险度:%.2f%%",
                                 d, account["balance"], account["available"], account["float_profit"], account["position_profit"],
                                 account["close_profit"], account["margin"], account["commission"], account["risk_ratio"] * 100)
-        self.logger.warning("收益率:%.2f%%,最大回撤:%.2f%%,年化夏普率:%.4f", (self.account["balance"] / self.init_balance - 1) * 100, max_drawdown * 100, sharpe_ratio)
+        self.logger.warning("收益率:%.2f%%,年化收益率:%.2f%%,最大回撤:%.2f%%,年化夏普率:%.4f",
+                            (ror - 1) * 100, (annual_yield - 1) * 100, max_drawdown * 100, sharpe_ratio)
 
     def _ensure_trade_log(self):
         return self.trade_log.setdefault(self.trading_day_end[:10], {"trades":[]})

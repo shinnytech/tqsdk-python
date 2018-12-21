@@ -365,7 +365,7 @@ class TqApi(object):
             msg["time_condition"] = "GFD"
             msg["limit_price"] = limit_price
         self.send_chan.send_nowait(msg)
-        order = self._get_obj(self.data, ["trade", self.account_id, "orders", order_id], self.prototype["trade"]["*"]["orders"]["@"])
+        order = self.get_order(order_id)
         order.update({
             "order_id": order_id,
             "exchange_id": exchange_id,
@@ -835,7 +835,11 @@ class TqApi(object):
                 notifies = all_notifies - processed_notify
                 processed_notify = all_notifies
                 for n in notifies:
-                    self.logger.info("通知: %s", notify[n]["content"])
+                    try:
+                        level = getattr(logging, notify[n]["level"])
+                    except AttributeError:
+                        level = logging.INFO
+                    self.logger.log(level, "通知: %s", notify[n]["content"])
 
     async def _connect(self, url, send_chan, recv_chan):
         """启动websocket客户端"""
