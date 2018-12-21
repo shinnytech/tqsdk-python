@@ -69,22 +69,38 @@ class TargetPosTask(object):
         if self.current_pos is None:
             self.current_pos = self.pos["volume_long_today"] + self.pos["volume_long_his"] - self.pos["volume_short_today"] - self.pos["volume_short_his"]
 
-    def _get_order(self, offset, vol):
+    def _get_order(self, offset, vol, pos):
         """获得可平手数"""
         if vol > 0:  # 买单(增加净持仓)
             order_dir = "BUY"
-            ydAvailable=self.pos["volume_short_his"] - (self.pos["volume_short_frozen"] - self.pos["volume_short_frozen_today"])  # 昨空可用
-            tdAvailable=self.pos["volume_short_today"] - self.pos["volume_short_frozen_today"]  # 今空可用
+            ydAvailable=pos["volume_short_his"] - (pos["volume_short_frozen"] - pos["volume_short_frozen_today"])  # 昨空可用
+            tdAvailable=pos["volume_short_today"] - pos["volume_short_frozen_today"]  # 今空可用
         else:  # 卖单
             order_dir = "SELL"
-            ydAvailable=self.pos["volume_long_his"] - (self.pos["volume_long_frozen"] - self.pos["volume_long_frozen_today"])  # 昨多可用
-            tdAvailable=self.pos["volume_long_today"] - self.pos["volume_long_frozen_today"]  # 今多可用
+            ydAvailable=pos["volume_long_his"] - (pos["volume_long_frozen"] - pos["volume_long_frozen_today"])  # 昨多可用
+            tdAvailable=pos["volume_long_today"] - pos["volume_long_frozen_today"]  # 今多可用
         if offset == "昨":
             order_offset = "CLOSE"
             order_volume = min(abs(vol), ydAvailable if self.exchange == "SHFE" or self.exchange == "INE" or tdAvailable == 0 else 0)
+            if vol > 0:
+                pos["volume_short_frozen"] += order_volume
+                pos["volume_short_frozen_his"] += order_volume
+            else:
+                pos["volume_long_frozen"] += order_volume
+                pos["volume_long_frozen_his"] += order_volume
         elif offset == "今":
             order_offset = "CLOSETODAY" if self.exchange == "SHFE" or self.exchange == "INE" else "CLOSE"
             order_volume = min(abs(vol), tdAvailable if self.exchange == "SHFE" or self.exchange == "INE" else tdAvailable + ydAvailable)
+            if vol > 0:
+                pos["volume_short_frozen"] += order_volume
+                pos["volume_short_frozen_today"] += order_volume
+                pos["volume_short_frozen_his"] += max(0, pos["volume_short_frozen_today"] - pos["volume_short_today"])
+                pos["volume_short_frozen_today"] = min(pos["volume_short_frozen_today"], pos["volume_short_today"])
+            else:
+                pos["volume_long_frozen"] += order_volume
+                pos["volume_long_frozen_today"] += order_volume
+                pos["volume_long_frozen_his"] += max(0, pos["volume_long_frozen_today"] - pos["volume_long_today"])
+                pos["volume_long_frozen_today"] = min(pos["volume_long_frozen_today"], pos["volume_long_today"])
         elif offset == "开":
             order_offset = "OPEN"
             order_volume = abs(vol)
@@ -100,12 +116,14 @@ class TargetPosTask(object):
             # 确定调仓增减方向
             delta_volume = target_pos - self.current_pos
             all_tasks = []
+            pos = self.pos.copy()
             for each_priority in self.offset_priority + ",":  # 按不同模式的优先级顺序报出不同的offset单，股指(“昨开”)平昨优先从不平今就先报平昨，原油平今优先("今昨开")就报平今
                 if each_priority == ",":
                     await gather(*[each.task for each in all_tasks])
                     all_tasks =[]
+                    pos = self.pos.copy()
                     continue
-                order_offset, order_dir, order_volume = self._get_order(each_priority, delta_volume)
+                order_offset, order_dir, order_volume = self._get_order(each_priority, delta_volume, pos)
                 if order_volume == 0:  # 如果没有则直接到下一种offset
                     continue
                 order_task = InsertOrderUntilAllTradedTask(self.api, self.symbol, order_dir, offset=order_offset,volume=order_volume, price=self.price,trade_chan=self.trade_chan)
