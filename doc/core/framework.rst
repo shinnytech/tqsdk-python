@@ -1,38 +1,16 @@
-介绍
-=================================================
+.. _framework:
 
-TqSdk是什么
--------------------------------------------------
-TqSdk 是一套开源 python 框架. 依托Diff项目高度优化设计的 websocket/json 接口和服务器体系, TqSdk 支持用户使用较少的工作量构建量化交易或分析程序.
+TqSdk程序结构
+====================================================
 
-与其它 python 框架相比, TqSdk 致力于在以下几方面为用户提供价值:
-
-
-1. 用最低部署运行成本实现完整功能栈
-
-* 一分钟内完成安装
-* 无需用户部署维护历史数据库, 直接提供所有期货品种的报价盘口, K线数据, Tick序列的实时推送
-* 支持通过CTP接口发送交易指令
-
-2. 鼓励 Quick & Simple 的用户代码风格
-
-* 策略代码按线性逻辑编写, 避免复杂的回调函数/状态机
-* 策略运行中用到的所有数据都在内存中, 且不需读写锁, 避免读写过程引入延时
-* 所有行情及交易接口都返回 object refrence, 一次调用获取, 内容可自动更新
-* 统一易用的超时及异常管理机制
-
-3. 可通过搭配天勤终端为用户代码提供支持, 避免用户在非核心功能上花费时间精力
-
-* 通过历史复盘及模拟交易功能, 将用户程序带回特定历史环境测试
-* 在天勤终端中构建自定义组合, 并获得组合的报价和K线数据
-* 提供委托单/成交/持仓情况监控的UI界面
-
-
-线性逻辑框架
+Api实例
 ----------------------------------------------------
-如果不能直观的编码交易逻辑，会导致写出来的代码很难说和预期的交易逻辑是等价的，代码中的bug不容易被发现，也不好修复，因为很难确认修改后的代码就能符合预期的交易逻辑，
-`TqSdk`_ 没有使用目前市面上流行的回调框架(OnBar/OnTick/OnOrder...)就是为了能直观的体现交易逻辑，减少编码环节引入的坑。
 
+
+业务逻辑
+----------------------------------------------------
+典型程序框架
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 以一个通常的策略流程为例：判断开仓条件，开仓，判断平仓条件，平仓，使用 `TqSdk`_ 写出的伪代码::
 
     from tqsdk import TqApi, TqSim, TargetPosTask
@@ -53,9 +31,50 @@ TqSdk 是一套开源 python 框架. 依托Diff项目高度优化设计的 webso
             target_pos.set_target_volume(0)
             break
 
+第一行代码::
 
-全数据自动更新
-----------------------------------------------------
+    api = TqApi(TqSim())
+
+是使用模拟交易(`TqSim`_)创建一个 api 实例，该实例负责和服务器通讯，获取行情数据，发送报单指令等等，`TqSdk`_ 的各个功能模块都是围绕该 api 实例运转的
+
+第二行代码::
+
+    klines = api.get_kline_serial("SHFE.rb1901", 60)
+
+使用 `get_kline_serial`_ 获取 SHFE.rb1901 的分钟线数据
+
+接下来::
+
+    target_pos = TargetPosTask(api, "SHFE.rb1901")
+
+这行代码是创建一个负责调整 SHFE.rb1901 的任务。考虑到实际的下单流程比较复杂，下单之后可能无法立即成交，需要撤单重下，还需处理部分成交的情况，
+因此 `TqSdk`_ 提供了 `TargetPosTask`_ 用来调整持仓，使用时只需指定目标仓位，之后的下撤单都由 `TargetPosTask`_ 负责完成
+
+之后就是判断开仓条件的主循环::
+
+    while True:
+        api.wait_update()
+        if 开仓条件:
+            target_pos.set_target_volume(1)
+            break
+
+`wait_update`_ 是等待业务数据更新。只要有任何业务数据变更(行情、账户资金、持仓、委托等)，`wait_update`_ 就会返回，接下来就是判断是否会触发开仓条件。
+如果没有触发则继续等待下次业务数据更新后再判断；如果触发了，则通过 target_pos 将 SHFE.rb1901 的目标持仓设置为多头 1 手，
+具体的调仓工作则由 target_pos 在后台完成，然后跳出开仓循环，进入下面的平仓循环::
+
+    while True:
+        api.wait_update()
+        if 平仓条件:
+            target_pos.set_target_volume(0)
+            break
+
+这段代码的结构和上面的开仓循环很相似，只是开仓条件换成了平仓条件，以及触发平仓条件后将 SHFE.rb1901 的目标持仓设置为 0 手(即空仓)
+
+至此就完成一次完整的开平仓流程，如果平仓后还需再判断开仓条件可以把开仓循环和平仓循环再套到一个大循环中。
+
+
+使用业务数据
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 `TqSdk`_ 的另一个特点是使用了 `DIFF`_ 协议，所有业务数据都在内存中，并可随时使用，以获取账户资金为例::
 
     account = api.get_account()
@@ -82,18 +101,6 @@ TqSdk 是一套开源 python 框架. 依托Diff项目高度优化设计的 webso
 以上代码只会在账户权益发生变化的时候才会打出 "账户权益变化"。
 
 
-自动辅助工具
-----------------------------------------------------
-
-
-自动辅助工具
-----------------------------------------------------
-
-
-License
--------------------------------------------------
-TqSdk 在 Apache License 2.0 协议下提供, 使用者可在遵循此协议的前提下自由使用本软件.
-
 
 .. _TqSdk: https://doc.shinnytech.com/pysdk/latest/index.html
 .. _TqSim: https://doc.shinnytech.com/pysdk/latest/reference.html#tqsdk.sim.TqSim
@@ -106,4 +113,3 @@ TqSdk 在 Apache License 2.0 协议下提供, 使用者可在遵循此协议的�
 .. _is_changing: https://doc.shinnytech.com/pysdk/latest/reference.html#tqsdk.api.TqApi.is_changing
 .. _TqBacktest: https://doc.shinnytech.com/pysdk/latest/reference.html#tqsdk.backtest.TqBacktest
 .. _R-Breaker: https://github.com/shinnytech/tqsdk-python/blob/master/tqsdk/demo/rbreaker.py
-

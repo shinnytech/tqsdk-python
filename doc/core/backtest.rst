@@ -1,0 +1,53 @@
+程序调试与回测
+=================================================
+使用 `TqSdk`_ 编写的策略，不需要修改策略代码，只需要调整创建 api 时填写的参数就可以进行历史回测或历史复盘。
+
+
+历史回测
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+在创建 api 实例时传入 `TqBacktest`_ 策略就会进入历史回测模式::
+
+    from datetime import date
+    from tqsdk import TqApi, TqSim, TqBacktest
+
+    api = TqApi(TqSim(), backtest=TqBacktest(start_dt=date(2018, 5, 1), end_dt=date(2018, 10, 1)))
+
+`TqSdk`_ 会自动根据策略所用到的数据自动选择回测的行情采样频率，例如::
+
+    klines = api.get_kline_serial("SHFE.rb1901", 60)
+
+获取了 SHFE.rb1901 的分钟线，因此 SHFE.rb1901 的行情更新频率就是每分钟更新一次，如果使用::
+
+    ticks = api.get_tick_serial("SHFE.rb1901")
+
+获取了 tick 数据的话，行情就是逐 tick 更新的。另外回测框架的设计保证了从 api 取出的数据不会出现未来函数。
+
+回测结束后会输出交易记录和每日收盘时的账户资金情况，以及最大回撤、夏普比率等指标，这些数据可以导入到 excel 中或使用其他分析工具进一步处理。
+
+
+历史复盘
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+上面提到的回测解决的是用来评价一个策略整体是否有效，但在回测过程中可能还会遇到交易时点和预期的不符，或者极端行情下策略表现异常等问题。
+这个时候可能需要看看当时的行情具体是怎么走的，策略具体是怎么执行的，或者在策略实现阶段需要在非交易时间调试，这时就可以使用由天勤终端提供的历史复盘功能。
+只需指定任一交易日，天勤终端将回到那一天，并完整重演全天的行情变化。在此过程中，使用 `TqSdk`_ 对接到天勤终端之后获取的数据都是所指定日期的数据，
+一切都有如真正回到那天一样。并可在回放过程中可以任意暂停或加减速。
+
+首先打开天勤终端并进入复盘模式，然后在创建 api 实例时帐号填写为 "SIM" 策略就会进入历史复盘模式::
+
+    api = TqApi("SIM")
+
+之后策略的所有交易操作都可以在天勤终端中看到，并会标注到行情图上。同时也可以加减速或暂停行情回放，仔细分析策略执行情况。
+
+
+.. _TqSdk: https://doc.shinnytech.com/pysdk/latest/index.html
+.. _TqSim: https://doc.shinnytech.com/pysdk/latest/reference.html#tqsdk.sim.TqSim
+.. _get_kline_serial: https://doc.shinnytech.com/pysdk/latest/reference.html#tqsdk.api.TqApi.get_kline_serial
+.. _TargetPosTask: https://doc.shinnytech.com/pysdk/latest/reference.html#tqsdk.lib.TargetPosTask
+.. _wait_update: https://doc.shinnytech.com/pysdk/latest/reference.html#tqsdk.api.TqApi.wait_update
+.. _DIFF: https://doc.shinnytech.com/diff/latest/index.html
+.. _get_account: https://doc.shinnytech.com/pysdk/latest/reference.html#tqsdk.api.TqApi.get_account
+.. _get_quote: https://doc.shinnytech.com/pysdk/latest/reference.html#tqsdk.api.TqApi.get_quote
+.. _is_changing: https://doc.shinnytech.com/pysdk/latest/reference.html#tqsdk.api.TqApi.is_changing
+.. _TqBacktest: https://doc.shinnytech.com/pysdk/latest/reference.html#tqsdk.backtest.TqBacktest
+.. _R-Breaker: https://github.com/shinnytech/tqsdk-python/blob/master/tqsdk/demo/rbreaker.py
+
