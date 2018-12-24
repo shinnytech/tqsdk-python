@@ -2,6 +2,8 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'limin'
 
+import time
+from datetime import datetime
 from tqsdk import TqApi, TqSim, TargetPosTask
 
 '''
@@ -46,9 +48,16 @@ while True:
     if api.is_changing(klines[-1], "datetime"):  # 产生新k线,则重新计算7条指标线
         pivot, bBreak, sSetup, sEnter, bEnter, bSetup, sBreak = get_index_line(klines)
 
-    nowTime = quote["datetime"].split()[1].split(":")  # 当前行情时间: [时,分,秒]
-    if int(nowTime[0]) == close_hour and int(nowTime[1]) >= close_minute:  # 到达平仓时间: 平仓
-        break
+    if api.is_changing(quote, "datetime"):
+        now = datetime.strptime(quote["datetime"], "%Y-%m-%d %H:%M:%S.%f")
+        if now.hour == close_hour and now.minute >= close_minute:  # 到达平仓时间: 平仓
+            print("临近本交易日收盘: 平仓")
+            target_pos.set_target_volume(0)  # 平仓
+            deadline = time.time() + 60
+            while api.wait_update(deadline=deadline):  # 等待60秒
+                pass
+            api.close()
+            break
 
     '''交易规则'''
     if api.is_changing(quote, "last_price"):
@@ -91,11 +100,3 @@ while True:
                 print("空仓,盘中价格跌破突破卖出价: 开仓做空")
                 target_pos_value = -3  # 做空
                 open_position_price = quote["last_price"]
-
-
-print("临近本交易日收盘: 平仓")
-target_pos.set_target_volume(0)  # 平仓
-deadline = time.time() + 60
-while api.wait_update(deadline=deadline):  # 等待60秒
-    pass
-api.close()

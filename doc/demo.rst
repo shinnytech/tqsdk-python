@@ -19,6 +19,7 @@
 
 交易策略
 --------------------------------------------------------------------------------------------------------
+* `gridtrading.py <https://github.com/shinnytech/tqsdk-python/blob/master/tqsdk/demo/gridtrading.py>`_ - 网格交易
 * `turtle.py <https://github.com/shinnytech/tqsdk-python/blob/master/tqsdk/demo/turtle.py>`_ - 海龟策略
 * `dualthrust.py <https://github.com/shinnytech/tqsdk-python/blob/master/tqsdk/demo/dualthrust.py>`_ - Dual Thrust
 * `rbreaker.py <https://github.com/shinnytech/tqsdk-python/blob/master/tqsdk/demo/rbreaker.py>`_ - R-Breaker
