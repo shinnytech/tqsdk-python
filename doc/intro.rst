@@ -13,7 +13,7 @@ TqSdk 是一套开源 python 框架. 依托Diff项目高度优化设计的 webso
 * 一分钟内 :ref:`完成安装 <install>`.
 * 全部合约自上市起的 :ref:`Tick和K线数据 <quickstart_2>`，支持从1秒到1天的自定义K线周期
 * 支持 模拟交易 和 :ref:`实盘交易 <faq-real>`
-* 执行:ref:`Tick或K线回测 <backtest>`，支持多合约策略回测
+* 执行 :ref:`Tick或K线回测 <backtest>` ，支持多合约策略回测
 
 2. 鼓励 Quick & Simple 的用户代码风格
 
