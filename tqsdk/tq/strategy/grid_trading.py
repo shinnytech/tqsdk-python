@@ -75,9 +75,10 @@ import tkinter as tk
 
 
 class TqStrategy(tk.Frame):
-    def __init__(self):
+    def __init__(self, manager):
         tk_master = tk.Tk()
         tk.Frame.__init__(self, tk_master)
+        self.manager = manager
         self.pack()
         self.uis = []
 
@@ -105,8 +106,8 @@ class TqStrategy(tk.Frame):
 class StrategyGridTrading(TqStrategy):
     desc = "网格交易算法"
 
-    def __init__(self):
-        TqStrategy.__init__(self)
+    def __init__(self, manager):
+        TqStrategy.__init__(self, manager)
         self.var_symbol = self.add_input('合约代码', default_value="DCE.jd1901")
         self.var_start_price = self.add_input('起始价位', default_value="4047")
         self.var_grid_amount = self.add_input('格子数量', default_value="10")  # 网格在多头、空头方向的格子(档位)数量
@@ -118,8 +119,9 @@ class StrategyGridTrading(TqStrategy):
         #                     range(grid_amount + 1)]  # 多头每格的触发价位列表
         # grid_prices_short = [reduce(lambda p, r: p * (1 + r), grid_region_short[:i], start_price) for i in
         #                      range(grid_amount + 1)]  # 空头每格的触发价位列表
+        instance = self.manager.create_instance(self, self.run)
 
-    def get_instance_desc(self):
+    def get_desc(self):
         return "abcd"
 
     def run(self, api):
