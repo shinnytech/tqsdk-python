@@ -3,7 +3,9 @@
 __author__ = 'chengzhi'
 
 import uuid
-import asyncio
+import time
+import threading
+import queue
 import tkinter as tk
 import tkinter.ttk as ttk
 
@@ -11,6 +13,10 @@ from tqsdk import TqApi, TqSim
 from tqsdk.tq.blocks.split import ViewSplitOrder
 from tqsdk.tq.strategy.grid_trading import StrategyGridTrading
 
+
+class StrategyExit(Exception):
+    """策略结束会抛出此例外"""
+    pass
 
 class TqStrategyManager(tk.Frame):
     def __init__(self, tq_api):
@@ -21,7 +27,7 @@ class TqStrategyManager(tk.Frame):
         self.pack()
         self.strategy_class_map = {}
         self.block_class_map = {}
-        self.instance_map = {}
+        self.instances = {}
 
         self.tree = ttk.Treeview(self)
         self.tree["columns"] = ("备注")
@@ -51,34 +57,80 @@ class TqStrategyManager(tk.Frame):
         item = self.tree.selection()[0]
         item_text = self.tree.item(item, "text")
         block_cls = self.block_class_map.get(item_text, None)
-        if block_cls:
-            block_instance = self.instance_map.get(item_text)
-            if not block_instance:
-                block_instance = block_cls(self.tq_api)
-                self.instance_map[item_text] = block_instance
+        if block_cls and not [instance for instance in self.instances.values() if instance["instance_id"] == item_text]:
+            self._init_instance(item_text, block_cls())
             return
         strategy_class = self.strategy_class_map.get(item_text, None)
         if strategy_class:
-            s = strategy_class(self.tq_api)
-            instance_id = item_text + str(uuid.uuid4())
-            self.instance_map[instance_id] = s
-            self.tree.insert(item, 9999, text=instance_id, values=(s.get_instance_desc()))
+            s = strategy_class()
+            id = item_text + str(uuid.uuid4())
+            self.tree.insert(item, 9999, text=id, values=(s.get_instance_desc()))
+            self._init_instance(id, s)
             return
+
+    def _init_instance(self, instance_id, strategy):
+        t = threading.Thread(target=self._run_instance)
+        self.instances[t] = {
+            "instance_id": instance_id,
+            "strategy": strategy,
+            "run_queue": queue.Queue(),  # run信号,0未更新，1有更新，-1停止
+            "exception": None,
+        }
+        self.instances[t]["run_queue"].put(0)
+        t.start()
+        self.instances[t]["run_queue"].join()
+
+    def _run_instance(self):
+        instance = self.instances[threading.current_thread()]
+        instance["run_queue"].get()
+        try:
+            instance["strategy"].run(self.tq_api)
+        except Exception as e:
+            instance["exception"] = e
+        else:
+            instance["exception"] = StrategyExit()
+        finally:
+            instance["run_queue"].task_done()
 
     def on_tree_double_click(self, event):
         print('双击', event)
         self.create_instance()
 
-    def run(self):
-        async def tk_updater():
-            while True:
-                self.tk_master.update()
-                await asyncio.sleep(1.0 / 60)
-        self.tq_api.create_task(tk_updater())
+    def _wait_update(self, deadline = None):
+        # 由子线程调用
+        instance = self.instances[threading.current_thread()]
+        instance["run_queue"].task_done()
         while True:
-            self.tq_api.wait_update()
-            for t in self.instance_map.values():
-                t.on_update()
+            run = instance["run_queue"].get()
+            if run == -1:
+                raise StrategyExit
+            elif run == 0:
+                if deadline is not None and deadline > time.time():
+                    return False
+                else:
+                    instance["run_queue"].task_done()
+                    continue
+            else:
+                return True
+
+    def run(self):
+        org_wait_update = self.tq_api.wait_update
+        self.tq_api.wait_update = self._wait_update
+        while True:
+            self.tk_master.update()
+            deadline = time.time() + 1.0 / 60
+            updated = org_wait_update(deadline = deadline)
+            removed = []
+            for t, instance in self.instances.items():
+                if instance["exception"] is not None:
+                    removed.append(t)
+                    continue
+                instance["run_queue"].put(1 if updated else 0)
+                instance["run_queue"].join()
+            for t in removed:
+                t.join()
+                #@todo: show self.instances[t]["exception"]
+                del self.instances[t]
 
 
 if __name__ == "__main__":
