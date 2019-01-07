@@ -54,7 +54,7 @@ else:
 # 因此去除缺失部分交易时段的日期(即剩下的每个日期都包含预设的交易时间段内所需的全部时间单元)
 date_cnt = df["date"].value_counts()
 max_num = date_cnt.max()  # 所有日期中最完整的交易时段长度
-need_date = date_cnt[date_cnt == max_num].index[-history_day_length-1:-1]  # 获取今天以前的预设数目个交易日的日期
+need_date = date_cnt[date_cnt == max_num].sort_index().index[-history_day_length - 1:-1]  # 获取今天以前的预设数目个交易日的日期
 df = df[df["date"].isin(need_date)]  # 最终用来计算的k线数据
 
 # 计算每个时间单元的成交量占比, 并使用算数平均计算出预测值
