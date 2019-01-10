@@ -15,7 +15,7 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/x-rst",
     url='http://www.shinnytech.com/tianqin',
-    packages=setuptools.find_packages(exclude=["tqsdk.test"]),
+    packages=setuptools.find_packages(exclude=["tqsdk.test", "tqsdk.tq", "tqsdk.tq.*"]),
     zip_safe=False,
     python_requires='>=3.6',
     install_requires=["websockets>=6.0", "requests"],

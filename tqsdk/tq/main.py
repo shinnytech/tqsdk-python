@@ -2,162 +2,136 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'chengzhi'
 
+import sys
 import uuid
+import asyncio
+import functools
+import contextlib
+import logging
 import time
-import threading
-import queue
-import tkinter as tk
-import tkinter.ttk as ttk
 
-from tqsdk import TqApi, TqSim
-from tqsdk.tq.blocks.split import ViewSplitOrder
-from tqsdk.tq.strategy.grid_trading import StrategyGridTrading
+from PyQt5.QtWidgets import (QApplication, QVBoxLayout, QGroupBox, QTreeWidgetItem, QWidget,
+                             QMainWindow, QTreeWidget, QAction, QTextBrowser)
+from PyQt5.QtCore import Qt
+from quamash import QEventLoop
+from tqsdk import TqApi, TqChan
+from tqsdk.tq.logger import WidgetLogger, log_task_exception
+from tqsdk.tq.strategy.base import Strategy
+from tqsdk.tq.strategy.doublema import StrategyDoubleMA
+from tqsdk.tq.strategy.dualthrust import StrategyDualThrust
+from tqsdk.tq.strategy.gridtrading import StrategyGridTrading
+from tqsdk.tq.strategy.rbreaker import StrategyRBreaker
+from tqsdk.tq.strategy.vwap import StrategyVWAP
 
 
-class StrategyExit(Exception):
-    """策略结束会抛出此例外"""
-    pass
+class TqStrategyManager(QMainWindow):
+    def __init__(self, api):
+        QMainWindow.__init__(self)
+        self.logger = logging.getLogger("TqStrategyManager")  # 调试信息输出
+        self.logger.setLevel(logging.INFO)
+        self.setWindowTitle("TqStrategyManager")
+        self.resize(700, 500)
+        self.api = api
+        self.stgs = {}
 
-class TqStrategyManager(tk.Frame):
-    def __init__(self, tq_api):
-        self.tk_master = tk.Tk()
-        self.tk_master.title('TqStrategyManager')
-        tk.Frame.__init__(self, self.tk_master)
-        self.tq_api = tq_api
-        self.pack()
-        self.block_template_map = {}
-        self.strategy_template_map = {}
-        self.classes = {}
-        self.instances = {}
+        self.new_stg_menu = self.menuBar().addMenu("新建策略")
+        self.new_help_menu = self.menuBar().addMenu("帮助")
+        act = QAction("使用说明书", self)
+        #act.triggered.connect(self.on_manual)
+        self.new_help_menu.addAction(act)
+        act = QAction("关于", self)
+        #act.triggered.connect(self.on_about)
+        self.new_help_menu.addAction(act)
 
-        self.tree = ttk.Treeview(self)
-        self.tree["columns"] = ("备注")
-        self.tree.column("备注", width=100)
-        self.tree.heading("备注", text="备注")
-        self.line_blocks = self.tree.insert("", 9999, "功能板块", text="功能板块")
-        self.line_strategies = self.tree.insert("", 9999, "交易策略", text="交易策略")
-        self.tree.bind('<Double-1>', self.on_tree_double_click)  # 绑定双击
-        self.tree.pack()
+        window_layout = QVBoxLayout()
+        tree_box = QGroupBox("策略列表")
+        tree_layout = QVBoxLayout()
+        self.tree = QTreeWidget(self)
+        self.tree.setColumnCount(3)
+        self.tree.setHeaderLabels(["策略名称", "ID", "状态"])
+        self.tree.setRootIsDecorated(False)
+        self.tree.setAlternatingRowColors(True)
+        tree_layout.addWidget(self.tree)
+        tree_box.setLayout(tree_layout)
+        window_layout.addWidget(tree_box)
 
-        self.add_view(ViewSplitOrder)
-        self.add_stategy_class(StrategyGridTrading)
+        console_box = QGroupBox("操作日志")
+        console_layout = QVBoxLayout()
+        self.console = QTextBrowser(self)
+        wh = WidgetLogger(self.console)
+        wh.setLevel(logging.INFO)
+        wh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+        self.logger.addHandler(wh)
+        console_layout.addWidget(self.console)
+        console_box.setLayout(console_layout)
+        window_layout.addWidget(console_box)
 
-    def add_view(self, template):
-        self.block_template_map[template.__name__] = template
-        self.tree.insert(self.line_blocks, "end", text=template.__name__, values=(template.desc))
+        self.add_stg_template(functools.partial(Strategy, StrategyVWAP), "大单拆分")
+        self.add_stg_template(functools.partial(Strategy, StrategyDoubleMA), "双均线策略")
+        self.add_stg_template(functools.partial(Strategy, StrategyDualThrust), "DualThrust策略")
+        self.add_stg_template(functools.partial(Strategy, StrategyGridTrading), "网格交易策略")
+        self.add_stg_template(functools.partial(Strategy, StrategyRBreaker), "R-Breaker策略")
 
-    def add_stategy_class(self, template):
-        self.strategy_template_map[template.__name__] = template
-        self.tree.insert(self.line_strategies, "end", text=template.__name__, values=(template.desc))
+        centralWidget = QWidget()
+        centralWidget.setLayout(window_layout)
+        self.setCentralWidget(centralWidget)
+        self.setWindowFlag(Qt.WindowCloseButtonHint, False)
+        self.show()
 
-    def on_tree_double_click(self, event):
-        print('双击', event)
-        self.create_class()
+    def add_stg_template(self, template, desc):
+        act = QAction(desc, self)
+        act.triggered.connect(functools.partial(self.create_stg, template, desc))
+        self.new_stg_menu.addAction(act)
+        self.logger.info("初始化 %s 策略完成", desc)
 
-    def create_class(self):
-        print("create_class")
-        item = self.tree.selection()[0]
-        item_text = self.tree.item(item, "text")
-        block_template = self.block_template_map.get(item_text, None)
-        if block_template and not item_text in self.classes:
-            return self._init_class(item_text, block_template(self))
-        strategy_template = self.strategy_template_map.get(item_text, None)
-        if strategy_template:
-            id = item_text + str(uuid.uuid4())
-            cls = strategy_template(self)
-            self.tree.insert(item, 9999, text=id, values=(cls.get_desc()))
-            return self._init_class(id, cls)
-
-    def _init_class(self, class_id, cls):
-        self.classes[class_id] = {
-            "class_id": class_id,
-            "class": cls,
-            "instances": [],
+    def create_stg(self, template, desc):
+        stg_id = str(uuid.uuid4())
+        item = QTreeWidgetItem(self.tree)
+        item.setText(0, desc)
+        item.setText(1, stg_id)
+        item.setText(2, "")
+        self.tree.addTopLevelItem(item)
+        stg = {
+            "stg_id": stg_id,
+            "item": item,
+            "task": self.api.create_task(self._run_template(template, desc, stg_id, item))
         }
-        return cls
+        self.stgs[stg_id] = stg
+        stg["task"].add_done_callback(functools.partial(self._on_stg_done, desc, stg_id, item))
+        stg["task"].add_done_callback(functools.partial(log_task_exception, self.logger, desc + ":" + stg_id))
+        self.logger.info("创建 %s:%s 完成", desc, stg_id)
 
-    def remove_class(self, cls):
-        for id, c in self.classes.items():
-            if c["class"] is cls:
-                for instance in c["instances"]:
-                    self.stop_instance(instance)
-                del self.classes[id]
-                return
+    def _on_stg_done(self, desc, stg_id, item, task):
+        self.logger.info("%s:%s 执行结束", desc, stg_id)
+        self.tree.takeTopLevelItem(self.tree.indexOfTopLevelItem(item))
+        del self.stgs[stg_id]
 
-    def create_instance(self, cls, func):
-        print("create_instance")
-        t = threading.Thread(target=self._run_instance)
-        instance = {
-            "strategy": func,
-            "run_queue": queue.Queue(),  # run信号,0未更新，1有更新，-1停止
-            "exception": None,
-        }
-        for c in self.classes.values():
-            if c["class"] is cls:
-                c["instances"].append(instance)
-        self.instances[t] = instance
-        t.start()
-        self._sched_instance(instance, 0)
-        return instance
+    def _stop_stg(self, task):
+        task.cancel()
 
-    def _run_instance(self):
-        instance = self.instances[threading.current_thread()]
-        instance["run_queue"].get()
+    async def _update_stg_desc(self, item, desc_chan):
+        async for desc in desc_chan:
+            item.setText(2, desc)
+
+    async def _run_template(self, template, desc, stg_id, item):
+        desc_chan = TqChan(self.api)
         try:
-            instance["strategy"](self.tq_api)
-        except Exception as e:
-            instance["exception"] = e
-        else:
-            instance["exception"] = StrategyExit()
+            self.api.create_task(self._update_stg_desc(item, desc_chan))
+            await template(self.api, desc, stg_id, desc_chan)
         finally:
-            instance["run_queue"].task_done()
-
-    def _sched_instance(self, instance, run):
-        instance["run_queue"].put(run)
-        instance["run_queue"].join()
-        if instance["exception"] is not None:
-            #@todo: show self.instances[t]["exception"]
-            for t, i in self.instances.items():
-                if i is instance:
-                    t.join()
-                    del self.instances[t]
-                    break
-            for c in self.classes.values():
-                c["instances"] = [i for i in c["instances"] if i is not instance]
-
-    def stop_instance(self, instance):
-        self._sched_instance(instance, -1)
-
-    def _wait_update(self, deadline = None):
-        # 由子线程调用
-        instance = self.instances[threading.current_thread()]
-        instance["run_queue"].task_done()
-        while True:
-            run = instance["run_queue"].get()
-            if run == -1:
-                raise StrategyExit
-            elif run == 0:
-                if deadline is not None and deadline > time.time():
-                    return False
-                else:
-                    instance["run_queue"].task_done()
-                    continue
-            else:
-                return True
+            await desc_chan.close()
 
     def run(self):
-        org_wait_update = self.tq_api.wait_update
-        self.tq_api.wait_update = self._wait_update
-        while True:
-            self.tk_master.update()
-            deadline = time.time() + 1.0 / 60
-            run = 1 if org_wait_update(deadline = deadline) else 0
-            for instance in list(self.instances.values()):
-                self._sched_instance(instance, run)
+        while self.isVisible():
+            self.api.wait_update(deadline=time.time()+0.1)
 
 
 if __name__ == "__main__":
     #创建
-    tq_api = TqApi(TqSim())
-    m = TqStrategyManager(tq_api)
-    m.run()
+    app = QApplication(sys.argv)
+    loop = QEventLoop(app)
+    asyncio.set_event_loop(loop)
+    api = TqApi(sys.argv[1], loop=loop)
+    with contextlib.closing(api):
+        m = TqStrategyManager(api)
+        m.run()

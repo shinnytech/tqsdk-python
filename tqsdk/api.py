@@ -35,7 +35,7 @@ class TqApi(object):
 
     通常情况下, 一个线程中应该只有一个TqApi的实例, 它负责维护网络连接, 接收行情及账户数据, 并在内存中维护业务数据截面
     """
-    def __init__(self, account, url=None, backtest=None, debug=None):
+    def __init__(self, account, url=None, backtest=None, debug=None, loop=None):
         """
         创建天勤接口实例
 
@@ -58,6 +58,8 @@ class TqApi(object):
 
             debug(str): [可选]将调试信息输出到指定文件, 默认不输出.
 
+            loop(asyncio.AbstractEventLoop): [可选]使用指定的 IOLoop, 默认创建一个新的.
+
         Example::
 
             # 使用实盘帐号直连行情和交易服务器
@@ -77,7 +79,7 @@ class TqApi(object):
             from tqsdk import TqApi, TqSim, TqBacktest
             api = TqApi(TqSim(), backtest=TqBacktest(start_dt=date(2018, 5, 1), end_dt=date(2018, 10, 1)))
         """
-        self.loop = asyncio.new_event_loop()  # 创建一个新的 ioloop, 避免和其他框架/环境产生干扰
+        self.loop = asyncio.new_event_loop() if loop is None else loop  # 创建一个新的 ioloop, 避免和其他框架/环境产生干扰
         # 回测需要行情和交易 lockstep, 而 asyncio 没有将内部的 _ready 队列暴露出来, 因此 monkey patch call_soon 函数用来判断是否有任务等待执行
         self.loop.call_soon = functools.partial(self._call_soon, self.loop.call_soon)
         self.event_rev, self.check_rev = 0, 0
@@ -97,6 +99,7 @@ class TqApi(object):
         self.send_chan, self.recv_chan = TqChan(self), TqChan(self)  # 消息收发队列
         self.data = {"_path": [], "_listener": set()}  # 数据存储
         self.diffs = []  # 自上次wait_update返回后收到更新数据的数组
+        self.pending_diffs = []  # 从网络上收到的待处理的 diffs, 只在 wait_update 函数执行过程中才可能为非空
         self.prototype = self._gen_prototype()  # 各业务数据的原型, 用于决定默认值及将收到的数据转为特定的类型
         self.tasks = set()  # 由api维护的所有根task，不包含子task，子task由其父task维护
         self.exceptions = []  # 由api维护的所有task抛出的例外
@@ -574,18 +577,20 @@ class TqApi(object):
         """
         if self.loop.is_running():
             raise Exception("不能在协程中调用 wait_update, 如需在协程中等待业务数据更新请使用 register_update_notify")
-        self.diffs = []
         self.wait_timeout = False
         # 先尝试执行各个task,再请求下个业务数据
         self._run_until_idle()
         self.send_chan.send_nowait({"aid": "peek_message"})
-        deadline_handle = None if deadline is None else self.loop.call_later(deadline - time.time(), self._set_wait_timeout)
+        # 先 _fetch_msg 再判断 deadline, 避免当 deadline 立即触发时无法接收数据
         update_task = self.create_task(self._fetch_msg())
+        deadline_handle = None if deadline is None else self.loop.call_later(max(0, deadline - time.time()), self._set_wait_timeout)
         try:
-            while not self.wait_timeout and not self.diffs:
+            while not self.wait_timeout and not self.pending_diffs:
                 self._run_once()
-            return len(self.diffs) != 0
+            return len(self.pending_diffs) != 0
         finally:
+            self.diffs = self.pending_diffs
+            self.pending_diffs = []
             for d in self.diffs:
                 self._merge_diff(self.data, d, self.prototype)
             if deadline_handle:
@@ -628,8 +633,6 @@ class TqApi(object):
             51800.0
             ...
         """
-        if self.loop.is_running():
-            raise Exception("不能在协程中调用 is_changing, 如需在协程中判断业务数据更新请使用 register_update_notify")
         if obj is None:
             return False
         if not isinstance(key, list):
@@ -837,7 +840,7 @@ class TqApi(object):
                 for n in notifies:
                     try:
                         level = getattr(logging, notify[n]["level"])
-                    except AttributeError:
+                    except (AttributeError, KeyError):
                         level = logging.INFO
                     self.logger.log(level, "通知: %s", notify[n]["content"])
 
@@ -887,11 +890,11 @@ class TqApi(object):
             pass
 
     async def _fetch_msg(self):
-        while not self.diffs:
+        while not self.pending_diffs:
             pack = await self.recv_chan.recv()
             if pack is None:
                 return
-            self.diffs.extend(pack.get("data", []))
+            self.pending_diffs.extend(pack.get("data", []))
 
     @staticmethod
     def _merge_diff(result, diff, prototype):
