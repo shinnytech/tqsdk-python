@@ -93,7 +93,7 @@ class TqBacktest(object):
         async for pack in self.md_recv_chan:
             await self.md_send_chan.send({"aid": "peek_message"})
             for d in pack.get("data", []):
-                TqApi._merge_diff(self.data, d, self.api.prototype)
+                TqApi._merge_diff(self.data, d, self.api.prototype, False)
 
     async def _send_snapshot(self):
         """发送初始合约信息"""
