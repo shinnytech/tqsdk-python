@@ -41,6 +41,7 @@ Python 3.6+
 --------------------------------------------------------------------------------------------------------
 
 TqSdk 使用了 python3 的原生协程和异步通讯库 asyncio，部分 IDE 不支持 asyncio，例如:
+
 * spyder: 详见 https://github.com/spyder-ide/spyder/issues/7096
 * jupyter: 详见 https://github.com/jupyter/notebook/issues/3397
 
