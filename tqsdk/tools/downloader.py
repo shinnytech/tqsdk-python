@@ -3,7 +3,8 @@
 __author__ = 'yangyang'
 
 import csv
-from datetime import datetime
+from datetime import date, datetime
+from tqsdk.api import TqApi
 
 
 class DataDownloader:
@@ -23,9 +24,9 @@ class DataDownloader:
 
             dur_sec (int): 数据周期，以秒为单位。例如: 1分钟线为60,1小时线为3600,日线为86400,Tick数据为0
 
-            start_dt (datetime): 起始时间
+            start_dt (date/datetime): 起始时间, 如果类型为 date 则指的是交易日, 如果为 datetime 则指的是具体时间点
 
-            end_dt (datetime): 结束时间
+            end_dt (date/datetime): 结束时间, 如果类型为 date 则指的是交易日, 如果为 datetime 则指的是具体时间点
 
             csv_file_name (str): 输出csv的文件名
 
@@ -40,10 +41,10 @@ class DataDownloader:
             download_tasks = {}
             # 下载从 2018-01-01 到 2018-09-01 的 SR901 日线数据
             download_tasks["SR_daily"] = DataDownloader(api, symbol_list="CZCE.SR901", dur_sec=24*60*60,
-                                start_dt=datetime(2018, 1, 1), end_dt=datetime(2018, 9, 1), csv_file_name="SR901_daily.csv")
-            # 下载从 2017-01-01凌晨0点 到 2018-09-01凌晨0点 的 IF主连 5分钟线数据
-            download_tasks["IF_5min"] = DataDownloader(api, symbol_list="KQ.m@CFFEX.IF", dur_sec=5*60,
-                                start_dt=datetime(2017, 1, 1), end_dt=datetime(2018, 9, 1), csv_file_name="IF_5min.csv")
+                                start_dt=date(2018, 1, 1), end_dt=date(2018, 9, 1), csv_file_name="SR901_daily.csv")
+            # 下载从 2017-01-01 到 2018-09-01 的 rb主连 5分钟线数据
+            download_tasks["rb_5min"] = DataDownloader(api, symbol_list="KQ.m@SHFE.rb", dur_sec=5*60,
+                                start_dt=date(2017, 1, 1), end_dt=date(2018, 9, 1), csv_file_name="rb_5min.csv")
             # 下载从 2018-01-01凌晨6点 到 2018-06-01下午4点 的 cu1805,cu1807,IC1803 分钟线数据，所有数据按 cu1805 的时间对齐
             # 例如 cu1805 夜盘交易时段, IC1803 的各项数据为 N/A
             # 例如 cu1805 13:00-13:30 不交易, 因此 IC1803 在 13:00-13:30 之间的K线数据会被跳过
@@ -59,8 +60,14 @@ class DataDownloader:
                     print("progress: ", { k:("%.2f%%" % v.get_progress()) for k,v in download_tasks.items() })
         """
         self.api = api
-        self.start_dt_nano = int(start_dt.timestamp()) * 1000000000
-        self.end_dt_nano = int(end_dt.timestamp()) * 1000000000
+        if isinstance(start_dt, datetime):
+            self.start_dt_nano = int(start_dt.timestamp()*1e9)
+        else:
+            self.start_dt_nano = TqApi._get_trading_day_start_time(int(datetime(start_dt.year, start_dt.month, start_dt.day).timestamp())*1000000000)
+        if isinstance(end_dt, datetime):
+            self.end_dt_nano = int(end_dt.timestamp()*1e9)
+        else:
+            self.end_dt_nano = TqApi._get_trading_day_end_time(int(datetime(end_dt.year, end_dt.month, end_dt.day).timestamp())*1000000000)
         self.current_dt_nano = self.start_dt_nano
         self.symbol_list = symbol_list if isinstance(symbol_list, list) else [symbol_list]
         self.dur_nano = dur_sec * 1000000000
