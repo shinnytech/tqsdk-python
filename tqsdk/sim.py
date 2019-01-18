@@ -114,7 +114,7 @@ class TqSim(object):
             await self.api_recv_chan.send(rtn_data)
 
     async def _subscribe_quote(self):
-        self.all_subscribe = self.client_subscribe | {order["symbol"] for order in self.orders.values()}
+        self.all_subscribe = self.client_subscribe | {o["symbol"] for o in self.orders.values()} | {p["symbol"] for p in self.positions.values()}
         await self.md_send_chan.send({
             "aid":"subscribe_quote",
             "ins_list":",".join(self.all_subscribe)
@@ -125,15 +125,21 @@ class TqSim(object):
             d.pop("trade", None)
             self.diffs.append(d)
             for symbol, quote_diff in d.get("quotes", {}).items():
-                self.current_datetime = max(quote_diff.get("datetime",""), self.current_datetime)
+                if quote_diff is None:
+                    continue
+                quote = self._ensure_quote(symbol)
+                quote["datetime"] = quote_diff.get("datetime", quote["datetime"])
+                self.current_datetime = max(quote["datetime"], self.current_datetime)
                 if self.current_datetime > self.trading_day_end:  # 结算
                     self._settle()
                     trading_day = self.api._get_trading_day_from_timestamp(self._get_current_timestamp())
                     self.trading_day_end = datetime.fromtimestamp(self.api._get_trading_day_end_time(trading_day) / 1e9).strftime("%Y-%m-%d %H:%M:%S.%f")
-                quote = self._ensure_quote(symbol)
-                quote["ask_price1"] = quote_diff.get("ask_price1", quote["ask_price1"])
-                quote["bid_price1"] = quote_diff.get("bid_price1", quote["bid_price1"])
-                quote["last_price"] = quote_diff.get("last_price", quote["last_price"])
+                if "ask_price1" in quote_diff:
+                    quote["ask_price1"] = float("nan") if type(quote_diff["ask_price1"]) is str else quote_diff["ask_price1"]
+                if "bid_price1" in quote_diff:
+                    quote["bid_price1"] = float("nan") if type(quote_diff["bid_price1"]) is str else quote_diff["bid_price1"]
+                if "last_price" in quote_diff:
+                    quote["last_price"] = float("nan") if type(quote_diff["last_price"]) is str else quote_diff["last_price"]
                 quote["volume_multiple"] = quote_diff.get("volume_multiple", quote["volume_multiple"])
                 quote["commission"] = quote_diff.get("commission", quote["commission"])
                 quote["margin"] = quote_diff.get("margin", quote["margin"])
@@ -160,7 +166,11 @@ class TqSim(object):
         if order["offset"].startswith("CLOSE"):
             volume_long_frozen = 0 if order["direction"] == "BUY" else order["volume_left"]
             volume_short_frozen = 0 if order["direction"] == "SELL" else order["volume_left"]
-            if not self._adjust_position(order["symbol"], volume_long_frozen=volume_long_frozen, volume_short_frozen=volume_short_frozen):
+            if order["exchange_id"] == "SHFE" or order["exchange_id"] == "INE":
+                priority = "H" if order["offset"] == "CLOSE" else "T"
+            else:
+                priority = "TH"
+            if not self._adjust_position(order["symbol"], volume_long_frozen=volume_long_frozen, volume_short_frozen=volume_short_frozen, priority=priority):
                 self._del_order(order, "平仓手数不足")
                 return
         else:
@@ -183,7 +193,11 @@ class TqSim(object):
         if order["offset"].startswith("CLOSE"):
             volume_long_frozen = 0 if order["direction"] == "BUY" else -order["volume_left"]
             volume_short_frozen = 0 if order["direction"] == "SELL" else -order["volume_left"]
-            self._adjust_position(order["symbol"], volume_long_frozen=volume_long_frozen, volume_short_frozen=volume_short_frozen)
+            if order["exchange_id"] == "SHFE" or order["exchange_id"] == "INE":
+                priority = "H" if order["offset"] == "CLOSE" else "T"
+            else:
+                priority = "HT"
+            self._adjust_position(order["symbol"], volume_long_frozen=volume_long_frozen, volume_short_frozen=volume_short_frozen, priority=priority)
         else:
             self._adjust_account(frozen_margin=-order["frozen_margin"])
             order["frozen_margin"] = 0.0
@@ -200,6 +214,8 @@ class TqSim(object):
     def _match_order(self, quote, order):
         ask_price = quote["ask_price1"]
         bid_price = quote["bid_price1"]
+        if quote["datetime"] == "":
+            return
         if "limit_price" not in order:
             price = ask_price if order["direction"] == "BUY" else bid_price
             if price != price:
@@ -229,14 +245,18 @@ class TqSim(object):
         trade_log = self._ensure_trade_log()
         trade_log["trades"].append(trade)
         self.diffs.append({"trade":{self.account_id:{"trades":{trade["trade_id"]:trade.copy()}}}})
+        if order["exchange_id"] == "SHFE" or order["exchange_id"] == "INE":
+            priority = "H" if order["offset"] == "CLOSE" else "T"
+        else:
+            priority = "TH"
         if order["offset"].startswith("CLOSE"):
             volume_long = 0 if order["direction"] == "BUY" else -order["volume_left"]
             volume_short = 0 if order["direction"] == "SELL" else -order["volume_left"]
-            self._adjust_position(order["symbol"], volume_long_frozen=volume_long, volume_short_frozen=volume_short)
+            self._adjust_position(order["symbol"], volume_long_frozen=volume_long, volume_short_frozen=volume_short, priority=priority)
         else:
             volume_long = 0 if order["direction"] == "SELL" else order["volume_left"]
             volume_short = 0 if order["direction"] == "BUY" else order["volume_left"]
-        self._adjust_position(order["symbol"], volume_long=volume_long, volume_short=volume_short, price=price)
+        self._adjust_position(order["symbol"], volume_long=volume_long, volume_short=volume_short, price=price, priority=priority)
         self._adjust_account(commission=trade["commission"])
         order["volume_left"] = 0
         self._del_order(order, "全部成交")
@@ -310,15 +330,49 @@ class TqSim(object):
     def _ensure_trade_log(self):
         return self.trade_log.setdefault(self.trading_day_end[:10], {"trades":[]})
 
-    def _adjust_position(self, symbol, volume_long_frozen=0, volume_short_frozen=0, volume_long=0, volume_short=0, price=None):
+    def _adjust_position(self, symbol, volume_long_frozen=0, volume_short_frozen=0, volume_long=0, volume_short=0, price=None, priority=None):
         position = self._ensure_position(symbol)
         volume_multiple = self.quotes[symbol]["volume_multiple"]
         if volume_long_frozen:
             position["volume_long_frozen"] += volume_long_frozen
-            position["volume_long_frozen_today"] += volume_long_frozen
+            if priority[0] == "T":
+                position["volume_long_frozen_today"] += volume_long_frozen
+                if len(priority) > 1:
+                    if position["volume_long_frozen_today"] < 0:
+                        position["volume_long_frozen_his"] += position["volume_long_frozen_today"]
+                        position["volume_long_frozen_today"] = 0
+                    elif position["volume_long_today"] < position["volume_long_frozen_today"]:
+                        position["volume_long_frozen_his"] += position["volume_long_frozen_today"] - position["volume_long_today"]
+                        position["volume_long_frozen_today"] = position["volume_long_today"]
+            else:
+                position["volume_long_frozen_his"] += volume_long_frozen
+                if len(priority) > 1:
+                    if position["volume_long_frozen_his"] < 0:
+                        position["volume_long_frozen_today"] += position["volume_long_frozen_his"]
+                        position["volume_long_frozen_his"] = 0
+                    elif position["volume_long_his"] < position["volume_long_frozen_his"]:
+                        position["volume_long_frozen_today"] += position["volume_long_frozen_his"] - position["volume_long_his"]
+                        position["volume_long_frozen_his"] = position["volume_long_his"]
         if volume_short_frozen:
             position["volume_short_frozen"] += volume_short_frozen
-            position["volume_short_frozen_today"] += volume_short_frozen
+            if priority[0] == "T":
+                position["volume_short_frozen_today"] += volume_short_frozen
+                if len(priority) > 1:
+                    if position["volume_short_frozen_today"] < 0:
+                        position["volume_short_frozen_his"] += position["volume_short_frozen_today"]
+                        position["volume_short_frozen_today"] = 0
+                    elif position["volume_short_today"] < position["volume_short_frozen_today"]:
+                        position["volume_short_frozen_his"] += position["volume_short_frozen_today"] - position["volume_short_today"]
+                        position["volume_short_frozen_today"] = position["volume_short_today"]
+            else:
+                position["volume_short_frozen_his"] += volume_short_frozen
+                if len(priority) > 1:
+                    if position["volume_short_frozen_his"] < 0:
+                        position["volume_short_frozen_today"] += position["volume_short_frozen_his"]
+                        position["volume_short_frozen_his"] = 0
+                    elif position["volume_short_his"] < position["volume_short_frozen_his"]:
+                        position["volume_short_frozen_today"] += position["volume_short_frozen_his"] - position["volume_short_his"]
+                        position["volume_short_frozen_his"] = position["volume_short_his"]
         if price is not None and price == price:
             if position["last_price"] is not None:
                 float_profit_long = (price - position["last_price"]) * position["volume_long"] * volume_multiple
@@ -338,7 +392,6 @@ class TqSim(object):
             float_profit = 0 if volume_long > 0 else position["float_profit_long"] / position["volume_long"] * volume_long
             position["open_cost_long"] += volume_long * position["last_price"] * volume_multiple if volume_long > 0 else position["open_cost_long"] / position["volume_long"] * volume_long
             position["position_cost_long"] += volume_long * position["last_price"] * volume_multiple if volume_long > 0 else position["position_cost_long"] / position["volume_long"] * volume_long
-            position["volume_long_today"] += volume_long
             position["volume_long"] += volume_long
             position["open_price_long"] = position["open_cost_long"] / volume_multiple / position["volume_long"] if position["volume_long"] else float("nan")
             position["position_price_long"] = position["position_cost_long"] / volume_multiple / position["volume_long"] if position["volume_long"] else float("nan")
@@ -348,6 +401,18 @@ class TqSim(object):
             position["position_profit"] -= close_profit
             position["margin_long"] += margin
             position["margin"] += margin
+            if priority[0] == "T":
+                position["volume_long_today"] += volume_long
+                if len(priority) > 1:
+                    if position["volume_long_today"] < 0:
+                        position["volume_long_his"] += position["volume_long_today"]
+                        position["volume_long_today"] = 0
+            else:
+                position["volume_long_his"] += volume_long
+                if len(priority) > 1:
+                    if position["volume_long_his"] < 0:
+                        position["volume_long_today"] += position["volume_long_his"]
+                        position["volume_long_his"] = 0
             self._adjust_account(float_profit=float_profit, position_profit=-close_profit, close_profit=close_profit, margin=margin)
         if volume_short:
             margin = volume_short * self.quotes[symbol]["margin"]
@@ -355,7 +420,6 @@ class TqSim(object):
             float_profit = 0 if volume_short > 0 else position["float_profit_short"] / position["volume_short"] * volume_short
             position["open_cost_short"] += volume_short * position["last_price"] * volume_multiple if volume_short > 0 else position["open_cost_short"] / position["volume_short"] * volume_short
             position["position_cost_short"] += volume_short * position["last_price"] * volume_multiple if volume_short > 0 else position["position_cost_short"] / position["volume_short"] * volume_short
-            position["volume_short_today"] += volume_short
             position["volume_short"] += volume_short
             position["open_price_short"] = position["open_cost_short"] / volume_multiple / position["volume_short"] if position["volume_short"] else float("nan")
             position["position_price_short"] = position["position_cost_short"] / volume_multiple / position["volume_short"] if position["volume_short"] else float("nan")
@@ -365,9 +429,22 @@ class TqSim(object):
             position["position_profit"] -= close_profit
             position["margin_short"] += margin
             position["margin"] += margin
-            self._adjust_account(float_profit=float_profit, position_profit=-close_profit, close_profit=close_profit, margin = margin)
+            if priority[0] == "T":
+                position["volume_short_today"] += volume_short
+                if len(priority) > 1:
+                    if position["volume_short_today"] < 0:
+                        position["volume_short_his"] += position["volume_short_today"]
+                        position["volume_short_today"] = 0
+            else:
+                position["volume_short_his"] += volume_short
+                if len(priority) > 1:
+                    if position["volume_short_his"] < 0:
+                        position["volume_short_today"] += position["volume_short_his"]
+                        position["volume_short_his"] = 0
+            self._adjust_account(float_profit=float_profit, position_profit=-close_profit, close_profit=close_profit, margin=margin)
         self._send_position(position)
-        return position["volume_long"] - position["volume_long_frozen"] >= 0 and position["volume_short"] - position["volume_short_frozen"] >= 0
+        return position["volume_long_his"] - position["volume_long_frozen_his"] >= 0 and position["volume_long_today"] - position["volume_long_frozen_today"] >= 0 and\
+               position["volume_short_his"] - position["volume_short_frozen_his"] >= 0 and position["volume_short_today"] - position["volume_short_frozen_today"] >= 0
 
     def _adjust_account(self, commission=0.0, frozen_margin=0.0, float_profit=0.0, position_profit=0.0, close_profit=0.0, margin=0.0):
         self.account["balance"] += position_profit + close_profit - commission
@@ -385,6 +462,7 @@ class TqSim(object):
     def _ensure_position(self, symbol):
         if symbol not in self.positions:
             self.positions[symbol] = {
+                "symbol": symbol,
                 "exchange_id": symbol.split(".", maxsplit=1)[0],
                 "instrument_id": symbol.split(".", maxsplit=1)[1],
                 "volume_long_today": 0,
@@ -425,6 +503,7 @@ class TqSim(object):
             self.quotes[symbol] = {
                 "symbol": symbol,
                 "orders": {},
+                "datetime": "",
                 "ask_price1": float("nan"),
                 "bid_price1": float("nan"),
                 "last_price": float("nan"),
