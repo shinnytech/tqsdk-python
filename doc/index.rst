@@ -13,6 +13,7 @@ TianQin Python SDK User Guide
     quickstart.rst
     core/index.rst
     tq/index.rst
+    advanced/index.rst
     demo.rst
     faq.rst
     version.rst
