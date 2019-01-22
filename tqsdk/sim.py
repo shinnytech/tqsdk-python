@@ -129,7 +129,7 @@ class TqSim(object):
                 if self.current_datetime > self.trading_day_end:  # 结算
                     self._settle()
                     trading_day = self.api._get_trading_day_from_timestamp(self._get_current_timestamp())
-                    self.trading_day_end = datetime.fromtimestamp(self.api._get_trading_day_end_time(trading_day) / 1e9).strftime("%Y-%m-%d %H:%M:%S.%f")
+                    self.trading_day_end = datetime.fromtimestamp((self.api._get_trading_day_end_time(trading_day)-1000) / 1e9).strftime("%Y-%m-%d %H:%M:%S.%f")
                 quote = self._ensure_quote(symbol)
                 quote["ask_price1"] = quote_diff.get("ask_price1", quote["ask_price1"])
                 quote["bid_price1"] = quote_diff.get("bid_price1", quote["bid_price1"])
