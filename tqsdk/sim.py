@@ -133,7 +133,7 @@ class TqSim(object):
                 if self.current_datetime > self.trading_day_end:  # 结算
                     self._settle()
                     trading_day = self.api._get_trading_day_from_timestamp(self._get_current_timestamp())
-                    self.trading_day_end = datetime.fromtimestamp(self.api._get_trading_day_end_time(trading_day) / 1e9).strftime("%Y-%m-%d %H:%M:%S.%f")
+                    self.trading_day_end = datetime.fromtimestamp((self.api._get_trading_day_end_time(trading_day)-1000) / 1e9).strftime("%Y-%m-%d %H:%M:%S.%f")
                 if "ask_price1" in quote_diff:
                     quote["ask_price1"] = float("nan") if type(quote_diff["ask_price1"]) is str else quote_diff["ask_price1"]
                 if "bid_price1" in quote_diff:
