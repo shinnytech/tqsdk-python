@@ -40,4 +40,4 @@ def notify_update(target, recursive):
 			q.send_nowait(True)
 		if recursive:
 			for v in target.values():
-				notify_update(v, recursive)
+				notify_update.__func__(v, recursive)
