@@ -18,7 +18,7 @@ setuptools.setup(
     packages=setuptools.find_packages(exclude=["tqsdk.test"]),
     zip_safe=False,
     python_requires='>=3.6',
-    install_requires=["websockets>=6.0", "requests"],
+    install_requires=["websockets>=6.0", "requests", "numpy", "pandas"],
     classifiers=(
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: Apache Software License",
