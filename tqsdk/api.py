@@ -744,7 +744,7 @@ class TqApi(object):
         if isinstance(self.account, str):  # 如果帐号类型是字符串，则连接天勤客户端
             self.recv_chan.send_nowait({"aid":"rtn_data","data":[{"trade":{self.account_id:{"trade_more_data": False}}}]})  # 天勤以 mdhis_more_data 来标记账户截面发送结束
             ws_send_chan, ws_recv_chan = TqChan(self), TqChan(self)
-            self.create_task(self._connect(url if url else "ws://127.0.0.1:7777/", ws_send_chan, ws_recv_chan))  # 启动到天勤客户端的连接
+            self.create_task(self._connect((url if url else "ws://127.0.0.1:7777/") + self.account, ws_send_chan, ws_recv_chan))  # 启动到天勤客户端的连接
             if "." in self.account_id:
                 self.account = TqSubAccount(self.account_id)
                 self.create_task(self.account._run(self, self.send_chan, self.recv_chan, ws_send_chan, ws_recv_chan))
