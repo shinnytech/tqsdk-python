@@ -105,7 +105,7 @@ class TqSubAccount(object):
             offset = self.trades[tid]["offset"]
             symbol = self.trades[tid]["exchange_id"] + "." + self.trades[tid]["instrument_id"]
             if self.trades[tid]["exchange_id"] == "SHFE" or self.trades[tid]["exchange_id"] == "INE":
-                priority = "H" if offset["offset"] == "CLOSE" else "T"
+                priority = "H" if offset == "CLOSE" else "T"
             else:
                 priority = "TH"
             if offset.startswith("CLOSE"):
