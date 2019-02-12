@@ -6,7 +6,7 @@ __author__ = 'limin'
 '''
 天勤主程序启动外部python进程的入口, 这样用:
 
-backtest.py --symbol=SHFE.cu1801 --duration=30 --ins_service=http://....  --md_service=ws://xxxxx --trade_service=ws://....
+backtest.py --ins_service=http://....  --md_service=ws://xxxxx --trade_service=ws://....
 
 此进程持续运行
 '''
@@ -29,38 +29,42 @@ class TqBacktestLogger(logging.Handler):
         self.records = []
 
     def emit(self, record):
+        dt = record.created * 1000000000 + record.msecs * 1000000
         self.records.append({
-            # "level": str(record.level),
-            "content": self.format(record)
+            "datetime": dt,
+            "level": str(record.levelname),
+            "content": record.msg,
         })
 
 
+def json_output(f, obj):
+    json.dump(obj, f)
+    f.write("\n")
+
+
 def save_report_to_json_file(trade_log, logs, fn):
-    outs = []
-    outs.append({
-        "datetime": 0,
-        "type": "INFO",
-        "user_name": "abcdef",
-    })
-    for trading_day, daily_record in trade_log.items():
-        trades = daily_record.get("trades", [])
-        for trade in trades:
-            rec = {
-                "datetime": trade["trade_date_time"],
-                "type": "TRADE",
-                "trade": trade,
+    with open(fn, "a+") as f:
+        json_output(f, {
+            "datetime": 0,
+            "type": "INFO",
+            "user_name": "abcdef",
+        })
+        for trading_day, daily_record in trade_log.items():
+            trades = daily_record.get("trades", [])
+            for trade in trades:
+                rec = {
+                    "datetime": trade["trade_date_time"],
+                    "type": "TRADE",
+                    "trade": trade,
+                }
+                json_output(f, rec)
+            snap = {
+                "datetime": 1524812399999999000,
+                "type:": "SNAP",
+                "accounts": daily_record.get("account", {}),
+                "positions": daily_record.get("positions", {}),
             }
-            outs.append(rec)
-        snap = {
-            "datetime": trading_day,
-            "type:": "SNAP",
-            "account": daily_record.get("account", {}),
-            "positions": daily_record.get("positions", {}),
-        }
-        outs.append(snap)
-    # outs = {"trades": trades, "snaps": snaps, "logs": logs}
-    with open(fn, "wt") as f:
-        json.dump(outs, f, indent=2)
+            json_output(f, snap)
 
 
 def backtest():
