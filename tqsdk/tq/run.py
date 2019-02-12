@@ -6,7 +6,7 @@ __author__ = 'limin'
 '''
 天勤主程序启动外部python进程的入口, 这样用:
 
-run.py --file=C:\\tqsdk\\xx\\a.py --symbol=SHFE.cu1801 --duration=30 --instance_id=ABCD --ins_service=http://....  --md_service=ws://xxxxx --trade_service=ws://....
+run.py --file=C:\\tqsdk\\xx\\a.py --instance_id=ABCD --ins_service=http://....  --md_service=ws://xxxxx --trade_service=ws://....
 
 此进程持续运行
 '''
@@ -14,14 +14,10 @@ run.py --file=C:\\tqsdk\\xx\\a.py --symbol=SHFE.cu1801 --duration=30 --instance_
 import os
 import sys
 import json
-import asyncio
 import argparse
-import importlib
-import inspect
 import logging
 from pathlib import Path
 
-from tqsdk.tq.tqbase import TqBase
 from tqsdk.tq.utility import input_param, load_strategy_file
 from tqsdk.api import TqApi
 
@@ -33,12 +29,13 @@ class TqRunLogger(logging.Handler):
         self.instance_id = instance_id
 
     def emit(self, record):
-        print (record)
+        dt = record.created * 1000000000 + record.msecs * 1000000
         self.chan.send_nowait({
             "aid": "log",
+            "datetime": dt,
             "instance_id": self.instance_id,
-            # "level": str(record.level),
-            "content": self.format(record)
+            "level": str(record.levelname),
+            "content": record.msg,
         })
 
 
