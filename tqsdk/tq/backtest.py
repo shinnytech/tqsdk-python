@@ -24,48 +24,64 @@ from tqsdk.tq.utility import input_param_backtest, load_strategy_file
 import tqsdk
 
 
+
 class TqBacktestLogger(logging.Handler):
-    def __init__(self, chan):
+    def __init__(self, sim, out):
         logging.Handler.__init__(self)
-        self.records = []
+        self.sim = sim
+        self.out = out
 
     def emit(self, record):
-        dt = record.created * 1000000000 + record.msecs * 1000000
-        self.records.append({
-            "datetime": dt,
+        json.dump({
+            "aid": "log",
+            "datetime": self.sim._get_current_timestamp(),
             "level": str(record.levelname),
             "content": record.msg,
-        })
+        }, self.out)
+        self.out.write("\n")
+        self.out.flush()
 
+def write_snapshot(sim, out, account, positions):
+    json.dump({
+        "aid": "snapshot",
+        "datetime": sim._get_current_timestamp(),
+        "account": {k: v for k, v in account.items() if not k.startswith("_")},
+        "positions": {k: {pk: pv for pk, pv in v.items() if  not pk.startswith("_")} for k, v in positions.items() if not k.startswith("_")},
+    }, out)
+    out.write("\n")
+    out.flush()
 
-def json_output(f, obj):
-    json.dump(obj, f)
-    f.write("\n")
-
-
-def save_report_to_json_file(trade_log, logs, fn):
-    with open(fn, "a+") as f:
-        json_output(f, {
-            "datetime": 0,
-            "type": "INFO",
-            "user_name": "abcdef",
-        })
-        for trading_day, daily_record in trade_log.items():
-            trades = daily_record.get("trades", [])
-            for trade in trades:
-                rec = {
-                    "datetime": trade["trade_date_time"],
-                    "type": "TRADE",
-                    "trade": trade,
-                }
-                json_output(f, rec)
-            snap = {
-                "datetime": 1524812399999999000,
-                "type:": "SNAP",
-                "accounts": {"CNY": daily_record.get("account", {})},
-                "positions": daily_record.get("positions", {}),
-            }
-            json_output(f, snap)
+async def account_watcher(api, sim, out):
+    account = api.get_account()
+    positions = api.get_position()
+    trades = api._get_obj(api.data, ["trade", api.account_id, "trades"])
+    try:
+        async with api.register_update_notify() as update_chan:
+            async for _ in update_chan:
+                account_changed = api.is_changing(account, "static_balance")
+                for d in api.diffs:
+                    for oid in d.get("trade", {}).get(api.account_id, {}).get("orders", {}).keys():
+                        account_changed = True
+                        json.dump({
+                            "aid": "order",
+                            "datetime": sim._get_current_timestamp(),
+                            "order": {k: v for k, v in api.get_order(oid).items() if not k.startswith("_")},
+                        }, out)
+                        out.write("\n")
+                        out.flush()
+                    for tid in d.get("trade", {}).get(api.account_id, {}).get("trades", {}).keys():
+                        account_changed = True
+                        json.dump({
+                            "aid": "trade",
+                            "datetime": sim._get_current_timestamp(),
+                            "trade": {k: v for k, v in trades[tid].items() if not k.startswith("_")},
+                        }, out)
+                        out.write("\n")
+                        out.flush()
+                if account_changed:
+                    write_snapshot(sim, out, account, positions)
+    finally:
+        write_snapshot(sim, out, account, positions)
 
 
 def backtest():
@@ -88,21 +104,21 @@ def backtest():
         print(2)
         return
     print("dddd", bk_left, bk_right, param_list)
+    out = open(args.out, "a+")
     # api
     s = TqSim()
     api = TqApi(s, debug="C:\\tmp\\debug.log", backtest=TqBacktest(start_dt=bk_left, end_dt=bk_right))
 
     with closing(api):
-        instance = t_class(api, param_list=param_list)
-        print("api")
-
         # log
         logger = logging.getLogger("TQ")
         logger.setLevel(logging.INFO)
-        th = TqBacktestLogger(api.send_chan)
-        th.setLevel(logging.INFO)
-        th.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-        logger.addHandler(th)
+        logger.addHandler(TqBacktestLogger(s, out))
+
+        api.create_task(account_watcher(api, s, out))
+        instance = t_class(api, param_list=param_list)
+        print("api")
+
 
         # run
         try:
@@ -112,7 +128,6 @@ def backtest():
                 instance.on_data()
         except tqsdk.exceptions.BacktestFinished:
             print("finish")
-            save_report_to_json_file(s.trade_log, th.records, args.out)
 
 
 if __name__ == "__main__":
