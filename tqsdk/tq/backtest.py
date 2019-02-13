@@ -45,8 +45,10 @@ def write_snapshot(sim, out, account, positions):
     json.dump({
         "aid": "snapshot",
         "datetime": sim._get_current_timestamp(),
-        "account": {k: v for k, v in account.items() if not k.startswith("_")},
-        "positions": {k: {pk: pv for pk, pv in v.items() if  not pk.startswith("_")} for k, v in positions.items() if not k.startswith("_")},
+        "accounts": {
+            "CNY": {k: v for k, v in account.items() if not k.startswith("_")},
+        },
+        "positions": {k: {pk: pv for pk, pv in v.items() if not pk.startswith("_")} for k, v in positions.items() if not k.startswith("_")},
     }, out)
     out.write("\n")
     out.flush()
@@ -55,6 +57,7 @@ async def account_watcher(api, sim, out):
     account = api.get_account()
     positions = api.get_position()
     trades = api._get_obj(api.data, ["trade", api.account_id, "trades"])
+    write_snapshot(sim, out, account, positions)
     try:
         async with api.register_update_notify() as update_chan:
             async for _ in update_chan:
