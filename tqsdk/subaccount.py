@@ -74,6 +74,10 @@ class TqSubAccount(object):
         self._porcess_quote(pack["data"])
         self._porcess_trade(pack["data"])
         self._porcess_order(pack["data"])
+        for d in pack["data"]:
+            trade_more_data = d.get("trade", {}).get(self.main_account_id, {}).get("trade_more_data", None)
+            if trade_more_data is not None:
+                self.diffs.append({"trade": {self.account_id: {"trade_more_data":trade_more_data}}})
 
     def _porcess_quote(self, diff):
         for d in diff:

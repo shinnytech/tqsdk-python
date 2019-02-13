@@ -770,6 +770,11 @@ class TqApi(object):
                 td_url = url if url else "wss://opentd.shinnytech.com/trade/user0"
                 self.create_task(self._connect(td_url, ws_td_send_chan, ws_td_recv_chan))  # 启动交易websocket连接
                 self.create_task(self.account._run(self, self.send_chan, self.recv_chan, ws_md_send_chan, ws_md_recv_chan, ws_td_send_chan, ws_td_recv_chan))
+            if "." in self.account_id:
+                api_send_chan, api_recv_chan = self.send_chan, self.recv_chan
+                self.send_chan, self.recv_chan = TqChan(self), TqChan(self)
+                self.account = TqSubAccount(self.account_id)
+                self.create_task(self.account._run(self, self.send_chan, self.recv_chan, api_send_chan, api_recv_chan))
 
     def _fetch_symbol_info(self, url):
         """获取合约信息"""

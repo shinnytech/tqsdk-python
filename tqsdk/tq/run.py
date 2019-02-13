@@ -20,7 +20,7 @@ from pathlib import Path
 from contextlib import closing
 
 from tqsdk.tq.utility import input_param, load_strategy_file
-from tqsdk.api import TqApi
+from tqsdk.api import TqApi, TqAccount
 
 
 class TqRunLogger(logging.Handler):
@@ -48,7 +48,7 @@ def run():
     args = parser.parse_args()
 
     # api
-    api = TqApi(args.instance_id, debug="C:\\tmp\\debug.log")
+    api = TqApi(TqAccount("", args.instance_id, ""), url="ws://127.0.0.1:7777/" + args.instance_id, debug="C:\\tmp\\debug.log")
     with closing(api):
         # log
         logger = logging.getLogger("TQ")
