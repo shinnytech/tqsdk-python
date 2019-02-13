@@ -17,6 +17,7 @@ import argparse
 import datetime
 import json
 import logging
+from contextlib import closing
 
 from tqsdk import TqApi, TqSim, TqBacktest
 from tqsdk.tq.utility import input_param_backtest, load_strategy_file
@@ -61,7 +62,7 @@ def save_report_to_json_file(trade_log, logs, fn):
             snap = {
                 "datetime": 1524812399999999000,
                 "type:": "SNAP",
-                "accounts": daily_record.get("account", {}),
+                "accounts": {"CNY": daily_record.get("account", {})},
                 "positions": daily_record.get("positions", {}),
             }
             json_output(f, snap)
@@ -90,28 +91,29 @@ def backtest():
     # api
     s = TqSim()
     api = TqApi(s, debug="C:\\tmp\\debug.log", backtest=TqBacktest(start_dt=bk_left, end_dt=bk_right))
-    instance = t_class(api, param_list=param_list)
-    print("api")
 
-    # log
-    logger = logging.getLogger("TQ")
-    logger.setLevel(logging.INFO)
-    th = TqBacktestLogger(api.send_chan)
-    th.setLevel(logging.INFO)
-    th.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-    logger.addHandler(th)
+    with closing(api):
+        instance = t_class(api, param_list=param_list)
+        print("api")
 
-    # run
-    try:
-        instance.on_start()
-        while True:
-            api.wait_update()
-            instance.on_data()
-    except tqsdk.exceptions.BacktestFinished:
-        print("finish")
-        save_report_to_json_file(s.trade_log, th.records, args.out)
+        # log
+        logger = logging.getLogger("TQ")
+        logger.setLevel(logging.INFO)
+        th = TqBacktestLogger(api.send_chan)
+        th.setLevel(logging.INFO)
+        th.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+        logger.addHandler(th)
 
-    api.close()
+        # run
+        try:
+            instance.on_start()
+            while True:
+                api.wait_update()
+                instance.on_data()
+        except tqsdk.exceptions.BacktestFinished:
+            print("finish")
+            save_report_to_json_file(s.trade_log, th.records, args.out)
+
 
 if __name__ == "__main__":
     backtest()

@@ -17,6 +17,7 @@ import json
 import argparse
 import logging
 from pathlib import Path
+from contextlib import closing
 
 from tqsdk.tq.utility import input_param, load_strategy_file
 from tqsdk.api import TqApi
@@ -29,7 +30,7 @@ class TqRunLogger(logging.Handler):
         self.instance_id = instance_id
 
     def emit(self, record):
-        dt = record.created * 1000000000 + record.msecs * 1000000
+        dt = int(record.created * 1000000000 + record.msecs * 1000000)
         self.chan.send_nowait({
             "aid": "log",
             "datetime": dt,
@@ -46,48 +47,46 @@ def run():
     parser.add_argument('--instance_id')
     args = parser.parse_args()
 
-    #加载策略文件
-    t_class = load_strategy_file(args.file)
-    if not t_class:
-        return
-
-    # 加载或输入参数
-    param_file_name = os.path.join(str(Path.home()), args.instance_id + ".param")
-    try:
-        with open(param_file_name, "rt") as param_file:
-            param_list = json.load(param_file)
-    except IOError:
-        param_list = input_param(t_class)
-    if param_list is None:
-        return
-    with open(param_file_name, "wt") as param_file:
-        json.dump(param_list, param_file)
-
     # api
     api = TqApi(args.instance_id, debug="C:\\tmp\\debug.log")
-    instance = t_class(api, param_list=param_list)
+    with closing(api):
+        # log
+        logger = logging.getLogger("TQ")
+        logger.setLevel(logging.INFO)
+        th = TqRunLogger(api.send_chan, args.instance_id)
+        th.setLevel(logging.INFO)
+        logger.addHandler(th)
 
-    # log
-    logger = logging.getLogger("TQ")
-    logger.setLevel(logging.INFO)
-    th = TqRunLogger(api.send_chan, args.instance_id)
-    th.setLevel(logging.INFO)
-    th.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-    logger.addHandler(th)
+        try:
+            #加载策略文件
+            t_class = load_strategy_file(args.file)
+            if not t_class:
+                return
 
-    # run
-    instance.on_start()
-    while True:
-        api.wait_update()
-        instance.on_data()
-    # try:
-    #     instance.on_start()
-    #     while True:
-    #         api.wait_update()
-    #         instance.on_data()
-    # except Exception:
-    #     pass
-    #     # logger.log(...)
+            # 加载或输入参数
+            param_file_name = os.path.join(str(Path.home()), args.instance_id + ".param")
+            try:
+                with open(param_file_name, "rt") as param_file:
+                    param_list = json.load(param_file)
+            except IOError:
+                param_list = input_param(t_class)
+            if param_list is None:
+                return
+            with open(param_file_name, "wt") as param_file:
+                json.dump(param_list, param_file)
+
+            # 创建策略实例
+            instance = t_class(api, param_list=param_list)
+
+            # run
+            instance.on_start()
+            while True:
+                api.wait_update()
+                instance.on_data()
+        except ModuleNotFoundError:
+            logger.exception("加载策略文件失败")
+        except IndentationError:
+            logger.exception("策略文件缩进格式错误")
 
 
 if __name__ == "__main__":
