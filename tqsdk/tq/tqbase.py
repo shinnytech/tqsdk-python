@@ -10,7 +10,7 @@ import contextlib
 import logging
 import time
 
-from tqsdk import TqApi, TqSim, TargetPosTask
+from tqsdk import TqApi, TqSim, TargetPosTask, TqChan
 # from tqsdk.tq.logger import WidgetLogger, log_task_exception
 
 
@@ -24,6 +24,7 @@ class TqBase:
     def __init__(self, api):
         self.api = api
         self.logger = logging.getLogger("TQ")
+        self.desc_chan = TqChan(api)
 
     def on_start(self):
         pass
@@ -32,11 +33,7 @@ class TqBase:
         pass
 
     def set_desc(self, desc):
-        self.api.send_chan.send_nowait({
-            "aid": "status",
-            "instance_id": self.api.account_id,
-            "desc": desc,
-        })
+        self.desc_chan.send_nowait(desc)
 
 
 # class TqGui(TqBase):

@@ -16,6 +16,7 @@ import sys
 import json
 import argparse
 import logging
+import time
 from pathlib import Path
 from contextlib import closing
 
@@ -37,6 +38,16 @@ class TqRunLogger(logging.Handler):
             "instance_id": self.instance_id,
             "level": str(record.levelname),
             "content": record.msg,
+        })
+
+
+async def desc_watcher(api, instance_id, desc_chan):
+    async for desc in desc_chan:
+        api.send_chan.send_nowait({
+            "aid": "status",
+            "datetime": int(time.time()*1e9),
+            "instance_id": instance_id,
+            "desc": desc,
         })
 
 
@@ -77,6 +88,7 @@ def run():
 
             # 创建策略实例
             instance = t_class(api, param_list=param_list)
+            api.create_task(desc_watcher(api, args.instance_id, instance.desc_chan))
 
             # run
             instance.on_start()

@@ -86,6 +86,18 @@ async def account_watcher(api, sim, out):
     finally:
         write_snapshot(sim, out, account, positions)
 
+async def desc_watcher(api, sim, out, desc_chan, start_dt, end_dt):
+    async for desc in desc_chan:
+        json.dump({
+            "aid": "status",
+            "datetime": sim._get_current_timestamp(),
+            "desc": desc,
+            "start_dt": start_dt,
+            "end_dt": end_dt,
+        }, out)
+        out.write("\n")
+        out.flush()
+
 
 def backtest():
     #获取命令行参数
@@ -120,6 +132,7 @@ def backtest():
 
         api.create_task(account_watcher(api, s, out))
         instance = t_class(api, param_list=param_list)
+        api.create_task(desc_watcher(api, s, out, instance.desc_chan, int(bk_left.timestamp()*1e9), int(bk_right.timestamp()*1e9)))
         print("api")
 
 
