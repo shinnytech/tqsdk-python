@@ -3,15 +3,11 @@
 __author__ = 'limin'
 
 
-import os
 import sys
-import importlib
-import inspect
 import datetime
 from PyQt5.QtWidgets import (QDialog, QWidget, QPushButton,
     QHBoxLayout, QVBoxLayout, QApplication, QLabel, QLineEdit, QDateTimeEdit)
 from PyQt5.QtCore import pyqtSlot
-from tqsdk.tq.tqbase import TqBase, TqKlineStrategy
 
 
 class ParamDialog(QDialog):
@@ -80,13 +76,9 @@ class ParamDialog(QDialog):
         self.close()
 
 
-def input_param(classT):
-    param_list = []
-    mms = inspect.getmembers(classT)
-    for k, v in mms:
-        if k.upper() != k:
-            continue
-        param_list.append([k, v])
+def input_param(param_list):
+    if not param_list:
+        return param_list
     app = QApplication(sys.argv)
     dialog = ParamDialog(param_list, False)
     if not dialog.exec():
@@ -94,13 +86,7 @@ def input_param(classT):
     return dialog.params
 
 
-def input_param_backtest(classT):
-    param_list = []
-    mms = inspect.getmembers(classT)
-    for k, v in mms:
-        if k.upper() != k:
-            continue
-        param_list.append([k, v])
+def input_param_backtest(param_list):
     app = QApplication(sys.argv)
     dialog = ParamDialog(param_list, True)
     if not dialog.exec():
@@ -108,25 +94,6 @@ def input_param_backtest(classT):
     return dialog.params, dialog.bk_left, dialog.bk_right
 
 
-def load_strategy_file(file_full_path):
-    #加载策略文件
-    # execfile("/home/el/foo2/mylib.py")
-    file_path, file_name = os.path.split(file_full_path)
-    sys.path.insert(0, file_path)
-    module_name = file_name[:-3]
-    t_module = importlib.import_module(module_name)
-    for name, obj in inspect.getmembers(t_module):
-        if inspect.isclass(obj) and issubclass(obj, TqBase):
-            return obj
-    return None
-
-
 if __name__ == "__main__":
-    class Demo(TqKlineStrategy):
-        '''
-        Demo String
-        '''
-        N = 100 #comment N
-
-    ds = input_param_backtest(Demo)
+    ds = input_param_backtest([("A", 10)])
     print(4, ds)
