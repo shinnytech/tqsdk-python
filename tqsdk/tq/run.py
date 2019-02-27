@@ -15,7 +15,7 @@ import json
 import argparse
 import logging
 import importlib
-from contextlib import closing
+import datetime
 
 import tqsdk
 from tqsdk.tq.utility import input_param
@@ -53,7 +53,7 @@ def run():
 
     # api
     api = TqApi(TqAccount("", args.instance_id, ""), url="ws://127.0.0.1:7777/" + args.instance_id)
-    with closing(api):
+    try:
         # log
         logger = logging.getLogger("TQ")
         logger.setLevel(logging.INFO)
@@ -74,14 +74,16 @@ def run():
                 with open(args.instance_file, "rt") as param_file:
                     instance = json.load(param_file)
                     param_list = instance.get("param_list", [])
-            except IOError:
+            except Exception:
                 # 获取用户代码中的参数表
                 def _fake_api_for_param_list(*args, **kwargs):
                     m = sys.modules[module_name]
                     for k, v in m.__dict__.items():
                         if k.upper() != k:
                             continue
-                        param_list.append([k, v])
+                        if isinstance(v, datetime.date) or isinstance(v, datetime.time) \
+                                or isinstance(v, int) or isinstance(v, float) or isinstance(v, str):
+                            param_list.append([k, v])
                     raise Exception()
 
                 tqsdk.TqApi = _fake_api_for_param_list
@@ -122,7 +124,9 @@ def run():
             logger.exception("策略文件缩进格式错误")
         except Exception as e:
             logger.exception("策略运行中遇到异常", exc_info=True)
-
+    finally:
+        if not api.loop.is_closed():
+            api.close()
 
 if __name__ == "__main__":
     run()

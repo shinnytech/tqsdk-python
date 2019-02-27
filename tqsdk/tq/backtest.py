@@ -157,7 +157,7 @@ def backtest():
 
     # 开始回测
     api = TqApi(s, backtest=TqBacktest(start_dt=start_date, end_dt=end_date))
-    with closing(api):
+    try:
         api.send_chan.send_nowait({
             "aid": "status",
             "instance_id": args.instance_id,
@@ -183,6 +183,9 @@ def backtest():
             logger.info("策略回测结束")
         except Exception as e:
             logger.exception("策略执行中遇到异常", exc_info=True)
+    finally:
+        if not api.loop.is_closed():
+            api.close()
 
 
 if __name__ == "__main__":
