@@ -13,13 +13,9 @@ def ATR(df, n):
     df["atr"] = df["tr"].rolling(n).mean()
     return df
 
-def BIAS(df, n1, n2, n3):
-    ma1 = df["close"].rolling(n1).mean()
-    ma2 = df["close"].rolling(n2).mean()
-    ma3 = df["close"].rolling(n3).mean()
-    df["bias1"] = (df["close"] - ma1) / ma1 * 100
-    df["bias2"] = (df["close"] - ma2) / ma2 * 100
-    df["bias3"] = (df["close"] - ma3) / ma3 * 100
+def BIAS(df, n):
+    ma = df["close"].rolling(n).mean()
+    df["bias"] = (df["close"] - ma) / ma * 100
     return df
 
 def BOLL(df, n, p):
@@ -54,11 +50,8 @@ def KDJ(df, n, m1, m2):
     df["j"] = 3*df["k"] - 2*df["d"]
     return df
 
-def MA(df, n1, n2, n3, n4):
-    df["ma1"] = df["close"].rolling(n1).mean()
-    df["ma2"] = df["close"].rolling(n2).mean()
-    df["ma3"] = df["close"].rolling(n3).mean()
-    df["ma4"] = df["close"].rolling(n4).mean()
+def MA(df, n):
+    df["ma"] = df["close"].rolling(n).mean()
     return df
 
 def MACD(df, short, long, m):
