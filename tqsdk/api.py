@@ -25,6 +25,8 @@ import asyncio
 import functools
 import websockets
 import requests
+import pandas as pd
+import numpy as np
 from .__version__ import __version__
 from tqsdk.sim import TqSim
 from tqsdk.subaccount import TqSubAccount
@@ -1308,6 +1310,8 @@ class SerialDataProxy(object):
         self.width = width
         self.default = default
         self.attr = list(self.default.keys())
+        self.array = None
+        self.array_index = -1
         self.ready = False
 
     def __getattr__(self, name):
@@ -1387,11 +1391,20 @@ class SerialDataProxy(object):
             Length: 200, dtype: bool
             ...
         """
-        import pandas as pd
-        rows = {}
-        for i in range(0, self.width):
-            rows[i] = {k: v for k, v in self[i].items() if not k.startswith("_")}
-        return pd.DataFrame.from_dict(rows, orient="index")
+        last_id = self.serial_root.get("last_id", -1)
+        if self.array is None:
+            array = np.array([[self.default[k] for k in self.attr]] * self.width, order="F")
+            top_row = 0
+        else:
+            array = np.roll(self.array, self.array_index - last_id)
+            top_row = max(self.array_index - last_id + self.width - 1,0)
+        for i in range(top_row, self.width):
+            item = self[i]
+            array[i] = [item[k] for k in self.attr]
+        if self.is_ready():
+            self.array = array
+            self.array_index = last_id
+        return pd.DataFrame(array, columns=self.attr)
 
 
 class TqChan(asyncio.Queue):

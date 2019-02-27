@@ -1,2 +1,4 @@
 websockets>=6.0
 requests
+numpy
+pandas
