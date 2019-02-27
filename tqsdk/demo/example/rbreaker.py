@@ -2,13 +2,15 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'limin'
 
-from tqsdk import TqApi, TqSim, TargetPosTask
-
 '''
 R-Breaker策略(隔夜留仓)
+参考: https://www.shinnytech.com/blog/r-breaker
 '''
-symbol = "SHFE.au1812"  # 合约代码
-stop_loss_price = 10  # 止损点(价格)
+
+from tqsdk import TqApi, TqSim, TargetPosTask
+
+SYMBOL = "SHFE.au1812"  # 合约代码
+STOP_LOSS_PRICE = 10  # 止损点(价格)
 
 
 def get_index_line(klines):
@@ -31,10 +33,10 @@ def get_index_line(klines):
 
 
 api = TqApi(TqSim())
-quote = api.get_quote(symbol)
-klines = api.get_kline_serial(symbol, 24*60*60)  # 86400: 使用日线
-position = api.get_position(symbol)
-target_pos = TargetPosTask(api, symbol)
+quote = api.get_quote(SYMBOL)
+klines = api.get_kline_serial(SYMBOL, 24*60*60)  # 86400: 使用日线
+position = api.get_position(SYMBOL)
+target_pos = TargetPosTask(api, SYMBOL)
 target_pos_value = position["volume_long"] - position["volume_short"]  # 目标净持仓数
 open_position_price = position["open_price_long"] if target_pos_value > 0 else position["open_price_short"]  # 开仓价
 pivot, bBreak, sSetup, sEnter, bEnter, bSetup, sBreak = get_index_line(klines)  # 七条标准线
@@ -50,8 +52,8 @@ while True:
         print("最新价: ", quote["last_price"])
 
         # 开仓价与当前行情价之差大于止损点则止损
-        if (target_pos_value > 0 and open_position_price - quote["last_price"] >= stop_loss_price) or\
-            (target_pos_value < 0 and quote["last_price"] - open_position_price >= stop_loss_price):
+        if (target_pos_value > 0 and open_position_price - quote["last_price"] >= STOP_LOSS_PRICE) or\
+            (target_pos_value < 0 and quote["last_price"] - open_position_price >= STOP_LOSS_PRICE):
             target_pos_value = 0  # 平仓
 
         # 反转:

@@ -2,14 +2,15 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'chengzhi'
 
+"""
+网格交易策略
+参考: https://www.shinnytech.com/blog/grid-trading/
+"""
+
 from functools import reduce
 from contextlib import closing
 from tqsdk import TqApi, TargetPosTask, TqSim
 
-"""
-网格交易算法
-参考: https://www.shinnytech.com/blog/grid-trading/
-"""
 # 网格计划参数:
 symbol = "DCE.jd1901"  # 合约代码
 start_price = 4047  # 起始价位

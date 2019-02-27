@@ -2,24 +2,32 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'limin'
 
+'''
+Volume Weighted Average Price策略
+参考: https://www.shinnytech.com/blog/vwap
+'''
+
+import logging
 import datetime
 from tqsdk import TqApi, TqSim, TargetPosTask
 
-'''
-Volume Weighted Average Price策略
-'''
-time_cell = 5*60  # 等时长下单的时间单元, 单位: 秒
-target_volume = 300  # 目标交易手数 (>0: 多头, <0: 空头)
-symbol = "DCE.jd1905"  # 交易合约代码
-history_day_length = 20  # 使用多少天的历史数据用来计算每个时间单元的下单手数
-time_slot_start = datetime.time(9, 35)  # 计划交易时段起始时间点
-time_slot_end = datetime.time(10, 50)  # 计划交易时段终点时间点
+TIME_CELL = 5*60  # 等时长下单的时间单元, 单位: 秒
+TARGET_VOLUME = 300  # 目标交易手数 (>0: 多头, <0: 空头)
+SYMBOL = "DCE.jd1905"  # 交易合约代码
+HISTORY_DAY_LENGTH = 20  # 使用多少天的历史数据用来计算每个时间单元的下单手数
+START_HOUR, START_MINUTE = 9, 35  # 计划交易时段起始时间点
+END_HOUR, END_MINUTE = 10, 50  # 计划交易时段终点时间点
+
 
 api = TqApi(TqSim())
-# 根据 history_day_length 推算出需要订阅的历史数据长度, 需要注意history_day_length与time_cell的比例关系以避免超过订阅限制
-klines = api.get_kline_serial(symbol, time_cell, data_length=int(10*60*60/time_cell*history_day_length))
-target_pos = TargetPosTask(api, symbol)
-position = api.get_position(symbol)  # 持仓信息
+logger = logging.getLogger("TQ")
+logger.info("策略开始运行")
+# 根据 HISTORY_DAY_LENGTH 推算出需要订阅的历史数据长度, 需要注意history_day_length与time_cell的比例关系以避免超过订阅限制
+time_slot_start = datetime.time(START_HOUR, START_MINUTE)  # 计划交易时段起始时间点
+time_slot_end = datetime.time(END_HOUR, END_MINUTE)  # 计划交易时段终点时间点
+klines = api.get_kline_serial(SYMBOL, TIME_CELL, data_length=int(10*60*60/TIME_CELL*HISTORY_DAY_LENGTH))
+target_pos = TargetPosTask(api, SYMBOL)
+position = api.get_position(SYMBOL)  # 持仓信息
 
 while not klines.is_ready():  # 等待数据
     api.wait_update()
@@ -54,7 +62,7 @@ else:
 # 因此去除缺失部分交易时段的日期(即剩下的每个日期都包含预设的交易时间段内所需的全部时间单元)
 date_cnt = df["date"].value_counts()
 max_num = date_cnt.max()  # 所有日期中最完整的交易时段长度
-need_date = date_cnt[date_cnt == max_num].sort_index().index[-history_day_length - 1:-1]  # 获取今天以前的预设数目个交易日的日期
+need_date = date_cnt[date_cnt == max_num].sort_index().index[-HISTORY_DAY_LENGTH - 1:-1]  # 获取今天以前的预设数目个交易日的日期
 df = df[df["date"].isin(need_date)]  # 最终用来计算的k线数据
 
 # 计算每个时间单元的成交量占比, 并使用算数平均计算出预测值
@@ -62,18 +70,18 @@ datetime_grouped = df.groupby(['date', 'time'])['volume'].sum()  # 将K线的vol
 # 计算每个交易日内的预设交易时间段内的成交量总和(level=0: 表示按第一级索引"data"来分组)后,将每根k线的成交量除以所在交易日内的总成交量,计算其所占比例
 volume_percent = datetime_grouped / datetime_grouped.groupby(level=0).sum()
 predicted_percent = volume_percent.groupby(level=1).mean()  # 将历史上相同时间单元的成交量占比使用算数平均计算出预测值
-print("各时间单元成交量占比:\n", predicted_percent)
+logger.info("各时间单元成交量占比: %s" % predicted_percent)
 
 # 计算每个时间单元的成交量预测值
 predicted_volume = {}  # 记录每个时间单元需调整的持仓量
 percentage_left = 1  # 剩余比例
-volume_left = target_volume  # 剩余手数
+volume_left = TARGET_VOLUME  # 剩余手数
 for index, value in predicted_percent.items():
     volume = round(volume_left*(value/percentage_left))
     predicted_volume[index] = volume
     percentage_left -= value
     volume_left -= volume
-print("\n各时间单元应下单手数:\n", predicted_volume)
+logger.info("各时间单元应下单手数: %s" % predicted_volume)
 
 
 # 交易
@@ -85,11 +93,11 @@ while True:
         t = datetime.datetime.fromtimestamp(klines[-1]["datetime"]//1000000000).time()
         if t in predicted_volume:
             current_volume += predicted_volume[t]
-            print("到达下一时间单元,调整持仓为:", current_volume)
+            logger.info("到达下一时间单元,调整持仓为: %d" % current_volume)
             target_pos.set_target_volume(current_volume)
     # 用持仓信息判断是否完成所有目标交易手数
     if api.is_changing(position, "volume_long") or api.is_changing(position, "volume_short"):
-        if position["volume_long"] - position["volume_short"] == target_volume:
+        if position["volume_long"] - position["volume_short"] == TARGET_VOLUME:
             break
 
 api.close()
