@@ -26,6 +26,8 @@ class TqSim(object):
         """
         self.account_id = account_id
         self.init_balance = init_balance
+        self.current_datetime = "1990-01-01 00:00:00.000000"
+        self.trading_day_end = "1990-01-01 18:00:00.000000"
 
     async def _run(self, api, api_send_chan, api_recv_chan, md_send_chan, md_recv_chan):
         """模拟交易task"""
@@ -60,8 +62,6 @@ class TqSim(object):
         self.orders = {}
         self.quotes = {}  # 记下最新行情
         self.trade_log = {}  # 日期->交易记录及收盘时的权益及持仓
-        self.current_datetime = "1990-01-01 00:00:00.000000"
-        self.trading_day_end = "1990-01-01 18:00:00.000000"
         self.client_subscribe = set()  # 客户端订阅的合约集合
         self.all_subscribe = set()  # 客户端+模拟交易模块订阅的合约集合
         self._send_account()  # 发送初始账户信息

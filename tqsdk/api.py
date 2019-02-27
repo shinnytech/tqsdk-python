@@ -27,6 +27,7 @@ import websockets
 import requests
 from .__version__ import __version__
 from tqsdk.sim import TqSim
+from tqsdk.subaccount import TqSubAccount
 
 
 class TqApi(object):
@@ -84,7 +85,6 @@ class TqApi(object):
         self.loop.call_soon = functools.partial(self._call_soon, self.loop.call_soon)
         self.event_rev, self.check_rev = 0, 0
         self.quotes = set()  # 订阅的实时行情列表
-        self.account = account  # 交易帐号
         self.account_id = account if isinstance(account, str) else account.account_id
         self.logger = logging.getLogger("TqApi")  # 调试信息输出
         if debug:
@@ -107,7 +107,7 @@ class TqApi(object):
         if sys.platform.startswith("win"):
             self.create_task(self._windows_patch())  # Windows系统下asyncio不支持KeyboardInterrupt的临时补丁
         self.create_task(self._notify_watcher())  # 监控服务器发送的通知
-        self._setup_connection(url, backtest)  # 初始化通讯连接
+        self._setup_connection(account, url, backtest)  # 初始化通讯连接
         deadline = time.time() + 60
         try:
             while self.data.get("mdhis_more_data", True) or self.data.get("trade", {}).get(self.account_id, {}).get("trade_more_data", True):
@@ -734,19 +734,19 @@ class TqApi(object):
         self.event_rev += 1
         return org_call_soon(callback, *args, **kargs)
 
-    def _setup_connection(self, url, backtest):
+    def _setup_connection(self, account, url, backtest):
         """初始化数据连接"""
         if backtest:  # 如果处于回测模式则将帐号转为模拟帐号，并直接连接 openmd
-            if not isinstance(self.account, TqSim):
-                self.account = TqSim(account_id=self.account_id)
+            if not isinstance(account, TqSim):
+                account = TqSim(account_id=self.account_id)
             url = None
-        if isinstance(self.account, str):  # 如果帐号类型是字符串，则连接天勤客户端
+        if isinstance(account, str):  # 如果帐号类型是字符串，则连接天勤客户端
             self.recv_chan.send_nowait({"aid":"rtn_data","data":[{"trade":{self.account_id:{"trade_more_data": False}}}]})  # 天勤以 mdhis_more_data 来标记账户截面发送结束
-            self.create_task(self._connect(url if url else "ws://127.0.0.1:7777/", self.send_chan, self.recv_chan))  # 启动到天勤客户端的连接
+            self.create_task(self._connect((url if url else "ws://127.0.0.1:7777/") + self.account_id, self.send_chan, self.recv_chan))  # 启动到天勤客户端的连接
         else:
             # 默认连接 opemmd, 除非使用模拟帐号并指定了 url (例如: 使用模拟帐号连接天勤客户端使用历史复盘)
             ws_md_send_chan, ws_md_recv_chan = TqChan(self), TqChan(self)
-            md_url = url if url and isinstance(self.account, TqSim) else "wss://openmd.shinnytech.com/t/md/front/mobile"
+            md_url = url if url and isinstance(account, TqSim) else "wss://openmd.shinnytech.com/t/md/front/mobile"
             ws_md_recv_chan.send_nowait({
                 "aid": "rtn_data",
                 "data": [{"quotes": self._fetch_symbol_info("https://openmd.shinnytech.com/t/md/symbols/latest.json")}]
@@ -756,13 +756,17 @@ class TqApi(object):
                 bt_send_chan, bt_recv_chan = TqChan(self), TqChan(self)
                 self.create_task(backtest._run(self, bt_send_chan, bt_recv_chan, ws_md_send_chan, ws_md_recv_chan))
                 ws_md_send_chan, ws_md_recv_chan = bt_send_chan, bt_recv_chan
-            if isinstance(self.account, TqSim):
-                self.create_task(self.account._run(self, self.send_chan, self.recv_chan, ws_md_send_chan, ws_md_recv_chan))
+            if isinstance(account, TqSim):
+                self.create_task(account._run(self, self.send_chan, self.recv_chan, ws_md_send_chan, ws_md_recv_chan))
             else:
                 ws_td_send_chan, ws_td_recv_chan = TqChan(self), TqChan(self)
                 td_url = url if url else "wss://opentd.shinnytech.com/trade/user0"
                 self.create_task(self._connect(td_url, ws_td_send_chan, ws_td_recv_chan))  # 启动交易websocket连接
-                self.create_task(self.account._run(self, self.send_chan, self.recv_chan, ws_md_send_chan, ws_md_recv_chan, ws_td_send_chan, ws_td_recv_chan))
+                self.create_task(account._run(self, self.send_chan, self.recv_chan, ws_md_send_chan, ws_md_recv_chan, ws_td_send_chan, ws_td_recv_chan))
+        if "." in self.account_id and (isinstance(account, str) or isinstance(account, TqAccount)):
+            main_send_chan, main_recv_chan = self.send_chan, self.recv_chan
+            self.send_chan, self.recv_chan = TqChan(self), TqChan(self)
+            self.create_task(TqSubAccount(self.account_id)._run(self, self.send_chan, self.recv_chan, main_send_chan, main_recv_chan))
 
     def _fetch_symbol_info(self, url):
         """获取合约信息"""
@@ -1245,7 +1249,7 @@ class TqAccount(object):
         await td_send_chan.send({
             "aid": "req_login",
             "bid": self.broker_id,
-            "user_name": self.account_id,
+            "user_name": self.account_id.rsplit(".", 1)[0],
             "password": self.password,
         })
         md_task = api.create_task(self._md_handler(api_recv_chan, md_send_chan, md_recv_chan))
