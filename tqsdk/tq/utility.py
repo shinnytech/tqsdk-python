@@ -18,8 +18,10 @@ class ParamDialog(QDialog):
         self.inputs = []
         self.backtest = backtest
         if self.backtest:
-            self.input_bk_left = self.add_input("回测起点", datetime.date(2018, 5, 1))
-            self.input_bk_right = self.add_input("回测终点", datetime.date(2018, 5, 2))
+            dt_end = datetime.date.today()
+            dt_start = dt_end - datetime.timedelta(days=7)
+            self.input_bk_left = self.add_input("回测起点", dt_start)
+            self.input_bk_right = self.add_input("回测终点", dt_end)
         for k, v in param_list:
             qle = self.add_input(k, v)
             self.inputs.append([qle, k, v])
