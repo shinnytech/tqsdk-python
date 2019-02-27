@@ -35,6 +35,10 @@ class ParamDialog(QDialog):
             qle.setDate(v)
             qle.setDisplayFormat("yyyy.MM.dd");
             qle.setCalendarPopup(True)
+        elif isinstance(v, datetime.time):
+            qle = QDateTimeEdit(self)
+            qle.setTime(v)
+            qle.setDisplayFormat("HH:mm:ss");
         else:
             qle = QLineEdit(self)
             qle.setText(str(v))
@@ -42,9 +46,9 @@ class ParamDialog(QDialog):
         return qle
 
     def exec(self):
-        okButton = QPushButton("OK")
+        okButton = QPushButton("确定")
         okButton.clicked.connect(self.on_ok)
-        cancelButton = QPushButton("Cancel")
+        cancelButton = QPushButton("取消")
         cancelButton.clicked.connect(self.on_cancel)
 
         hbox = QHBoxLayout()
@@ -64,8 +68,12 @@ class ParamDialog(QDialog):
         for editor, k, v in self.inputs:
             if isinstance(v, datetime.date):
                 self.params.append([k, editor.date().toPyDate()])
+            elif isinstance(v, datetime.time):
+                self.params.append([k, editor.time().toPyTime()])
             elif isinstance(v, int):
                 self.params.append([k, int(editor.text())])
+            elif isinstance(v, float):
+                self.params.append([k, float(editor.text())])
             else:
                 self.params.append([k, editor.text()])
         if self.backtest:
@@ -95,7 +103,16 @@ def input_param_backtest(param_list):
         return None, None, None
     return dialog.params, dialog.bk_left, dialog.bk_right
 
+def test():
+    pms = [
+        ("STR", "ABCD.efg+中文"),
+        ("INT", 5),
+        ("FLOAT", 3.5),
+        ("DATE", datetime.date(2010, 3, 3)),
+        ("TIME", datetime.time(15, 3, 3)),
+    ]
+    ds = input_param(pms)
+    print("PMS", ds)
 
 if __name__ == "__main__":
-    ds = input_param_backtest([("A", 10)])
-    print(4, ds)
+    test()

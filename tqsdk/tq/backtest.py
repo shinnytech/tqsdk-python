@@ -33,7 +33,7 @@ class TqBacktestLogger(logging.Handler):
 
     def emit(self, record):
         if record.exc_info:
-            msg = "%s, %s" % (record.msg, str(record.exc_info[1]))
+            msg = "%s, line %d, %s" % (record.msg, record.exc_info[2].tb_next.tb_lineno, str(record.exc_info[1]))
         else:
             msg = record.msg
         json.dump({
@@ -134,7 +134,7 @@ def backtest():
 
         tqsdk.TqApi = _fake_api_for_param_list
         try:
-            importlib.import_module(module_name)
+            __import__(module_name)
         except ModuleNotFoundError:
             logger.exception("加载策略文件失败")
         except IndentationError:

@@ -31,7 +31,7 @@ class TqRunLogger(logging.Handler):
     def emit(self, record):
         dt = int(record.created * 1000000000 + record.msecs * 1000000)
         if record.exc_info:
-            msg = "%s, %s" % (record.msg, str(record.exc_info[1]))
+            msg = "%s, line %d, %s" % (record.msg, record.exc_info[2].tb_next.tb_lineno, str(record.exc_info[1]))
         else:
             msg = record.msg
         self.chan.send_nowait({
@@ -114,7 +114,7 @@ def run():
                 return api
 
             tqsdk.TqApi = _fake_api_for_launch
-            importlib.import_module(module_name)
+            __import__(module_name)
 
         except ModuleNotFoundError:
             logger.exception("加载策略文件失败")
