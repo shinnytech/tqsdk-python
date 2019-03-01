@@ -31,7 +31,10 @@ class TqRunLogger(logging.Handler):
     def emit(self, record):
         dt = int(record.created * 1000000000 + record.msecs * 1000000)
         if record.exc_info:
-            msg = "%s, line %d, %s" % (record.msg, record.exc_info[2].tb_next.tb_lineno, str(record.exc_info[1]))
+            if record.exc_info[2].tb_next:
+                msg = "%s, line %d, %s" % (record.msg, record.exc_info[2].tb_next.tb_lineno, str(record.exc_info[1]))
+            else:
+                msg = "%s, %s" % (record.msg, str(record.exc_info[1]))
         else:
             msg = record.msg
         self.chan.send_nowait({
@@ -49,9 +52,13 @@ def run():
     parser.add_argument('--source_file')
     parser.add_argument('--instance_id')
     parser.add_argument('--instance_file')
+    parser.add_argument('--ins_url')
+    parser.add_argument('--md_url')
     args = parser.parse_args()
 
     # api
+    TqApi.DEFAULT_MD_URL = args.md_url
+    TqApi.DEFAULT_INS_URL = args.ins_url
     api = TqApi(TqAccount("", args.instance_id, ""), url="ws://127.0.0.1:7777/" + args.instance_id)
     try:
         # log

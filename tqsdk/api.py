@@ -38,6 +38,9 @@ class TqApi(object):
 
     通常情况下, 一个线程中应该只有一个TqApi的实例, 它负责维护网络连接, 接收行情及账户数据, 并在内存中维护业务数据截面
     """
+    DEFAULT_MD_URL = "wss://openmd.shinnytech.com/t/md/front/mobile"
+    DEFAULT_INS_URL = "https://openmd.shinnytech.com/t/md/symbols/latest.json"
+
     def __init__(self, account, url=None, backtest=None, debug=None, loop=None):
         """
         创建天勤接口实例
@@ -51,7 +54,7 @@ class TqApi(object):
                 * str: 连接天勤终端, 实盘交易填写期货公司提供的帐号, 使用天勤终端内置的模拟交易填写"SIM", 需先在天勤终端内登录交易
 
             url (str): [可选]指定服务器的地址
-                * 当 account 为 TqAccount 类型时, 可以通过该参数指定交易服务器地址, 默认使用 opemtd.shinnytech.com. 行情始终使用 openmd.shinnytech.com
+                * 当 account 为 TqAccount 类型时, 可以通过该参数指定交易服务器地址, 默认使用 opentd.shinnytech.com. 行情始终使用 openmd.shinnytech.com
 
                 * 当 account 为 TqSim 类型时, 可以通过该参数指定行情服务器地址, 默认使用 openmd.shinnytech.com, 可以指定为天勤终端的地址
 
@@ -748,10 +751,10 @@ class TqApi(object):
         else:
             # 默认连接 opemmd, 除非使用模拟帐号并指定了 url (例如: 使用模拟帐号连接天勤客户端使用历史复盘)
             ws_md_send_chan, ws_md_recv_chan = TqChan(self), TqChan(self)
-            md_url = url if url and isinstance(account, TqSim) else "wss://openmd.shinnytech.com/t/md/front/mobile"
+            md_url = url if url and isinstance(account, TqSim) else TqApi.DEFAULT_MD_URL
             ws_md_recv_chan.send_nowait({
                 "aid": "rtn_data",
-                "data": [{"quotes": self._fetch_symbol_info("https://openmd.shinnytech.com/t/md/symbols/latest.json")}]
+                "data": [{"quotes": self._fetch_symbol_info(TqApi.DEFAULT_INS_URL)}]
             })  # 获取合约信息
             self.create_task(self._connect(md_url, ws_md_send_chan, ws_md_recv_chan))  # 启动行情websocket连接
             if backtest:  # 如果处于回测模式，则将行情连接对接到 backtest 上

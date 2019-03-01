@@ -14,11 +14,11 @@ setuptools.setup(
     author_email='tianqincn@gmail.com',
     long_description=long_description,
     long_description_content_type="text/x-rst",
-    url='http://www.shinnytech.com/tianqin',
+    url='https://www.shinnytech.com/tqsdk',
     packages=setuptools.find_packages(exclude=["tqsdk.test", "tqsdk.tq", "tqsdk.tq.*"]),
     zip_safe=False,
     python_requires='>=3.6',
-    install_requires=["websockets>=6.0", "requests", "numpy", "pandas"],
+    install_requires=["websockets>=6.0", "requests", "numpy", "pandas", "numba"],
     classifiers=(
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: Apache Software License",

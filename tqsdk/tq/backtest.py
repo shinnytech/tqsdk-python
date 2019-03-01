@@ -33,7 +33,10 @@ class TqBacktestLogger(logging.Handler):
 
     def emit(self, record):
         if record.exc_info:
-            msg = "%s, line %d, %s" % (record.msg, record.exc_info[2].tb_next.tb_lineno, str(record.exc_info[1]))
+            if record.exc_info[2].tb_next:
+                msg = "%s, line %d, %s" % (record.msg, record.exc_info[2].tb_next.tb_lineno, str(record.exc_info[1]))
+            else:
+                msg = "%s, %s" % (record.msg, str(record.exc_info[1]))
         else:
             msg = record.msg
         json.dump({
@@ -129,7 +132,9 @@ def backtest():
             for k, v in m.__dict__.items():
                 if k.upper() != k:
                     continue
-                param_list.append([k, v])
+                if isinstance(v, datetime.date) or isinstance(v, datetime.time) \
+                        or isinstance(v, int) or isinstance(v, float) or isinstance(v, str):
+                    param_list.append([k, v])
             raise Exception()
 
         tqsdk.TqApi = _fake_api_for_param_list
@@ -137,8 +142,10 @@ def backtest():
             __import__(module_name)
         except ModuleNotFoundError:
             logger.exception("加载策略文件失败")
+            return
         except IndentationError:
             logger.exception("策略文件缩进格式错误")
+            return
         except Exception as e:
             pass
 
@@ -149,7 +156,10 @@ def backtest():
             json.dump({
                 "instance_id": args.instance_id,
                 "strategy_file_name": args.source_file,
-                "desc": json.dumps(param_list),
+                "desc": "%04d/%02d/%02d-%04d/%02d/%02d, %s"
+                        % (start_date.year, start_date.month, start_date.day,
+                           end_date.year, end_date.month, end_date.day,
+                           json.dumps(param_list)),
                 "start_date": start_date.year * 10000 + start_date.month * 100 + start_date.day,
                 "end_date": end_date.year * 10000 + end_date.month * 100 + end_date.day,
                 "param_list": param_list,
@@ -174,11 +184,7 @@ def backtest():
                 return api
 
             tqsdk.TqApi = _fake_api_for_launch
-            importlib.import_module(module_name)
-        except ModuleNotFoundError:
-            logger.exception("加载策略文件失败")
-        except IndentationError:
-            logger.exception("策略文件缩进格式错误")
+            __import__(module_name)
         except tqsdk.exceptions.BacktestFinished:
             logger.info("策略回测结束")
         except Exception as e:
