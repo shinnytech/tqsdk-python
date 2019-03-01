@@ -131,6 +131,7 @@ class TargetPosTask(object):
                 delta_volume -= order_volume if order_dir == "BUY" else -order_volume
             self.current_pos = target_pos
 
+
 class InsertOrderUntilAllTradedTask(object):
     """追价下单task, 该task会在行情变化后自动撤单重下，直到全部成交"""
     def __init__(self, api, symbol, direction, offset, volume, price = "ACTIVE", trade_chan = None):
@@ -209,6 +210,7 @@ class InsertOrderUntilAllTradedTask(object):
                 if (self.direction == "BUY" and new_price > order_price) or (self.direction == "SELL" and new_price < order_price):
                     self.api.cancel_order(order)
                     break
+
 
 class InsertOrderTask(object):
     """下单task"""

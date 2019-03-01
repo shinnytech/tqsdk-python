@@ -4,7 +4,7 @@
 =================================================
 天勤终端支持历史复盘功能.
 
-想了解怎样在天勤终端中使用历史复盘功能, 请参见 http://doc.shinnytech.com/tq/latest/usage/mdreplay.html
+想了解怎样在天勤终端中使用历史复盘功能, 请参见 https://doc.shinnytech.com/tq/latest/usage/mdreplay.html
 
 当天勤处于历史复盘状态时, 您可以将 TqSdk 连接到天勤终端.
 在这种情况下, TqSdk 获取的实时行情将是天勤的复盘行情.

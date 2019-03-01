@@ -55,16 +55,16 @@ TqSdk 使用了 python3 的原生协程和异步通讯库 asyncio，部分 IDE �
 
 + 直接使用 api.insert_order 下单，在 offset 字段上可以直接指定平今平昨（`CLOSETODAY`/`CLOSE`）。
 
-.. literalinclude:: ../tqsdk/demo/t41.py
-    :caption: python demo/t41.py
+.. literalinclude:: ../tqsdk/demo/tutorial/t41.py
+    :caption: python demo/tutorial/t41.py
     :language: python
     :linenos:
 
 
 + 使用 TargetPosTask，目标持仓模型下单，通过参数 `offset_priority` 设置平今平昨优先级。
 
-.. literalinclude:: ../tqsdk/demo/t71.py
-    :caption: python demo/t71.py
+.. literalinclude:: ../tqsdk/demo/tutorial/t71.py
+    :caption: python demo/tutorial/t71.py
     :language: python
     :linenos:
 
@@ -76,8 +76,8 @@ TqSdk 使用了 python3 的原生协程和异步通讯库 asyncio，部分 IDE �
 
 在创建 TqApi 实例时可以传入 TqBacktest 启用回测功能
 
-.. literalinclude:: ../tqsdk/demo/backtest.py
-    :caption: python demo/backtest.py
+.. literalinclude:: ../tqsdk/demo/tutorial/backtest.py
+    :caption: python demo/tutorial/backtest.py
     :language: python
     :linenos:
 

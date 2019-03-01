@@ -2,6 +2,10 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'chengzhi'
 
+"""
+tqsdk.ta 模块包含了一批常用的技术指标计算函数
+"""
+
 import numpy as np
 import pandas as pd
 import numba
@@ -13,17 +17,50 @@ def ATR(df, n):
     df["atr"] = df["tr"].rolling(n).mean()
     return df
 
+
 def BIAS(df, n):
     ma = df["close"].rolling(n).mean()
     df["bias"] = (df["close"] - ma) / ma * 100
     return df
 
+
 def BOLL(df, n, p):
+    """
+    布林线.
+
+    Args:
+        df (numpy.dataframe): dataframe格式的K线序列
+
+        n: 布林线周期
+
+        p: 布林线p值
+
+    Returns:
+        numpy.dataframe: 返回的dataframe包含2个列, 分别是 "top" 和 "bottom", 分别代表布林线的上下轨
+
+    Example::
+
+        # 获取 SHFE.cu1812 合约的布林线
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import BOLL
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("SHFE.cu1812", 60)
+        boll = BOLL(klines.to_dataframe(), 20, 0.1)
+
+        print(boll["top"], boll["bottom"]) # 布林线上下轨序列
+
+        #以上代码将输出
+        [..., ..., ..., ...]
+        [..., ..., ..., ...]
+        ...
+    """
     mid = df["close"].rolling(n).mean()
     std = df["close"].rolling(n).std()
     df["top"] = mid + p * std
     df["bottom"] = mid - p * std
     return df
+
 
 def DMI(df, n, m):
     df = ATR(df, n)
@@ -41,6 +78,7 @@ def DMI(df, n, m):
     df["adxr"] = (df["adx"] + df["adx"].shift(m-1)) / 2
     return df
 
+
 def KDJ(df, n, m1, m2):
     hv = df["high"].rolling(n).max()
     lv = df["low"].rolling(n).min()
@@ -50,9 +88,11 @@ def KDJ(df, n, m1, m2):
     df["j"] = 3*df["k"] - 2*df["d"]
     return df
 
+
 def MA(df, n):
     df["ma"] = df["close"].rolling(n).mean()
     return df
+
 
 def MACD(df, short, long, m):
     eshort = df["close"].ewm(span=short, adjust=False).mean() #EMA
@@ -61,6 +101,7 @@ def MACD(df, short, long, m):
     df["dea"] = df["diff"].ewm(span=m, adjust=False).mean() #EMA
     df["bar"] = 2 * (df["diff"] - df["dea"])
     return df
+
 
 @numba.njit
 def _sar(open, high, low, close, range_high, range_low, n, step, maximum):
@@ -100,6 +141,7 @@ def _sar(open, high, low, close, range_high, range_low, n, step, maximum):
                 af = min(af + step, maximum) if ep < range_low[i-1] else af
                 trend -= 1
     return sar
+
 
 def SAR(df, n, step, max):
     range_high = df["high"].rolling(n-1).max()

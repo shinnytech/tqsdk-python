@@ -8,7 +8,7 @@
 
 您可以指定任意多个合约, 并为每个合约指定一个系数(可以是正数或负数), 天勤终端将按您的要求, 计算组合合约的实时报价和历史K线.
 
-想了解怎样在天勤终端中创建自定义组合合约, 请参见 http://doc.shinnytech.com/tq/latest/usage/custom_combine.html
+想了解怎样在天勤终端中创建自定义组合合约, 请参见 https://doc.shinnytech.com/tq/latest/usage/custom_combine.html
 
 一旦在天勤中创建了自定义组合, TqSdk 即可访问它的实时报价和历史K线. 假定您创建的自定义组合代码为 MyCombine::
 

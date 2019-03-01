@@ -145,4 +145,3 @@ TqSdk 使用协程方式支持用户在自己的代码之外执行一些后台�
 .. _InsertOrderUntilAllTradedTask: https://doc.shinnytech.com/pysdk/latest/reference.html#tqsdk.lib.InsertOrderUntilAllTradedTask
 
 .. _DIFF: https://doc.shinnytech.com/diff/latest/index.html
-.. _R-Breaker: https://github.com/shinnytech/tqsdk-python/blob/master/tqsdk/demo/rbreaker.py

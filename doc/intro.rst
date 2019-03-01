@@ -99,5 +99,4 @@ TqSdk 在 Apache License 2.0 协议下提供, 使用者可在遵循此协议的�
 .. _get_quote: https://doc.shinnytech.com/pysdk/latest/reference.html#tqsdk.api.TqApi.get_quote
 .. _is_changing: https://doc.shinnytech.com/pysdk/latest/reference.html#tqsdk.api.TqApi.is_changing
 .. _TqBacktest: https://doc.shinnytech.com/pysdk/latest/reference.html#tqsdk.backtest.TqBacktest
-.. _R-Breaker: https://github.com/shinnytech/tqsdk-python/blob/master/tqsdk/demo/rbreaker.py
 

@@ -1,7 +1,7 @@
 Introduction
 =================================================
 
-TqSdk 是一套依托 `DIFF协议 (Differential Information Flow for Finance) <http://doc.shinnytech.com/diff/latest/index.html>`_ 的开源 python 框架. 它支持用户使用较少的工作量构建量化交易或分析程序.
+TqSdk 是一套依托 `DIFF协议 (Differential Information Flow for Finance) <https://doc.shinnytech.com/diff/latest/index.html>`_ 的开源 python 框架. 它支持用户使用较少的工作量构建量化交易或分析程序.
 
 与其它 python 框架相比, TqSdk 致力于在以下几方面为用户提供价值:
 
@@ -48,7 +48,7 @@ Install
     git clone https://github.com/shinnytech/tqsdk-python.git
     python setup.py install
 
-另外如果希望使用自定义组合, 历史复盘等 **天勤终端** 提供的功能, 可以参见: `与天勤终端配合工作 <http://doc.shinnytech.com/pysdk/latest/tq/index.html>`_
+另外如果希望使用自定义组合, 历史复盘等 **天勤终端** 提供的功能, 可以参见: `与天勤终端配合工作 <https://doc.shinnytech.com/pysdk/latest/tq/index.html>`_
 
 
 Run

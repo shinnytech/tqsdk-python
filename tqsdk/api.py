@@ -3,15 +3,15 @@
 """
 天勤接口的PYTHON封装, 提供以下功能
 
-    * 连接行情和交易服务器或天勤终端的websocket扩展接口, 接收行情及交易推送数据
-    * 在内存中存储管理一份完整的业务数据(行情+交易), 并在接收到新数据包时更新内存数据
-    * 通过一批函数接口, 支持用户代码访问业务数据
-    * 发送交易指令
+* 连接行情和交易服务器或天勤终端的websocket扩展接口, 接收行情及交易推送数据
+* 在内存中存储管理一份完整的业务数据(行情+交易), 并在接收到新数据包时更新内存数据
+* 通过一批函数接口, 支持用户代码访问业务数据
+* 发送交易指令
 
 
-    * PYTHON SDK使用文档: http://doc.shinnytech.com/pysdk/latest/
-    * 天勤行情终端下载: http://www.shinnytech.com/tianqin
-    * 天勤使用文档: http://doc.shinnytech.com/tq/latest/
+* PYTHON SDK使用文档: https://doc.shinnytech.com/pysdk/latest/
+* 天勤行情终端下载: https://www.shinnytech.com/tianqin
+* 天勤使用文档: https://doc.shinnytech.com/tq/latest/
 """
 __author__ = 'chengzhi'
 
@@ -161,7 +161,7 @@ class TqApi(object):
         Returns:
             dict: 返回一个如下结构所示的 dict 对象的引用, 当行情更新时, 此对象的内容会被自动更新
 
-            .. literalinclude:: ../tqsdk/api.py
+            .. literalinclude:: ../../tqsdk/api.py
                 :pyobject: TqApi._gen_quote_prototype
                 :dedent: 12
                 :start-after: {
@@ -214,7 +214,7 @@ class TqApi(object):
         Returns:
             KlineSerialDataProxy: 本函数总是返回一个 KlineSerialDataProxy 的实例. 其中每个数据项的格式如下
 
-            .. literalinclude:: ../tqsdk/api.py
+            .. literalinclude:: ../../tqsdk/api.py
                 :pyobject: TqApi._gen_kline_prototype
                 :dedent: 12
                 :start-after: {
@@ -270,7 +270,7 @@ class TqApi(object):
         Returns:
             TickSerialDataProxy: 本函数总是返回一个 TickSerialDataProxy 的实例. 其中每个数据项的格式如下
 
-            .. literalinclude:: ../tqsdk/api.py
+            .. literalinclude:: ../../tqsdk/api.py
                 :pyobject: TqApi._gen_tick_prototype
                 :dedent: 12
                 :start-after: {
@@ -328,7 +328,7 @@ class TqApi(object):
         Returns:
             dict: 本函数总是返回一个如下结构所示的包含委托单信息的dict的引用. 每当order中信息改变时, 此dict会自动更新.
 
-            .. literalinclude:: ../tqsdk/api.py
+            .. literalinclude:: ../../tqsdk/api.py
                 :pyobject: TqApi._gen_order_prototype
                 :dedent: 12
                 :start-after: {
@@ -445,7 +445,7 @@ class TqApi(object):
         Returns:
             dict: 本函数总是返回一个如下结构所示的包含用户账户资金信息的dict的引用. 每当其中信息改变时, 此dict会自动更新.
 
-            .. literalinclude:: ../tqsdk/api.py
+            .. literalinclude:: ../../tqsdk/api.py
                 :pyobject: TqApi._gen_account_prototype
                 :dedent: 12
                 :start-after: {
@@ -483,7 +483,7 @@ class TqApi(object):
         Returns:
             dict: 当指定了symbol时, 返回一个如下结构所示的包含指定symbol持仓信息的引用. 每当其中信息改变时, 此dict会自动更新.
 
-            .. literalinclude:: ../tqsdk/api.py
+            .. literalinclude:: ../../tqsdk/api.py
                 :pyobject: TqApi._gen_position_prototype
                 :dedent: 12
                 :start-after: {
@@ -525,7 +525,7 @@ class TqApi(object):
         Returns:
             dict: 当指定了order_id时, 返回一个如下结构所示的包含指定order_id委托单信息的引用. 每当其中信息改变时, 此dict会自动更新.
 
-            .. literalinclude:: ../tqsdk/api.py
+            .. literalinclude:: ../../tqsdk/api.py
                 :pyobject: TqApi._gen_order_prototype
                 :dedent: 12
                 :start-after: {

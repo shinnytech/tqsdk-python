@@ -46,7 +46,7 @@
 
 api.wait_update() 是一个阻塞函数, 程序在这行上等待, 直到收到数据包才返回. 在收到数据包后, 我们可以通过 quote 的各个 key 获得相应的行情字段
 
-上面这个例子的完整程序请见 `t10.py <https://github.com/shinnytech/tqsdk-python/blob/master/tqsdk/demo/t10.py>`_. 你也可以在自己电脑python安装目录的 site_packages/tqsdk/demo 下找到它
+上面这个例子的完整程序请见 `t10.py <https://github.com/shinnytech/tqsdk-python/blob/master/tqsdk/demo/tutorial/t10.py>`_. 你也可以在自己电脑python安装目录的 site_packages/tqsdk/demo 下找到它
 
 很简单, 对吗? 到这里, 你已经了解用 TqSdk 开发程序的几个关键点:
 
@@ -74,7 +74,7 @@ api.wait_update() 是一个阻塞函数, 程序在这行上等待, 直到收到�
         api.wait_update()
         print("最后一根K线收盘价", klines.close[-1])
 
-这部分的完整示例程序请见 `t30.py <https://github.com/shinnytech/tqsdk-python/blob/master/tqsdk/demo/t30.py>`_.
+这部分的完整示例程序请见 `t30.py <https://github.com/shinnytech/tqsdk-python/blob/master/tqsdk/demo/tutorial/t30.py>`_.
 
 到这里为止, 你已经知道了如何获取实时行情和K线数据, 下面一段将介绍如何访问你的交易账户并发送交易指令
 
@@ -108,7 +108,7 @@ api.wait_update() 是一个阻塞函数, 程序在这行上等待, 直到收到�
 
     api.cancel_order(order)
 
-这部分的完整示例程序请见 `t40.py <https://github.com/shinnytech/tqsdk-python/blob/master/tqsdk/demo/t40.py>`_.
+这部分的完整示例程序请见 `t40.py <https://github.com/shinnytech/tqsdk-python/blob/master/tqsdk/demo/tutorial/t40.py>`_.
 
 到这里为止, 我们已经掌握了 TqSdk 中行情和交易相关功能的基本使用. 我们将在下一节中, 组合使用它们, 创建一个自动交易程序
 
@@ -131,7 +131,7 @@ api.wait_update() 是一个阻塞函数, 程序在这行上等待, 直到收到�
 
 上面的代码中出现了一个新函数 api.is_changing(). 这个函数用于判定指定对象是否在最近一次 wait_update 中被更新.
 
-这部分的完整示例程序请见 `t60.py <https://github.com/shinnytech/tqsdk-python/blob/master/tqsdk/demo/t60.py>`_.
+这部分的完整示例程序请见 `t60.py <https://github.com/shinnytech/tqsdk-python/blob/master/tqsdk/demo/tutorial/t60.py>`_.
 
 
 .. _quickstart_5:
@@ -162,7 +162,7 @@ api.wait_update() 是一个阻塞函数, 程序在这行上等待, 直到收到�
                 target_pos_deferred.set_target_volume(0)
 
 
-这部分的完整示例程序请见 `t80.py <https://github.com/shinnytech/tqsdk-python/blob/master/tqsdk/demo/t80.py>`_.
+这部分的完整示例程序请见 `t80.py <https://github.com/shinnytech/tqsdk-python/blob/master/tqsdk/demo/tutorial/t80.py>`_.
 
 
 .. _tutorial_backtest:
@@ -175,7 +175,7 @@ api.wait_update() 是一个阻塞函数, 程序在这行上等待, 直到收到�
 
 这样, 程序运行时就会按照 TqBacktest 指定的时间范围进行模拟交易测试, 并输出测试结果.
 
-这部分的完整示例程序请见 `backtest.py <https://github.com/shinnytech/tqsdk-python/blob/master/tqsdk/demo/backtest.py>`_.
+这部分的完整示例程序请见 `backtest.py <https://github.com/shinnytech/tqsdk-python/blob/master/tqsdk/demo/tutorial/backtest.py>`_.
 
 
 更多内容

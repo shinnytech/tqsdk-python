@@ -20,7 +20,7 @@
 上述代码在行情时间变化时判断是否接近收盘，如果是的话则将目标持仓设为0(即空仓)。由于下单之后不一定能立即成交，价格变化后可能还需撤单重下，
 因此等待一分钟后再退出，通常交易的合约不是太冷门的话一分钟应该足够了，如果不放心的话可以改为判断持仓手数是否为0。
 
-更多的用例可以参见: http://doc.shinnytech.com/pysdk/latest/demo.html
+更多的用例可以参见: https://doc.shinnytech.com/pysdk/latest/demo.html
 
 
 
@@ -35,4 +35,4 @@
 .. _get_quote: https://doc.shinnytech.com/pysdk/latest/reference.html#tqsdk.api.TqApi.get_quote
 .. _is_changing: https://doc.shinnytech.com/pysdk/latest/reference.html#tqsdk.api.TqApi.is_changing
 .. _TqBacktest: https://doc.shinnytech.com/pysdk/latest/reference.html#tqsdk.backtest.TqBacktest
-.. _R-Breaker: https://github.com/shinnytech/tqsdk-python/blob/master/tqsdk/demo/rbreaker.py
+.. _R-Breaker: https://github.com/shinnytech/tqsdk-python/blob/master/tqsdk/demo/example/rbreaker.py
