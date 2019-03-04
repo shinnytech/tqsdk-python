@@ -10,22 +10,22 @@ Dual Thrust策略
 import logging
 from tqsdk import TqApi, TqSim, TargetPosTask
 
-SYMBOL = "SHFE.rb1909"  # 合约代码
+SYMBOL = "DCE.jd1905"  # 合约代码
 NDAY = 5  # 天数
 K1 = 0.2  # 上轨K值
 K2 = 0.2  # 下轨K值
-
 
 api = TqApi(TqSim())
 logger = logging.getLogger("TQ")
 logger.info("策略开始运行")
 
 quote = api.get_quote(SYMBOL)
-klines = api.get_kline_serial(SYMBOL, 24*60*60)  # 86400使用日线
+klines = api.get_kline_serial(SYMBOL, 24 * 60 * 60)  # 86400使用日线
 target_pos = TargetPosTask(api, SYMBOL)
 
+
 def dual_thrust(quote, klines):
-    current_open = quote["open"]
+    current_open = klines[-1]["open"]
     HH = max(klines.high[-NDAY - 1:-1])  # N日最高价的最高价
     HC = max(klines.close[-NDAY - 1:-1])  # N日收盘价的最高价
     LC = min(klines.close[-NDAY - 1:-1])  # N日收盘价的最低价
@@ -36,11 +36,12 @@ def dual_thrust(quote, klines):
     logger.info("当前开盘价: %f, 上轨: %f, 下轨: %f" % (current_open, buy_line, sell_line))
     return buy_line, sell_line
 
+
 buy_line, sell_line = dual_thrust(quote, klines)  # 获取上下轨
 
 while True:
     api.wait_update()
-    if api.is_changing(klines[-1], "datetime") or api.is_changing(quote, "open"):  # 新产生一根日线或开盘价发生变化: 重新计算上下轨
+    if api.is_changing(klines[-1], ["datetime", "open"]):  # 新产生一根日线或开盘价发生变化: 重新计算上下轨
         buy_line, sell_line = dual_thrust(quote, klines)
 
     if api.is_changing(quote, "last_price"):

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+# !/usr/bin/env python
 #  -*- coding: utf-8 -*-
 __author__ = 'limin'
 
@@ -7,19 +7,18 @@ R-Breaker策略(非隔夜留仓: 在每日收盘前，对所持合约进行平�
 参考: https://www.shinnytech.com/blog/r-breaker
 '''
 
-import time
 import logging
 from datetime import datetime
 from tqsdk import TqApi, TqSim, TargetPosTask
 
-SYMBOL = "SHFE.au1812"  # 合约代码
+SYMBOL = "SHFE.au1906"  # 合约代码
 CLOSE_HOUR, CLOSE_MINUTE = 14, 50  # 平仓时间
 STOP_LOSS_PRICE = 10  # 止损点(价格)
-
 
 api = TqApi(TqSim())
 logger = logging.getLogger("TQ")
 logger.info("策略开始运行")
+
 
 def get_index_line(klines):
     '''计算指标线'''
@@ -37,8 +36,9 @@ def get_index_line(klines):
                 % (pivot, bBreak, sSetup, sEnter, bEnter, bSetup, sBreak))
     return pivot, bBreak, sSetup, sEnter, bEnter, bSetup, sBreak
 
+
 quote = api.get_quote(SYMBOL)
-klines = api.get_kline_serial(SYMBOL, 24*60*60)  # 86400: 使用日线
+klines = api.get_kline_serial(SYMBOL, 24 * 60 * 60)  # 86400: 使用日线
 position = api.get_position(SYMBOL)
 target_pos = TargetPosTask(api, SYMBOL)
 target_pos_value = position["volume_long"] - position["volume_short"]  # 净目标净持仓数
@@ -55,20 +55,16 @@ while True:
         now = datetime.strptime(quote["datetime"], "%Y-%m-%d %H:%M:%S.%f")
         if now.hour == CLOSE_HOUR and now.minute >= CLOSE_MINUTE:  # 到达平仓时间: 平仓
             logger.info("临近本交易日收盘: 平仓")
-            target_pos.set_target_volume(0)  # 平仓
-            deadline = time.time() + 60
-            while api.wait_update(deadline=deadline):  # 等待60秒
-                pass
-            api.close()
-            break
+            target_pos_value = 0  # 平仓
+            pivot = bBreak = sSetup = sEnter = bEnter = bSetup = sBreak = float("nan")  # 修改各指标线的值, 避免平仓后再次触发
 
     '''交易规则'''
     if api.is_changing(quote, "last_price"):
         logger.info("最新价: %f" % quote["last_price"])
 
         # 开仓价与当前行情价之差大于止损点则止损
-        if (target_pos_value > 0 and open_position_price - quote["last_price"] >= STOP_LOSS_PRICE) or\
-            (target_pos_value < 0 and quote["last_price"] - open_position_price >= STOP_LOSS_PRICE):
+        if (target_pos_value > 0 and open_position_price - quote["last_price"] >= STOP_LOSS_PRICE) or \
+                (target_pos_value < 0 and quote["last_price"] - open_position_price >= STOP_LOSS_PRICE):
             target_pos_value = 0  # 平仓
 
         # 反转:
