@@ -110,7 +110,7 @@ def run():
                         "param_list": param_list,
                     }, param_file)
             api.send_chan.send_nowait({
-                "aid": "status",
+                "aid": "desc",
                 "instance_id": args.instance_id,
                 "status": "RUNNING",
                 "desc": json.dumps(param_list)

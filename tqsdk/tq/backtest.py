@@ -106,10 +106,10 @@ def backtest():
     args = parser.parse_args()
 
     s = TqSim()
-    out = open(args.output_file, "a+")
+    report_file = open(args.output_file, "a+")
     logger = logging.getLogger("TQ")
     logger.setLevel(logging.INFO)
-    logger.addHandler(TqBacktestLogger(s, out))
+    logger.addHandler(TqBacktestLogger(s, report_file))
 
     # 加载策略文件
     file_path, file_name = os.path.split(args.source_file)
@@ -168,13 +168,19 @@ def backtest():
     # 开始回测
     api = TqApi(s, backtest=TqBacktest(start_dt=start_date, end_dt=end_date))
     try:
-        api.send_chan.send_nowait({
-            "aid": "status",
-            "instance_id": args.instance_id,
-            "status": "RUNNING",
-            "desc": json.dumps(param_list)
-        })
-        api.create_task(account_watcher(api, s, out))
+        json.dump({
+            "aid": "desc",
+            "desc": "%04d/%02d/%02d-%04d/%02d/%02d, %s"
+                    % (start_date.year, start_date.month, start_date.day,
+                       end_date.year, end_date.month, end_date.day,
+                       json.dumps(param_list)),
+            "start_date": start_date.year * 10000 + start_date.month * 100 + start_date.day,
+            "end_date": end_date.year * 10000 + end_date.month * 100 + end_date.day,
+            "param_list": param_list,
+        }, report_file)
+        report_file.write("\n")
+
+        api.create_task(account_watcher(api, s, report_file))
 
         try:
             def _fake_api_for_launch(*args, **kwargs):
