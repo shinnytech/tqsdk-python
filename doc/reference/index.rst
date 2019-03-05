@@ -11,4 +11,4 @@ TqSdk 模块参考
     tqsdk.ta.rst
     tqsdk.sim.rst
     tqsdk.backtest.rst
-    tqsdk.tools.rst
+    tqsdk.tools.download.rst
