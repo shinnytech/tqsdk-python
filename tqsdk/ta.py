@@ -9,7 +9,7 @@ tqsdk.ta 模块包含了一批常用的技术指标计算函数
 import numpy as np
 import pandas as pd
 import numba
-import ta_func
+from tqsdk import ta_func
 
 
 def ATR(df, n):
