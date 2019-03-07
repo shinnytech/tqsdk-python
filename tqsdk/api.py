@@ -1399,7 +1399,7 @@ class SerialDataProxy(object):
             array = np.array([[self.default[k] for k in self.attr]] * self.width, order="F")
             top_row = 0
         else:
-            array = np.roll(self.array, self.array_index - last_id)
+            array = np.roll(self.array, self.array_index - last_id, axis=0)
             top_row = max(self.array_index - last_id + self.width - 1,0)
         for i in range(top_row, self.width):
             item = self[i]
