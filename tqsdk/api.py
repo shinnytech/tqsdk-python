@@ -93,14 +93,15 @@ class TqApi(object):
         self.account_id = account if isinstance(account, str) else account.account_id
         self.logger = logging.getLogger("TqApi")  # 调试信息输出
         if debug:
-            self.logger.setLevel(logging.DEBUG)
-            sh = logging.StreamHandler()
-            sh.setLevel(logging.INFO)
-            sh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-            self.logger.addHandler(sh)
-            fh = logging.FileHandler(filename=debug)
-            fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-            self.logger.addHandler(fh)
+            if not self.logger.handlers:
+                self.logger.setLevel(logging.DEBUG)
+                sh = logging.StreamHandler()
+                sh.setLevel(logging.INFO)
+                sh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+                self.logger.addHandler(sh)
+                fh = logging.FileHandler(filename=debug)
+                fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+                self.logger.addHandler(fh)
         self.send_chan, self.recv_chan = TqChan(self), TqChan(self)  # 消息收发队列
         self.data = {"_path": [], "_listener": set()}  # 数据存储
         self.diffs = []  # 自上次wait_update返回后收到更新数据的数组
