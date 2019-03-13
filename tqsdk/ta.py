@@ -13,7 +13,36 @@ from tqsdk import ta_func
 
 
 def ATR(df, n):
-    """平均真实波幅"""
+    """
+    平均真实波幅
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        n (int): 平均真实波幅的周期
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含2列, 分别是"tr"和"atr", 分别代表真实波幅和平均真实波幅
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的平均真实波幅
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import ATR
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        atr = ATR(klines.to_dataframe(), 14)
+        print(atr["tr"])  # 真实波幅
+        print(atr["atr"])  # 平均真实波幅
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 143.0, 48.0, 80.0, ...]
+        [..., 95.20000000000005, 92.0571428571429, 95.21428571428575, ...]
+    """
     new_df = pd.DataFrame()
     pre_close = df["close"].shift(1)
     new_df["tr"] = np.where(df["high"] - df["low"] > np.absolute(pre_close - df["high"]),
@@ -26,14 +55,75 @@ def ATR(df, n):
 
 
 def BIAS(df, n):
-    """乖离率"""
+    """
+    乖离率
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        n (int): 移动平均的计算周期
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含1列, 是"bias", 代表计算出来的乖离率值
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的乖离率
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import BIAS
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        bias = BIAS(klines.to_dataframe(), 6)
+        print(list(bias["bias"]))  # 乖离率
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 2.286835533357118, 2.263301549041151, 0.7068445823271412, ...]
+    """
     ma1 = ta_func.ma(df["close"], n)
     new_df = pd.DataFrame(data=list((df["close"] - ma1) / ma1 * 100), columns=["bias"])
     return new_df
 
 
 def BOLL(df, n, p):
-    """布林线"""
+    """
+    布林线
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        n (int): 周期n
+
+        p (int): 计算参数p
+
+    Returns:
+        numpy.dataframe: 返回的dataframe包含3列, 分别是"mid", "top"和"bottom", 分别代表布林线的中、上、下轨
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的布林线
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import BOLL
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        boll=BOLL(klines.to_dataframe(), 26, 2)
+        print(list(boll["mid"]))
+        print(list(boll["top"]))
+        print(list(boll["bottom"]))
+
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 3401.338461538462, 3425.600000000001, 3452.3230769230777, ...]
+        [..., 3835.083909752222, 3880.677579320277, 3921.885406954584, ...]
+        [..., 2967.593013324702, 2970.5224206797247, 2982.760746891571, ...]
+    """
     new_df = pd.DataFrame()
     mid = ta_func.ma(df["close"], n)
     std = df["close"].rolling(n).std()
@@ -44,7 +134,44 @@ def BOLL(df, n, p):
 
 
 def DMI(df, n, m):
-    """动向指标"""
+    """
+    动向指标
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        n (int): 周期n
+
+        m (int): 周期m
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含5列, 是"atr", "pdi", "mdi", "adx"和"adxr", 分别代表平均真实波幅, 上升方向线, 下降方向线, 趋向平均值以及评估数值
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的动向指标
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import DMI
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        dmi=DMI(klines.to_dataframe(), 14, 6)
+        print(list(dmi["atr"]))
+        print(list(dmi["pdi"]))
+        print(list(dmi["mdi"]))
+        print(list(dmi["adx"]))
+        print(list(dmi["adxr"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 95.20000000000005, 92.0571428571429, 95.21428571428575, ...]
+        [..., 51.24549819927972, 46.55493482309126, 47.14178544636161, ...]
+        [..., 6.497599039615802, 6.719428926132791, 6.4966241560389655, ...]
+        [..., 78.80507786697127, 76.8773544355082, 75.11662664555287, ...]
+        [..., 70.52493837227118, 73.28531799111778, 74.59341569051983, ...]
+    """
     new_df = pd.DataFrame()
     new_df["atr"] = ATR(df, n)["atr"]
     pre_high = df["high"].shift(1)
@@ -62,7 +189,42 @@ def DMI(df, n, m):
 
 
 def KDJ(df, n, m1, m2):
-    """随机指标"""
+    """
+    随机指标
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        n (int): 周期n
+
+        m1 (int): 参数m1
+
+        m2 (int): 参数m2
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含3列, 是"k", "d"和"j", 分别代表计算出来的K值, D值和J值
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的随机指标
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import KDJ
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        kdj = KDJ(klines.to_dataframe(), 9, 3, 3)
+        print(list(kdj["k"]))
+        print(list(kdj["d"]))
+        print(list(kdj["j"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 80.193148635668, 81.83149521546302, 84.60665654726242, ...]
+        [..., 82.33669997171852, 82.16829838630002, 82.98108443995415, ...]
+        [..., 77.8451747299365, 75.90604596356695, 81.15788887378903, ...]
+    """
     new_df = pd.DataFrame()
     hv = df["high"].rolling(n).max()
     lv = df["low"].rolling(n).min()
@@ -74,7 +236,42 @@ def KDJ(df, n, m1, m2):
 
 
 def MACD(df, short, long, m):
-    """异同移动平均线"""
+    """
+    异同移动平均线
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        short (int): 短周期
+
+        long (int): 长周期
+
+        m (int): 移动平均线的周期
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含3列, 是"diff", "dea"和"bar", 分别代表离差值, DIFF的指数加权移动平均线, MACD的柱状线
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的异同移动平均线
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import MACD
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        macd = MACD(klines.to_dataframe(), 12, 26, 9)
+        print(list(macd["diff"]))
+        print(list(macd["dea"]))
+        print(list(macd["bar"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 149.58313904045826, 155.50790712365142, 160.27622505636737, ...]
+        [..., 121.46944573796466, 128.27713801510203, 134.6769554233551, ...]
+        [..., 56.2273866049872, 54.46153821709879, 51.19853926602451, ...]
+    """
     new_df = pd.DataFrame()
     eshort = ta_func.ema(df["close"], short)
     elong = ta_func.ema(df["close"], long)
@@ -86,6 +283,7 @@ def MACD(df, short, long, m):
 
 @numba.njit
 def _sar(open, high, low, close, range_high, range_low, n, step, maximum):
+    n = max(np.sum(np.isnan(range_high)), np.sum(np.isnan(range_low))) + 2
     sar = np.empty_like(close)
     sar[:n] = np.NAN
     af = 0
@@ -125,7 +323,38 @@ def _sar(open, high, low, close, range_high, range_low, n, step, maximum):
 
 
 def SAR(df, n, step, max):
-    """抛物转向"""
+    """
+    抛物线指标
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        n (int): SAR的周期n
+
+        step (float): 步长
+
+        max (float): 极值
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含1列, 是"sar", 代表计算出来的SAR值
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的抛物线指标
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import SAR
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        sar=SAR(klines.to_dataframe(), 4, 0.02, 0.2)
+        print(list(sar["sar"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 3742.313604622293, 3764.5708836978342, 3864.4, ...]
+    """
     range_high = df["high"].rolling(n - 1).max()
     range_low = df["low"].rolling(n - 1).min()
     sar = _sar(df["open"].values, df["high"].values, df["low"].values, df["close"].values, range_high.values,
@@ -135,7 +364,34 @@ def SAR(df, n, step, max):
 
 
 def WR(df, n):
-    """威廉指标"""
+    """
+    威廉指标
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        n (int): 周期n
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含1列, 是"wr", 代表计算出来的威廉指标
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的威廉指标
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import WR
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        wr = WR(klines.to_dataframe(), 14)
+        print(list(wr["wr"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., -12.843029637760672, -8.488840102451537, -16.381322957198407, ...]
+    """
     hn = df["high"].rolling(n).max()
     ln = df["low"].rolling(n).min()
     new_df = pd.DataFrame(data=list((hn - df["close"]) / (hn - ln) * (-100)), columns=["wr"])
@@ -143,7 +399,34 @@ def WR(df, n):
 
 
 def RSI(df, n):
-    """相对强弱指标"""
+    """
+    相对强弱指标
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        n (int): 周期n
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含1列, 是"rsi", 代表计算出来的相对强弱指标
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的相对强弱指标
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import RSI
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        rsi = RSI(klines.to_dataframe(), 7)
+        print(list(rsi["rsi"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 80.21169825630794, 81.57315806032297, 72.34968324924667, ...]
+    """
     lc = df["close"].shift(1)
     rsi = ta_func.sma(pd.Series(np.where(df["close"] - lc > 0, df["close"] - lc, 0)), n, 1) / \
           ta_func.sma(np.absolute(df["close"] - lc), n, 1) * 100
@@ -152,7 +435,32 @@ def RSI(df, n):
 
 
 def ASI(df):
-    """振动升降指标"""
+    """
+    振动升降指标
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含1列, 是"asi", 代表计算出来的振动升降指标
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的振动升降指标
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import ASI
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        asi = ASI(klines.to_dataframe())
+        print(list(asi["asi"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., -4690.587005986468, -4209.182816350308, -4699.742010304962, ...]
+    """
     lc = df["close"].shift(1)  # 上一交易日的收盘价
     aa = np.absolute(df["high"] - lc)
     bb = np.absolute(df["low"] - lc)
@@ -167,7 +475,34 @@ def ASI(df):
 
 
 def VR(df, n):
-    """VR 容量比率"""
+    """
+    VR 容量比率
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        n (int): 周期n
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含1列, 是"vr", 代表计算出来的VR
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的VR
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import VR
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        vr = VR(klines.to_dataframe(), 26)
+        print(list(vr["vr"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 150.1535316212112, 172.2897559521652, 147.04236342791924, ...]
+    """
     lc = df["close"].shift(1)
     vr = pd.Series(np.where(df["close"] > lc, df["volume"], 0)).rolling(n).sum() / pd.Series(
         np.where(df["close"] <= lc, df["volume"], 0)).rolling(n).sum() * 100
@@ -176,7 +511,36 @@ def VR(df, n):
 
 
 def ARBR(df, n):
-    """人气意愿指标"""
+    """
+    人气意愿指标
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        n (int): 周期n
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含2列, 是"ar"和"br" , 分别代表人气指标和意愿指标
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的人气意愿指标
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import ARBR
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        arbr = ARBR(klines.to_dataframe(), 26)
+        print(list(arbr["ar"]))
+        print(list(arbr["br"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 183.5698517817721, 189.98732572877034, 175.08802816901382, ...]
+        [..., 267.78549382716034, 281.567546278062, 251.08041091037902, ...]
+    """
     new_df = pd.DataFrame()
     new_df["ar"] = (df["high"] - df["open"]).rolling(n).sum() / (df["open"] - df["low"]).rolling(n).sum() * 100
     new_df["br"] = pd.Series(
@@ -187,7 +551,40 @@ def ARBR(df, n):
 
 
 def DMA(df, short, long, m):
-    """平均线差"""
+    """
+    平均线差
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        short (int): 短周期
+
+        long (int): 长周期
+
+        m (int): 计算周期m
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含2列, 是"ddd"和"ama", 分别代表长短周期均值的差和ddd的简单移动平均值
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的平均线差
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import DMA
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        dma = DMA(klines.to_dataframe(), 10, 50, 10)
+        print(list(dma["ddd"]))
+        print(list(dma["ama"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 409.2520000000022, 435.68000000000166, 458.3360000000025, ...]
+        [..., 300.64360000000147, 325.0860000000015, 349.75200000000166, ...]
+    """
     new_df = pd.DataFrame()
     new_df["ddd"] = ta_func.ma(df["close"], short) - ta_func.ma(df["close"], long)
     new_df["ama"] = ta_func.ma(new_df["ddd"], m)
@@ -195,7 +592,38 @@ def DMA(df, short, long, m):
 
 
 def EXPMA(df, p1, p2):
-    """指数加权移动平均线组合"""
+    """
+    指数加权移动平均线组合
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        p1 (int): 周期1
+
+        p2 (int): 周期2
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含2列, 是"ma1"和"ma2", 分别代表指数加权移动平均线1和指数加权移动平均线2
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的指数加权移动平均线组合
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import EXPMA
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        expma = EXPMA(klines.to_dataframe(), 5, 10)
+        print(list(expma["ma1"]))
+        print(list(expma["ma2"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 3753.679549224137, 3784.6530328160916, 3792.7020218773946, ...]
+        [..., 3672.4492964832566, 3704.113060759028, 3723.1470497119317, ...]
+    """
     new_df = pd.DataFrame()
     new_df["ma1"] = ta_func.ema(df["close"], p1)
     new_df["ma2"] = ta_func.ema(df["close"], p2)
@@ -203,7 +631,38 @@ def EXPMA(df, p1, p2):
 
 
 def CR(df, n, m):
-    """CR能量"""
+    """
+    CR能量
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        n (int): 周期n
+
+        m (int): 周期m
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含2列, 是"cr"和"crma", 分别代表CR值和CR值的简单移动平均值
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的CR能量
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import CR
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        cr = CR(klines.to_dataframe(), 26, 5)
+        print(list(cr["cr"]))
+        print(list(cr["crma"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 291.5751884671343, 316.71058105671943, 299.50578748862046, ...]
+        [..., 316.01257308163747, 319.3545725665982, 311.8275184876805, ...]
+    """
     new_df = pd.DataFrame()
     mid = (df["high"] + df["low"] + df["close"]) / 3
     new_df["cr"] = pd.Series(np.where(0 > df["high"] - mid.shift(1), 0, df["high"] - mid.shift(1))).rolling(
@@ -213,7 +672,34 @@ def CR(df, n, m):
 
 
 def CCI(df, n):
-    """顺势指标"""
+    """
+    顺势指标
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        n (int): 周期n
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含1列, 是"cci", 代表计算出来的CCI值
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的顺势指标
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import CCI
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        cci = CCI(klines.to_dataframe(), 14)
+        print(list(cci["cci"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 98.13054698810375, 93.57661788413617, 77.8671380173813, ...]
+    """
     typ = (df["high"] + df["low"] + df["close"]) / 3
     ma = ta_func.ma(typ, n)
 
@@ -226,7 +712,32 @@ def CCI(df, n):
 
 
 def OBV(df):
-    """能量潮"""
+    """
+    能量潮
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含1列, 是"obv", 代表计算出来的OBV值
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的能量潮
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import OBV
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        obv = OBV(klines.to_dataframe())
+        print(list(obv["obv"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 267209, 360351, 264476, ...]
+    """
     lc = df["close"].shift(1)
     obv = (np.where(df["close"] > lc, df["volume"], np.where(df["close"] < lc, -df["volume"], 0))).cumsum()
     new_df = pd.DataFrame(data=obv, columns=["obv"])
@@ -234,7 +745,40 @@ def OBV(df):
 
 
 def CDP(df, n):
-    """逆势操作"""
+    """
+    逆势操作
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        n (int): 周期n
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含4列, 是"ah", "al", "nh", "nl", 分别代表最高值, 最低值, 近高值, 近低值
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的逆势操作指标
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import CDP
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        cdp = CDP(klines.to_dataframe(), 3)
+        print(list(cdp["ah"]))
+        print(list(cdp["al"]))
+        print(list(cdp["nh"]))
+        print(list(cdp["nl"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 3828.244444444447, 3871.733333333336, 3904.37777777778, ...]
+        [..., 3656.64444444444, 3698.3999999999955, 3734.9111111111065, ...]
+        [..., 3743.8888888888837, 3792.3999999999946, 3858.822222222217, ...]
+        [..., 3657.2222222222213, 3707.6666666666656, 3789.955555555554, ...]
+    """
     new_df = pd.DataFrame()
     pt = df["high"].shift(1) - df["low"].shift(1)
     cdp = (df["high"].shift(1) + df["low"].shift(1) + df["close"].shift(1)) / 3
@@ -246,7 +790,38 @@ def CDP(df, n):
 
 
 def HCL(df, n):
-    """均线通道"""
+    """
+    均线通道
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        n (int): 周期n
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含3列, 是"mah", "mal", "mac", 分别代表最高价的移动平均线, 最低价的移动平均线以及收盘价的移动平均线
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的均线通道指标
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import HCL
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        hcl = HCL(klines.to_dataframe(), 10)
+        print(list(hcl["mah"]))
+        print(list(hcl["mal"]))
+        print(list(hcl["mac"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 3703.5400000000022, 3743.2800000000025, 3778.300000000002, ...]
+        [..., 3607.339999999999, 3643.079999999999, 3677.579999999999, ...]
+        [..., 3666.1600000000008, 3705.8600000000006, 3741.940000000001, ...]
+    """
     new_df = pd.DataFrame()
     new_df["mah"] = ta_func.ma(df["high"], n)
     new_df["mal"] = ta_func.ma(df["low"], n)
@@ -255,7 +830,38 @@ def HCL(df, n):
 
 
 def ENV(df, n, k):
-    """包略线 (Envelopes)"""
+    """
+    包略线 (Envelopes)
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        n (int): 周期n
+
+        k (float): 参数k
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含2列, 是"upper", "lower", 分别代表上线和下线
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的包略线
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import ENV
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        env = ENV(klines.to_dataframe(), 14, 6)
+        print(list(env["upper"]))
+        print(list(env["lower"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 3842.2122857142863, 3876.7531428571433, 3893.849428571429, ...]
+        [..., 3407.244857142857, 3437.875428571429, 3453.036285714286, ...]
+    """
     new_df = pd.DataFrame()
     new_df["upper"] = ta_func.ma(df["close"], n) * (1 + k / 100)
     new_df["lower"] = ta_func.ma(df["close"], n) * (1 - k / 100)
@@ -263,7 +869,44 @@ def ENV(df, n, k):
 
 
 def MIKE(df, n):
-    """麦克指标"""
+    """
+    麦克指标
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        n (int): 周期n
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含6列, 是"wr", "mr", "sr", "ws", "ms", "ss", 分别代表初级压力价,中级压力,强力压力,初级支撑,中级支撑和强力支撑
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的麦克指标
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import MIKE
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        mike = MIKE(klines.to_dataframe(), 12)
+        print(list(mike["wr"]))
+        print(list(mike["mr"]))
+        print(list(mike["sr"]))
+        print(list(mike["ws"]))
+        print(list(mike["ms"]))
+        print(list(mike["ss"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 4242.4, 4203.333333333334, 3986.266666666666, ...]
+        [..., 4303.6, 4283.866666666667, 4175.333333333333, ...]
+        [..., 4364.8, 4364.4, 4364.4, ...]
+        [..., 3770.5999999999995, 3731.9333333333343, 3514.866666666666, ...]
+        [..., 3359.9999999999995, 3341.066666666667, 3232.533333333333, ...]
+        [..., 2949.3999999999996, 2950.2, 2950.2, ...]
+    """
     new_df = pd.DataFrame()
     typ = (df["high"] + df["low"] + df["close"]) / 3
     ll = df["low"].rolling(n).min()
@@ -278,14 +921,74 @@ def MIKE(df, n):
 
 
 def PUBU(df, m):
-    """瀑布线"""
+    """
+    瀑布线
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        m (int): 周期m
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含1列, 是"pb", 代表计算出的瀑布线
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的瀑布线
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import PUBU
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        pubu = PUBU(klines.to_dataframe(), 4)
+        print(list(pubu["pb"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 3719.087702972829, 3728.9326217836974, 3715.7537397368856, ...]
+    """
     pb = (ta_func.ema(df["close"], m) + ta_func.ma(df["close"], m * 2) + ta_func.ma(df["close"], m * 4)) / 3
     new_df = pd.DataFrame(data=list(pb), columns=["pb"])
     return new_df
 
 
 def BBI(df, n1, n2, n3, n4):
-    """多空指数"""
+    """
+    多空指数
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        n1 (int): 周期n1
+
+        n2 (int): 周期n2
+
+        n3 (int): 周期n3
+
+        n4 (int): 周期n4
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含1列, 是"bbi", 代表计算出的多空指标
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的多空指标
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import BBI
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        bbi = BBI(klines.to_dataframe(), 3, 6, 12, 24)
+        print(list(bbi["bbi"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 3679.841666666668, 3700.9645833333348, 3698.025000000002, ...]
+    """
     bbi = (ta_func.ma(df["close"], n1) + ta_func.ma(df["close"], n2) + ta_func.ma(df["close"], n3) + ta_func.ma(
         df["close"], n4)) / 4
     new_df = pd.DataFrame(data=list(bbi), columns=["bbi"])
@@ -293,7 +996,36 @@ def BBI(df, n1, n2, n3, n4):
 
 
 def DKX(df, m):
-    """多空线"""
+    """
+    多空线
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        m (int): 周期m
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含2列, 是"b", "d", 分别代表计算出来的DKX指标及DKX的m日简单移动平均值
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的多空线
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import DKX
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        dkx = DKX(klines.to_dataframe(), 10)
+        print(list(dkx["b"]))
+        print(list(dkx["d"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 3632.081746031746, 3659.4501587301593, 3672.744761904762, ...]
+        [..., 3484.1045714285706, 3516.1797301587294, 3547.44857142857, ...]
+    """
     new_df = pd.DataFrame()
     a = (3 * df["close"] + df["high"] + df["low"] + df["open"]) / 6
     new_df["b"] = (20 * a + 19 * a.shift(1) + 18 * a.shift(2) + 17 * a.shift(3) + 16 * a.shift(4) + 15 * a.shift(
@@ -308,7 +1040,40 @@ def DKX(df, m):
 
 
 def BBIBOLL(df, n, m):
-    """多空布林线"""
+    """
+    多空布林线
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        n (int): 参数n
+
+        m (int): 参数m
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含3列, 是"bbiboll", "upr", "dwn", 分别代表多空布林线, 压力线和支撑线
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的多空布林线
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import BBIBOLL
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        bbiboll=BBIBOLL(klines.to_dataframe(),10,3)
+        print(list(bbiboll["bbiboll"]))
+        print(list(bbiboll["upr"]))
+        print(list(bbiboll["dwn"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 3679.841666666668, 3700.9645833333348, 3698.025000000002, ...]
+        [..., 3991.722633271389, 3991.796233444868, 3944.7721466057383, ...]
+        [..., 3367.960700061947, 3410.1329332218015, 3451.2778533942655, ...]
+    """
     new_df = pd.DataFrame()
     new_df["bbiboll"] = (ta_func.ma(df["close"], 3) + ta_func.ma(df["close"], 6) + ta_func.ma(df["close"],
                                                                                               12) + ta_func.ma(
@@ -319,7 +1084,38 @@ def BBIBOLL(df, n, m):
 
 
 def ADTM(df, n, m):
-    """动态买卖气指标"""
+    """
+    动态买卖气指标
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        n (int): 周期n
+
+        m (int): 周期m
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含2列, 是"adtm", "adtmma", 分别代表计算出来的ADTM指标及其M日的简单移动平均
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的动态买卖气指标
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import ADTM
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        adtm = ADTM(klines.to_dataframe(), 23, 8)
+        print(list(adtm["adtm"]))
+        print(list(adtm["adtmma"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 0.8404011965511171, 0.837919942816297, 0.8102215868477481, ...]
+        [..., 0.83855483869397, 0.8354743499113684, 0.8257261282040207, ...]
+    """
     new_df = pd.DataFrame()
     dtm = np.where(df["open"] < df["open"].shift(1), 0,
                    np.where(df["high"] - df["open"] > df["open"] - df["open"].shift(1), df["high"] - df["open"],
@@ -335,7 +1131,34 @@ def ADTM(df, n, m):
 
 
 def B3612(df):
-    """三减六日乖离率"""
+    """
+    三减六日乖离率
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含2列, 是"b36", "b612", 分别代表收盘价的3日移动平均线与6日移动平均线的乖离值及收盘价的6日移动平均线与12日移动平均线的乖离值
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的三减六日乖离率
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import B3612
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        b3612=B3612(klines.to_dataframe())
+        print(list(b3612["b36"]))
+        print(list(b3612["b612"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 57.26666666667188, 44.00000000000546, -5.166666666660603, ...]
+        [..., 99.28333333333285, 88.98333333333221, 69.64999999999918, ...]
+    """
     new_df = pd.DataFrame()
     new_df["b36"] = ta_func.ma(df["close"], 3) - ta_func.ma(df["close"], 6)
     new_df["b612"] = ta_func.ma(df["close"], 6) - ta_func.ma(df["close"], 12)
@@ -343,7 +1166,40 @@ def B3612(df):
 
 
 def DBCD(df, n, m, t):
-    """异同离差乖离率"""
+    """
+    异同离差乖离率
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        n (int): 周期n
+
+        m (int): 参数m
+
+        t (int): 参数t
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含2列, 是"dbcd", "mm", 分别代表离差值及其简单移动平均值
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的异同离差乖离率
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import DBCD
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        dbcd=DBCD(klines.to_dataframe(), 5, 16, 76)
+        print(list(dbcd["dbcd"]))
+        print(list(dbcd["mm"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 0.0038539724453411045, 0.0034209659500908517, 0.0027130669520015094, ...]
+        [..., 0.003998499673401192, 0.003864353204606074, 0.0035925052896395872, ...]
+    """
     new_df = pd.DataFrame()
     bias = (df["close"] - ta_func.ma(df["close"], n)) / ta_func.ma(df["close"], n)
     dif = bias - bias.shift(m)
@@ -353,7 +1209,44 @@ def DBCD(df, n, m, t):
 
 
 def DDI(df, n, n1, m, m1):
-    """方向标准离差指数"""
+    """
+    方向标准离差指数
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        n (int): 周期n
+
+        n1 (int): 参数n1
+
+        m (int): 参数m
+
+        m1 (int): 周期m1
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含3列, 是"ddi", "addi", "ad", 分别代表DIZ与DIF的差值, DDI的加权平均, ADDI的简单移动平均
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的方向标准离差指数
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import DDI
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        ddi = DDI(klines.to_dataframe(), 13, 30, 10, 5)
+        print(list(ddi["ddi"]))
+        print(list(ddi["addi"]))
+        print(list(ddi["ad"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 0.6513560804899388, 0.6129178985672046, 0.40480202190395936, ...]
+        [..., 0.6559570156346113, 0.6416106432788091, 0.5626744361538593, ...]
+        [..., 0.6960565490556135, 0.6765004585407994, 0.6455063893920429, ...]
+    """
     new_df = pd.DataFrame()
     tr = np.where(np.absolute(df["high"] - df["high"].shift(1)) > np.absolute(df["low"] - df["low"].shift(1)),
                   np.absolute(df["high"] - df["high"].shift(1)), np.absolute(df["low"] - df["low"].shift(1)))
@@ -368,7 +1261,40 @@ def DDI(df, n, n1, m, m1):
 
 
 def KD(df, n, m1, m2):
-    """随机指标"""
+    """
+    随机指标
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        n (int): 周期n
+
+        m1 (int): 参数m1
+
+        m2 (int): 参数m2
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含2列, 是"k", "d", 分别代表计算出来的K值与D值
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的随机指标
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import KD
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        kd = KD(klines.to_dataframe(), 9, 3, 3)
+        print(list(kd["k"]))
+        print(list(kd["d"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 84.60665654726242, 80.96145249909222, 57.54863147922147, ...]
+        [..., 82.98108443995415, 82.30787379300017, 74.05479302174061, ...]
+    """
     new_df = pd.DataFrame()
     hv = df["high"].rolling(n).max()
     lv = df["low"].rolling(n).min()
@@ -379,7 +1305,36 @@ def KD(df, n, m1, m2):
 
 
 def LWR(df, n, m):
-    """威廉指标"""
+    """
+    威廉指标
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        n (int): 周期n
+
+        m (int): 参数m
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含1列, 是"lwr", 代表计算出来的威廉指标
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的威廉指标
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import LWR
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        lwr = LWR(klines.to_dataframe(), 9, 3)
+        print(list(lwr["lwr"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., -15.393343452737565, -19.03854750090778, -42.45136852077853, ...]
+    """
     hv = df["high"].rolling(n).max()
     lv = df["low"].rolling(n).min()
     rsv = pd.Series(np.where(hv == lv, 0, (df["close"] - hv) / (hv - lv) * 100))
@@ -388,7 +1343,36 @@ def LWR(df, n, m):
 
 
 def MASS(df, n1, n2):
-    """梅斯线"""
+    """
+    梅斯线
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        n1 (int): 周期n1
+
+        n2 (int): 周期n2
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含1列, 是"mass", 代表计算出来的梅斯线指标
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的梅斯线
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import MASS
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        mass = MASS(klines.to_dataframe(), 9, 25)
+        print(list(mass["mass"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 27.478822053291733, 27.485710830466964, 27.561223922342652, ...]
+    """
     ema1 = ta_func.ema(df["high"] - df["low"], n1)
     ema2 = ta_func.ema(ema1, n1)
     new_df = pd.DataFrame(data=list((ema1 / ema2).rolling(n2).sum()), columns=["mass"])
@@ -396,7 +1380,34 @@ def MASS(df, n1, n2):
 
 
 def MFI(df, n):
-    """资金流量指标"""
+    """
+    资金流量指标
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        n (int): 周期n
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含1列, 是"mfi", 代表计算出来的MFI指标
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的资金流量指标
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import MFI
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        mfi = MFI(klines.to_dataframe(), 14)
+        print(list(mfi["mfi"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 73.47968487105688, 70.2250476611595, 62.950450871062266, ...]
+    """
     typ = (df["high"] + df["low"] + df["close"]) / 3
     mr = pd.Series(np.where(typ > typ.shift(1), typ * df["volume"], 0)).rolling(n).sum() / pd.Series(
         np.where(typ < typ.shift(1), typ * df["volume"], 0)).rolling(n).sum()
@@ -405,7 +1416,36 @@ def MFI(df, n):
 
 
 def MI(df, n):
-    """动量指标"""
+    """
+    动量指标
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        n (int): 参数n
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含2列, 是"a", "mi", 分别代表当日收盘价与N日前收盘价的差值以及MI值
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的动量指标
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import MI
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        mi = MI(klines.to_dataframe(), 12)
+        print(list(mi["a"]))
+        print(list(mi["mi"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 399.1999999999998, 370.8000000000002, 223.5999999999999, ...]
+        [..., 293.2089214076506, 299.67484462367975, 293.3352742383731, ...]
+    """
     new_df = pd.DataFrame()
     new_df["a"] = df["close"] - df["close"].shift(n)
     new_df["mi"] = ta_func.sma(new_df["a"], n, 1)
@@ -413,7 +1453,40 @@ def MI(df, n):
 
 
 def MICD(df, n, n1, n2):
-    """异同离差动力指数"""
+    """
+    异同离差动力指数
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        n (int): 参数n
+
+        n1 (int): 周期n1
+
+        n2 (int): 周期n2
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含2列, 是"dif", "micd", 代表离差值和MICD指标
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的异同离差动力指数
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import MICD
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        micd = MICD(klines.to_dataframe(), 3, 10, 20)
+        print(list(micd["dif"]))
+        print(list(micd["micd"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 6.801483500680234, 6.700989000453493, 6.527326000302342, ...]
+        [..., 6.2736377238314684, 6.3163728514936714, 6.3374681663745385, ...]
+    """
     new_df = pd.DataFrame()
     mi = df["close"] - df["close"].shift(1)
     ami = ta_func.sma(mi, n, 1)
@@ -423,7 +1496,38 @@ def MICD(df, n, n1, n2):
 
 
 def MTM(df, n, n1):
-    """MTM动力指标"""
+    """
+    MTM动力指标
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        n (int): 周期n
+
+        n1 (int): 周期n1
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含2列, 是"mtm", "mtmma", 分别代表MTM值和MTM的简单移动平均值
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的动力指标
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import MTM
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        mtm = MTM(klines.to_dataframe(), 6, 6)
+        print(list(mtm["mtm"]))
+        print(list(mtm["mtmma"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 144.79999999999973, 123.60000000000036, -4.200000000000273, ...]
+        [..., 198.5666666666667, 177.96666666666678, 139.30000000000004, ...]
+    """
     new_df = pd.DataFrame()
     new_df["mtm"] = df["close"] - df["close"].shift(n)
     new_df["mtmma"] = ta_func.ma(new_df["mtm"], n1)
@@ -431,7 +1535,36 @@ def MTM(df, n, n1):
 
 
 def PRICEOSC(df, long, short):
-    """价格震荡指数 Price Oscillator"""
+    """
+    价格震荡指数 Price Oscillator
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        long (int): 长周期
+
+        short (int): 短周期
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含1列, 是"priceosc", 代表计算出来的价格震荡指数
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的价格震荡指数
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import PRICEOSC
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        priceosc = PRICEOSC(klines.to_dataframe(), 26, 12)
+        print(list(priceosc["priceosc"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 5.730468338384374, 5.826866231225718, 5.776959240989803, ...]
+    """
     ma_s = ta_func.ma(df["close"], short)
     ma_l = ta_func.ma(df["close"], long)
     new_df = pd.DataFrame(data=list((ma_s - ma_l) / ma_s * 100), columns=["priceosc"])
@@ -439,7 +1572,38 @@ def PRICEOSC(df, long, short):
 
 
 def PSY(df, n, m):
-    """心理线"""
+    """
+    心理线
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        n (int): 周期n
+
+        m (int): 周期m
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含2列, 是"psy", "psyma", 分别代表心理线和心理线的简单移动平均
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的心理线
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import PSY
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        psy = PSY(klines.to_dataframe(), 12, 6)
+        print(list(psy["psy"]))
+        print(list(psy["psyma"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 58.333333333333336, 58.333333333333336, 50.0, ...]
+        [..., 54.16666666666671, 54.16666666666671, 54.16666666666671, ...]
+    """
     new_df = pd.DataFrame()
     new_df["psy"] = ta_func.count(df["close"] > df["close"].shift(1), n) / n * 100
     new_df["psyma"] = ta_func.ma(new_df["psy"], m)
@@ -447,7 +1611,34 @@ def PSY(df, n, m):
 
 
 def QHLSR(df):
-    """阻力指标"""
+    """
+    阻力指标
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含2列, 是"qhl5", "qhl10", 分别代表计算出来的QHL5值和QHL10值
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的阻力指标
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import QHLSR
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        ndf = QHLSR(klines.to_dataframe())
+        print(list(ndf["qhl5"]))
+        print(list(ndf["qhl10"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 0.9512796890171819, 1.0, 0.8061319699743583, 0.36506038490240567, ...]
+        [..., 0.8192641975527878, 0.7851545532504415, 0.5895613967067044, ...]
+    """
     new_df = pd.DataFrame()
     qhl = (df["close"] - df["close"].shift(1)) - (df["volume"] - df["volume"].shift(1)) * (
             df["high"].shift(1) - df["low"].shift(1)) / df["volume"].shift(1)
@@ -464,14 +1655,74 @@ def QHLSR(df):
 
 
 def RC(df, n):
-    """变化率指数"""
+    """
+    变化率指数
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        n (int): 参数n
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含1列, 是"arc", 代表计算出来的变化率指数
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的变化率指数
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import RC
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        rc = RC(klines.to_dataframe(), 50)
+        print(list(rc["arc"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 1.011782057069131, 1.0157160672001329, 1.019680175228899, ...]
+    """
     rc = df["close"] / df["close"].shift(n)
     new_df = pd.DataFrame(data=list(ta_func.sma(rc.shift(1), n, 1)), columns=["arc"])
     return new_df
 
 
 def RCCD(df, n, n1, n2):
-    """异同离差变化率指数"""
+    """
+    异同离差变化率指数
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        n (int): 参数n
+
+        n1 (int): 周期n1
+
+        n2 (int): 周期n2
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含2列, 是"dif", "rccd", 分别代表离差值和异同离差变化率指数
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的异同离差变化率指数
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import RCCD
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        rccd = RCCD(klines.to_dataframe(), 10, 21, 28)
+        print(list(rccd["dif"]))
+        print(list(rccd["rccd"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 0.007700543190044096, 0.007914865667604465, 0.008297381119103608, ...]
+        [..., 0.007454465277084111, 0.007500505316136147, 0.0075801928964328935, ...]
+    """
     new_df = pd.DataFrame()
     rc = df["close"] / df["close"].shift(n)
     arc = ta_func.sma(rc.shift(1), n, 1)
@@ -481,7 +1732,38 @@ def RCCD(df, n, n1, n2):
 
 
 def ROC(df, n, m):
-    """变动速率"""
+    """
+    变动速率
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        n (int): 参数n
+
+        m (int): 周期m
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含2列, 是"roc", "rocma", 分别代表ROC值和ROC的简单移动平均值
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的变动速率
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import ROC
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        roc = ROC(klines.to_dataframe(), 24, 20)
+        print(list(roc["roc"]))
+        print(list(roc["rocma"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 21.389800555415288, 19.285937989351712, 15.183443085606768, ...]
+        [..., 14.597071588550435, 15.223202630466648, 15.537530180238516, ...]
+    """
     new_df = pd.DataFrame()
     new_df["roc"] = (df["close"] - df['close'].shift(n)) / df["close"].shift(n) * 100
     new_df["rocma"] = ta_func.ma(new_df["roc"], m)
@@ -489,7 +1771,42 @@ def ROC(df, n, m):
 
 
 def SLOWKD(df, n, m1, m2, m3):
-    """慢速KD"""
+    """
+    慢速KD
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        n (int): 周期n
+
+        m1 (int): 参数m1
+
+        m2 (int): 参数m2
+
+        m3 (int): 参数m3
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含2列, 是"k", "d", 分别代表K值和D值
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的慢速KD
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import SLOWKD
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        slowkd = SLOWKD(klines.to_dataframe(), 9, 3, 3, 3)
+        print(list(slowkd["k"]))
+        print(list(slowkd["d"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 82.98108443995415, 82.30787379300017, 74.05479302174061, ...]
+        [..., 83.416060393041, 83.04666485969405, 80.0493742470429, ...]
+    """
     new_df = pd.DataFrame()
     rsv = (df["close"] - df["low"].rolling(n).min()) / \
           (df["high"].rolling(n).max() - df["low"].rolling(n).min()) * 100
@@ -500,7 +1817,36 @@ def SLOWKD(df, n, m1, m2, m3):
 
 
 def SRDM(df, n):
-    """动向速度比率"""
+    """
+    动向速度比率
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        n (int): 参数n
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含2列, 是"srdm", "asrdm", 分别代表计算出来的SRDM值和SRDM值的加权移动平均值
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的动向速度比率
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import SRDM
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        srdm = SRDM(klines.to_dataframe(), 30)
+        print(list(srdm["srdm"]))
+        print(list(srdm["asrdm"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 0.7865067466266866, 0.7570567713288928, 0.5528619528619526, ...]
+        [..., 0.45441550541510667, 0.4645035476122329, 0.4674488277872236, ...]
+    """
     new_df = pd.DataFrame()
     dmz = np.where((df["high"] + df["low"]) <= (df["high"].shift(1) + df["low"].shift(1)), 0,
                    np.where(np.absolute(df["high"] - df["high"].shift(1)) > np.absolute(df["low"] - df["low"].shift(1)),
@@ -516,7 +1862,36 @@ def SRDM(df, n):
 
 
 def SRMI(df, n):
-    """MI修正指标"""
+    """
+    MI修正指标
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        n (int): 参数n
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含2列, 是"a", "mi", 分别代表A值和MI值
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的MI修正指标
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import SRMI
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        srmi = SRMI(klines.to_dataframe(), 9)
+        print(list(srmi["a"]))
+        print(list(srmi["mi"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 0.10362397961836425, 0.07062591892459567, -0.03341929372138309, ...]
+        [..., 0.07583104758041452, 0.0752526999519902, 0.06317803398828206, ...]
+    """
     new_df = pd.DataFrame()
     new_df["a"] = np.where(df["close"] < df["close"].shift(n),
                            (df["close"] - df["close"].shift(n)) / df["close"].shift(n),
@@ -527,7 +1902,40 @@ def SRMI(df, n):
 
 
 def ZDZB(df, n1, n2, n3):
-    """筑底指标"""
+    """
+    筑底指标
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        n1 (int): 周期n1
+
+        n2 (int): 周期n2
+
+        n3 (int): 周期n3
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含2列, 是"b", "d", 分别代表A值的n2周期简单移动平均和A值的n3周期简单移动平均
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的筑底指标
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import ZDZB
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        zdzb = ZDZB(klines.to_dataframe(), 50, 5, 20)
+        print(list(zdzb["b"]))
+        print(list(zdzb["d"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 1.119565217391305, 1.1376811594202905, 1.155797101449276, ...]
+        [..., 1.0722350515828771, 1.091644989471076, 1.1077480490523965, ...]
+    """
     new_df = pd.DataFrame()
     a = pd.Series(np.where(df["close"] >= df["close"].shift(1), 1, 0)).rolling(n1).sum() / pd.Series(
         np.where(df["close"] < df["close"].shift(1), 1, 0)).rolling(n1).sum()
@@ -536,15 +1944,67 @@ def ZDZB(df, n1, n2, n3):
     return new_df
 
 
-def DPO(df, n, m):
-    """区间震荡线"""
+def DPO(df):
+    """
+    区间震荡线
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含1列, 是"dpo", 代表计算出来的DPO指标
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的区间震荡线
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import DPO
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        dpo = DPO(klines.to_dataframe())
+        print(list(dpo["dpo"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 595.4100000000021, 541.8300000000017, 389.7200000000016, ...]
+    """
     dpo = df["close"] - (ta_func.ma(df["close"], 20)).shift(11)
     new_df = pd.DataFrame(data=list(dpo), columns=["dpo"])
     return new_df
 
 
 def LON(df):
-    """长线指标"""
+    """
+    长线指标
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含2列, 是"lon", "ma1", 分别代表长线指标和长线指标的10周期简单移动平均值
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的长线指标
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import LON
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        lon = LON(klines.to_dataframe())
+        print(list(lon["lon"]))
+        print(list(lon["ma1"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 6.419941948913239, 6.725451135494827, 6.483546043406369, ...]
+        [..., 4.366625464410439, 4.791685949556344, 5.149808865745246, ...]
+    """
     new_df = pd.DataFrame()
     tb = np.where(df["high"] > df["close"].shift(1),
                   df["high"] - df["close"].shift(1) + df["close"] - df["low"],
@@ -563,7 +2023,34 @@ def LON(df):
 
 
 def SHORT(df):
-    """短线指标"""
+    """
+    短线指标
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含2列, 是"short", "ma1", 分别代表短线指标和短线指标的10周期简单移动平均值
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的短线指标
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import SHORT
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        short = SHORT(klines.to_dataframe())
+        print(list(short["short"]))
+        print(list(short["ma1"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 0.6650139934614072, 0.3055091865815881, -0.24190509208845834, ...]
+        [..., 0.41123378999608917, 0.42506048514590444, 0.35812291618890224, ...]
+    """
     new_df = pd.DataFrame()
     tb = np.where(df["high"] > df["close"].shift(1),
                   df["high"] - df["close"].shift(1) + df["close"] - df["low"],
@@ -580,7 +2067,38 @@ def SHORT(df):
 
 
 def MV(df, n, m):
-    """均量线"""
+    """
+    均量线
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        n (int): 参数n
+
+        m (int): 参数m
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含2列, 是"mv1", "mv2", 分别代表均量线1和均量线2
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的均量线
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import MV
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        mv = MV(klines.to_dataframe(), 10, 20)
+        print(list(mv["mv1"]))
+        print(list(mv["mv2"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 69851.39419881169, 72453.75477893051, 75423.57930103746, ...]
+        [..., 49044.75870654942, 51386.27077122195, 53924.557232660845, ...]
+    """
     new_df = pd.DataFrame()
     new_df["mv1"] = ta_func.sma(df["volume"], n, 1)
     new_df["mv2"] = ta_func.sma(df["volume"], m, 1)
@@ -588,7 +2106,40 @@ def MV(df, n, m):
 
 
 def WAD(df, n, m):
-    """威廉多空力度线"""
+    """
+    威廉多空力度线
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        n (int): 参数n
+
+        m (int): 参数m
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含3列, 是"a", "b", "e", 分别代表A/D值,A/D值n周期的以1为权重的移动平均, A/D值m周期的以1为权重的移动平均
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的威廉多空力度线
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import WAD
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        wad = WAD(klines.to_dataframe(), 10, 30)
+        print(list(wad["a"]))
+        print(list(wad["b"]))
+        print(list(wad["e"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 90.0, 134.79999999999973, 270.4000000000001, ...]
+        [..., 344.4265821851701, 323.46392396665306, 318.1575315699878, ...]
+        [..., 498.75825781872277, 486.626315891432, 479.41877202838424, ...]
+    """
     new_df = pd.DataFrame()
     new_df["a"] = np.absolute(np.where(df["close"] > df["close"].shift(1),
                                        df["close"] - np.where(df["close"].shift(1) < df["low"], df["close"].shift(1),
@@ -602,7 +2153,32 @@ def WAD(df, n, m):
 
 
 def AD(df):
-    """累积/派发指标 Accumulation/Distribution"""
+    """
+    累积/派发指标 Accumulation/Distribution
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含1列, 是"ad", 代表计算出来的累积/派发指标
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的累积/派发指标
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import AD
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        ad = AD(klines.to_dataframe())
+        print(list(ad["ad"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 146240.57181105542, 132822.950945916, 49768.15024044845, ...]
+    """
     ad = (((df["close"] - df["low"]) - (df["high"] - df["close"])) / (df["high"] - df["low"]) * df[
         "volume"]).cumsum()
     new_df = pd.DataFrame(data=list(ad), columns=["ad"])
@@ -610,7 +2186,32 @@ def AD(df):
 
 
 def CCL(df):
-    """持仓异动"""
+    """
+    持仓异动
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含1列, 是"ccl", 代表计算出来的持仓异动指标
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的持仓异动指标
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import CCL
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        ccl = CCL(klines.to_dataframe())
+        print(list(ccl["ccl"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., '多头增仓', '多头减仓', '空头增仓', ...]
+    """
     ccl = np.where(df["close"] > df["close"].shift(1),
                    np.where(df["close_oi"] > df["close_oi"].shift(1), "多头增仓", "空头减仓"),
                    np.where(df["close_oi"] > df["close_oi"].shift(1), "空头增仓", "多头减仓"))
@@ -621,7 +2222,34 @@ def CCL(df):
 
 
 def CJL(df):
-    """成交量"""
+    """
+    成交量
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含2列, 是"vol", "opid", 分别代表成交量和持仓量
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的成交量
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import CJL
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        ndf = CJL(klines.to_dataframe())
+        print(list(ndf["vol"]))
+        print(list(ndf["opid"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 93142, 95875, 102152, ...]
+        [..., 69213, 66414, 68379, ...]
+    """
     new_df = pd.DataFrame()
     new_df["vol"] = df["volume"]  # 成交量
     new_df["opid"] = df["close_oi"]  # 持仓量
@@ -629,35 +2257,168 @@ def CJL(df):
 
 
 def OPI(df):
-    """持仓量"""
+    """
+    持仓量
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含1列, 是"opi", 代表持仓量
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的持仓量
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import OPI
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        opi = OPI(klines.to_dataframe())
+        print(list(opi["opi"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 69213, 66414, 68379, ...]
+    """
     opi = df["close_oi"]
     new_df = pd.DataFrame(data=list(opi), columns=["opi"])
     return new_df
 
 
 def PVT(df):
-    """价量趋势指数"""
+    """
+    价量趋势指数
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含1列, 是"pvt", 代表计算出来的价量趋势指数
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的价量趋势指数
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import PVT
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        pvt = PVT(klines.to_dataframe())
+        print(list(pvt["pvt"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 13834.536889431965, 12892.3866788564, 9255.595248484618, ...]
+    """
     pvt = ((df["close"] - df["close"].shift(1)) / df["close"].shift(1) * df["volume"]).cumsum()
     new_df = pd.DataFrame(data=list(pvt), columns=["pvt"])
     return new_df
 
 
 def VOSC(df, short, long):
-    """移动平均成交量指标 Volume Oscillator"""
+    """
+    移动平均成交量指标 Volume Oscillator
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        short (int): 短周期
+
+        long (int): 长周期
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含1列, 是"vosc", 代表计算出来的移动平均成交量指标
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的移动平均成交量指标
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import VOSC
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        vosc = VOSC(klines.to_dataframe(), 12, 26)
+        print(list(vosc["vosc"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 38.72537848731668, 36.61748077024136, 35.4059127302802, ...]
+    """
     vosc = (ta_func.ma(df["volume"], short) - ta_func.ma(df["volume"], long)) / ta_func.ma(df["volume"], short) * 100
     new_df = pd.DataFrame(data=list(vosc), columns=["vosc"])
     return new_df
 
 
 def VROC(df, n):
-    """量变动速率"""
+    """
+    量变动速率
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        n (int): 参数n
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含1列, 是"vroc", 代表计算出来的量变动速率
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的量变动速率
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import VROC
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        vroc = VROC(klines.to_dataframe(), 12)
+        print(list(vroc["vroc"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 41.69905854184833, 74.03274443327598, 3.549394666873177, ...]
+    """
     vroc = (df["volume"] - df["volume"].shift(n)) / df["volume"].shift(n) * 100
     new_df = pd.DataFrame(data=list(vroc), columns=["vroc"])
     return new_df
 
 
 def VRSI(df, n):
-    """量相对强弱"""
+    """
+    量相对强弱
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        n (int): 参数n
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含1列, 是"vrsi", 代表计算出来的量相对强弱指标
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的量相对强弱
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import VRSI
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        vrsi = VRSI(klines.to_dataframe(), 6)
+        print(list(vrsi["vrsi"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 59.46573277427041, 63.3447660581749, 45.21081537920358, ...]
+    """
     vrsi = ta_func.sma(
         pd.Series(np.where(df["volume"] - df["volume"].shift(1) > 0, df["volume"] - df["volume"].shift(1), 0)), n,
         1) / ta_func.sma(np.absolute(df["volume"] - df["volume"].shift(1)), n, 1) * 100
@@ -666,37 +2427,199 @@ def VRSI(df, n):
 
 
 def WVAD(df):
-    """威廉变异离散量"""
+    """
+    威廉变异离散量
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含1列, 是"wvad", 代表计算出来的威廉变异离散量
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的威廉变异离散量
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import WVAD
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        wvad = WVAD(klines.to_dataframe())
+        print(list(wvad["wvad"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., -32690.203562340674, -42157.968253968385, 32048.182305630264, ...]
+    """
     wvad = (df["close"] - df["open"]) / (df["high"] - df["low"]) * df["volume"]
     new_df = pd.DataFrame(data=list(wvad), columns=["wvad"])
     return new_df
 
 
 def MA(df, n):
-    """简单移动平均线"""
+    """
+    简单移动平均线
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        n (int): 简单移动平均线的周期
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含1列, 是"ma", 代表计算出来的简单移动平均线
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的简单移动平均线
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import MA
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        ma = MA(klines.to_dataframe(), 30)
+        print(list(ma["ma"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 3436.300000000001, 3452.8733333333344, 3470.5066666666676, ...]
+    """
     new_df = pd.DataFrame(data=list(ta_func.ma(df["close"], n)), columns=["ma"])
     return new_df
 
 
 def SMA(df, n, m):
-    """扩展指数加权移动平均"""
+    """
+    扩展指数加权移动平均
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        n (int): 扩展指数加权移动平均的周期
+
+        m (int): 扩展指数加权移动平均的权重
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含1列, 是"sma", 代表计算出来的扩展指数加权移动平均线
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的扩展指数加权移动平均线
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import SMA
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        sma = SMA(klines.to_dataframe(), 5, 2)
+        print(list(sma["sma"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 3803.9478653510914, 3751.648719210655, 3739.389231526393, ...]
+    """
     new_df = pd.DataFrame(data=list(ta_func.sma(df["close"], n, m)), columns=["sma"])
     return new_df
 
 
 def EMA(df, n):
-    """指数加权移动平均线"""
+    """
+    指数加权移动平均线
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        n (int): 指数加权移动平均线的周期
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含1列, 是"ema", 代表计算出来的指数加权移动平均线
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的指数加权移动平均线
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import EMA
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        ema = EMA(klines.to_dataframe(), 10)
+        print(list(ema["ema"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 3723.1470497119317, 3714.065767946126, 3715.3265374104667, ...]
+    """
     new_df = pd.DataFrame(data=list(ta_func.ema(df["close"], n)), columns=["ema"])
     return new_df
 
 
 def EMA2(df, n):
-    """线性加权移动平均 WMA"""
+    """
+    线性加权移动平均 WMA
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        n (int): 线性加权移动平均的周期
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含1列, 是"ema2", 代表计算出来的线性加权移动平均线
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的线性加权移动平均线
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import EMA2
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        ema2 = EMA2(klines.to_dataframe(), 10)
+        print(list(ema2["ema2"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 3775.832727272727, 3763.334545454546, 3757.101818181818, ...]
+    """
     new_df = pd.DataFrame(data=list(ta_func.ema2(df["close"], n)), columns=["ema2"])
     return new_df
 
 
 def TRMA(df, n):
-    """三角移动平均线"""
+    """
+    三角移动平均线
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        n (int): 三角移动平均线的周期
+
+    Returns:
+        pandas.DataFrame: 返回的DataFrame包含1列, 是"trma", 代表计算出来的三角移动平均线
+
+    Example::
+
+        # 获取 CFFEX.IF1903 合约的三角移动平均线
+        from tqsdk import TqApi, TqSim
+        from tqsdk.ta import TRMA
+
+        api = TqApi(TqSim())
+        klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
+        while not klines.is_ready():
+            api.wait_update()
+        trma = TRMA(klines.to_dataframe(), 10)
+        print(list(trma["trma"]))
+        api.close()
+
+        # 预计的输出是这样的:
+        [..., 3741.366666666669, 3759.160000000002, 3767.7533333333354, ...]
+    """
     new_df = pd.DataFrame(data=list(ta_func.trma(df["close"], n)), columns=["trma"])
     return new_df
