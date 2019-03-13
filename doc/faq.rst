@@ -45,7 +45,7 @@ TqSdk 使用了 python3 的原生协程和异步通讯库 asyncio，部分 IDE �
 * spyder: 详见 https://github.com/spyder-ide/spyder/issues/7096
 * jupyter: 详见 https://github.com/jupyter/notebook/issues/3397
 
-可以直接运行示例代码(例如: "python demo/t10.py")，或使用支持 asyncio 的 IDE (例如: pycharm)
+可以直接运行示例代码(例如: "python demo/tutorial/t10.py")，或使用支持 asyncio 的 IDE (例如: pycharm)
 
 
 .. _faq-CLOSE-CLOSETODAY:
