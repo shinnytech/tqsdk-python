@@ -2,6 +2,7 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'chengzhi'
 
+import weakref
 from datetime import date, datetime
 from tqsdk.api import TqApi, TqChan
 from tqsdk.exceptions import BacktestFinished
@@ -59,7 +60,7 @@ class TqBacktest(object):
         self.md_send_chan = md_send_chan
         self.md_recv_chan = md_recv_chan
         self.pending_peek = False
-        self.data = {"_path": [], "_listener": set()}  # 数据存储
+        self.data = {"_path": [], "_listener": weakref.WeakSet()}  # 数据存储
         self.serials = {}  # 所有原始数据序列
         self.quotes = {}
         self.diffs = []

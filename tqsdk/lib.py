@@ -249,7 +249,7 @@ class InsertOrderTask(object):
         """负责下单的task"""
         order = self.api.insert_order(self.symbol, self.direction, self.offset, self.volume, self.limit_price)
         last_order = order.copy()
-        last_left = 0
+        last_left = self.volume
         async with self.api.register_update_notify() as update_chan:
             await self.order_chan.send(last_order)
             while order["status"] != "FINISHED":

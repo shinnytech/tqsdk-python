@@ -25,6 +25,7 @@ import asyncio
 import functools
 import websockets
 import requests
+import weakref
 import pandas as pd
 import numpy as np
 from .__version__ import __version__
@@ -89,21 +90,20 @@ class TqApi(object):
         # 回测需要行情和交易 lockstep, 而 asyncio 没有将内部的 _ready 队列暴露出来, 因此 monkey patch call_soon 函数用来判断是否有任务等待执行
         self.loop.call_soon = functools.partial(self._call_soon, self.loop.call_soon)
         self.event_rev, self.check_rev = 0, 0
-        self.quotes = set()  # 订阅的实时行情列表
+        self.requests = {}  # 记录已发出的请求
         self.account_id = account if isinstance(account, str) else account.account_id
         self.logger = logging.getLogger("TqApi")  # 调试信息输出
-        if debug:
-            if not self.logger.handlers:
-                self.logger.setLevel(logging.DEBUG)
-                sh = logging.StreamHandler()
-                sh.setLevel(logging.INFO)
-                sh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-                self.logger.addHandler(sh)
-                fh = logging.FileHandler(filename=debug)
-                fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-                self.logger.addHandler(fh)
+        if debug and not self.logger.handlers:
+            self.logger.setLevel(logging.DEBUG)
+            sh = logging.StreamHandler()
+            sh.setLevel(logging.INFO)
+            sh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+            self.logger.addHandler(sh)
+            fh = logging.FileHandler(filename=debug)
+            fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+            self.logger.addHandler(fh)
         self.send_chan, self.recv_chan = TqChan(self), TqChan(self)  # 消息收发队列
-        self.data = {"_path": [], "_listener": set()}  # 数据存储
+        self.data = {"_path": [], "_listener": weakref.WeakSet()}  # 数据存储
         self.diffs = []  # 自上次wait_update返回后收到更新数据的数组
         self.pending_diffs = []  # 从网络上收到的待处理的 diffs, 只在 wait_update 函数执行过程中才可能为非空
         self.prototype = self._gen_prototype()  # 各业务数据的原型, 用于决定默认值及将收到的数据转为特定的类型
@@ -188,13 +188,19 @@ class TqApi(object):
             24575.0
             ...
         """
-        if symbol not in self.quotes:
-            self.quotes.add(symbol)
+        quote = self._get_obj(self.data, ["quotes", symbol], self.prototype["quotes"]["#"])
+        if symbol not in self.requests.setdefault("quotes", set()):
+            self.requests["quotes"].add(symbol)
             self.send_chan.send_nowait({
                 "aid": "subscribe_quote",
-                "ins_list": ",".join(self.quotes),
+                "ins_list": ",".join(self.requests["quotes"]),
             })
-        return self._get_obj(self.data, ["quotes", symbol], self.prototype["quotes"]["#"])
+        deadline = time.time() + 30
+        while not self.loop.is_running() and quote["datetime"] == "":
+            #@todo: merge diffs
+            if not self.wait_update(deadline=deadline):
+                raise Exception("获取行情超时，请检查客户端及网络是否正常，且合约代码填写正确")
+        return quote
 
     # ----------------------------------------------------------------------
     def get_kline_serial(self, symbol, duration_seconds, data_length=200, chart_id=None):
@@ -238,21 +244,27 @@ class TqApi(object):
             50960.0
             ...
         """
-        duration_seconds = int(duration_seconds)  # 转成整数
-        if not chart_id:
-            chart_id = self._generate_chart_id("realtime", symbol, duration_seconds)
         if data_length > 8964:
             data_length = 8964
+        duration_seconds = int(duration_seconds)  # 转成整数
         dur_id = duration_seconds * 1000000000
-        req = {
-            "aid": "set_chart",
-            "chart_id": chart_id,
-            "ins_list": symbol,
-            "duration": dur_id,
-            "view_width": data_length,
-        }
-        self.send_chan.send_nowait(req)
-        return SerialDataProxy(self._get_obj(self.data, ["klines", symbol, str(dur_id)]), data_length, self.prototype["klines"]["*"]["*"]["data"]["@"])
+        request = (symbol, duration_seconds, data_length, chart_id)
+        if request not in self.requests.setdefault("klines", {}):
+            self.requests["klines"][request] = SerialDataProxy(self._get_obj(self.data, ["klines", symbol, str(dur_id)]), data_length, self.prototype["klines"]["*"]["*"]["data"]["@"])
+            self.send_chan.send_nowait({
+                "aid": "set_chart",
+                "chart_id": chart_id if chart_id is not None else self._generate_chart_id("realtime", symbol, duration_seconds),
+                "ins_list": symbol,
+                "duration": dur_id,
+                "view_width": data_length,
+            })
+        klines = self.requests["klines"][request]
+        deadline = time.time() + 30
+        while not self.loop.is_running() and not klines.is_ready():
+            #@todo: merge diffs
+            if not self.wait_update(deadline=deadline):
+                raise Exception("获取行情超时，请检查客户端及网络是否正常，且合约代码填写正确")
+        return klines
 
     # ----------------------------------------------------------------------
     def get_tick_serial(self, symbol, data_length=200, chart_id=None):
@@ -294,19 +306,25 @@ class TqApi(object):
             50820.0 51580.0
             ...
         """
-        if not chart_id:
-            chart_id = self._generate_chart_id("realtime", symbol, 0)
         if data_length > 8964:
             data_length = 8964
-        req = {
-            "aid": "set_chart",
-            "chart_id": chart_id,
-            "ins_list": symbol,
-            "duration": 0,
-            "view_width": data_length,
-        }
-        self.send_chan.send_nowait(req)
-        return SerialDataProxy(self._get_obj(self.data, ["ticks", symbol]), data_length, self.prototype["ticks"]["*"]["data"]["@"])
+        request = (symbol, data_length, chart_id)
+        if request not in self.requests.setdefault("ticks", {}):
+            self.requests["ticks"][request] = SerialDataProxy(self._get_obj(self.data, ["ticks", symbol]), data_length, self.prototype["ticks"]["*"]["data"]["@"])
+            self.send_chan.send_nowait({
+                "aid": "set_chart",
+                "chart_id": chart_id if chart_id is not None else self._generate_chart_id("realtime", symbol, 0),
+                "ins_list": symbol,
+                "duration": 0,
+                "view_width": data_length,
+            })
+        ticks = self.requests["ticks"][request]
+        deadline = time.time() + 30
+        while not self.loop.is_running() and not ticks.is_ready():
+            #@todo: merge diffs
+            if not self.wait_update(deadline=deadline):
+                raise Exception("获取行情超时，请检查客户端及网络是否正常，且合约代码填写正确")
+        return ticks
 
     # ----------------------------------------------------------------------
     def insert_order(self, symbol, direction, offset, volume, limit_price=None, order_id=None):
@@ -951,7 +969,6 @@ class TqApi(object):
     def _notify_update(target, recursive):
         """同步通知业务数据更新"""
         if isinstance(target, dict):
-            target["_listener"] = {q for q in target["_listener"] if not q.closed}
             for q in target["_listener"]:
                 q.send_nowait(True)
             if recursive:
@@ -968,7 +985,7 @@ class TqApi(object):
                 dv = {} if i != len(path) - 1 or default is None else copy.copy(default)
                 if isinstance(dv, dict):
                     dv["_path"] = d["_path"] + [path[i]]
-                    dv["_listener"] = set()
+                    dv["_listener"] = weakref.WeakSet()
                 d[path[i]] = dv
             d = d[path[i]]
         return d
