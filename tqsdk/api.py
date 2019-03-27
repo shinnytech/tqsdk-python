@@ -765,7 +765,13 @@ class TqApi(object):
                 account = TqSim(account_id=self.account_id)
             url = None
         if isinstance(account, str):  # 如果帐号类型是字符串，则连接天勤客户端
-            self.recv_chan.send_nowait({"aid":"rtn_data","data":[{"trade":{self.account_id:{"trade_more_data": False}}}]})  # 天勤以 mdhis_more_data 来标记账户截面发送结束
+            self.recv_chan.send_nowait({
+                "aid":"rtn_data",
+                "data":[{
+                    "quotes": self._fetch_symbol_info(TqApi.DEFAULT_INS_URL),  # 获取合约信息
+                    "trade": {self.account_id:{"trade_more_data": False}},  # 天勤以 mdhis_more_data 来标记账户截面发送结束
+                }],
+            })
             self.create_task(self._connect((url if url else "ws://127.0.0.1:7777/") + self.account_id, self.send_chan, self.recv_chan))  # 启动到天勤客户端的连接
         else:
             # 默认连接 opemmd, 除非使用模拟帐号并指定了 url (例如: 使用模拟帐号连接天勤客户端使用历史复盘)
