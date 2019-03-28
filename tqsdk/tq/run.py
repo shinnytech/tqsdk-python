@@ -6,7 +6,7 @@ __author__ = 'yangyang'
 '''
 天勤主程序启动外部python进程的入口:
 
-run.py --source_file=C:\\tqsdk\\xx\\a.py --instance_id=ABCD --instance_file=c:\\tmp\\ABCD.desc
+run.py --source_file=C:\\tqsdk\\xx\\a.py --instance_id=SIM.abcd --instance_file=c:\\tmp\\SIM.abcd.desc
 '''
 
 import os
@@ -52,14 +52,10 @@ def run():
     parser.add_argument('--source_file')
     parser.add_argument('--instance_id')
     parser.add_argument('--instance_file')
-    parser.add_argument('--ins_url')
-    parser.add_argument('--md_url')
     args = parser.parse_args()
 
     # api
-    TqApi.DEFAULT_MD_URL = args.md_url
-    TqApi.DEFAULT_INS_URL = args.ins_url
-    api = TqApi(TqAccount("", args.instance_id, ""), url="ws://127.0.0.1:7777/" + args.instance_id)
+    api = TqApi(args.instance_id)
     try:
         # log
         logger = logging.getLogger("TQ")
@@ -134,6 +130,7 @@ def run():
     finally:
         if not api.loop.is_closed():
             api.close()
+
 
 if __name__ == "__main__":
     run()
