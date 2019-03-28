@@ -42,7 +42,7 @@ class TqApi(object):
     DEFAULT_MD_URL = "wss://openmd.shinnytech.com/t/md/front/mobile"
     DEFAULT_INS_URL = "https://openmd.shinnytech.com/t/md/symbols/latest.json"
 
-    def __init__(self, account, url=None, backtest=None, debug=None, loop=None):
+    def __init__(self, account=None, url=None, backtest=None, debug=None, loop=None):
         """
         创建天勤接口实例
 
@@ -86,6 +86,17 @@ class TqApi(object):
             from tqsdk import TqApi, TqSim, TqBacktest
             api = TqApi(TqSim(), backtest=TqBacktest(start_dt=date(2018, 5, 1), end_dt=date(2018, 10, 1)))
         """
+        if account is None:
+            msg = """__init__() missing 1 required positional argument: 'account'  
+            
+只有在天勤中运行策略程序时, 才可以省略账户信息. 如果需要在天勤外运行策略程序, 您必须在创建TqApi时明确提供账号和策略ID, 像这样:
+
+api = TqApi("7382621.abcd")  # 7382621 是期货账号, 必须与天勤当前登录的期货账号一致. abcd 是策略ID, 可以任意设定, 用于策略运行监控 
+
+当天勤处于复盘模式时, 自动创建了一个名叫 "SIM" 的模拟账号, 此时TqApi也需要明确指定 "SIM" 作为期货账号: 
+api = TqApi("SIM.abcd") 
+"""
+            raise TypeError(msg)
         self.loop = asyncio.new_event_loop() if loop is None else loop  # 创建一个新的 ioloop, 避免和其他框架/环境产生干扰
         # 回测需要行情和交易 lockstep, 而 asyncio 没有将内部的 _ready 队列暴露出来, 因此 monkey patch call_soon 函数用来判断是否有任务等待执行
         self.loop.call_soon = functools.partial(self._call_soon, self.loop.call_soon)
@@ -250,7 +261,7 @@ class TqApi(object):
         dur_id = duration_seconds * 1000000000
         request = (symbol, duration_seconds, data_length, chart_id)
         if request not in self.requests.setdefault("klines", {}):
-            self.requests["klines"][request] = SerialDataProxy(self._get_obj(self.data, ["klines", symbol, str(dur_id)]), data_length, self.prototype["klines"]["*"]["*"]["data"]["@"])
+            self.requests["klines"][request] = SerialDataProxy(self, self._get_obj(self.data, ["klines", symbol, str(dur_id)]), data_length, self.prototype["klines"]["*"]["*"]["data"]["@"])
             self.send_chan.send_nowait({
                 "aid": "set_chart",
                 "chart_id": chart_id if chart_id is not None else self._generate_chart_id("realtime", symbol, duration_seconds),
@@ -310,7 +321,7 @@ class TqApi(object):
             data_length = 8964
         request = (symbol, data_length, chart_id)
         if request not in self.requests.setdefault("ticks", {}):
-            self.requests["ticks"][request] = SerialDataProxy(self._get_obj(self.data, ["ticks", symbol]), data_length, self.prototype["ticks"]["*"]["data"]["@"])
+            self.requests["ticks"][request] = SerialDataProxy(self, self._get_obj(self.data, ["ticks", symbol]), data_length, self.prototype["ticks"]["*"]["data"]["@"])
             self.send_chan.send_nowait({
                 "aid": "set_chart",
                 "chart_id": chart_id if chart_id is not None else self._generate_chart_id("realtime", symbol, 0),
@@ -765,6 +776,10 @@ class TqApi(object):
                 account = TqSim(account_id=self.account_id)
             url = None
         if isinstance(account, str):  # 如果帐号类型是字符串，则连接天勤客户端
+            self.send_chan.send_nowait({
+                "aid": "req_login",
+                "user_name": self.account_id,
+            })
             self.recv_chan.send_nowait({
                 "aid":"rtn_data",
                 "data":[{
@@ -772,7 +787,7 @@ class TqApi(object):
                     "trade": {self.account_id:{"trade_more_data": False}},  # 天勤以 mdhis_more_data 来标记账户截面发送结束
                 }],
             })
-            self.create_task(self._connect((url if url else "ws://127.0.0.1:7777/") + self.account_id, self.send_chan, self.recv_chan))  # 启动到天勤客户端的连接
+            self.create_task(self._connect((url if url else "ws://127.0.0.1:7777/"), self.send_chan, self.recv_chan))  # 启动到天勤客户端的连接
         else:
             # 默认连接 opemmd, 除非使用模拟帐号并指定了 url (例如: 使用模拟帐号连接天勤客户端使用历史复盘)
             ws_md_send_chan, ws_md_recv_chan = TqChan(self), TqChan(self)
@@ -1332,7 +1347,8 @@ class SerialDataProxy(object):
         # 将序列转为 pandas.DataFrame
         ks.to_dataframe()
     """
-    def __init__(self, serial_root, width, default):
+    def __init__(self, api, serial_root, width, default):
+        self.api = api
         self.serial_root = serial_root
         self.width = width
         self.default = default
@@ -1432,6 +1448,196 @@ class SerialDataProxy(object):
             self.array = array
             self.array_index = last_id
         return pd.DataFrame(array, columns=self.attr)
+
+    def draw_serial(self, serial, id, board="MAIN", style="LINE", color=0xFFFF0000, width=1):
+        """
+        配合天勤使用时, 在天勤的行情图上绘制一个数据序列.
+
+        Args:
+            serial (numpy.array): 一个数据序列, 长度必须与K线序列长度一致
+
+            id (str): 数据序列ID. 以相同ID多次发送数据, 会自动合并到一个序列上
+
+            board (str): 选择图板, 可选, 缺省为 "MAIN" 表示绘制在主图
+
+            style ("LINE" | "DOT" | "DASH" | "BAR"): 绘图类型, 可选, 缺省为LINE
+
+            color (ARGB): 数据序列绘图颜色, 可选, 缺省为红色.
+
+            width (int): 线宽, 可选, 缺省为1
+        """
+        range_right = self.serial_root.get("last_id", -1)
+        range_left = range_right - self.width + 1
+        serial = {
+            "type": "SERIAL",
+            "range_left": range_left,
+            "range_right": range_right,
+            "data": serial.tolist(),
+            "style": style,
+            "color": color,
+            "width": width,
+            "board": board,
+        }
+        self._send_chart_data(id, serial)
+
+    def draw_kserial(self, kserial, id, board="MAIN"):
+        """
+        配合天勤使用时, 在天勤的行情图上绘制一个K线序列
+
+        Args:
+            kserial (numpy.dataframe): 一个K线数据序列, 长度必须与 self 序列长度一致
+
+            id (str): 数据序列ID. 以相同ID多次发送数据, 会自动合并到一个序列上
+
+            board (str): 选择图板, 可选, 缺省为 "MAIN" 表示绘制在主图
+        """
+        range_right = self.serial_root.get("last_id", -1)
+        range_left = range_right - self.width + 1
+        serial = {
+            "type": "KSERIAL",
+            "range_left": range_left,
+            "range_right": range_right,
+            "open": kserial["open"].tolist(),
+            "high": kserial["high"].tolist(),
+            "low": kserial["low"].tolist(),
+            "close": kserial["close"].tolist(),
+            "board": board,
+        }
+        self._send_chart_data(id, serial)
+
+    def draw_text(self, text, x=None, y=None, id=None, board="MAIN", color=0xFFFF0000):
+        """
+        配合天勤使用时, 在天勤的行情图上绘制一个字符串
+
+        Args:
+            text (str): 要显示的字符串
+
+            x (int): X 坐标, 以K线的序列号表示. 可选, 缺省为对齐最后一根K线,
+
+            y (float): Y 坐标. 可选, 缺省为最后一根K线收盘价
+
+            id (str): 字符串ID, 可选. 以相同ID多次调用本函数, 后一次调用将覆盖前一次调用的效果
+
+            board (str): 选择图板, 可选, 缺省为 "MAIN" 表示绘制在主图
+
+            color (ARGB): 文本颜色, 可选, 缺省为红色.
+        """
+        if id is None:
+            id = uuid.uuid4().hex
+        if y is None:
+            y = self[-1]["close"]
+        serial = {
+            "type": "TEXT",
+            "x1": self._offset_to_x(x),
+            "y1": y,
+            "text": text,
+            "color": color,
+            "board": board,
+        }
+        self._send_chart_data(id, serial)
+
+    def draw_line(self, x1, y1, x2, y2, id=None, board="MAIN", line_type="LINE", color=0xFFFF0000, width=1):
+        """
+        配合天勤使用时, 在天勤的行情图上绘制一个直线/线段/射线
+
+        Args:
+            x1 (int): 第一个点的 X 坐标, 以K线的序列号表示
+
+            y1 (float): 第一个点的 Y 坐标
+
+            x2 (int): 第二个点的 X 坐标, 以K线的序列号表示
+
+            y2 (float): 第二个点的 Y 坐标
+
+            id (str): 字符串ID, 可选. 以相同ID多次调用本函数, 后一次调用将覆盖前一次调用的效果
+
+            board (str): 选择图板, 可选, 缺省为 "MAIN" 表示绘制在主图
+
+            line_type ("LINE" | "SEG" | "RAY"): 画线类型, 可选, 默认为 LINE. LINE=直线, SEG=线段, RAY=射线
+
+            color (ARGB): 线颜色, 可选, 缺省为 红色
+
+            width (int): 线宽度, 可选, 缺省为 1
+        """
+        if id is None:
+            id = uuid.uuid4().hex
+        serial = {
+            "type": line_type,
+            "x1": self._offset_to_x(x1),
+            "y1": y1,
+            "x2": self._offset_to_x(x2),
+            "y2": y2,
+            "color": color,
+            "width": width,
+            "board": board,
+        }
+        self._send_chart_data(id, serial)
+
+    def draw_box(self, x1, y1, x2, y2, id=None, board="MAIN", bg_color=0x00000000, color=0xFFFF0000, width=1):
+        """
+        配合天勤使用时, 在天勤的行情图上绘制一个矩形
+
+        Args:
+            x1 (int): 矩形左上角的 X 坐标, 以K线的序列号表示
+
+            y1 (float): 矩形左上角的 Y 坐标
+
+            x2 (int): 矩形左上角的 X 坐标, 以K线的序列号表示
+
+            y2 (float): 矩形左上角的 Y 坐标
+
+            id (str): ID, 可选. 以相同ID多次调用本函数, 后一次调用将覆盖前一次调用的效果
+
+            board (str): 选择图板, 可选, 缺省为 "MAIN" 表示绘制在主图
+
+            bg_color (ARGB): 填充颜色, 可选, 缺省为 空
+
+            color (ARGB): 边框颜色, 可选, 缺省为 红色
+
+            width (int): 边框宽度, 可选, 缺省为 1
+        """
+        if id is None:
+            id = uuid.uuid4().hex
+        serial = {
+            "type": "BOX",
+            "x1": self._offset_to_x(x1),
+            "y1": y1,
+            "x2": self._offset_to_x(x2),
+            "y2": y2,
+            "bg_color": bg_color,
+            "color": color,
+            "width": width,
+            "board": board,
+        }
+        self._send_chart_data(id, serial)
+
+    def last_id(self):
+        return self.serial_root.get("last_id", -1)
+
+    def _send_chart_data(self, serial_id, serial):
+        p = self.serial_root["_path"]
+        chart_id = self.api.account_id.replace(".", "_")
+        symbol = p[-2]
+        dur_nano = int(p[-1])
+        pack = {
+            "aid": "set_chart_data",
+            "chart_id": chart_id,
+            "symbol": symbol,
+            "dur_nano": dur_nano,
+            "datas": {
+                serial_id: serial,
+            }
+        }
+        print("pack", pack)
+        self.api.send_chan.send_nowait(pack)
+
+    def _offset_to_x(self, x):
+        if x is None:
+            return self.last_id()
+        elif x < 0:
+            return self.last_id() + 1 + x
+        elif x >= 0:
+            return self.last_id() - self.width + 1 + x
 
 
 class TqChan(asyncio.Queue):
