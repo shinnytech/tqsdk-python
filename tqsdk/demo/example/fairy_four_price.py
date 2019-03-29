@@ -47,6 +47,7 @@ while True:
         # 平仓止损: 当价格 向上突破上轨 或 向下突破下轨 后, 再次回破当日开盘价
         if (quote["highest"] > top_rail and quote["last_price"] <= quote["open"]) or (
                 quote["lowest"] < bottom_rail and quote["last_price"] >= quote["open"]):
+            print("平仓止损")
             target_pos.set_target_volume(0)
 
     if api.is_changing(quote, "datetime"):
