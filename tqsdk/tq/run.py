@@ -9,6 +9,7 @@ __author__ = 'yangyang'
 run.py --source_file=C:\\tqsdk\\xx\\a.py --instance_id=SIM.abcd --instance_file=c:\\tmp\\SIM.abcd.desc
 '''
 
+import sys
 import os
 import sys
 import json
@@ -16,11 +17,47 @@ import argparse
 import logging
 import importlib
 import datetime
+import threading
+import _winapi
 
 import tqsdk
 from tqsdk.tq.utility import input_param
-from tqsdk.api import TqApi, TqAccount
+from tqsdk.api import TqApi
 
+
+class TqMonitorThread (threading.Thread):
+    def __init__(self, tq_pid):
+        threading.Thread.__init__(self)
+        self.tq_pid = tq_pid
+
+    def run(self):
+        p = _winapi.OpenProcess(_winapi.PROCESS_ALL_ACCESS, False, self.tq_pid)
+        os.waitpid(p, 0)
+        os._exit(0)
+
+
+class PrintWriter :
+    def __init__(self, chan, instance_id):
+        self.orign_stdout = sys.stdout
+        self.chan = chan
+        self.instance_id = instance_id
+        self.line = ""
+
+    def write(self, text):
+        self.line += text
+        if self.line[-1] == "\n":
+            dt = int(datetime.datetime.now().timestamp() * 1e9)
+            self.chan.send_nowait({
+                "aid": "log",
+                "datetime": dt,
+                "instance_id": self.instance_id,
+                "level": "INFO",
+                "content": self.line,
+            })
+            self.line = ""
+
+    def flush(self):
+        pass
 
 class TqRunLogger(logging.Handler):
     def __init__(self, chan, instance_id):
@@ -29,7 +66,7 @@ class TqRunLogger(logging.Handler):
         self.instance_id = instance_id
 
     def emit(self, record):
-        dt = int(record.created * 1000000000 + record.msecs * 1000000)
+        dt = int(datetime.datetime.now().timestamp()*1e9)
         if record.exc_info:
             if record.exc_info[2].tb_next:
                 msg = "%s, line %d, %s" % (record.msg, record.exc_info[2].tb_next.tb_lineno, str(record.exc_info[1]))
@@ -52,11 +89,14 @@ def run():
     parser.add_argument('--source_file')
     parser.add_argument('--instance_id')
     parser.add_argument('--instance_file')
+    parser.add_argument('--tq_pid')
     args = parser.parse_args()
+    TqMonitorThread(int(args.tq_pid)).start()
 
     # api
     api = TqApi(args.instance_id)
     try:
+        sys.stdout = PrintWriter(api.send_chan, args.instance_id)
         # log
         logger = logging.getLogger("TQ")
         logger.setLevel(logging.INFO)

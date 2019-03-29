@@ -1628,7 +1628,6 @@ class SerialDataProxy(object):
                 serial_id: serial,
             }
         }
-        print("pack", pack)
         self.api.send_chan.send_nowait(pack)
 
     def _offset_to_x(self, x):
