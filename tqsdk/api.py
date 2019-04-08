@@ -628,6 +628,12 @@ api = TqApi("SIM.abcd")
             self.pending_diffs = []
             for d in self.diffs:
                 self._merge_diff(self.data, d, self.prototype, False)
+            for _, k in self.requests.get("klines", {}).items():
+                if k.ref_df is not None and self.is_changing(k):
+                    k._update_array()
+            for _, t in self.requests.get("ticks", {}).items():
+                if t.ref_df is not None and self.is_changing(t):
+                    t._update_array()
             if deadline_handle:
                 deadline_handle.cancel()
             update_task.cancel()
@@ -673,8 +679,17 @@ api = TqApi("SIM.abcd")
         if not isinstance(key, list):
             key = [key] if key else []
         try:
-            path = obj.serial_root["_path"] if isinstance(obj, SerialDataProxy) else obj["_path"]
-        except KeyError:
+            if isinstance(obj, SerialDataProxy):
+                path = obj.serial_root["_path"]
+            elif isinstance(obj, pd.DataFrame):
+                duration = int(obj["duration"].iloc[0])*1000000000
+                path = ["klines", obj["symbol"].iloc[0], str(duration)] if duration != 0 else ["ticks", obj["symbol"].iloc[0]]
+            elif isinstance(obj, pd.Series):
+                duration = int(obj["duration"])*1000000000
+                path = ["klines", obj["symbol"], str(duration), "data", str(int(obj["id"]))] if duration != 0 else ["ticks", obj["symbol"], "data", str(int(obj["id"]))]
+            else:
+                path = obj["_path"]
+        except (KeyError, IndexError):
             return False
         for diff in self.diffs:
             if self._is_key_exist(diff, path, key):
@@ -1355,6 +1370,7 @@ class SerialDataProxy(object):
         self.attr = list(self.default.keys())
         self.array = None
         self.array_index = -1
+        self.ref_df = None
         self.ready = False
 
     def __getattr__(self, name):
@@ -1369,6 +1385,38 @@ class SerialDataProxy(object):
         else:
             data_id = last_id - self.width + 1 + key
         return TqApi._get_obj(self.serial_root, ["data", str(data_id)], self.default)
+
+    @property
+    def df(self):
+        """
+        获取当前序列的 pandas.DataFrame 类型数据, 此 DataFrame 数据会随着时间推进自动更新
+        动态更新的 DataFrame 数据可以配合is_changing()进行判断操作
+        Returns:
+            pandas.DataFrame: 每行是一条行情数据
+
+        Example::
+            # 获取可动态更新的 DataFram 类型K线数据
+
+            from tqsdk import TqApi, TqSim
+            api = TqApi(TqSim())
+            klines = api.get_kline_serial("SHFE.au1906", 5)
+            df = klines.df  # 获取K线的动态DataFrame序列
+            while True:
+                api.wait_update()
+                if api.is_changing(df):
+                    print(df["close"].iloc[-1])
+            # 预计的输出是这样的:
+                282.95
+                282.9
+                282.85
+                ...
+        """
+        if self.ref_df is None:
+            self._update_array()
+            self.ref_df = pd.DataFrame(self.array, columns=["id"] + self.attr)
+            self.ref_df["symbol"] = self.serial_root["_path"][1]
+            self.ref_df["duration"] = 0 if self.serial_root["_path"][0] == "ticks" else int(self.serial_root["_path"][-1])//1000000000
+        return self.ref_df
 
     def is_ready(self):
         """
@@ -1402,6 +1450,22 @@ class SerialDataProxy(object):
                 self.ready = all([not self.default.items() <= data.get(str(i), self.default).items() for i in range(max(last_id - self.width + 1, 0), last_id + 1)])
         return self.ready
 
+    def _update_array(self):
+        """更新array"""
+        last_id = self.serial_root.get("last_id", -1)
+        top_row = 0
+        if self.array is None:
+            self.array = np.array([[0] + [self.default[k] for k in self.attr]] * self.width, order="F")
+        if self.is_ready():
+            shift = min(last_id - self.array_index, self.width)
+            if shift != 0:
+                self.array[0:self.width-shift] = self.array[shift:self.width]
+            top_row = max(self.width - shift - 1,0)
+            self.array_index = last_id
+        for i in range(top_row, self.width):
+            item = self[i]
+            self.array[i] = [int(item["_path"][-1])] + [item[k] for k in self.attr]
+
     def to_dataframe(self):
         """
         将当前该序列中的数据转换为 pandas.DataFrame
@@ -1434,20 +1498,7 @@ class SerialDataProxy(object):
             Length: 200, dtype: bool
             ...
         """
-        last_id = self.serial_root.get("last_id", -1)
-        if self.array is None:
-            array = np.array([[self.default[k] for k in self.attr]] * self.width, order="F")
-            top_row = 0
-        else:
-            array = np.roll(self.array, self.array_index - last_id, axis=0)
-            top_row = max(self.array_index - last_id + self.width - 1,0)
-        for i in range(top_row, self.width):
-            item = self[i]
-            array[i] = [item[k] for k in self.attr]
-        if self.is_ready():
-            self.array = array
-            self.array_index = last_id
-        return pd.DataFrame(array, columns=self.attr)
+        return self.df.copy()
 
     def draw_serial(self, serial, id, board="MAIN", style="LINE", color=0xFFFF0000, width=1):
         """
