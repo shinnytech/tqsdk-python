@@ -710,6 +710,34 @@ api = TqApi("SIM.abcd")
         return False
 
     # ----------------------------------------------------------------------
+    def is_serial_ready(self, obj):
+        """
+        判断是否已经从服务器收到了所有订阅的数据
+
+        Returns:
+            bool: 返回 True 表示已经从服务器收到了所有订阅的数据
+
+        Example::
+
+            # 判断是否已经从服务器收到了最后 3000 根 SHFE.cu1812 的分钟线数据
+            from tqsdk import TqApi, TqSim
+
+            api = TqApi(TqSim())
+            k_serial = api.get_kline_serial("SHFE.cu1812", 60, data_length=3000)
+            while True:
+                api.wait_update()
+                print(api.is_serial_ready(k_serial))
+
+            # 预计的输出是这样的:
+            False
+            False
+            True
+            True
+            ...
+        """
+        return self._is_serial_ready(self.serials[id(obj)])
+
+    # ----------------------------------------------------------------------
     def create_task(self, coro):
         """
         创建一个task
