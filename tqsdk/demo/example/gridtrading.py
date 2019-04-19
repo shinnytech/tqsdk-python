@@ -23,8 +23,7 @@ grid_volume_short = [i for i in range(GRID_AMOUNT + 1)]  # 空头每格交易手
 grid_prices_long = [reduce(lambda p, r: p*(1-r), grid_region_long[:i], START_PRICE) for i in range(GRID_AMOUNT + 1)]  # 多头每格的触发价位列表
 grid_prices_short = [reduce(lambda p, r: p*(1+r), grid_region_short[:i], START_PRICE) for i in range(GRID_AMOUNT + 1)]  # 空头每格的触发价位列表
 
-logger = logging.getLogger("TQ")
-logger.info("策略开始运行, 起始价位: %f, 多头每格交易量:%s, 多头每格的价位:%s, 空头每格的价位:%s" % (START_PRICE, grid_volume_long, grid_prices_long, grid_prices_short))
+print("策略开始运行, 起始价位: %f, 多头每格交易量:%s, 多头每格的价位:%s, 空头每格的价位:%s" % (START_PRICE, grid_volume_long, grid_prices_long, grid_prices_short))
 quote = api.get_quote(SYMBOL)  # 行情数据
 target_pos = TargetPosTask(api, SYMBOL)
 position = api.get_position(SYMBOL)  # 持仓信息
@@ -40,13 +39,13 @@ def wait_price(layer):
             # 如果当前档位小于最大档位,并且最新价小于等于下一个档位的价格: 则设置为下一档位对应的手数后进入下一档位层次
             if layer < GRID_AMOUNT and quote["last_price"] <= grid_prices_long[layer + 1]:
                 target_pos.set_target_volume(grid_volume_long[layer + 1])
-                logger.info("最新价: %f, 进入: 多头第 %d 档" % (quote["last_price"], layer + 1))
+                print("最新价: %f, 进入: 多头第 %d 档" % (quote["last_price"], layer + 1))
                 wait_price(layer + 1)
                 # 从下一档位回退到当前档位后, 设置回当前对应的持仓手数
                 target_pos.set_target_volume(grid_volume_long[layer + 1])
             # 如果最新价大于当前档位的价格: 则回退到上一档位
             if quote["last_price"] > grid_prices_long[layer]:
-                logger.info("最新价: %f, 回退到: 多头第 %d 档" % (quote["last_price"], layer))
+                print("最新价: %f, 回退到: 多头第 %d 档" % (quote["last_price"], layer))
                 return
     elif layer < 0 or quote["last_price"] >= grid_prices_short[1]:  # 是空头方向
         layer = -layer  # 转为正数便于计算
@@ -55,13 +54,13 @@ def wait_price(layer):
             # 如果当前档位小于最大档位层次,并且最新价大于等于下一个档位的价格: 则设置为下一档位对应的持仓手数后进入下一档位层次
             if layer < GRID_AMOUNT and quote["last_price"] >= grid_prices_short[layer + 1]:
                 target_pos.set_target_volume(-grid_volume_short[layer + 1])
-                logger.info("最新价: %f, 进入: 空头第 %d 档" % (quote["last_price"], layer + 1))
+                print("最新价: %f, 进入: 空头第 %d 档" % (quote["last_price"], layer + 1))
                 wait_price(-(layer + 1))
                 # 从下一档位回退到当前档位后, 设置回当前对应的持仓手数
                 target_pos.set_target_volume(-grid_volume_short[layer + 1])
             # 如果最新价小于当前档位的价格: 则回退到上一档位
             if quote["last_price"] < grid_prices_short[layer]:
-                logger.info("最新价: %f, 回退到: 空头第 %d 档" % (quote["last_price"], layer))
+                print("最新价: %f, 回退到: 空头第 %d 档" % (quote["last_price"], layer))
                 return
 
 

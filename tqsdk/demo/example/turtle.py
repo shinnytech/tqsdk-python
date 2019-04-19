@@ -13,8 +13,6 @@ import logging
 from tqsdk import TqApi, TqSim, TargetPosTask
 from tqsdk.ta import ATR
 
-logger = logging.getLogger("TQ")
-
 
 class Turtle:
     def __init__(self, account, symbol, donchian_channel_open_position=20, donchian_channel_stop_profit=10, atr_day_length=20, max_risk_ratio=0.5):
@@ -43,18 +41,15 @@ class Turtle:
         self.target_pos = TargetPosTask(self.api, self.symbol, init_pos=self.state["position"])
 
     def recalc_paramter(self):
-        if not self.klines.is_ready():
-            return False
-        df = self.klines.to_dataframe()
         # 平均真实波幅(N值)
-        self.n = ATR(df, self.atr_day_length)["atr"].iloc[-1]
+        self.n = ATR(self.klines, self.atr_day_length)["atr"].iloc[-1]
         # 买卖单位
         self.unit = int((self.account["balance"] * 0.01) / (self.quote["volume_multiple"] * self.n))
         # 唐奇安通道上轨：前N个交易日的最高价
         self.donchian_channel_high = max(self.klines.high[-self.donchian_channel_open_position - 1:-1])
         # 唐奇安通道下轨：前N个交易日的最低价
         self.donchian_channel_low = min(self.klines.low[-self.donchian_channel_open_position - 1:-1])
-        logger.info("唐其安通道上下轨: %f, %f" % (self.donchian_channel_high, self.donchian_channel_low))
+        print("唐其安通道上下轨: %f, %f" % (self.donchian_channel_high, self.donchian_channel_low))
         return True
 
     def set_position(self, pos):
@@ -66,15 +61,15 @@ class Turtle:
         """开仓策略"""
         while self.state["position"] == 0:
             self.api.wait_update()
-            if self.api.is_changing(self.klines[-1], "datetime"):  # 如果产生新k线,则重新计算唐奇安通道及买卖单位
+            if self.api.is_changing(self.klines.iloc[-1], "datetime"):  # 如果产生新k线,则重新计算唐奇安通道及买卖单位
                 self.recalc_paramter()
             if self.api.is_changing(self.quote, "last_price"):
-                logger.info("最新价: %f" % self.quote["last_price"])
+                print("最新价: %f" % self.quote["last_price"])
                 if self.quote["last_price"] > self.donchian_channel_high:  # 当前价>唐奇安通道上轨，买入1个Unit；(持多仓)
-                    logger.info("当前价>唐奇安通道上轨，买入1个Unit(持多仓): %d 手" % self.unit)
+                    print("当前价>唐奇安通道上轨，买入1个Unit(持多仓): %d 手" % self.unit)
                     self.set_position(self.state["position"] + self.unit)
                 elif self.quote["last_price"] < self.donchian_channel_low:  # 当前价<唐奇安通道下轨，卖出1个Unit；(持空仓)
-                    logger.info("当前价<唐奇安通道下轨，卖出1个Unit(持空仓): %d 手" % self.unit)
+                    print("当前价<唐奇安通道下轨，卖出1个Unit(持空仓): %d 手" % self.unit)
                     self.set_position(self.state["position"] - self.unit)
 
     def try_close(self):
@@ -86,34 +81,34 @@ class Turtle:
                 if self.state["position"] > 0:  # 持多单
                     # 加仓策略: 如果是多仓且行情最新价在上一次建仓（或者加仓）的基础上又上涨了0.5N，就再加一个Unit的多仓,并且风险度在设定范围内(以防爆仓)
                     if self.quote["last_price"] >= self.state["last_price"] + 0.5 * self.n and self.account["risk_ratio"] <= self.max_risk_ratio:
-                        logger.info("加仓:加1个Unit的多仓")
+                        print("加仓:加1个Unit的多仓")
                         self.set_position(self.state["position"] + self.unit)
                     # 止损策略: 如果是多仓且行情最新价在上一次建仓（或者加仓）的基础上又下跌了2N，就卖出全部头寸止损
                     elif self.quote["last_price"] <= self.state["last_price"] - 2 * self.n:
-                        logger.info("止损:卖出全部头寸")
+                        print("止损:卖出全部头寸")
                         self.set_position(0)
                     # 止盈策略: 如果是多仓且行情最新价跌破了10日唐奇安通道的下轨，就清空所有头寸结束策略,离场
                     if self.quote["last_price"] <= min(self.klines.low[-self.donchian_channel_stop_profit - 1:-1]):
-                        logger.info("止盈:清空所有头寸结束策略,离场")
+                        print("止盈:清空所有头寸结束策略,离场")
                         self.set_position(0)
 
                 elif self.state["position"] < 0:  # 持空单
                     # 加仓策略: 如果是空仓且行情最新价在上一次建仓（或者加仓）的基础上又下跌了0.5N，就再加一个Unit的空仓,并且风险度在设定范围内(以防爆仓)
                     if self.quote["last_price"] <= self.state["last_price"] - 0.5 * self.n and self.account["risk_ratio"] <= self.max_risk_ratio:
-                        logger.info("加仓:加1个Unit的空仓")
+                        print("加仓:加1个Unit的空仓")
                         self.set_position(self.state["position"] - self.unit)
                     # 止损策略: 如果是空仓且行情最新价在上一次建仓（或者加仓）的基础上又上涨了2N，就平仓止损
                     elif self.quote["last_price"] >= self.state["last_price"] + 2 * self.n:
-                        logger.info("止损:卖出全部头寸")
+                        print("止损:卖出全部头寸")
                         self.set_position(0)
                     # 止盈策略: 如果是空仓且行情最新价升破了10日唐奇安通道的上轨，就清空所有头寸结束策略,离场
                     if self.quote["last_price"] >= max(self.klines.high[-self.donchian_channel_stop_profit - 1:-1]):
-                        logger.info("止盈:清空所有头寸结束策略,离场")
+                        print("止盈:清空所有头寸结束策略,离场")
                         self.set_position(0)
 
     def strategy(self):
         """海龟策略"""
-        logger.info("等待K线及账户数据...")
+        print("等待K线及账户数据...")
         deadline = time.time() + 5
         while not self.recalc_paramter():
             if not self.api.wait_update(deadline=deadline):
@@ -124,12 +119,12 @@ class Turtle:
 
 
 turtle = Turtle(TqSim(), "SHFE.au1812")
-logger.info("策略开始运行")
+print("策略开始运行")
 try:
     turtle.state = json.load(open("turtle_state.json", "r"))  # 读取数据: 本策略目标净持仓数,上一次开仓价
 except FileNotFoundError:
     pass
-logger.info("当前持仓数: %d, 上次调仓价: %f" % (turtle.state["position"], turtle.state["last_price"]))
+print("当前持仓数: %d, 上次调仓价: %f" % (turtle.state["position"], turtle.state["last_price"]))
 try:
     turtle.strategy()
 finally:

@@ -1,11 +1,13 @@
-.. _core:
+.. _usage:
 
-TqSdk核心
+使用TqSdk
 ========================================
 
 .. toctree::
     :maxdepth: 2
 
     framework.rst
+    mddatas.rst
+    ta.rst
+    trade.rst
     backtest.rst
-    evolution.rst

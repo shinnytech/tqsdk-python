@@ -8,3 +8,4 @@
     :maxdepth: 2
 
     real_trading.rst
+    evolution.rst

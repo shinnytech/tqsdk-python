@@ -23,16 +23,16 @@ klines = api.get_kline_serial(symbol, 24 * 60 * 60)  # 获取日线
 position = api.get_position(symbol)  # 持仓信息
 target_pos = TargetPosTask(api, symbol)  # 目标持仓
 
-top_rail = klines[-2]["high"]  # 上轨: 昨日高点
-bottom_rail = klines[-2]["low"]  # 下轨: 昨日低点
-print("上轨:", top_rail, ",下轨:", bottom_rail, ",昨日收盘价:", klines[-2]["close"], ",今日开盘价:", klines[-1]["open"])
+top_rail = klines.iloc[-2]["high"]  # 上轨: 昨日高点
+bottom_rail = klines.iloc[-2]["low"]  # 下轨: 昨日低点
+print("上轨:", top_rail, ",下轨:", bottom_rail, ",昨日收盘价:", klines.iloc[-2]["close"], ",今日开盘价:", klines.iloc[-1]["open"])
 
 while True:
     api.wait_update()
-    if api.is_changing(klines[-1], "datetime"):  # 如果产生一根新日线 (即到达下一个交易日): 重新获取上下轨
-        top_rail = klines[-2]["high"]
-        bottom_rail = klines[-2]["low"]
-        print("上轨:", top_rail, ",下轨:", bottom_rail, ",昨日收盘价:", klines[-2]["close"], ",今日开盘价:", klines[-1]["open"])
+    if api.is_changing(klines.iloc[-1], "datetime"):  # 如果产生一根新日线 (即到达下一个交易日): 重新获取上下轨
+        top_rail = klines.iloc[-2]["high"]
+        bottom_rail = klines.iloc[-2]["low"]
+        print("上轨:", top_rail, ",下轨:", bottom_rail, ",昨日收盘价:", klines.iloc[-2]["close"], ",今日开盘价:", klines.iloc[-1]["open"])
 
     if api.is_changing(quote, "last_price"):  # 如果行情最新价发生变化
         print("当前最新价", quote["last_price"])

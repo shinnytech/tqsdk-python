@@ -3,17 +3,17 @@
 __author__ = 'limin'
 
 import pandas as pd
-import talib
 import datetime
 from contextlib import closing
 from tqsdk import TqApi, TqSim, TqBacktest, BacktestFinished, TargetPosTask
+from tqsdk.tafunc import sma, ema2, trma
 from sklearn.ensemble import RandomForestClassifier
 
 pd.set_option('display.max_rows', None)  # 设置Pandas显示的行数
 pd.set_option('display.width', None)  # 设置Pandas显示的宽度
 
 '''
-应用随机森林对某交易日涨跌情况的预测(使用talib, sklearn包)
+应用随机森林对某交易日涨跌情况的预测(使用sklearn包)
 参考:https://www.joinquant.com/post/1571
 '''
 
@@ -23,14 +23,13 @@ close_hour, close_minute = 14, 50  # 预定收盘时间(因为真实收盘后无
 
 def get_prediction_data(klines, n):
     """获取用于随机森林的n个输入数据(n为数据长度): n天中每天的特征参数及其涨跌情况"""
-    df_klines = klines.to_dataframe()  # 将k线数据转为DataFrame
-    close_prices = df_klines.close[- 30 - n:]  # 获取本交易日及以前的收盘价(此时在预定的收盘时间: 认为本交易日已收盘)
+    close_prices = klines.close[- 30 - n:]  # 获取本交易日及以前的收盘价(此时在预定的收盘时间: 认为本交易日已收盘)
     # 计算所需指标
-    sma_data = talib.SMA(close_prices, timeperiod=30)[-n:]  # SMA指标, 函数默认时间周期参数:30
-    wma_data = talib.WMA(close_prices, timeperiod=30)[-n:]  # WMA指标
-    mom_data = talib.MOM(close_prices, timeperiod=30)[-n:]  # MOM指标
+    sma_data = sma(close_prices, 30, 0.02)[-n:]  # SMA指标, 函数默认时间周期参数:30
+    wma_data = ema2(close_prices, 30)[-n:]  # WMA指标
+    mom_data = trma(close_prices, 30)[-n:]  # MOM指标
     x_all = list(zip(sma_data, wma_data, mom_data))  # 样本特征组
-    y_all = list(klines[i]["close"] >= klines[i - 1]["close"] for i in list(reversed(range(-1, -n - 1, -1))))  # 样本标签组
+    y_all = list(klines.iloc[i]["close"] >= klines.iloc[i - 1]["close"] for i in list(reversed(range(-1, -n - 1, -1))))  # 样本标签组
     # x_all:            大前天指标 前天指标 昨天指标 (今天指标)
     # y_all:   (大前天)    前天     昨天    今天      -明天-
     # 准备算法需要用到的数据
@@ -49,7 +48,7 @@ target_pos = TargetPosTask(api, symbol)
 with closing(api):
     try:
         while True:
-            while not api.is_changing(klines[-1], "datetime"):  # 等到达下一个交易日
+            while not api.is_changing(klines.iloc[-1], "datetime"):  # 等到达下一个交易日
                 api.wait_update()
             while True:
                 api.wait_update()
@@ -77,13 +76,12 @@ with closing(api):
                         break
 
     except BacktestFinished:  # 回测结束, 获取预测结果，统计正确率
-        df_klines = klines.to_dataframe()  # 将K线序列中的数据转换为 pandas.DataFrame
-        df_klines["pre_close"] = df_klines["close"].shift(1)  # 增加 pre_close(上一交易日的收盘价) 字段
-        df_klines = df_klines[-len(predictions) + 1:]  # 取出在回测日期内的K线数据
-        df_klines["prediction"] = predictions[:-1]  # 增加预测的本交易日涨跌情况字段(向后移一个数据目的: 将 本交易日对应下一交易日的涨跌 调整为 本交易日对应本交易日的涨跌)
-        results = (df_klines["close"] - df_klines["pre_close"] >= 0) == df_klines["prediction"]
+        klines["pre_close"] = klines["close"].shift(1)  # 增加 pre_close(上一交易日的收盘价) 字段
+        klines = klines[-len(predictions) + 1:]  # 取出在回测日期内的K线数据
+        klines["prediction"] = predictions[:-1]  # 增加预测的本交易日涨跌情况字段(向后移一个数据目的: 将 本交易日对应下一交易日的涨跌 调整为 本交易日对应本交易日的涨跌)
+        results = (klines["close"] - klines["pre_close"] >= 0) == klines["prediction"]
 
-        print(df_klines)
+        print(klines)
         print("----回测结束----")
         print("预测结果正误:\n", results)
         print("预测结果数目统计: 总计", len(results),"个预测结果")

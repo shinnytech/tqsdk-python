@@ -15,9 +15,9 @@ STOP_LOSS_PRICE = 10  # 止损点(价格)
 
 def get_index_line(klines):
     '''计算指标线'''
-    high = klines[-2]["high"]  # 前一日的最高价
-    low = klines[-2]["low"]  # 前一日的最低价
-    close = klines[-2]["close"]  # 前一日的收盘价
+    high = klines.iloc[-2]["high"]  # 前一日的最高价
+    low = klines.iloc[-2]["low"]  # 前一日的最低价
+    close = klines.iloc[-2]["close"]  # 前一日的收盘价
 
     pivot = (high + low + close) / 3  # 枢轴点
     bBreak = high + 2 * (pivot - low)  # 突破买入价
@@ -44,7 +44,7 @@ pivot, bBreak, sSetup, sEnter, bEnter, bSetup, sBreak = get_index_line(klines)  
 while True:
     target_pos.set_target_volume(target_pos_value)
     api.wait_update()
-    if api.is_changing(klines[-1], "datetime"):  # 产生新k线,则重新计算7条指标线
+    if api.is_changing(klines.iloc[-1], "datetime"):  # 产生新k线,则重新计算7条指标线
         pivot, bBreak, sSetup, sEnter, bEnter, bSetup, sBreak = get_index_line(klines)
 
     '''交易规则'''

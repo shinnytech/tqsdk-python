@@ -234,13 +234,17 @@ api = TqApi("SIM.abcd")
             chart_id (str): [可选]指定序列id, 默认由 api 自动生成
 
         Returns:
-            KlineSerialDataProxy: 本函数总是返回一个 KlineSerialDataProxy 的实例. 其中每个数据项的格式如下
+            pandas.DataFrame: 本函数总是返回一个 pandas.DataFrame 实例. 行数=data_length, 包含以下列:
 
-            .. literalinclude:: ../../tqsdk/api.py
-                :pyobject: TqApi._gen_kline_prototype
-                :dedent: 12
-                :start-after: {
-                :end-before: }
+            id: int, 1234 (k线序列号)
+            datetime: int, 1501080715000000000 (K线起点时间(按北京时间)，自unix epoch(1970-01-01 00:00:00 GMT)以来的纳秒数)
+            open: float, 51450.0 (K线起始时刻的最新价)
+            high: float, 51450.0 (K线时间范围内的最高价)
+            low: float, 51450.0 (K线时间范围内的最低价)
+            close: float, 51450.0 (K线结束时刻的最新价)
+            volume: int, 11 (K线时间范围内的成交量)
+            open_oi: int, 27354 (K线起始时刻的持仓量)
+            close_oi: int, 27355 (K线结束时刻的持仓量)
 
         Example::
 
@@ -251,7 +255,7 @@ api = TqApi("SIM.abcd")
             k_serial = api.get_kline_serial("SHFE.cu1812", 60)
             while True:
                 api.wait_update()
-                print(k_serial[-1]["close"])
+                print(k_serial.iloc[-1]["close"])
 
             # 预计的输出是这样的:
             50970.0
@@ -299,13 +303,21 @@ api = TqApi("SIM.abcd")
             chart_id (str): [可选]指定序列id, 默认由 api 自动生成
 
         Returns:
-            TickSerialDataProxy: 本函数总是返回一个 TickSerialDataProxy 的实例. 其中每个数据项的格式如下
+            pandas.DataFrame: 本函数总是返回一个 pandas.DataFrame 实例. 行数=data_length, 包含以下列:
 
-            .. literalinclude:: ../../tqsdk/api.py
-                :pyobject: TqApi._gen_tick_prototype
-                :dedent: 12
-                :start-after: {
-                :end-before: }
+            id: int, tick序列号
+            datetime: int, 1501074872000000000 (tick从交易所发出的时间(按北京时间)，自unix epoch(1970-01-01 00:00:00 GMT)以来的纳秒数)
+            last_price: float, 3887.0 (最新价)
+            average: float, 3820.0 (当日均价)
+            highest: float, 3897.0 (当日最高价)
+            lowest: float, 3806.0 (当日最低价)
+            ask_price1: float, 3886.0 (卖一价)
+            ask_volume1: int, 3 (卖一量)
+            bid_price1: float, 3881.0 (买一价)
+            bid_volume1: int, 18 (买一量)
+            volume: int 7823 (当日成交量)
+            amount: float, 19237841.0 (成交额)
+            open_interest: int, 1941 (持仓量)
 
         Example::
 
@@ -316,7 +328,7 @@ api = TqApi("SIM.abcd")
             serial = api.get_tick_serial("SHFE.cu1812")
             while True:
                 api.wait_update()
-                print(serial[-1]["bid_price1"], serial[-1]["ask_price1"])
+                print(serial.iloc[-1]["bid_price1"], serial.iloc[-1]["ask_price1"])
 
             # 预计的输出是这样的:
             50860.0 51580.0
@@ -977,7 +989,7 @@ api = TqApi("SIM.abcd")
         else:
             data_type = "LINE"
         if data_type in {"LINE", "DOT", "DASH", "BAR"}:
-            self._send_chart_data(symbol, duration, col, {
+            self._send_series_data(symbol, duration, col, {
                 "type": "SERIAL",
                 "range_left": right-count,
                 "range_right": right-1,
@@ -988,7 +1000,7 @@ api = TqApi("SIM.abcd")
                 "board": data.get(".board", ["MAIN"])[-1],
             })
         elif data_type == "KSERIAL":
-            self._send_chart_data(symbol, duration, col, {
+            self._send_series_data(symbol, duration, col, {
                 "type": "KSERIAL",
                 "range_left": right-count,
                 "range_right": right-1,
@@ -998,43 +1010,8 @@ api = TqApi("SIM.abcd")
                 "close": data[".close"].tolist(),
                 "board": data.get(".board", ["MAIN"])[-1],
             })
-        elif data_type == "TEXT":
-            for i in rows:
-                self._send_chart_data(symbol, duration, col+"."+str(right-count+i), {
-                    "type": "TEXT",
-                    "x1": right-count+int(i),
-                    "y1": data.get(".y", serial["array"][:,list(serial["default"].keys()).index("close")+1])[-count+i],
-                    "text": data[""][i],
-                    "color": int(data.get(".color", np.full(count, 0xFFFF0000))[i]),
-                    "board": data.get(".board", np.full(count, "MAIN"))[i],
-                })
-        elif data_type == "DRAW_LINE" or data_type == "DRAW_SEG" or data_type == "DRAW_RAY":
-            for i in rows:
-                self._send_chart_data(symbol, duration, col+"."+str(right-count+i), {
-                    "type": data_type[len("DRAW_"):],
-                    "x1": int(data[".x1"][-count+i]),
-                    "y1": data[".y1"][-count+i],
-                    "x2": int(data[".x2"][-count+i]),
-                    "y2": data[".y2"][-count+i],
-                    "color": int(data.get(".color", np.full(count, 0xFFFF0000))[-count+i]),
-                    "width": int(data.get(".width", np.full(count, 1))[-count+i]),
-                    "board": data.get(".board", np.full(count, "MAIN"))[i],
-                })
-        elif data_type == "DRAW_BOX":
-            for i in rows:
-                self._send_chart_data(symbol, duration, col+"."+str(right-count+i), {
-                    "type": "BOX",
-                    "x1": int(data[".x1"][-count+i]),
-                    "y1": data[".y1"][-count+i],
-                    "x2": int(data[".x2"][-count+i]),
-                    "y2": data[".y2"][-count+i],
-                    "bg_color": int(data.get(".bg_color", np.full(count, 0x00000000))[-count+i]),
-                    "color": int(data.get(".color", np.full(count, 0xFFFF0000))[-count+i]),
-                    "width": int(data.get(".width", np.full(count, 1))[-count+i]),
-                    "board": data.get(".board", np.full(count, "MAIN"))[i],
-                })
 
-    def _send_chart_data(self,symbol, duration, serial_id, serial_data):
+    def _send_series_data(self, symbol, duration, serial_id, serial_data):
         chart_id = self.account_id.replace(".", "_")
         pack = {
             "aid": "set_chart_data",
@@ -1481,6 +1458,157 @@ api = TqApi("SIM.abcd")
         if week_day >= 5:  # 如果是周末则移到星期一
             days += 7 - week_day
         return begin_mark + days * 86400000000000
+
+    def draw_text(self, base_k_dataframe, text, x=None, y=None, id=None, board="MAIN", color=0xFFFF0000):
+        """
+        配合天勤使用时, 在天勤的行情图上绘制一个字符串
+
+        Args:
+            base_k_dataframe (pandas.DataFrame): 基础K线数据序列, 要绘制的K线将出现在这个K线图上. 需要画图的数据以附加列的形式存在
+
+            text (str): 要显示的字符串
+
+            x (int): X 坐标, 以K线的序列号表示. 可选, 缺省为对齐最后一根K线,
+
+            y (float): Y 坐标. 可选, 缺省为最后一根K线收盘价
+
+            id (str): 字符串ID, 可选. 以相同ID多次调用本函数, 后一次调用将覆盖前一次调用的效果
+
+            board (str): 选择图板, 可选, 缺省为 "MAIN" 表示绘制在主图
+
+            color (ARGB): 文本颜色, 可选, 缺省为红色.
+
+        Example::
+
+            # 在主图最近K线的最低处标一个"最低"文字
+            klines = api.get_kline_serial("SHFE.cu1905", 86400)
+            indic = np.where(klines["low"] == klines["low"].min())[0]
+            value = klines["low"].min()
+            api.draw_text(klines, "测试413423", x=indic, y=value, color=0xFF00FF00)
+        """
+        if id is None:
+            id = uuid.uuid4().hex
+        if y is None:
+            y = base_k_dataframe["close"].iloc[-1]
+        serial = {
+            "type": "TEXT",
+            "x1": self._offset_to_x(base_k_dataframe, x),
+            "y1": y,
+            "text": text,
+            "color": color,
+            "board": board,
+        }
+        self._send_chart_data(id, serial)
+
+    def draw_line(self, base_k_dataframe, x1, y1, x2, y2, id=None, board="MAIN", line_type="LINE", color=0xFFFF0000, width=1):
+        """
+        配合天勤使用时, 在天勤的行情图上绘制一个直线/线段/射线
+
+        Args:
+            base_k_dataframe (pandas.DataFrame): 基础K线数据序列, 要绘制的K线将出现在这个K线图上. 需要画图的数据以附加列的形式存在
+
+            x1 (int): 第一个点的 X 坐标, 以K线的序列号表示
+
+            y1 (float): 第一个点的 Y 坐标
+
+            x2 (int): 第二个点的 X 坐标, 以K线的序列号表示
+
+            y2 (float): 第二个点的 Y 坐标
+
+            id (str): 字符串ID, 可选. 以相同ID多次调用本函数, 后一次调用将覆盖前一次调用的效果
+
+            board (str): 选择图板, 可选, 缺省为 "MAIN" 表示绘制在主图
+
+            line_type ("LINE" | "SEG" | "RAY"): 画线类型, 可选, 默认为 LINE. LINE=直线, SEG=线段, RAY=射线
+
+            color (ARGB): 线颜色, 可选, 缺省为 红色
+
+            width (int): 线宽度, 可选, 缺省为 1
+        """
+        if id is None:
+            id = uuid.uuid4().hex
+        serial = {
+            "type": line_type,
+            "x1": self._offset_to_x(base_k_dataframe, x1),
+            "y1": y1,
+            "x2": self._offset_to_x(base_k_dataframe, x2),
+            "y2": y2,
+            "color": color,
+            "width": width,
+            "board": board,
+        }
+        self._send_chart_data(id, serial)
+
+    def draw_box(self, base_k_dataframe, x1, y1, x2, y2, id=None, board="MAIN", bg_color=0x00000000, color=0xFFFF0000, width=1):
+        """
+        配合天勤使用时, 在天勤的行情图上绘制一个矩形
+
+        Args:
+            base_k_dataframe (pandas.DataFrame): 基础K线数据序列, 要绘制的K线将出现在这个K线图上. 需要画图的数据以附加列的形式存在
+
+            x1 (int): 矩形左上角的 X 坐标, 以K线的序列号表示
+
+            y1 (float): 矩形左上角的 Y 坐标
+
+            x2 (int): 矩形左上角的 X 坐标, 以K线的序列号表示
+
+            y2 (float): 矩形左上角的 Y 坐标
+
+            id (str): ID, 可选. 以相同ID多次调用本函数, 后一次调用将覆盖前一次调用的效果
+
+            board (str): 选择图板, 可选, 缺省为 "MAIN" 表示绘制在主图
+
+            bg_color (ARGB): 填充颜色, 可选, 缺省为 空
+
+            color (ARGB): 边框颜色, 可选, 缺省为 红色
+
+            width (int): 边框宽度, 可选, 缺省为 1
+
+        Example::
+
+            # 给主图最后5根K线加一个方框
+            klines = api.get_kline_serial("SHFE.cu1905", 86400)
+            api.draw_box(klines, x1=-5, y1=klines.iloc[-5]["close"], x2=-1, y2=klines.iloc[-1]["close"], width=1, color=0xFF0000FF, bg_color=0x8000FF00)
+        """
+        if id is None:
+            id = uuid.uuid4().hex
+        serial = {
+            "type": "BOX",
+            "x1": self._offset_to_x(base_k_dataframe, x1),
+            "y1": y1,
+            "x2": self._offset_to_x(base_k_dataframe, x2),
+            "y2": y2,
+            "bg_color": bg_color,
+            "color": color,
+            "width": width,
+            "board": board,
+        }
+        self._send_chart_data(id, serial)
+
+    def _send_chart_data(self, base_kserial_frame, serial_id, serial_data):
+        chart_id = self.account_id.replace(".", "_")
+        s = self.serials[id(base_kserial_frame)]
+        p = s.serial_root["_path"]
+        symbol = p[-2]
+        dur_nano = int(p[-1])
+        pack = {
+            "aid": "set_chart_data",
+            "chart_id": chart_id,
+            "symbol": symbol,
+            "dur_nano": dur_nano,
+            "datas": {
+                serial_id: serial_data,
+            }
+        }
+        self.api.send_chan.send_nowait(pack)
+
+    def _offset_to_x(self, base_k_dataframe, x):
+        if x is None:
+            return base_k_dataframe["id"].iloc[-1]
+        elif x < 0:
+            return base_k_dataframe["id"].iloc[-1] + 1 + x
+        elif x >= 0:
+            return base_k_dataframe["id"].iloc[0] + x
 
 
 class TqAccount(object):

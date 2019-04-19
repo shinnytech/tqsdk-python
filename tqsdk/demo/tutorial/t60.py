@@ -16,9 +16,9 @@ klines = api.get_kline_serial("DCE.m1901", 10)
 while True:
     api.wait_update()
     if api.is_changing(klines):
-        ma = sum(klines.close[-15:])/15
-        print("最新价", klines.close[-1], "MA", ma)
-        if klines.close[-1] > ma:
+        ma = sum(klines.close.iloc[-15:])/15
+        print("最新价", klines.close.iloc[-1], "MA", ma)
+        if klines.close.iloc[-1] > ma:
             print("最新价大于MA: 市价开仓")
             api.insert_order(symbol="DCE.m1901", direction="BUY", offset="OPEN", volume=5)
             break
@@ -26,9 +26,9 @@ while True:
 while True:
     api.wait_update()
     if api.is_changing(klines):
-        ma = sum(klines.close[-15:])/15
-        print("最新价", klines.close[-1], "MA", ma)
-        if klines.close[-1] < ma:
+        ma = sum(klines.close.iloc[-15:])/15
+        print("最新价", klines.close.iloc[-1], "MA", ma)
+        if klines.close.iloc[-1] < ma:
             print("最新价小于MA: 市价平仓")
             api.insert_order(symbol="DCE.m1901", direction="SELL", offset="CLOSE", volume=5)
             break

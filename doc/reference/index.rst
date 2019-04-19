@@ -9,6 +9,7 @@ TqSdk 模块参考
     tqsdk.api.rst
     tqsdk.lib.rst
     tqsdk.ta.rst
+    tqsdk.tafunc.rst
     tqsdk.sim.rst
     tqsdk.backtest.rst
     tqsdk.tools.download.rst

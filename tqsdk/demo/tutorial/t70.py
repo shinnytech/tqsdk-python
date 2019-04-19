@@ -17,13 +17,13 @@ target_pos = TargetPosTask(api, "DCE.m1901")
 while True:
     api.wait_update()
     if api.is_changing(klines):
-        ma = sum(klines.close[-15:])/15
-        print("最新价", klines.close[-1], "MA", ma)
-        if klines.close[-1] > ma:
+        ma = sum(klines.close.iloc[-15:])/15
+        print("最新价", klines.close.iloc[-1], "MA", ma)
+        if klines.close.iloc[-1] > ma:
             print("最新价大于MA: 目标多头5手")
             # 设置目标持仓为多头5手
             target_pos.set_target_volume(5)
-        elif klines.close[-1] < ma:
+        elif klines.close.iloc[-1] < ma:
             print("最新价小于MA: 目标空仓")
             # 设置目标持仓为空仓
             target_pos.set_target_volume(0)

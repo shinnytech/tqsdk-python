@@ -9,7 +9,7 @@ tqsdk.ta 模块包含了一批常用的技术指标计算函数
 import numpy as np
 import pandas as pd
 import numba
-from tqsdk import ta_func
+from tqsdk import tafunc
 
 
 def ATR(df, n):
@@ -32,12 +32,9 @@ def ATR(df, n):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        atr = ATR(klines.to_dataframe(), 14)
+        atr = ATR(klines, 14)
         print(atr["tr"])  # 真实波幅
         print(atr["atr"])  # 平均真实波幅
-        api.close()
 
         # 预计的输出是这样的:
         [..., 143.0, 48.0, 80.0, ...]
@@ -50,7 +47,7 @@ def ATR(df, n):
                                      df["high"] - df["low"], np.absolute(pre_close - df["low"])),
                             np.where(np.absolute(pre_close - df["high"]) > np.absolute(pre_close - df["low"]),
                                      np.absolute(pre_close - df["high"]), np.absolute(pre_close - df["low"])))
-    new_df["atr"] = ta_func.ma(new_df["tr"], n)
+    new_df["atr"] = tafunc.ma(new_df["tr"], n)
     return new_df
 
 
@@ -74,16 +71,13 @@ def BIAS(df, n):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        bias = BIAS(klines.to_dataframe(), 6)
+        bias = BIAS(klines, 6)
         print(list(bias["bias"]))  # 乖离率
-        api.close()
 
         # 预计的输出是这样的:
         [..., 2.286835533357118, 2.263301549041151, 0.7068445823271412, ...]
     """
-    ma1 = ta_func.ma(df["close"], n)
+    ma1 = tafunc.ma(df["close"], n)
     new_df = pd.DataFrame(data=list((df["close"] - ma1) / ma1 * 100), columns=["bias"])
     return new_df
 
@@ -100,7 +94,7 @@ def BOLL(df, n, p):
         p (int): 计算参数p
 
     Returns:
-        numpy.dataframe: 返回的dataframe包含3列, 分别是"mid", "top"和"bottom", 分别代表布林线的中、上、下轨
+        pandas.DataFrame: 返回的dataframe包含3列, 分别是"mid", "top"和"bottom", 分别代表布林线的中、上、下轨
 
     Example::
 
@@ -110,14 +104,10 @@ def BOLL(df, n, p):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        boll=BOLL(klines.to_dataframe(), 26, 2)
+        boll=BOLL(klines, 26, 2)
         print(list(boll["mid"]))
         print(list(boll["top"]))
         print(list(boll["bottom"]))
-
-        api.close()
 
         # 预计的输出是这样的:
         [..., 3401.338461538462, 3425.600000000001, 3452.3230769230777, ...]
@@ -125,7 +115,7 @@ def BOLL(df, n, p):
         [..., 2967.593013324702, 2970.5224206797247, 2982.760746891571, ...]
     """
     new_df = pd.DataFrame()
-    mid = ta_func.ma(df["close"], n)
+    mid = tafunc.ma(df["close"], n)
     std = df["close"].rolling(n).std()
     new_df["mid"] = mid
     new_df["top"] = mid + p * std
@@ -155,15 +145,12 @@ def DMI(df, n, m):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        dmi=DMI(klines.to_dataframe(), 14, 6)
+        dmi=DMI(klines, 14, 6)
         print(list(dmi["atr"]))
         print(list(dmi["pdi"]))
         print(list(dmi["mdi"]))
         print(list(dmi["adx"]))
         print(list(dmi["adxr"]))
-        api.close()
 
         # 预计的输出是这样的:
         [..., 95.20000000000005, 92.0571428571429, 95.21428571428575, ...]
@@ -178,12 +165,12 @@ def DMI(df, n, m):
     pre_low = df["low"].shift(1)
     hd = df["high"] - pre_high
     ld = pre_low - df["low"]
-    admp = ta_func.ma(pd.Series(np.where((hd > 0) & (hd > ld), hd, 0)), n)
-    admm = ta_func.ma(pd.Series(np.where((ld > 0) & (ld > hd), ld, 0)), n)
+    admp = tafunc.ma(pd.Series(np.where((hd > 0) & (hd > ld), hd, 0)), n)
+    admm = tafunc.ma(pd.Series(np.where((ld > 0) & (ld > hd), ld, 0)), n)
     new_df["pdi"] = pd.Series(np.where(new_df["atr"] > 0, admp / new_df["atr"] * 100, np.NaN)).ffill()
     new_df["mdi"] = pd.Series(np.where(new_df["atr"] > 0, admm / new_df["atr"] * 100, np.NaN)).ffill()
     ad = pd.Series(np.absolute(new_df["mdi"] - new_df["pdi"]) / (new_df["mdi"] + new_df["pdi"]) * 100)
-    new_df["adx"] = ta_func.ma(ad, m)
+    new_df["adx"] = tafunc.ma(ad, m)
     new_df["adxr"] = (new_df["adx"] + new_df["adx"].shift(m)) / 2
     return new_df
 
@@ -212,13 +199,10 @@ def KDJ(df, n, m1, m2):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        kdj = KDJ(klines.to_dataframe(), 9, 3, 3)
+        kdj = KDJ(klines, 9, 3, 3)
         print(list(kdj["k"]))
         print(list(kdj["d"]))
         print(list(kdj["j"]))
-        api.close()
 
         # 预计的输出是这样的:
         [..., 80.193148635668, 81.83149521546302, 84.60665654726242, ...]
@@ -229,8 +213,8 @@ def KDJ(df, n, m1, m2):
     hv = df["high"].rolling(n).max()
     lv = df["low"].rolling(n).min()
     rsv = pd.Series(np.where(hv == lv, 0, (df["close"] - lv) / (hv - lv) * 100))
-    new_df["k"] = ta_func.sma(rsv, m1, 1)
-    new_df["d"] = ta_func.sma(new_df["k"], m2, 1)
+    new_df["k"] = tafunc.sma(rsv, m1, 1)
+    new_df["d"] = tafunc.sma(new_df["k"], m2, 1)
     new_df["j"] = 3 * new_df["k"] - 2 * new_df["d"]
     return new_df
 
@@ -259,13 +243,10 @@ def MACD(df, short, long, m):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        macd = MACD(klines.to_dataframe(), 12, 26, 9)
+        macd = MACD(klines, 12, 26, 9)
         print(list(macd["diff"]))
         print(list(macd["dea"]))
         print(list(macd["bar"]))
-        api.close()
 
         # 预计的输出是这样的:
         [..., 149.58313904045826, 155.50790712365142, 160.27622505636737, ...]
@@ -273,10 +254,10 @@ def MACD(df, short, long, m):
         [..., 56.2273866049872, 54.46153821709879, 51.19853926602451, ...]
     """
     new_df = pd.DataFrame()
-    eshort = ta_func.ema(df["close"], short)
-    elong = ta_func.ema(df["close"], long)
+    eshort = tafunc.ema(df["close"], short)
+    elong = tafunc.ema(df["close"], long)
     new_df["diff"] = eshort - elong
-    new_df["dea"] = ta_func.ema(new_df["diff"], m)
+    new_df["dea"] = tafunc.ema(new_df["diff"], m)
     new_df["bar"] = 2 * (new_df["diff"] - new_df["dea"])
     return new_df
 
@@ -346,11 +327,9 @@ def SAR(df, n, step, max):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        sar=SAR(klines.to_dataframe(), 4, 0.02, 0.2)
+        sar=SAR(klines, 4, 0.02, 0.2)
         print(list(sar["sar"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 3742.313604622293, 3764.5708836978342, 3864.4, ...]
@@ -383,11 +362,8 @@ def WR(df, n):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        wr = WR(klines.to_dataframe(), 14)
+        wr = WR(klines, 14)
         print(list(wr["wr"]))
-        api.close()
 
         # 预计的输出是这样的:
         [..., -12.843029637760672, -8.488840102451537, -16.381322957198407, ...]
@@ -418,18 +394,15 @@ def RSI(df, n):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        rsi = RSI(klines.to_dataframe(), 7)
+        rsi = RSI(klines, 7)
         print(list(rsi["rsi"]))
-        api.close()
 
         # 预计的输出是这样的:
         [..., 80.21169825630794, 81.57315806032297, 72.34968324924667, ...]
     """
     lc = df["close"].shift(1)
-    rsi = ta_func.sma(pd.Series(np.where(df["close"] - lc > 0, df["close"] - lc, 0)), n, 1) / \
-          ta_func.sma(np.absolute(df["close"] - lc), n, 1) * 100
+    rsi = tafunc.sma(pd.Series(np.where(df["close"] - lc > 0, df["close"] - lc, 0)), n, 1) / \
+          tafunc.sma(np.absolute(df["close"] - lc), n, 1) * 100
     new_df = pd.DataFrame(data=rsi, columns=["rsi"])
     return new_df
 
@@ -452,11 +425,9 @@ def ASI(df):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        asi = ASI(klines.to_dataframe())
+        asi = ASI(klines)
         print(list(asi["asi"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., -4690.587005986468, -4209.182816350308, -4699.742010304962, ...]
@@ -494,11 +465,9 @@ def VR(df, n):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        vr = VR(klines.to_dataframe(), 26)
+        vr = VR(klines, 26)
         print(list(vr["vr"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 150.1535316212112, 172.2897559521652, 147.04236342791924, ...]
@@ -530,12 +499,10 @@ def ARBR(df, n):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        arbr = ARBR(klines.to_dataframe(), 26)
+        arbr = ARBR(klines, 26)
         print(list(arbr["ar"]))
         print(list(arbr["br"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 183.5698517817721, 189.98732572877034, 175.08802816901382, ...]
@@ -574,20 +541,18 @@ def DMA(df, short, long, m):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        dma = DMA(klines.to_dataframe(), 10, 50, 10)
+        dma = DMA(klines, 10, 50, 10)
         print(list(dma["ddd"]))
         print(list(dma["ama"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 409.2520000000022, 435.68000000000166, 458.3360000000025, ...]
         [..., 300.64360000000147, 325.0860000000015, 349.75200000000166, ...]
     """
     new_df = pd.DataFrame()
-    new_df["ddd"] = ta_func.ma(df["close"], short) - ta_func.ma(df["close"], long)
-    new_df["ama"] = ta_func.ma(new_df["ddd"], m)
+    new_df["ddd"] = tafunc.ma(df["close"], short) - tafunc.ma(df["close"], long)
+    new_df["ama"] = tafunc.ma(new_df["ddd"], m)
     return new_df
 
 
@@ -613,20 +578,18 @@ def EXPMA(df, p1, p2):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        expma = EXPMA(klines.to_dataframe(), 5, 10)
+        expma = EXPMA(klines, 5, 10)
         print(list(expma["ma1"]))
         print(list(expma["ma2"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 3753.679549224137, 3784.6530328160916, 3792.7020218773946, ...]
         [..., 3672.4492964832566, 3704.113060759028, 3723.1470497119317, ...]
     """
     new_df = pd.DataFrame()
-    new_df["ma1"] = ta_func.ema(df["close"], p1)
-    new_df["ma2"] = ta_func.ema(df["close"], p2)
+    new_df["ma1"] = tafunc.ema(df["close"], p1)
+    new_df["ma2"] = tafunc.ema(df["close"], p2)
     return new_df
 
 
@@ -652,12 +615,10 @@ def CR(df, n, m):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        cr = CR(klines.to_dataframe(), 26, 5)
+        cr = CR(klines, 26, 5)
         print(list(cr["cr"]))
         print(list(cr["crma"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 291.5751884671343, 316.71058105671943, 299.50578748862046, ...]
@@ -667,7 +628,7 @@ def CR(df, n, m):
     mid = (df["high"] + df["low"] + df["close"]) / 3
     new_df["cr"] = pd.Series(np.where(0 > df["high"] - mid.shift(1), 0, df["high"] - mid.shift(1))).rolling(
         n).sum() / pd.Series(np.where(0 > mid.shift(1) - df["low"], 0, mid.shift(1) - df["low"])).rolling(n).sum() * 100
-    new_df["crma"] = ta_func.ma(new_df["cr"], m).shift(int(m / 2.5 + 1))
+    new_df["crma"] = tafunc.ma(new_df["cr"], m).shift(int(m / 2.5 + 1))
     return new_df
 
 
@@ -691,17 +652,15 @@ def CCI(df, n):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        cci = CCI(klines.to_dataframe(), 14)
+        cci = CCI(klines, 14)
         print(list(cci["cci"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 98.13054698810375, 93.57661788413617, 77.8671380173813, ...]
     """
     typ = (df["high"] + df["low"] + df["close"]) / 3
-    ma = ta_func.ma(typ, n)
+    ma = tafunc.ma(typ, n)
 
     def mad(x):
         return np.fabs(x - x.mean()).mean()
@@ -729,11 +688,9 @@ def OBV(df):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        obv = OBV(klines.to_dataframe())
+        obv = OBV(klines)
         print(list(obv["obv"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 267209, 360351, 264476, ...]
@@ -764,14 +721,12 @@ def CDP(df, n):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        cdp = CDP(klines.to_dataframe(), 3)
+        cdp = CDP(klines, 3)
         print(list(cdp["ah"]))
         print(list(cdp["al"]))
         print(list(cdp["nh"]))
         print(list(cdp["nl"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 3828.244444444447, 3871.733333333336, 3904.37777777778, ...]
@@ -782,10 +737,10 @@ def CDP(df, n):
     new_df = pd.DataFrame()
     pt = df["high"].shift(1) - df["low"].shift(1)
     cdp = (df["high"].shift(1) + df["low"].shift(1) + df["close"].shift(1)) / 3
-    new_df["ah"] = ta_func.ma(cdp + pt, n)
-    new_df["al"] = ta_func.ma(cdp - pt, n)
-    new_df["nh"] = ta_func.ma(2 * cdp - df["low"], n)
-    new_df["nl"] = ta_func.ma(2 * cdp - df["high"], n)
+    new_df["ah"] = tafunc.ma(cdp + pt, n)
+    new_df["al"] = tafunc.ma(cdp - pt, n)
+    new_df["nh"] = tafunc.ma(2 * cdp - df["low"], n)
+    new_df["nl"] = tafunc.ma(2 * cdp - df["high"], n)
     return new_df
 
 
@@ -809,13 +764,11 @@ def HCL(df, n):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        hcl = HCL(klines.to_dataframe(), 10)
+        hcl = HCL(klines, 10)
         print(list(hcl["mah"]))
         print(list(hcl["mal"]))
         print(list(hcl["mac"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 3703.5400000000022, 3743.2800000000025, 3778.300000000002, ...]
@@ -823,9 +776,9 @@ def HCL(df, n):
         [..., 3666.1600000000008, 3705.8600000000006, 3741.940000000001, ...]
     """
     new_df = pd.DataFrame()
-    new_df["mah"] = ta_func.ma(df["high"], n)
-    new_df["mal"] = ta_func.ma(df["low"], n)
-    new_df["mac"] = ta_func.ma(df["close"], n)
+    new_df["mah"] = tafunc.ma(df["high"], n)
+    new_df["mal"] = tafunc.ma(df["low"], n)
+    new_df["mac"] = tafunc.ma(df["close"], n)
     return new_df
 
 
@@ -851,20 +804,18 @@ def ENV(df, n, k):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        env = ENV(klines.to_dataframe(), 14, 6)
+        env = ENV(klines, 14, 6)
         print(list(env["upper"]))
         print(list(env["lower"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 3842.2122857142863, 3876.7531428571433, 3893.849428571429, ...]
         [..., 3407.244857142857, 3437.875428571429, 3453.036285714286, ...]
     """
     new_df = pd.DataFrame()
-    new_df["upper"] = ta_func.ma(df["close"], n) * (1 + k / 100)
-    new_df["lower"] = ta_func.ma(df["close"], n) * (1 - k / 100)
+    new_df["upper"] = tafunc.ma(df["close"], n) * (1 + k / 100)
+    new_df["lower"] = tafunc.ma(df["close"], n) * (1 - k / 100)
     return new_df
 
 
@@ -888,16 +839,14 @@ def MIKE(df, n):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        mike = MIKE(klines.to_dataframe(), 12)
+        mike = MIKE(klines, 12)
         print(list(mike["wr"]))
         print(list(mike["mr"]))
         print(list(mike["sr"]))
         print(list(mike["ws"]))
         print(list(mike["ms"]))
         print(list(mike["ss"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 4242.4, 4203.333333333334, 3986.266666666666, ...]
@@ -940,16 +889,14 @@ def PUBU(df, m):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        pubu = PUBU(klines.to_dataframe(), 4)
+        pubu = PUBU(klines, 4)
         print(list(pubu["pb"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 3719.087702972829, 3728.9326217836974, 3715.7537397368856, ...]
     """
-    pb = (ta_func.ema(df["close"], m) + ta_func.ma(df["close"], m * 2) + ta_func.ma(df["close"], m * 4)) / 3
+    pb = (tafunc.ema(df["close"], m) + tafunc.ma(df["close"], m * 2) + tafunc.ma(df["close"], m * 4)) / 3
     new_df = pd.DataFrame(data=list(pb), columns=["pb"])
     return new_df
 
@@ -980,16 +927,14 @@ def BBI(df, n1, n2, n3, n4):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        bbi = BBI(klines.to_dataframe(), 3, 6, 12, 24)
+        bbi = BBI(klines, 3, 6, 12, 24)
         print(list(bbi["bbi"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 3679.841666666668, 3700.9645833333348, 3698.025000000002, ...]
     """
-    bbi = (ta_func.ma(df["close"], n1) + ta_func.ma(df["close"], n2) + ta_func.ma(df["close"], n3) + ta_func.ma(
+    bbi = (tafunc.ma(df["close"], n1) + tafunc.ma(df["close"], n2) + tafunc.ma(df["close"], n3) + tafunc.ma(
         df["close"], n4)) / 4
     new_df = pd.DataFrame(data=list(bbi), columns=["bbi"])
     return new_df
@@ -1015,12 +960,10 @@ def DKX(df, m):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        dkx = DKX(klines.to_dataframe(), 10)
+        dkx = DKX(klines, 10)
         print(list(dkx["b"]))
         print(list(dkx["d"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 3632.081746031746, 3659.4501587301593, 3672.744761904762, ...]
@@ -1035,7 +978,7 @@ def DKX(df, m):
                 12) + 7 * a.shift(13) + 6 * a.shift(14) + 5 * a.shift(15) + 4 * a.shift(16) + 3 * a.shift(
                 17) + 2 * a.shift(18) + a.shift(20)
                    ) / 210
-    new_df["d"] = ta_func.ma(new_df["b"], m)
+    new_df["d"] = tafunc.ma(new_df["b"], m)
     return new_df
 
 
@@ -1061,13 +1004,11 @@ def BBIBOLL(df, n, m):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        bbiboll=BBIBOLL(klines.to_dataframe(),10,3)
+        bbiboll=BBIBOLL(klines,10,3)
         print(list(bbiboll["bbiboll"]))
         print(list(bbiboll["upr"]))
         print(list(bbiboll["dwn"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 3679.841666666668, 3700.9645833333348, 3698.025000000002, ...]
@@ -1075,8 +1016,8 @@ def BBIBOLL(df, n, m):
         [..., 3367.960700061947, 3410.1329332218015, 3451.2778533942655, ...]
     """
     new_df = pd.DataFrame()
-    new_df["bbiboll"] = (ta_func.ma(df["close"], 3) + ta_func.ma(df["close"], 6) + ta_func.ma(df["close"],
-                                                                                              12) + ta_func.ma(
+    new_df["bbiboll"] = (tafunc.ma(df["close"], 3) + tafunc.ma(df["close"], 6) + tafunc.ma(df["close"],
+                                                                                              12) + tafunc.ma(
         df["close"], 24)) / 4
     new_df["upr"] = new_df["bbiboll"] + m * new_df["bbiboll"].rolling(n).std()
     new_df["dwn"] = new_df["bbiboll"] - m * new_df["bbiboll"].rolling(n).std()
@@ -1105,12 +1046,10 @@ def ADTM(df, n, m):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        adtm = ADTM(klines.to_dataframe(), 23, 8)
+        adtm = ADTM(klines, 23, 8)
         print(list(adtm["adtm"]))
         print(list(adtm["adtmma"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 0.8404011965511171, 0.837919942816297, 0.8102215868477481, ...]
@@ -1126,7 +1065,7 @@ def ADTM(df, n, m):
     stm = pd.Series(dtm).rolling(n).sum()
     sbm = pd.Series(dbm).rolling(n).sum()
     new_df["adtm"] = np.where(stm > sbm, (stm - sbm) / stm, np.where(stm == sbm, 0, (stm - sbm) / sbm))
-    new_df["adtmma"] = ta_func.ma(new_df["adtm"], m)
+    new_df["adtmma"] = tafunc.ma(new_df["adtm"], m)
     return new_df
 
 
@@ -1148,20 +1087,18 @@ def B3612(df):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        b3612=B3612(klines.to_dataframe())
+        b3612=B3612(klines)
         print(list(b3612["b36"]))
         print(list(b3612["b612"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 57.26666666667188, 44.00000000000546, -5.166666666660603, ...]
         [..., 99.28333333333285, 88.98333333333221, 69.64999999999918, ...]
     """
     new_df = pd.DataFrame()
-    new_df["b36"] = ta_func.ma(df["close"], 3) - ta_func.ma(df["close"], 6)
-    new_df["b612"] = ta_func.ma(df["close"], 6) - ta_func.ma(df["close"], 12)
+    new_df["b36"] = tafunc.ma(df["close"], 3) - tafunc.ma(df["close"], 6)
+    new_df["b612"] = tafunc.ma(df["close"], 6) - tafunc.ma(df["close"], 12)
     return new_df
 
 
@@ -1189,22 +1126,20 @@ def DBCD(df, n, m, t):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        dbcd=DBCD(klines.to_dataframe(), 5, 16, 76)
+        dbcd=DBCD(klines, 5, 16, 76)
         print(list(dbcd["dbcd"]))
         print(list(dbcd["mm"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 0.0038539724453411045, 0.0034209659500908517, 0.0027130669520015094, ...]
         [..., 0.003998499673401192, 0.003864353204606074, 0.0035925052896395872, ...]
     """
     new_df = pd.DataFrame()
-    bias = (df["close"] - ta_func.ma(df["close"], n)) / ta_func.ma(df["close"], n)
+    bias = (df["close"] - tafunc.ma(df["close"], n)) / tafunc.ma(df["close"], n)
     dif = bias - bias.shift(m)
-    new_df["dbcd"] = ta_func.sma(dif, t, 1)
-    new_df["mm"] = ta_func.ma(new_df["dbcd"], 5)
+    new_df["dbcd"] = tafunc.sma(dif, t, 1)
+    new_df["mm"] = tafunc.ma(new_df["dbcd"], 5)
     return new_df
 
 
@@ -1234,13 +1169,11 @@ def DDI(df, n, n1, m, m1):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        ddi = DDI(klines.to_dataframe(), 13, 30, 10, 5)
+        ddi = DDI(klines, 13, 30, 10, 5)
         print(list(ddi["ddi"]))
         print(list(ddi["addi"]))
         print(list(ddi["ad"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 0.6513560804899388, 0.6129178985672046, 0.40480202190395936, ...]
@@ -1255,8 +1188,8 @@ def DDI(df, n, n1, m, m1):
     diz = pd.Series(dmz).rolling(n).sum() / (pd.Series(dmz).rolling(n).sum() + pd.Series(dmf).rolling(n).sum())
     dif = pd.Series(dmf).rolling(n).sum() / (pd.Series(dmf).rolling(n).sum() + pd.Series(dmz).rolling(n).sum())
     new_df["ddi"] = diz - dif
-    new_df["addi"] = ta_func.sma(new_df["ddi"], n1, m)
-    new_df["ad"] = ta_func.ma(new_df["addi"], m1)
+    new_df["addi"] = tafunc.sma(new_df["ddi"], n1, m)
+    new_df["ad"] = tafunc.ma(new_df["addi"], m1)
     return new_df
 
 
@@ -1284,12 +1217,10 @@ def KD(df, n, m1, m2):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        kd = KD(klines.to_dataframe(), 9, 3, 3)
+        kd = KD(klines, 9, 3, 3)
         print(list(kd["k"]))
         print(list(kd["d"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 84.60665654726242, 80.96145249909222, 57.54863147922147, ...]
@@ -1299,8 +1230,8 @@ def KD(df, n, m1, m2):
     hv = df["high"].rolling(n).max()
     lv = df["low"].rolling(n).min()
     rsv = pd.Series(np.where(hv == lv, 0, (df["close"] - lv) / (hv - lv) * 100))
-    new_df["k"] = ta_func.sma(rsv, m1, 1)
-    new_df["d"] = ta_func.sma(new_df["k"], m2, 1)
+    new_df["k"] = tafunc.sma(rsv, m1, 1)
+    new_df["d"] = tafunc.sma(new_df["k"], m2, 1)
     return new_df
 
 
@@ -1326,11 +1257,9 @@ def LWR(df, n, m):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        lwr = LWR(klines.to_dataframe(), 9, 3)
+        lwr = LWR(klines, 9, 3)
         print(list(lwr["lwr"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., -15.393343452737565, -19.03854750090778, -42.45136852077853, ...]
@@ -1338,7 +1267,7 @@ def LWR(df, n, m):
     hv = df["high"].rolling(n).max()
     lv = df["low"].rolling(n).min()
     rsv = pd.Series(np.where(hv == lv, 0, (df["close"] - hv) / (hv - lv) * 100))
-    new_df = pd.DataFrame(data=list(ta_func.sma(rsv, m, 1)), columns=["lwr"])
+    new_df = pd.DataFrame(data=list(tafunc.sma(rsv, m, 1)), columns=["lwr"])
     return new_df
 
 
@@ -1364,17 +1293,15 @@ def MASS(df, n1, n2):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        mass = MASS(klines.to_dataframe(), 9, 25)
+        mass = MASS(klines, 9, 25)
         print(list(mass["mass"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 27.478822053291733, 27.485710830466964, 27.561223922342652, ...]
     """
-    ema1 = ta_func.ema(df["high"] - df["low"], n1)
-    ema2 = ta_func.ema(ema1, n1)
+    ema1 = tafunc.ema(df["high"] - df["low"], n1)
+    ema2 = tafunc.ema(ema1, n1)
     new_df = pd.DataFrame(data=list((ema1 / ema2).rolling(n2).sum()), columns=["mass"])
     return new_df
 
@@ -1399,11 +1326,9 @@ def MFI(df, n):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        mfi = MFI(klines.to_dataframe(), 14)
+        mfi = MFI(klines, 14)
         print(list(mfi["mfi"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 73.47968487105688, 70.2250476611595, 62.950450871062266, ...]
@@ -1435,12 +1360,10 @@ def MI(df, n):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        mi = MI(klines.to_dataframe(), 12)
+        mi = MI(klines, 12)
         print(list(mi["a"]))
         print(list(mi["mi"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 399.1999999999998, 370.8000000000002, 223.5999999999999, ...]
@@ -1448,7 +1371,7 @@ def MI(df, n):
     """
     new_df = pd.DataFrame()
     new_df["a"] = df["close"] - df["close"].shift(n)
-    new_df["mi"] = ta_func.sma(new_df["a"], n, 1)
+    new_df["mi"] = tafunc.sma(new_df["a"], n, 1)
     return new_df
 
 
@@ -1476,12 +1399,10 @@ def MICD(df, n, n1, n2):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        micd = MICD(klines.to_dataframe(), 3, 10, 20)
+        micd = MICD(klines, 3, 10, 20)
         print(list(micd["dif"]))
         print(list(micd["micd"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 6.801483500680234, 6.700989000453493, 6.527326000302342, ...]
@@ -1489,9 +1410,9 @@ def MICD(df, n, n1, n2):
     """
     new_df = pd.DataFrame()
     mi = df["close"] - df["close"].shift(1)
-    ami = ta_func.sma(mi, n, 1)
-    new_df["dif"] = ta_func.ma(ami.shift(1), n1) - ta_func.ma(ami.shift(1), n2)
-    new_df["micd"] = ta_func.sma(new_df["dif"], 10, 1)
+    ami = tafunc.sma(mi, n, 1)
+    new_df["dif"] = tafunc.ma(ami.shift(1), n1) - tafunc.ma(ami.shift(1), n2)
+    new_df["micd"] = tafunc.sma(new_df["dif"], 10, 1)
     return new_df
 
 
@@ -1517,12 +1438,10 @@ def MTM(df, n, n1):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        mtm = MTM(klines.to_dataframe(), 6, 6)
+        mtm = MTM(klines, 6, 6)
         print(list(mtm["mtm"]))
         print(list(mtm["mtmma"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 144.79999999999973, 123.60000000000036, -4.200000000000273, ...]
@@ -1530,7 +1449,7 @@ def MTM(df, n, n1):
     """
     new_df = pd.DataFrame()
     new_df["mtm"] = df["close"] - df["close"].shift(n)
-    new_df["mtmma"] = ta_func.ma(new_df["mtm"], n1)
+    new_df["mtmma"] = tafunc.ma(new_df["mtm"], n1)
     return new_df
 
 
@@ -1556,17 +1475,15 @@ def PRICEOSC(df, long, short):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        priceosc = PRICEOSC(klines.to_dataframe(), 26, 12)
+        priceosc = PRICEOSC(klines, 26, 12)
         print(list(priceosc["priceosc"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 5.730468338384374, 5.826866231225718, 5.776959240989803, ...]
     """
-    ma_s = ta_func.ma(df["close"], short)
-    ma_l = ta_func.ma(df["close"], long)
+    ma_s = tafunc.ma(df["close"], short)
+    ma_l = tafunc.ma(df["close"], long)
     new_df = pd.DataFrame(data=list((ma_s - ma_l) / ma_s * 100), columns=["priceosc"])
     return new_df
 
@@ -1593,20 +1510,18 @@ def PSY(df, n, m):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        psy = PSY(klines.to_dataframe(), 12, 6)
+        psy = PSY(klines, 12, 6)
         print(list(psy["psy"]))
         print(list(psy["psyma"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 58.333333333333336, 58.333333333333336, 50.0, ...]
         [..., 54.16666666666671, 54.16666666666671, 54.16666666666671, ...]
     """
     new_df = pd.DataFrame()
-    new_df["psy"] = ta_func.count(df["close"] > df["close"].shift(1), n) / n * 100
-    new_df["psyma"] = ta_func.ma(new_df["psy"], m)
+    new_df["psy"] = tafunc.count(df["close"] > df["close"].shift(1), n) / n * 100
+    new_df["psyma"] = tafunc.ma(new_df["psy"], m)
     return new_df
 
 
@@ -1628,12 +1543,10 @@ def QHLSR(df):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        ndf = QHLSR(klines.to_dataframe())
+        ndf = QHLSR(klines)
         print(list(ndf["qhl5"]))
         print(list(ndf["qhl10"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 0.9512796890171819, 1.0, 0.8061319699743583, 0.36506038490240567, ...]
@@ -1674,17 +1587,15 @@ def RC(df, n):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        rc = RC(klines.to_dataframe(), 50)
+        rc = RC(klines, 50)
         print(list(rc["arc"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 1.011782057069131, 1.0157160672001329, 1.019680175228899, ...]
     """
     rc = df["close"] / df["close"].shift(n)
-    new_df = pd.DataFrame(data=list(ta_func.sma(rc.shift(1), n, 1)), columns=["arc"])
+    new_df = pd.DataFrame(data=list(tafunc.sma(rc.shift(1), n, 1)), columns=["arc"])
     return new_df
 
 
@@ -1712,12 +1623,10 @@ def RCCD(df, n, n1, n2):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        rccd = RCCD(klines.to_dataframe(), 10, 21, 28)
+        rccd = RCCD(klines, 10, 21, 28)
         print(list(rccd["dif"]))
         print(list(rccd["rccd"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 0.007700543190044096, 0.007914865667604465, 0.008297381119103608, ...]
@@ -1725,9 +1634,9 @@ def RCCD(df, n, n1, n2):
     """
     new_df = pd.DataFrame()
     rc = df["close"] / df["close"].shift(n)
-    arc = ta_func.sma(rc.shift(1), n, 1)
-    new_df["dif"] = ta_func.ma(arc.shift(1), n1) - ta_func.ma(arc.shift(1), n2)
-    new_df["rccd"] = ta_func.sma(new_df["dif"], n, 1)
+    arc = tafunc.sma(rc.shift(1), n, 1)
+    new_df["dif"] = tafunc.ma(arc.shift(1), n1) - tafunc.ma(arc.shift(1), n2)
+    new_df["rccd"] = tafunc.sma(new_df["dif"], n, 1)
     return new_df
 
 
@@ -1753,12 +1662,10 @@ def ROC(df, n, m):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        roc = ROC(klines.to_dataframe(), 24, 20)
+        roc = ROC(klines, 24, 20)
         print(list(roc["roc"]))
         print(list(roc["rocma"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 21.389800555415288, 19.285937989351712, 15.183443085606768, ...]
@@ -1766,7 +1673,7 @@ def ROC(df, n, m):
     """
     new_df = pd.DataFrame()
     new_df["roc"] = (df["close"] - df['close'].shift(n)) / df["close"].shift(n) * 100
-    new_df["rocma"] = ta_func.ma(new_df["roc"], m)
+    new_df["rocma"] = tafunc.ma(new_df["roc"], m)
     return new_df
 
 
@@ -1796,12 +1703,10 @@ def SLOWKD(df, n, m1, m2, m3):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        slowkd = SLOWKD(klines.to_dataframe(), 9, 3, 3, 3)
+        slowkd = SLOWKD(klines, 9, 3, 3, 3)
         print(list(slowkd["k"]))
         print(list(slowkd["d"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 82.98108443995415, 82.30787379300017, 74.05479302174061, ...]
@@ -1810,9 +1715,9 @@ def SLOWKD(df, n, m1, m2, m3):
     new_df = pd.DataFrame()
     rsv = (df["close"] - df["low"].rolling(n).min()) / \
           (df["high"].rolling(n).max() - df["low"].rolling(n).min()) * 100
-    fastk = ta_func.sma(rsv, m1, 1)
-    new_df["k"] = ta_func.sma(fastk, m2, 1)
-    new_df["d"] = ta_func.sma(new_df["k"], m3, 1)
+    fastk = tafunc.sma(rsv, m1, 1)
+    new_df["k"] = tafunc.sma(fastk, m2, 1)
+    new_df["d"] = tafunc.sma(new_df["k"], m3, 1)
     return new_df
 
 
@@ -1836,12 +1741,10 @@ def SRDM(df, n):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        srdm = SRDM(klines.to_dataframe(), 30)
+        srdm = SRDM(klines, 30)
         print(list(srdm["srdm"]))
         print(list(srdm["asrdm"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 0.7865067466266866, 0.7570567713288928, 0.5528619528619526, ...]
@@ -1854,10 +1757,10 @@ def SRDM(df, n):
     dmf = np.where((df["high"] + df["low"]) >= (df["high"].shift(1) + df["low"].shift(1)), 0,
                    np.where(np.absolute(df["high"] - df["high"].shift(1)) > np.absolute(df["low"] - df["low"].shift(1)),
                             np.absolute(df["high"] - df["high"].shift(1)), np.absolute(df["low"] - df["low"].shift(1))))
-    admz = ta_func.ma(pd.Series(dmz), 10)
-    admf = ta_func.ma(pd.Series(dmf), 10)
+    admz = tafunc.ma(pd.Series(dmz), 10)
+    admf = tafunc.ma(pd.Series(dmf), 10)
     new_df["srdm"] = np.where(admz > admf, (admz - admf) / admz, np.where(admz == admf, 0, (admz - admf) / admf))
-    new_df["asrdm"] = ta_func.sma(new_df["srdm"], n, 1)
+    new_df["asrdm"] = tafunc.sma(new_df["srdm"], n, 1)
     return new_df
 
 
@@ -1881,12 +1784,10 @@ def SRMI(df, n):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        srmi = SRMI(klines.to_dataframe(), 9)
+        srmi = SRMI(klines, 9)
         print(list(srmi["a"]))
         print(list(srmi["mi"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 0.10362397961836425, 0.07062591892459567, -0.03341929372138309, ...]
@@ -1897,7 +1798,7 @@ def SRMI(df, n):
                            (df["close"] - df["close"].shift(n)) / df["close"].shift(n),
                            np.where(df["close"] == df["close"].shift(n), 0,
                                     (df["close"] - df["close"].shift(n)) / df["close"]))
-    new_df["mi"] = ta_func.sma(new_df["a"], n, 1)
+    new_df["mi"] = tafunc.sma(new_df["a"], n, 1)
     return new_df
 
 
@@ -1925,12 +1826,10 @@ def ZDZB(df, n1, n2, n3):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        zdzb = ZDZB(klines.to_dataframe(), 50, 5, 20)
+        zdzb = ZDZB(klines, 50, 5, 20)
         print(list(zdzb["b"]))
         print(list(zdzb["d"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 1.119565217391305, 1.1376811594202905, 1.155797101449276, ...]
@@ -1939,8 +1838,8 @@ def ZDZB(df, n1, n2, n3):
     new_df = pd.DataFrame()
     a = pd.Series(np.where(df["close"] >= df["close"].shift(1), 1, 0)).rolling(n1).sum() / pd.Series(
         np.where(df["close"] < df["close"].shift(1), 1, 0)).rolling(n1).sum()
-    new_df["b"] = ta_func.ma(a, n2)
-    new_df["d"] = ta_func.ma(a, n3)
+    new_df["b"] = tafunc.ma(a, n2)
+    new_df["d"] = tafunc.ma(a, n3)
     return new_df
 
 
@@ -1962,16 +1861,14 @@ def DPO(df):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        dpo = DPO(klines.to_dataframe())
+        dpo = DPO(klines)
         print(list(dpo["dpo"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 595.4100000000021, 541.8300000000017, 389.7200000000016, ...]
     """
-    dpo = df["close"] - (ta_func.ma(df["close"], 20)).shift(11)
+    dpo = df["close"] - (tafunc.ma(df["close"], 20)).shift(11)
     new_df = pd.DataFrame(data=list(dpo), columns=["dpo"])
     return new_df
 
@@ -1994,12 +1891,10 @@ def LON(df):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        lon = LON(klines.to_dataframe())
+        lon = LON(klines)
         print(list(lon["lon"]))
         print(list(lon["ma1"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 6.419941948913239, 6.725451135494827, 6.483546043406369, ...]
@@ -2018,7 +1913,7 @@ def LON(df):
     vol11 = vol1.ewm(alpha=0.05, adjust=False).mean()  # DMA
     res1 = vol10 - vol11
     new_df["lon"] = res1.cumsum()
-    new_df["ma1"] = ta_func.ma(new_df["lon"], 10)
+    new_df["ma1"] = tafunc.ma(new_df["lon"], 10)
     return new_df
 
 
@@ -2040,12 +1935,10 @@ def SHORT(df):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        short = SHORT(klines.to_dataframe())
+        short = SHORT(klines)
         print(list(short["short"]))
         print(list(short["ma1"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 0.6650139934614072, 0.3055091865815881, -0.24190509208845834, ...]
@@ -2062,7 +1955,7 @@ def SHORT(df):
     vol10 = vol1.ewm(alpha=0.1, adjust=False).mean()  # DMA 动态均值
     vol11 = vol1.ewm(alpha=0.05, adjust=False).mean()  # DMA
     new_df["short"] = vol10 - vol11
-    new_df["ma1"] = ta_func.ma(new_df["short"], 10)
+    new_df["ma1"] = tafunc.ma(new_df["short"], 10)
     return new_df
 
 
@@ -2088,20 +1981,18 @@ def MV(df, n, m):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        mv = MV(klines.to_dataframe(), 10, 20)
+        mv = MV(klines, 10, 20)
         print(list(mv["mv1"]))
         print(list(mv["mv2"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 69851.39419881169, 72453.75477893051, 75423.57930103746, ...]
         [..., 49044.75870654942, 51386.27077122195, 53924.557232660845, ...]
     """
     new_df = pd.DataFrame()
-    new_df["mv1"] = ta_func.sma(df["volume"], n, 1)
-    new_df["mv2"] = ta_func.sma(df["volume"], m, 1)
+    new_df["mv1"] = tafunc.sma(df["volume"], n, 1)
+    new_df["mv2"] = tafunc.sma(df["volume"], m, 1)
     return new_df
 
 
@@ -2127,13 +2018,11 @@ def WAD(df, n, m):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        wad = WAD(klines.to_dataframe(), 10, 30)
+        wad = WAD(klines, 10, 30)
         print(list(wad["a"]))
         print(list(wad["b"]))
         print(list(wad["e"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 90.0, 134.79999999999973, 270.4000000000001, ...]
@@ -2147,8 +2036,8 @@ def WAD(df, n, m):
                                        np.where(df["close"] < df["close"].shift(1), df["close"] - np.where(
                                            df["close"].shift(1) > df["high"], df["close"].shift(1), df["high"]),
                                                 0)).cumsum())
-    new_df["b"] = ta_func.sma(new_df["a"], n, 1)
-    new_df["e"] = ta_func.sma(new_df["a"], m, 1)
+    new_df["b"] = tafunc.sma(new_df["a"], n, 1)
+    new_df["e"] = tafunc.sma(new_df["a"], m, 1)
     return new_df
 
 
@@ -2170,11 +2059,9 @@ def AD(df):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        ad = AD(klines.to_dataframe())
+        ad = AD(klines)
         print(list(ad["ad"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 146240.57181105542, 132822.950945916, 49768.15024044845, ...]
@@ -2203,11 +2090,9 @@ def CCL(df):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        ccl = CCL(klines.to_dataframe())
+        ccl = CCL(klines)
         print(list(ccl["ccl"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., '多头增仓', '多头减仓', '空头增仓', ...]
@@ -2239,12 +2124,10 @@ def CJL(df):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        ndf = CJL(klines.to_dataframe())
+        ndf = CJL(klines)
         print(list(ndf["vol"]))
         print(list(ndf["opid"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 93142, 95875, 102152, ...]
@@ -2274,11 +2157,9 @@ def OPI(df):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        opi = OPI(klines.to_dataframe())
+        opi = OPI(klines)
         print(list(opi["opi"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 69213, 66414, 68379, ...]
@@ -2306,11 +2187,9 @@ def PVT(df):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        pvt = PVT(klines.to_dataframe())
+        pvt = PVT(klines)
         print(list(pvt["pvt"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 13834.536889431965, 12892.3866788564, 9255.595248484618, ...]
@@ -2342,16 +2221,14 @@ def VOSC(df, short, long):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        vosc = VOSC(klines.to_dataframe(), 12, 26)
+        vosc = VOSC(klines, 12, 26)
         print(list(vosc["vosc"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 38.72537848731668, 36.61748077024136, 35.4059127302802, ...]
     """
-    vosc = (ta_func.ma(df["volume"], short) - ta_func.ma(df["volume"], long)) / ta_func.ma(df["volume"], short) * 100
+    vosc = (tafunc.ma(df["volume"], short) - tafunc.ma(df["volume"], long)) / tafunc.ma(df["volume"], short) * 100
     new_df = pd.DataFrame(data=list(vosc), columns=["vosc"])
     return new_df
 
@@ -2376,11 +2253,9 @@ def VROC(df, n):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        vroc = VROC(klines.to_dataframe(), 12)
+        vroc = VROC(klines, 12)
         print(list(vroc["vroc"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 41.69905854184833, 74.03274443327598, 3.549394666873177, ...]
@@ -2410,18 +2285,16 @@ def VRSI(df, n):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        vrsi = VRSI(klines.to_dataframe(), 6)
+        vrsi = VRSI(klines, 6)
         print(list(vrsi["vrsi"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 59.46573277427041, 63.3447660581749, 45.21081537920358, ...]
     """
-    vrsi = ta_func.sma(
+    vrsi = tafunc.sma(
         pd.Series(np.where(df["volume"] - df["volume"].shift(1) > 0, df["volume"] - df["volume"].shift(1), 0)), n,
-        1) / ta_func.sma(np.absolute(df["volume"] - df["volume"].shift(1)), n, 1) * 100
+        1) / tafunc.sma(np.absolute(df["volume"] - df["volume"].shift(1)), n, 1) * 100
     new_df = pd.DataFrame(data=list(vrsi), columns=["vrsi"])
     return new_df
 
@@ -2444,11 +2317,9 @@ def WVAD(df):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        wvad = WVAD(klines.to_dataframe())
+        wvad = WVAD(klines)
         print(list(wvad["wvad"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., -32690.203562340674, -42157.968253968385, 32048.182305630264, ...]
@@ -2478,16 +2349,14 @@ def MA(df, n):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        ma = MA(klines.to_dataframe(), 30)
+        ma = MA(klines, 30)
         print(list(ma["ma"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 3436.300000000001, 3452.8733333333344, 3470.5066666666676, ...]
     """
-    new_df = pd.DataFrame(data=list(ta_func.ma(df["close"], n)), columns=["ma"])
+    new_df = pd.DataFrame(data=list(tafunc.ma(df["close"], n)), columns=["ma"])
     return new_df
 
 
@@ -2513,16 +2382,14 @@ def SMA(df, n, m):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        sma = SMA(klines.to_dataframe(), 5, 2)
+        sma = SMA(klines, 5, 2)
         print(list(sma["sma"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 3803.9478653510914, 3751.648719210655, 3739.389231526393, ...]
     """
-    new_df = pd.DataFrame(data=list(ta_func.sma(df["close"], n, m)), columns=["sma"])
+    new_df = pd.DataFrame(data=list(tafunc.sma(df["close"], n, m)), columns=["sma"])
     return new_df
 
 
@@ -2546,16 +2413,14 @@ def EMA(df, n):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        ema = EMA(klines.to_dataframe(), 10)
+        ema = EMA(klines, 10)
         print(list(ema["ema"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 3723.1470497119317, 3714.065767946126, 3715.3265374104667, ...]
     """
-    new_df = pd.DataFrame(data=list(ta_func.ema(df["close"], n)), columns=["ema"])
+    new_df = pd.DataFrame(data=list(tafunc.ema(df["close"], n)), columns=["ema"])
     return new_df
 
 
@@ -2579,16 +2444,14 @@ def EMA2(df, n):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        ema2 = EMA2(klines.to_dataframe(), 10)
+        ema2 = EMA2(klines, 10)
         print(list(ema2["ema2"]))
-        api.close()
+
 
         # 预计的输出是这样的:
         [..., 3775.832727272727, 3763.334545454546, 3757.101818181818, ...]
     """
-    new_df = pd.DataFrame(data=list(ta_func.ema2(df["close"], n)), columns=["ema2"])
+    new_df = pd.DataFrame(data=list(tafunc.ema2(df["close"], n)), columns=["ema2"])
     return new_df
 
 
@@ -2612,14 +2475,11 @@ def TRMA(df, n):
 
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
-        while not klines.is_ready():
-            api.wait_update()
-        trma = TRMA(klines.to_dataframe(), 10)
+        trma = TRMA(klines, 10)
         print(list(trma["trma"]))
-        api.close()
 
         # 预计的输出是这样的:
-        [..., 3741.366666666669, 3759.160000000002, 3767.7533333333354, ...]
+        [..., 341.366666666669, 3759.160000000002, 3767.7533333333354, ...]
     """
-    new_df = pd.DataFrame(data=list(ta_func.trma(df["close"], n)), columns=["trma"])
+    new_df = pd.DataFrame(data=list(tafunc.trma(df["close"], n)), columns=["trma"])
     return new_df

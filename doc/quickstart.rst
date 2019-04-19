@@ -66,13 +66,13 @@ api.wait_update() 是一个阻塞函数, 程序在这行上等待, 直到收到�
 
     klines = api.get_kline_serial("SHFE.cu1812", 10)
 
-跟 api.get_quote() 一样, api.get_kline_serial() 也是返回K线序列的引用对象. K线序列数据也会跟实时行情一起同步自动更新. 你也同样需要用 api.wait_update() 等待数据刷新.
+klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline_serial() 也是返回K线序列的引用对象. K线序列数据也会跟实时行情一起同步自动更新. 你也同样需要用 api.wait_update() 等待数据刷新.
 
 一旦k线数据收到, 你可以通过 klines 访问 k线数据::
 
     while True:
         api.wait_update()
-        print("最后一根K线收盘价", klines.close[-1])
+        print("最后一根K线收盘价", klines.close.iloc[-1])
 
 这部分的完整示例程序请见 `t30.py <https://github.com/shinnytech/tqsdk-python/blob/master/tqsdk/demo/tutorial/t30.py>`_.
 
@@ -123,9 +123,9 @@ api.wait_update() 是一个阻塞函数, 程序在这行上等待, 直到收到�
     while True:
         api.wait_update()
         if api.is_changing(klines):
-            ma = sum(klines.close[-15:])/15
-            print("最新价", klines.close[-1], "MA", ma)
-            if klines.close[-1] > ma:
+            ma = sum(klines.close.iloc[-15:])/15
+            print("最新价", klines.close.iloc[-1], "MA", ma)
+            if klines.close.iloc[-1] > ma:
                 print("最新价大于MA: 市价开仓")
                 api.insert_order(symbol="DCE.m1901", direction="BUY", offset="OPEN", volume=5)
 
@@ -138,7 +138,7 @@ api.wait_update() 是一个阻塞函数, 程序在这行上等待, 直到收到�
 
 按照目标持仓自动交易
 -------------------------------------------------
-在某些场景中, 我们可能会发现, 自己写代码管理下单撤单是一件很麻烦的事情. 在这种情况下, 你可以使用 :ref:`target_position` 机制. 你只需要指定账户中预期应有的持仓手数, TqSdk 会自动通过一系列指令调整仓位直到达成目标. 请看例子::
+在某些场景中, 我们可能会发现, 自己写代码管理下单撤单是一件很麻烦的事情. 在这种情况下, 你可以使用 :py:class:`tqsdk.lib.TargetPosTask`. 你只需要指定账户中预期应有的持仓手数, TqSdk 会自动通过一系列指令调整仓位直到达成目标. 请看例子::
 
 
     # 创建 rb1810 的目标持仓 task，该 task 负责调整 rb1810 的仓位到指定的目标仓位
@@ -180,5 +180,5 @@ api.wait_update() 是一个阻塞函数, 程序在这行上等待, 直到收到�
 
 更多内容
 -------------------------------------------------
+* 要完整了解TqSdk的使用, 请阅读 :ref:`usage`
 * 更多TqSdk的示例 :ref:`demo`
-* 要完整了解TqSdk的使用, 请阅读 :ref:`core`
