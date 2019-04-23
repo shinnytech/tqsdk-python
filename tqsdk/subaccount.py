@@ -74,6 +74,7 @@ class TqSubAccount(object):
         self._porcess_quote(pack["data"])
         self._porcess_trade(pack["data"])
         self._porcess_order(pack["data"])
+        self._porcess_account(pack["data"])
         self._porcess_trade_more_data(pack["data"])
 
     def _porcess_quote(self, diff):
@@ -135,6 +136,11 @@ class TqSubAccount(object):
             self._send_order(oid)
         for s in symbols:
             self._adjust_position(s, frozen_volume=True)
+
+    def _porcess_account(self, diff):
+        for d in diff:
+            accounts = d.get("trade", {}).get(self.main_account_id, {}).get("accounts", {})
+            self.diffs.append({"trade": {self.account_id: {"accounts":accounts}}})
 
     def _porcess_trade_more_data(self, diff):
         for d in diff:
