@@ -28,16 +28,16 @@ TqApi 的其它参数请见 :py:class:`tqsdk.api.TqApi`
 
 关键函数: wait_update
 ----------------------------------------------------
-:py:meth:`tqsdk.api.TqApi.wait_update` 是 TqApi 中最重要的一个函数. 每次调用 wait_update 函数时将发生这些事:
+:py:meth:`~tqsdk.api.TqApi.wait_update` 是 TqApi 中最重要的一个函数. 每次调用 :py:meth:`~tqsdk.api.TqApi.wait_update` 函数时将发生这些事:
 
-* 实际发出网络数据包. 例如, 策略程序用 insert_order 函数下单, 实际的报单指令是在 insert_order 后调用 wait_update 时发出的
-* 让正在运行中的后台任务获得动作机会．例如, 策略程序中创建了一个后台调仓任务, 这个任务只会在wait_update时发出交易指令
+* 实际发出网络数据包. 例如, 策略程序用 insert_order 函数下单, 实际的报单指令是在 insert_order 后调用 :py:meth:`~tqsdk.api.TqApi.wait_update` 时发出的
+* 让正在运行中的后台任务获得动作机会．例如, 策略程序中创建了一个后台调仓任务, 这个任务只会在 :py:meth:`~tqsdk.api.TqApi.wait_update` 时发出交易指令
 * 尝试从服务器接收一个数据包, 并用收到的数据包更新内存中的业务数据截面.
 * 如果没有收到数据包，则挂起等待
 
-@todo: 这里需补一个运行时序图, 解释wait_update函数作用
+@todo: 这里需补一个运行时序图, 解释 :py:meth:`~tqsdk.api.TqApi.wait_update` 函数作用
 
-因此, TqSdk 要求策略程序必须反复调用 wait_update, 才能保证整个程序正常运行. 一般会将 wait_update 放在一个循环中反复调用::
+因此, TqSdk 要求策略程序必须反复调用 :py:meth:`~tqsdk.api.TqApi.wait_update`, 才能保证整个程序正常运行. 一般会将 :py:meth:`~tqsdk.api.TqApi.wait_update` 放在一个循环中反复调用::
 
     while True:             #一个循环
         api.wait_update()   #总是调用 wait_update, 当数据有更新时 wait_update 函数返回, 执行下一句
@@ -46,16 +46,16 @@ TqApi 的其它参数请见 :py:class:`tqsdk.api.TqApi`
 
 内存数据及数据更新
 ----------------------------------------------------
-TqApi 实例内存中保存了一份完整业务数据截面, 包括行情/K线和交易账户数据. 这些数据可以通过 TqApi 提供的数据引用函数获取，以获取资金账户为例::
+TqApi 实例内存中保存了一份完整业务数据截面, 包括行情/K线和交易账户数据. 这些数据可以通过 :py:class:`~tqsdk.api.TqApi` 提供的数据引用函数获取，以获取资金账户为例::
 
     account = api.get_account()  # 获取账户信息引用
     print(account["balance"])    # 显示账户信息
 
 值得注意的是, get_account 返回资金账户的一个动态引用, 而不是具体的数值.
 因此只需调用一次 get_account 得到 account 引用，之后任何时刻都可以使用 account["balance"] 获得最新的账户权益.
-当 wait_update 函数返回时业务截面即完成了从上一个时间截面推进到下一个时间截面。
+当 :py:meth:`~tqsdk.api.TqApi.wait_update` 函数返回时业务截面即完成了从上一个时间截面推进到下一个时间截面。
 
-wait_update 会在任何数据更新时返回. 如果想知道 wait_update 到底更新了哪些业务数据可以调用 `is_changing`_ 函数判断感兴趣的业务对象是否有更新，例如::
+:py:meth:`~tqsdk.api.TqApi.wait_update` 会在任何数据更新时返回. 如果想知道 :py:meth:`~tqsdk.api.TqApi.wait_update` 到底更新了哪些业务数据可以调用 :py:meth:`~tqsdk.api.TqApi.is_changing` 函数判断感兴趣的业务对象是否有更新，例如::
 
     if api.is_changing(account):
         print("账户变化")                    #任何资金账户中任意信息变化的时候打出 "账户变化"
@@ -90,23 +90,4 @@ wait_update 会在任何数据更新时返回. 如果想知道 wait_update 到�
 
 
 .. _TqSdk: https://doc.shinnytech.com/pysdk/latest/index.html
-.. _TqApi: https://doc.shinnytech.com/pysdk/latest/reference.html#tqsdk.api.TqApi
-.. _TqAccount: https://doc.shinnytech.com/pysdk/latest/reference.html#tqsdk.api.TqAccount
-.. _TqSim: https://doc.shinnytech.com/pysdk/latest/reference.html#tqsdk.sim.TqSim
-.. _TqBacktest: https://doc.shinnytech.com/pysdk/latest/reference.html#tqsdk.backtest.TqBacktest
-
-.. _wait_update: https://doc.shinnytech.com/pysdk/latest/reference.html#tqsdk.api.TqApi.wait_update
-.. _is_changing: https://doc.shinnytech.com/pysdk/latest/reference.html#tqsdk.api.TqApi.is_changing
-.. _get_quote: https://doc.shinnytech.com/pysdk/latest/reference.html#tqsdk.api.TqApi.get_quote
-.. _get_kline_serial: https://doc.shinnytech.com/pysdk/latest/reference.html#tqsdk.api.TqApi.get_kline_serial
-.. _get_tick_serial: https://doc.shinnytech.com/pysdk/latest/reference.html#tqsdk.api.TqApi.get_tick_serial
-.. _get_account: https://doc.shinnytech.com/pysdk/latest/reference.html#tqsdk.api.TqApi.get_account
-.. _get_position: https://doc.shinnytech.com/pysdk/latest/reference.html#tqsdk.api.TqApi.get_position
-.. _get_order: https://doc.shinnytech.com/pysdk/latest/reference.html#tqsdk.api.TqApi.get_order
-.. _insert_order: https://doc.shinnytech.com/pysdk/latest/reference.html#tqsdk.api.TqApi.insert_order
-.. _cancel_order: https://doc.shinnytech.com/pysdk/latest/reference.html#tqsdk.api.TqApi.cancel_order
-
-.. _TargetPosTask: https://doc.shinnytech.com/pysdk/latest/reference.html#tqsdk.lib.TargetPosTask
-.. _InsertOrderUntilAllTradedTask: https://doc.shinnytech.com/pysdk/latest/reference.html#tqsdk.lib.InsertOrderUntilAllTradedTask
-
 .. _DIFF: https://doc.shinnytech.com/diff/latest/index.html

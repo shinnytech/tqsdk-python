@@ -7,7 +7,7 @@
 
 历史回测
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-在创建 api 实例时传入 `TqBacktest`_ 策略就会进入历史回测模式::
+在创建 api 实例时传入 :py:class:`tqsdk.backtest.TqBacktest` , 策略就会进入历史回测模式::
 
     from datetime import date
     from tqsdk import TqApi, TqSim, TqBacktest
@@ -31,6 +31,7 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 上面提到的回测解决的是用来评价一个策略整体是否有效，但在回测过程中可能还会遇到交易时点和预期的不符，或者极端行情下策略表现异常等问题。
 这个时候可能需要看看当时的行情具体是怎么走的，策略具体是怎么执行的，或者在策略实现阶段需要在非交易时间调试，这时就可以使用由天勤终端提供的历史复盘功能。
+
 只需指定任一交易日，天勤终端将回到那一天，并完整重演全天的行情变化。在此过程中，使用 `TqSdk`_ 对接到天勤终端之后获取的数据都是所指定日期的数据，
 一切都有如真正回到那天一样。并可在回放过程中可以任意暂停或加减速。
 
@@ -42,13 +43,5 @@
 
 
 .. _TqSdk: https://doc.shinnytech.com/pysdk/latest/index.html
-.. _TqSim: https://doc.shinnytech.com/pysdk/latest/reference.html#tqsdk.sim.TqSim
-.. _get_kline_serial: https://doc.shinnytech.com/pysdk/latest/reference.html#tqsdk.api.TqApi.get_kline_serial
-.. _TargetPosTask: https://doc.shinnytech.com/pysdk/latest/reference.html#tqsdk.lib.TargetPosTask
-.. _wait_update: https://doc.shinnytech.com/pysdk/latest/reference.html#tqsdk.api.TqApi.wait_update
 .. _DIFF: https://doc.shinnytech.com/diff/latest/index.html
-.. _get_account: https://doc.shinnytech.com/pysdk/latest/reference.html#tqsdk.api.TqApi.get_account
-.. _get_quote: https://doc.shinnytech.com/pysdk/latest/reference.html#tqsdk.api.TqApi.get_quote
-.. _is_changing: https://doc.shinnytech.com/pysdk/latest/reference.html#tqsdk.api.TqApi.is_changing
-.. _TqBacktest: https://doc.shinnytech.com/pysdk/latest/reference.html#tqsdk.backtest.TqBacktest
 
