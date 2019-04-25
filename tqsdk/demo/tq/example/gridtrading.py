@@ -8,10 +8,10 @@ __author__ = 'limin'
 """
 
 from functools import reduce
-from tqsdk import TqApi, TargetPosTask
+from tqsdk import TqApi, TargetPosTask, TqSim
 
-SYMBOL = "DCE.jd1901"  # 合约代码
-START_PRICE = 4047  # 起始价位
+SYMBOL = "DCE.jd1909"  # 合约代码
+START_PRICE = 4247  # 起始价位
 GRID_AMOUNT = 10  # 网格在多头、空头方向的格子(档位)数量
 
 api = TqApi()

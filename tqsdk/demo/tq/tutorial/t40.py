@@ -1,12 +1,16 @@
-from tqsdk import TqApi
+#!/usr/bin/env python
+#  -*- coding: utf-8 -*-
+__author__ = 'chengzhi'
+
+from tqsdk import TqApi, TqSim
 
 api = TqApi()
-# 获得 m1901 的持仓引用，当持仓有变化时 position 中的字段会对应更新
-position = api.get_position("DCE.m1901")
+# 获得 m1909 的持仓引用，当持仓有变化时 position 中的字段会对应更新
+position = api.get_position("DCE.m1909")
 # 获得资金账户引用，当账户有变化时 account 中的字段会对应更新
 account = api.get_account()
 # 下单并返回委托单的引用，当该委托单有变化时 order 中的字段会对应更新
-order = api.insert_order(symbol="DCE.m1901", direction="BUY", offset="OPEN", volume=5)
+order = api.insert_order(symbol="DCE.m1909", direction="BUY", offset="OPEN", volume=5)
 
 while True:
     api.wait_update()

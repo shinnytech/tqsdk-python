@@ -25,20 +25,11 @@ klines["cu1906.close"] = klines2["close"]
 klines["cu1906.board"] = "B2"
 
 # 给主图最后5根K线加一个方框
-klines["sig.type"] = np.empty(len(klines), dtype=object)
-klines["sig.x1"] = np.empty(len(klines))
-klines["sig.x2"] = np.empty(len(klines))
-klines["sig.y1"] = np.empty(len(klines))
-klines["sig.y2"] = np.empty(len(klines))
-klines["sig.color"] = np.full(len(klines), 0xFF0000FF)
-klines["sig.bg_color"] = np.full(len(klines), 0x8000FF00)
-klines.loc[klines.index[-1], ("sig.type", "sig.x1", "sig.x2", "sig.y1", "sig.y2")] = ("DRAW_BOX", klines["id"].iloc[-5], klines["id"].iloc[-1], klines["close"].iloc[-5], klines["close"].iloc[-1])
+klines.draw_box(x1=-5, y1=klines.iloc[-5]["close"], x2=-1, y2=klines.iloc[-1]["close"], width=1, color=0xFF0000FF, bg_color=0x8000FF00)
 
 # 在主图最近K线的最低处标一个"最低"文字
-is_lowest = klines["low"] == klines["low"].min()
-klines["lowest"] = np.where(is_lowest, "测试413423", None)
-klines["lowest.type"] = np.where(is_lowest, "TEXT", None)
-klines["lowest.y"] = np.where(is_lowest, klines["low"], np.nan)
-klines["lowest.color"] = np.where(is_lowest, 0xFF00FF00, 0)
+indic = np.where(klines["low"] == klines["low"].min())[0]
+value = klines["low"].min()
+klines.draw_text("测试413423", x=indic, y=value, color=0xFF00FF00)
 
 api.close()

@@ -7,9 +7,9 @@ Dual Thrust策略
 参考: https://www.shinnytech.com/blog/dual-thrust
 '''
 
-from tqsdk import TqApi, TargetPosTask
+from tqsdk import TqApi, TqSim, TargetPosTask
 
-SYMBOL = "DCE.jd1905"  # 合约代码
+SYMBOL = "DCE.jd1909"  # 合约代码
 NDAY = 5  # 天数
 K1 = 0.2  # 上轨K值
 K2 = 0.2  # 下轨K值
@@ -23,11 +23,11 @@ target_pos = TargetPosTask(api, SYMBOL)
 
 
 def dual_thrust(quote, klines):
-    current_open = klines[-1]["open"]
-    HH = max(klines.high[-NDAY - 1:-1])  # N日最高价的最高价
-    HC = max(klines.close[-NDAY - 1:-1])  # N日收盘价的最高价
-    LC = min(klines.close[-NDAY - 1:-1])  # N日收盘价的最低价
-    LL = min(klines.low[-NDAY - 1:-1])  # N日最低价的最低价
+    current_open = klines.iloc[-1]["open"]
+    HH = max(klines.high.iloc[-NDAY - 1:-1])  # N日最高价的最高价
+    HC = max(klines.close.iloc[-NDAY - 1:-1])  # N日收盘价的最高价
+    LC = min(klines.close.iloc[-NDAY - 1:-1])  # N日收盘价的最低价
+    LL = min(klines.low.iloc[-NDAY - 1:-1])  # N日最低价的最低价
     range = max(HH - LC, HC - LL)
     buy_line = current_open + range * K1  # 上轨
     sell_line = current_open - range * K2  # 下轨
@@ -39,7 +39,7 @@ buy_line, sell_line = dual_thrust(quote, klines)  # 获取上下轨
 
 while True:
     api.wait_update()
-    if api.is_changing(klines[-1], ["datetime", "open"]):  # 新产生一根日线或开盘价发生变化: 重新计算上下轨
+    if api.is_changing(klines.iloc[-1], ["datetime", "open"]):  # 新产生一根日线或开盘价发生变化: 重新计算上下轨
         buy_line, sell_line = dual_thrust(quote, klines)
 
     if api.is_changing(quote, "last_price"):
