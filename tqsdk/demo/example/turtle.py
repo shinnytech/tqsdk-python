@@ -9,7 +9,6 @@ __author__ = 'limin'
 
 import json
 import time
-import logging
 from tqsdk import TqApi, TqSim, TargetPosTask
 from tqsdk.ta import ATR
 

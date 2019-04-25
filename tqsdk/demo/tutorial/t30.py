@@ -6,10 +6,11 @@ from tqsdk import TqApi, TqSim
 import datetime
 
 api = TqApi(TqSim())
-# 获得cu1812 tick序列的引用
-ticks = api.get_tick_serial("SHFE.cu1812")
-# 获得cu1812 10秒K线的引用
-klines = api.get_kline_serial("SHFE.cu1812", 10)
+# 获得cu1906 tick序列的引用
+ticks = api.get_tick_serial("SHFE.cu1906")
+# 获得cu1906 10秒K线的引用
+klines = api.get_kline_serial("SHFE.cu1906", 10)
+print(datetime.datetime.fromtimestamp(klines.iloc[-1]["datetime"]/1e9))
 
 while True:
     api.wait_update()

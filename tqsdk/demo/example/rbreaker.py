@@ -9,15 +9,15 @@ R-Breaker策略(隔夜留仓)
 
 from tqsdk import TqApi, TqSim, TargetPosTask
 
-SYMBOL = "SHFE.au1812"  # 合约代码
+SYMBOL = "SHFE.au1906"  # 合约代码
 STOP_LOSS_PRICE = 10  # 止损点(价格)
 
 
 def get_index_line(klines):
     '''计算指标线'''
-    high = klines.iloc[-2]["high"]  # 前一日的最高价
-    low = klines.iloc[-2]["low"]  # 前一日的最低价
-    close = klines.iloc[-2]["close"]  # 前一日的收盘价
+    high = klines.high.iloc[-2]  # 前一日的最高价
+    low = klines.low.iloc[-2]  # 前一日的最低价
+    close = klines.close.iloc[-2]  # 前一日的收盘价
 
     pivot = (high + low + close) / 3  # 枢轴点
     bBreak = high + 2 * (pivot - low)  # 突破买入价

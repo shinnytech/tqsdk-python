@@ -29,7 +29,7 @@ def get_prediction_data(klines, n):
     wma_data = ema2(close_prices, 30)[-n:]  # WMA指标
     mom_data = trma(close_prices, 30)[-n:]  # MOM指标
     x_all = list(zip(sma_data, wma_data, mom_data))  # 样本特征组
-    y_all = list(klines.iloc[i]["close"] >= klines.iloc[i - 1]["close"] for i in list(reversed(range(-1, -n - 1, -1))))  # 样本标签组
+    y_all = list(klines.close.iloc[i] >= klines.close.iloc[i - 1] for i in list(reversed(range(-1, -n - 1, -1))))  # 样本标签组
     # x_all:            大前天指标 前天指标 昨天指标 (今天指标)
     # y_all:   (大前天)    前天     昨天    今天      -明天-
     # 准备算法需要用到的数据

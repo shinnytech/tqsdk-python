@@ -9,10 +9,10 @@ from tqsdk import TqApi, TqSim, TargetPosTask
 如果小于则平仓
 '''
 api = TqApi(TqSim())
-# 获得 m1901 10秒K线的引用
-klines = api.get_kline_serial("DCE.m1901", 10)
-# 创建 m1901 的目标持仓 task，该 task 负责调整 m1901 的仓位到指定的目标仓位
-target_pos = TargetPosTask(api, "DCE.m1901")
+# 获得 m1909 10秒K线的引用
+klines = api.get_kline_serial("DCE.m1909", 10)
+# 创建 m1909 的目标持仓 task，该 task 负责调整 m1909 的仓位到指定的目标仓位
+target_pos = TargetPosTask(api, "DCE.m1909")
 
 while True:
     api.wait_update()

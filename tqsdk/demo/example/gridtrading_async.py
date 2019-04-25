@@ -12,8 +12,8 @@ from contextlib import closing
 from tqsdk import TqApi, TargetPosTask, TqSim
 
 # 网格计划参数:
-symbol = "DCE.jd1901"  # 合约代码
-start_price = 4047  # 起始价位
+symbol = "DCE.jd1909"  # 合约代码
+start_price = 4247  # 起始价位
 grid_amount = 10  # 网格在多头、空头方向的格子(档位)数量
 grid_region_long = [0.005] * grid_amount  # 多头每格价格跌幅(网格密度)
 grid_region_short = [0.005] * grid_amount  # 空头每格价格涨幅(网格密度)

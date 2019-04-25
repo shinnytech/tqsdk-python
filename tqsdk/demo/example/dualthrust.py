@@ -7,10 +7,9 @@ Dual Thrust策略
 参考: https://www.shinnytech.com/blog/dual-thrust
 '''
 
-import logging
 from tqsdk import TqApi, TqSim, TargetPosTask
 
-SYMBOL = "DCE.jd1905"  # 合约代码
+SYMBOL = "DCE.jd1909"  # 合约代码
 NDAY = 5  # 天数
 K1 = 0.2  # 上轨K值
 K2 = 0.2  # 下轨K值
