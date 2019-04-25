@@ -37,14 +37,18 @@
 
     quote = api.get_quote("SHFE.cu1812")
 
-现在, 我们获得了一个对象 quote. 这个对象总是指向 SHFE.cu1812 合约的最新行情.
-注意: api.get_quote 调用后会马上返回, 这个时候 q 里面还没有数据. 要等待行情数据收到, 我们还需要一些代码::
+现在, 我们获得了一个对象 quote. 这个对象总是指向 SHFE.cu1812 合约的最新行情. 我们可以通过 quote 的各个字段访问行情数据::
+
+    print (quote["last_price"], quote["volume"])
+
+
+要等待行情数据更新, 我们还需要一些代码::
 
     while True:
         api.wait_update()
         print (quote["datetime"], quote["last_price"])
 
-api.wait_update() 是一个阻塞函数, 程序在这行上等待, 直到收到数据包才返回. 在收到数据包后, 我们可以通过 quote 的各个 key 获得相应的行情字段
+api.wait_update() 是一个阻塞函数, 程序在这行上等待, 直到收到数据包才返回.
 
 上面这个例子的完整程序请见 `t10.py <https://github.com/shinnytech/tqsdk-python/blob/master/tqsdk/demo/tutorial/t10.py>`_. 你也可以在自己电脑python安装目录的 site_packages/tqsdk/demo 下找到它
 

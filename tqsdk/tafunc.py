@@ -82,7 +82,8 @@ def ema(series, n):
     注:
         1. n包含当前k线
         2. 对距离当前较近的k线赋予了较大的权重
-        4. n为0或空值的情况下, 或当n为有效值但当前的k线数不足n根, 函数返回空值
+        3. n为0或空值的情况下, 或当n为有效值但当前的k线数不足n根, 函数返回空值
+        
     """
     ema_data = series.ewm(span=n, adjust=False).mean()
     return ema_data
@@ -144,7 +145,8 @@ def count(cond, n):
     注:
         1. n包含当前k线
         2. 如果n为0, 则从第一个有效值开始统计
-        4. n为空值时返回值为空值
+        3. n为空值时返回值为空值
+        
     """
     if n == 0:  # 从第一个有效值开始统计
         count_data = pd.Series(np.where(cond, 1, 0).cumsum())
