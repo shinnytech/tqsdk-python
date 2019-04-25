@@ -4,17 +4,14 @@
 =============================
 0.9.1 (2019/04/15):
 
+* (BREAKING) TqApi.get_quote, get_kline_serial, get_account 等函数, 现在调用时会等待初始数据到位后才返回
 * (BREAKING) k线序列和tick序列格式改用pandas.DataFrame
+* 支持上期所五档行情
 * 增加 数十个技术指标 和 序列计算函数 , 使用纯python实现 加入ta和ta_func库
 * 加入策略单元支持. 在一个账户下运行多个策略时, 可以实现仓位, 报单的相互隔离
 * 加强与天勤终端的协作，支持策略程序在天勤中画图, 支持回测结果图形化显示与分析, 支持策略运行监控和手工下单干预.
-* TqApi.get_quote, get_kline_serial, get_account 等函数, 现在调用时会等待初始数据到位时才返回
 * 示例程序增加随机森林(random_forest)策略
 * 示例程序增加菲阿里四价策略
-
-涉及talib的全部清理
-增加subaccount, ta, 画图, tq的文档说明
-用K线的地方调整
 
 
 0.8.9 (2019/01/21):
