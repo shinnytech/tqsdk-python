@@ -1498,7 +1498,7 @@ api = TqApi("SIM.abcd")
             "color": color,
             "board": board,
         }
-        self._send_chart_data(id, serial)
+        self._send_chart_data(base_k_dataframe, id, serial)
 
     def draw_line(self, base_k_dataframe, x1, y1, x2, y2, id=None, board="MAIN", line_type="LINE", color=0xFFFF0000, width=1):
         """
@@ -1537,7 +1537,7 @@ api = TqApi("SIM.abcd")
             "width": width,
             "board": board,
         }
-        self._send_chart_data(id, serial)
+        self._send_chart_data(base_k_dataframe, id, serial)
 
     def draw_box(self, base_k_dataframe, x1, y1, x2, y2, id=None, board="MAIN", bg_color=0x00000000, color=0xFFFF0000, width=1):
         """
@@ -1583,12 +1583,12 @@ api = TqApi("SIM.abcd")
             "width": width,
             "board": board,
         }
-        self._send_chart_data(id, serial)
+        self._send_chart_data(base_k_dataframe, id, serial)
 
     def _send_chart_data(self, base_kserial_frame, serial_id, serial_data):
         chart_id = self.account_id.replace(".", "_")
         s = self.serials[id(base_kserial_frame)]
-        p = s.serial_root["_path"]
+        p = s["root"]["_path"]
         symbol = p[-2]
         dur_nano = int(p[-1])
         pack = {
@@ -1600,15 +1600,15 @@ api = TqApi("SIM.abcd")
                 serial_id: serial_data,
             }
         }
-        self.api.send_chan.send_nowait(pack)
+        self.send_chan.send_nowait(pack)
 
     def _offset_to_x(self, base_k_dataframe, x):
         if x is None:
-            return base_k_dataframe["id"].iloc[-1]
+            return int(base_k_dataframe["id"].iloc[-1])
         elif x < 0:
-            return base_k_dataframe["id"].iloc[-1] + 1 + x
+            return int(base_k_dataframe["id"].iloc[-1]) + 1 + x
         elif x >= 0:
-            return base_k_dataframe["id"].iloc[0] + x
+            return int(base_k_dataframe["id"].iloc[0]) + x
 
 
 class TqAccount(object):
