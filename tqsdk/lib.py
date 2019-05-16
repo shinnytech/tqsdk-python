@@ -109,6 +109,51 @@ class TargetPosTask(object):
             order_volume = 0
         return order_offset, order_dir, order_volume
 
+    def _get_non_shfe_pos(self, pos):
+        '''根据今日成交和先开先平的规则，倒推取得非上期所的真实昨今仓，针对ctp接口非上期所返回所有昨仓都归入今仓的情况'''
+        account_id=self.api.account.account_id
+        instrument_id=pos['instrument_id']
+    
+        all_trades=self.api._get_obj(self.api.data["trade"][account_id], ["trades"])
+    
+        today_trades=[each for each in all_trades.values() if
+                      (each.__contains__("instrument_id") and each["instrument_id"]==instrument_id)]
+    
+        pos_new=pos.copy()
+        #今天的开仓单
+        opened_long_today=0
+        opened_short_today=0
+        #今天的平仓单
+        total_close_long=0
+        total_close_short=0
+    
+        for each in today_trades:
+            if each['offset']=="OPEN" and each['direction']=="BUY":  #买开
+                opened_long_today+=each['volume']
+            if each['offset']=="OPEN" and each['direction']=="SELL":  #卖开
+                opened_short_today+=each['volume']
+            if each["offset"]!="OPEN" and each['direction']=="BUY":  #买平
+                total_close_short+=each['volume']
+            if each["offset"]!="OPEN" and each['direction']=="SELL":  #卖平
+                total_close_long+=each['volume']
+        
+            pass
+        total_pos_long=pos_new['volume_long_today']+total_close_long  #今天多仓到过的最多仓位
+        total_pos_short=pos_new['volume_short_today']+total_close_short  #今天空仓到过的最多仓位
+    
+        yes_long_pos_open=total_pos_long-opened_long_today  #昨收时多仓
+        yes_short_pos_open=total_pos_short-opened_short_today  #昨收时空仓
+    
+        if yes_long_pos_open>total_close_long:  #昨多仓没有平完
+            pos_new['volume_long_his']=yes_long_pos_open-total_close_long
+            pos_new["volume_long_today"]-=pos_new['volume_long_his']
+    
+        if yes_short_pos_open>total_close_short:  #昨空仓没有平完
+            pos_new['volume_short_his']=yes_short_pos_open-total_close_short
+            pos_new["volume_short_today"]-=pos_new['volume_short_his']
+    
+        return pos_new
+
     async def _target_pos_task(self):
         """负责调整目标持仓的task"""
         self._init_position()
@@ -117,11 +162,16 @@ class TargetPosTask(object):
             delta_volume = target_pos - self.current_pos
             all_tasks = []
             pos = self.pos.copy()
+            if self.exchange not in ["SHFE", "INE"]:
+                pos=self._get_non_shfe_pos(pos)
+            
             for each_priority in self.offset_priority + ",":  # 按不同模式的优先级顺序报出不同的offset单，股指(“昨开”)平昨优先从不平今就先报平昨，原油平今优先("今昨开")就报平今
                 if each_priority == ",":
                     await gather(*[each.task for each in all_tasks])
                     all_tasks =[]
                     pos = self.pos.copy()
+                    if self.exchange not in ["SHFE", "INE"]:
+                        pos=self._get_non_shfe_pos(pos)
                     continue
                 order_offset, order_dir, order_volume = self._get_order(each_priority, delta_volume, pos)
                 if order_volume == 0:  # 如果没有则直接到下一种offset
