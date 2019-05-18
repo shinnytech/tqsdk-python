@@ -1,18 +1,18 @@
-TqSdk 量化交易策略程序开发包 开发包
-====================================
-
 <p align="center">
   <img src ="./doc/logo.png"/>
 </p>
 <p align="center">
     <img src ="https://img.shields.io/badge/version-0.9.2-blueviolet.svg"/>
     <img src ="https://img.shields.io/badge/platform-windows|linux|macos-green.svg"/>
-    <img src ="https://img.shields.io/badge/python-3.x-blue.svg" />
+    <img src ="https://img.shields.io/badge/python-3.6+-blue.svg" />
     <img src ="https://img.shields.io/github/license/shinnytech/tqsdk-python.svg?color=orange"/>
 </p>
 
-
-TqSdk 是个开源 python 包. 依托Diff项目高度优化设计的 websocket/json 接口和服务器体系, TqSdk 支持用户使用较少的工作量构建量化交易或分析程序.
+TqSdk 量化交易策略程序开发包
+====================================
+TqSdk 是一个由[信易科技](https://www.shinnytech.com)发起并贡献主要代码的开源 python 库. 
+依托[快期多年积累成熟的交易及行情服务器体系](https://www.shinnytech.com/diff), TqSdk 支持用户使用极少的代码量构建各种类型的量化交易策略程序, 
+并提供包含 历史数据-实时数据-开发调试-策略回测-模拟交易-实盘交易-运行监控-风险管理 的全套解决方案
 
 ``` {.sourceCode .python}
 >>> from tqsdk import TqApi
@@ -34,15 +34,7 @@ u'{"type":"User"...'
 
 Architecture
 ---------------
-![系统架构图](./doc/arch.svg)
-
-
-<img src="https://raw.github.com/shinnytech.com/tqsdk-python/doc/doc/arch.svg?sanitize=true">
-
-<img src="https://raw.githubusercontent.com/shinnytech/tqsdk-python/doc/doc/arch.svg?sanitize=true">
-
-
-如图所示, 整个系统结构包括这些关键组件:
+<img alt="系统架构图" src="https://raw.githubusercontent.com/shinnytech/tqsdk-python/doc/doc/arch.svg?sanitize=true">
 
 * 行情网关 (Open Md Gateway) 负责提供实时行情和历史数据
 * 交易中继网关 (Open Trade Gateway) 负责连接到期货公司交易系统
@@ -73,13 +65,11 @@ Requests is ready for today's web.
 
 Installation
 -------------------------------------------------
-要安装 TqSdk, 只需简单使用 pip:
+TqSdk 只支持 Python 3.6 以上版本. 要安装 TqSdk, 可使用 pip:
 
 ``` {.sourceCode .bash}
-$ pipenv install tqsdk
+$ pip install tqsdk
 ```
-
-TqSdk 只支持 Python 3.6 以上版本
 
 
 Documentation
@@ -87,11 +77,6 @@ Documentation
 在线阅读HTML版本文档: https://doc.shinnytech.com/tqsdk/latest
 
 在线问答社区: https://www.shinnytech.com/qa
-
-
-Intro
-	highLights
-	系统结构图
 
 	
 AdvanceUi
