@@ -1,8 +1,121 @@
-# TqSdk 期货行情/历史数据/交易 开发包
+TqSdk 量化交易策略程序开发包 开发包
+====================================
 
 <p align="center">
   <img src ="./doc/logo.png"/>
 </p>
+<p align="center">
+    <img src ="https://img.shields.io/badge/version-0.9.2-blueviolet.svg"/>
+    <img src ="https://img.shields.io/badge/platform-windows|linux|macos-green.svg"/>
+    <img src ="https://img.shields.io/badge/python-3.x-blue.svg" />
+    <img src ="https://img.shields.io/github/license/shinnytech/tqsdk-python.svg?color=orange"/>
+</p>
+
+
+TqSdk 是个开源 python 包. 依托Diff项目高度优化设计的 websocket/json 接口和服务器体系, TqSdk 支持用户使用较少的工作量构建量化交易或分析程序.
+
+``` {.sourceCode .python}
+>>> from tqsdk import TqApi
+>>> r = requests.get('https://api.github.com/user', auth=('user', 'pass'))
+>>> r.status_code
+200
+>>> r.headers['content-type']
+'application/json; charset=utf8'
+>>> r.encoding
+'utf-8'
+>>> r.text
+u'{"type":"User"...'
+>>> r.json()
+{u'disk_usage': 368627, u'private_gists': 484, ...}
+```
+
+可以快速访问我们的 [五分钟快速入门指南](https://doc.shinnytech.com/tqsdk/latest/quickstart.html).
+
+
+Architecture
+---------------
+![系统架构图](./doc/arch.svg)
+
+
+<img src="https://raw.github.com/shinnytech.com/tqsdk-python/doc/doc/arch.svg?sanitize=true">
+
+<img src="https://raw.githubusercontent.com/shinnytech/tqsdk-python/doc/doc/arch.svg?sanitize=true">
+
+
+如图所示, 整个系统结构包括这些关键组件:
+
+* 行情网关 (Open Md Gateway) 负责提供实时行情和历史数据
+* 交易中继网关 (Open Trade Gateway) 负责连接到期货公司交易系统
+* 上面两个网关统一以 Diff 协议对下方提供服务
+* TqSdk按照Diff协议连接到行情网关和交易中继网关, 实现行情和交易功能
+
+
+Features
+---------------
+Requests is ready for today's web.
+
+-   数据支持: 提供当前所有可交易合约从上市开始的全部Tick数据和K线数据
+-   实盘交易: 支持数十家期货公司的实盘账号
+-   模拟交易: 提供模拟交易账号, 用于测试您的交易策略
+-   历史复盘: 指定历史上任一天, 整个软件, 行情数据和策略程序都回到那天运行
+-   Basic/Digest Authentication
+-   Elegant Key/Value Cookies
+-   Automatic Decompression
+-   Automatic Content Decoding
+-   Unicode Response Bodies
+-   Multipart File Uploads
+-   HTTP(S) Proxy Support
+-   Connection Timeouts
+-   Streaming Downloads
+-   `.netrc` Support
+-   Chunked Requests
+
+
+Installation
+-------------------------------------------------
+要安装 TqSdk, 只需简单使用 pip:
+
+``` {.sourceCode .bash}
+$ pipenv install tqsdk
+```
+
+TqSdk 只支持 Python 3.6 以上版本
+
+
+Documentation
+-------------------------------------------------
+在线阅读HTML版本文档: https://doc.shinnytech.com/tqsdk/latest
+
+在线问答社区: https://www.shinnytech.com/qa
+
+
+Intro
+	highLights
+	系统结构图
+
+	
+AdvanceUi
+-------------------------------------------------
+TqSdk本身不包含任何GUI组件. 但它可以与
+
+
+About us
+-------------------------------------------------
+信易科技发起并提供主要代码. 
+TqSdk 
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 Introduction
 =================================================
