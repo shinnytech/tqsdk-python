@@ -12,21 +12,29 @@ TqSdk 量化交易策略程序开发包
 ====================================
 TqSdk 是一个由[信易科技](https://www.shinnytech.com)发起并贡献主要代码的开源 python 库. 
 依托[快期多年积累成熟的交易及行情服务器体系](https://www.shinnytech.com/diff), TqSdk 支持用户使用极少的代码量构建各种类型的量化交易策略程序, 
-并提供包含 历史数据-实时数据-开发调试-策略回测-模拟交易-实盘交易-运行监控-风险管理 的全套解决方案
+并提供包含 历史数据-实时数据-开发调试-策略回测-模拟交易-实盘交易-运行监控-风险管理 的全套解决方案.
 
 ``` {.sourceCode .python}
->>> from tqsdk import TqApi
->>> r = requests.get('https://api.github.com/user', auth=('user', 'pass'))
->>> r.status_code
-200
->>> r.headers['content-type']
-'application/json; charset=utf8'
->>> r.encoding
-'utf-8'
->>> r.text
-u'{"type":"User"...'
->>> r.json()
-{u'disk_usage': 368627, u'private_gists': 484, ...}
+from tqsdk import TqApi, TqAccount, TargetPosTask
+
+api = TqApi(TqAccount("H海通期货", "4003242", "123456"))      # 创建 TqApi 实例, 指定交易账户
+q_1910 = api.get_quote("SHFE.rb1910")                         # 订阅近月合约行情
+t_1910 = TargetPosTask(api, "SHFE.rb1910")                    # 创建近月合约调仓工具
+q_2001 = api.get_quote("SHFE.rb2001")                         # 订阅远月合约行情
+t_2001 = TargetPosTask(api, "SHFE.rb2001")                    # 创建远月合约调仓工具
+
+while True:
+  api.wait_update()                                           # 等待数据更新
+  spread = q_1910["last_price"] - q_2001["last_price"]        # 计算近月合约-远月合约价差
+  print("当前价差:", spread)
+  if spread > 250:
+    print("价差过高: 空近月，多远月")                            
+    t_1910.set_target_volume(-1)                              # 要求把1910合约调整为空头1手
+    t_2001.set_target_volume(1)                               # 要求把2001合约调整为多头1手
+  elif spread < 200:
+    print("价差回复: 清空持仓")                               # 要求把 1910 和 2001合约都调整为不持仓
+    t_1910.set_target_volume(0)
+    t_2001.set_target_volume(0)
 ```
 
 要快速了解如何使用TqSdk, 可以访问我们的 [十分钟快速入门指南](https://doc.shinnytech.com/tqsdk/latest/quickstart.html).
@@ -46,13 +54,14 @@ Features
 ---------------
 TqSdk 提供的功能可以支持从简单到复杂的各类策略程序.
 
-* 提供当前所有可交易合约从上市开始的全部Tick数据和K线数据
-* 支持数十家期货公司的实盘交易
-* 支持模拟交易
-* 支持Tick级和K线级回测
-* 支持复杂策略回测
-* 提供近百个技术指标函数
-* 无强制框架结构, 支持任意复杂度的策略, 允许在一个交易策略程序中使用使用多个品种的K线/实时行情并交易多个品种
+* 提供当前所有可交易合约从上市开始的 **全部Tick数据和K线数据**
+* 支持数十家期货公司的 **实盘交易**
+* 支持 **模拟交易**
+* 支持 **Tick级和K线级回测**, 支持 **复杂策略回测**
+* 提供近百个 **技术指标函数及源码**
+* 用户无须建立和维护数据库, 行情和交易数据全在 **内存数据库** , 无访问延迟
+* 优化支持 **pandas** 和 numpy 库
+* 无强制框架结构, 支持任意复杂度的策略, 在一个交易策略程序中使用多个品种的K线/实时行情并交易多个品种
 
 
 Installation
