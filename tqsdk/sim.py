@@ -17,8 +17,6 @@ class TqSim(object):
     """
     def __init__(self, init_balance=1000000.0, account_id="TQSIM"):
         """
-        创建天勤模拟交易类
-
         Args:
             init_balance (float): [可选]初始资金, 默认为一百万
 

@@ -9,6 +9,11 @@
 * TqSdk 已经 :ref:`安装成功 <install>`
 * TqSdk 已经更新到 :ref:`最新版本 <version>`
 
+如果您以前曾经使用过其它框架编写过策略程序, 这些内容可以快速帮助您了解 TqSdk 与它们的区别:
+
+* :ref:`for_ctp_user`
+* :ref:`for_vnpy_user`
+
 注意: TqSdk 使用了 python3 的原生协程和异步通讯库 asyncio，部分 IDE 不支持 asyncio，例如:
 
 * spyder: 详见 https://github.com/spyder-ide/spyder/issues/7096
@@ -48,7 +53,7 @@
         api.wait_update()
         print (quote["datetime"], quote["last_price"])
 
-api.wait_update() 是一个阻塞函数, 程序在这行上等待, 直到收到数据包才返回.
+:py:meth:`~tqsdk.api.TqApi.wait_update` 是一个阻塞函数, 程序在这行上等待, 直到收到数据包才返回.
 
 上面这个例子的完整程序请见 `t10.py <https://github.com/shinnytech/tqsdk-python/blob/master/tqsdk/demo/tutorial/t10.py>`_. 你也可以在自己电脑python安装目录的 site_packages/tqsdk/demo 下找到它
 

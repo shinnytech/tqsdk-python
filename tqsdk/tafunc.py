@@ -14,7 +14,16 @@ def ref(series, n):
     """
     简单移动: 求series序列位移n个周期的结果
 
-    例:
+    Args:
+        series (pandas.Series): 数据序列
+
+        n (int): 位移周期
+
+    Returns:
+        pandas.Series: 位移后的序列
+
+    Example::
+
         pre_close = ref(klines.close, 1)     # 将收盘价序列右移一位, 得到昨收盘序列
         change = klines.close - pre_close    # 收盘价序列 - 昨收盘序列, 得到涨跌序列
     """
@@ -24,10 +33,19 @@ def ref(series, n):
 
 def std(series, n):
     """
-    标准差: 求series序列每n个周期的标准差
+    标准差: 求series序列每n个项的标准差
 
-    例:
-        s = std(klines.close)
+    Args:
+        series (pandas.Series): 数据序列
+
+        n (int): 周期
+
+    Returns:
+        pandas.Series: 标准差序列
+
+    Example::
+
+        s = std(klines.close, 5)      # 收盘价序列每5项计算一个标准差
     """
     m = series.rolling(n).std()
     return m
@@ -35,18 +53,25 @@ def std(series, n):
 
 def ma(series, n):
     """
-    简单移动平均线: 求series序列在n个周期内的简单移动平均
+    简单移动平均线: 求series序列每n个项的简单移动平均
+      1. n包含当前k线
+      2. 简单移动平均线将设定周期内的值取平均值, 其中各元素的权重都相等
+      3. n为0的情况下, 或当n为有效值但当前的k线数不足n根, 函数返回空值
 
-    计算公式:
+      计算公式:
         ma(x, 5) = (x(1) + x(2) + x(3) + x(4) + x(5)) / 5
 
-    例:
-        ma5 = tafunc.ma(df["close"], 5)  # 求5周期收盘价的简单移动平均
+    Args:
+        series (pandas.Series): 数据序列
 
-    注:
-        1. n包含当前k线
-        2. 简单移动平均线将设定周期内的值取平均值, 其中各元素的权重都相等
-        3. n为0的情况下, 或当n为有效值但当前的k线数不足n根, 函数返回空值
+        n (int): 周期
+
+    Returns:
+        pandas.Series: 标准差序列
+
+    Example::
+
+      ma5 = tafunc.ma(klines["close"], 5)  # 求5周期收盘价的简单移动平均
     """
     ma_data = series.rolling(n).mean()
     return ma_data
