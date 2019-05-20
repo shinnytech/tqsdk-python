@@ -1,3 +1,8 @@
+.. image:: logo.png
+   :width: 400 px
+   :align: center
+
+
 .. _pysdk:
 
 TianQin Python SDK User Guide
