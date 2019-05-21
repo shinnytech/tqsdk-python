@@ -79,9 +79,13 @@ Documentation
 
 在线问答社区: https://www.shinnytech.com/qa
 
+用户交流QQ群: 619870862
 	
 Gui
 -------------------------------------------------
 TqSdk本身不包含任何GUI组件. 免费的 [天勤软件](https://www.shinnytech.com/tianqin) 可以与TqSdk配合使用, 提供完整的图形界面.
 
+About us
+-------------------------------------------------
+[信易科技](https://www.shinnytech.com) 是专业的期货软件供应商和交易所授权行情服务商. 旗下的快期系列产品已为市场服务超过10年. TqSdk 是[公司开源计划](https://www.shinnytech.com/diff)的一部分. 
 
