@@ -1,0 +1,7 @@
+.. _tutorial_t30:
+
+t30 - 使用K线/Tick数据
+====================================================
+
+.. literalinclude:: ../../../tqsdk/demo/tutorial/t30.py
+  :language: python

@@ -55,7 +55,7 @@
 
 :py:meth:`~tqsdk.api.TqApi.wait_update` 是一个阻塞函数, 程序在这行上等待, 直到收到数据包才返回.
 
-上面这个例子的完整程序请见 `t10.py <https://github.com/shinnytech/tqsdk-python/blob/master/tqsdk/demo/tutorial/t10.py>`_. 你也可以在自己电脑python安装目录的 site_packages/tqsdk/demo 下找到它
+上面这个例子的完整程序请见 :ref:`tutorial_t10` . 你也可以在自己电脑python安装目录的 site_packages/tqsdk/demo 下找到它
 
 很简单, 对吗? 到这里, 你已经了解用 TqSdk 开发程序的几个关键点:
 
@@ -83,7 +83,7 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
         api.wait_update()
         print("最后一根K线收盘价", klines.close.iloc[-1])
 
-这部分的完整示例程序请见 `t30.py <https://github.com/shinnytech/tqsdk-python/blob/master/tqsdk/demo/tutorial/t30.py>`_.
+这部分的完整示例程序请见 :ref:`tutorial_t30` .
 
 到这里为止, 你已经知道了如何获取实时行情和K线数据, 下面一段将介绍如何访问你的交易账户并发送交易指令
 
@@ -117,7 +117,7 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 
     api.cancel_order(order)
 
-这部分的完整示例程序请见 `t40.py <https://github.com/shinnytech/tqsdk-python/blob/master/tqsdk/demo/tutorial/t40.py>`_.
+这部分的完整示例程序请见 :ref:`tutorial_t40` .
 
 到这里为止, 我们已经掌握了 TqSdk 中行情和交易相关功能的基本使用. 我们将在下一节中, 组合使用它们, 创建一个自动交易程序
 
@@ -140,7 +140,7 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 
 上面的代码中出现了一个新函数 api.is_changing(). 这个函数用于判定指定对象是否在最近一次 wait_update 中被更新.
 
-这部分的完整示例程序请见 `t60.py <https://github.com/shinnytech/tqsdk-python/blob/master/tqsdk/demo/tutorial/t60.py>`_.
+这部分的完整示例程序请见 :ref:`tutorial_t60` .
 
 
 .. _quickstart_5:
@@ -171,7 +171,7 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
                 target_pos_deferred.set_target_volume(0)
 
 
-这部分的完整示例程序请见 `t80.py <https://github.com/shinnytech/tqsdk-python/blob/master/tqsdk/demo/tutorial/t80.py>`_.
+这部分的完整示例程序请见 :ref:`tutorial_t80` .
 
 
 .. _tutorial_backtest:
@@ -184,7 +184,7 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 
 这样, 程序运行时就会按照 TqBacktest 指定的时间范围进行模拟交易测试, 并输出测试结果.
 
-这部分的完整示例程序请见 `backtest.py <https://github.com/shinnytech/tqsdk-python/blob/master/tqsdk/demo/tutorial/backtest.py>`_.
+关于策略程序回测的详细信息, 请见 :ref:`backtest`
 
 
 更多内容

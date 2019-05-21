@@ -1,0 +1,7 @@
+.. _tutorial_t20:
+
+t20 - 识别行情更新
+====================================================
+
+.. literalinclude:: ../../../tqsdk/demo/tutorial/t20.py
+  :language: python
