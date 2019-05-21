@@ -58,7 +58,6 @@ TqSdk 使用了 python3 的原生协程和异步通讯库 asyncio，部分 IDE �
 .. literalinclude:: ../tqsdk/demo/tutorial/t41.py
     :caption: python demo/tutorial/t41.py
     :language: python
-    :linenos:
 
 
 + 使用 TargetPosTask，目标持仓模型下单，通过参数 `offset_priority` 设置平今平昨优先级。
@@ -66,20 +65,6 @@ TqSdk 使用了 python3 的原生协程和异步通讯库 asyncio，部分 IDE �
 .. literalinclude:: ../tqsdk/demo/tutorial/t71.py
     :caption: python demo/tutorial/t71.py
     :language: python
-    :linenos:
-
-
-.. _faq-backtesting:
-
-如何回测策略？
---------------------------------------------------------------------------------------------------------
-
-在创建 TqApi 实例时可以传入 TqBacktest 启用回测功能
-
-.. literalinclude:: ../tqsdk/demo/tutorial/backtest.py
-    :caption: python demo/tutorial/backtest.py
-    :language: python
-    :linenos:
 
 
 .. _faq-sim:
@@ -91,20 +76,6 @@ TqSdk 使用了 python3 的原生协程和异步通讯库 asyncio，部分 IDE �
 市价单使用对手盘价格成交, 如果没有对手盘(涨跌停)则自动撤单
 
 模拟交易不会有部分成交的情况, 要成交就是全部成交
-
-
-.. _faq-real:
-
-如何进行实盘交易？
---------------------------------------------------------------------------------------------------------
-
-在创建 TqApi 实例时传入 TqAccount 即可进行实盘交易::
-
-    api = TqApi(TqAccount("H海通期货", "022631", "123456"))
-
-如果想连接天勤终端进行实盘交易可以只填写帐号，并先在天勤终端内登录交易::
-
-    api = TqApi("022631")
 
 
 .. _faq-disconnect:

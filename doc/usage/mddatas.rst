@@ -48,7 +48,7 @@ SZSE               深圳证券交易所(尚未上线)
 
 实时行情
 ----------------------------------------------------
-:py:meth:`tqsdk.api.TqApi.get_quote` 函数提供实时行情和合约信息::
+:py:meth:`~tqsdk.api.TqApi.get_quote` 函数提供实时行情和合约信息::
 
     q = api.get_quote("SHFE.cu1901")
 
@@ -105,21 +105,21 @@ SZSE               深圳证券交易所(尚未上线)
         "expired": False,  # False (合约是否已下市)
     }
 
-对于每个合约, 只需要调用一次 get_quote 函数. 如果需要监控数据更新, 可以使用 wait_update::
+对于每个合约, 只需要调用一次 get_quote 函数. 如果需要监控数据更新, 可以使用 :py:meth:`~tqsdk.api.TqApi.wait_update`::
 
     q = api.get_quote("SHFE.cu1812")  # 获取SHFE.cu1812合约的行情
 
     while api.wait_update():
-        print(q["last_price"])    # 收到新行情时都会执行这行
+      print(q["last_price"])    # 收到新行情时都会执行这行
 
 
 K线数据
 ----------------------------------------------------
-:py:meth:`tqsdk.api.TqApi.get_kline_serial` 函数获取指定合约和周期的K线序列数据::
+:py:meth:`~tqsdk.api.TqApi.get_kline_serial` 函数获取指定合约和周期的K线序列数据::
 
     klines = api.get_kline_serial("SHFE.cu1812", 10)  # 获取SHFE.cu1812合约的10秒K线
 
-TqApi.get_kline_serial的返回值是一个 pandas.DataFrame, 包含以下列::
+:py:meth:`~tqsdk.api.TqApi.get_kline_serial` 的返回值是一个 pandas.DataFrame, 包含以下列::
 
     id: int, 1234 (k线序列号)
     datetime: int, 1501080715000000000 (K线起点时间(按北京时间)，自unix epoch(1970-01-01 00:00:00 GMT)以来的纳秒数)
@@ -134,7 +134,7 @@ TqApi.get_kline_serial的返回值是一个 pandas.DataFrame, 包含以下列::
 要使用K线数据, 请使用 pandas.DataFrame 的相关函数. 常见用法示例如下::
 
     klines.iloc[-1].close  # 最后一根K线的收盘价
-    klines.close  # 收盘价序列, 一个 pandas.serial
+    klines.close          # 收盘价序列, 一个 pandas.Serial
 
 TqSdk中, K线周期以秒数表示，支持不超过1日的任意周期K线，例如::
 
@@ -144,7 +144,7 @@ TqSdk中, K线周期以秒数表示，支持不超过1日的任意周期K线，�
 
 TqSdk中最多可以获取每个K线序列的最后8000根K线，无论哪个周期。也就是说，你如果提取小时线，最多可以提取最后8000根小时线，如果提取分钟线，最多也是可以提取最后8000根分钟线。
 
-对于每个K线序列, 只需要调用一次 get_kline_serial. 如果需要监控数据更新, 可以使用 wait_update::
+对于每个K线序列, 只需要调用一次 :py:meth:`~tqsdk.api.TqApi.get_kline_serial` . 如果需要监控数据更新, 可以使用 :py:meth:`~tqsdk.api.TqApi.wait_update` ::
 
     klines = api.get_kline_serial("SHFE.cu1812", 10)  # 获取SHFE.cu1812合约的10秒K线
 
@@ -152,9 +152,9 @@ TqSdk中最多可以获取每个K线序列的最后8000根K线，无论哪个周
         print(klines.iloc[-1])    # K线数据有任何变动时都会执行这行
 
 
-如果只想在新K线出现时收到信号, 可以配合使用 :py:meth:TqSdk.api.TqApi.is_changing::
+如果只想在新K线出现时收到信号, 可以配合使用 :py:meth:`~tqsdk.api.TqApi.is_changing`::
 
-    klines = api.get_kline_serial("SHFE.cu1812", 10)  # 获取SHFE.cu1812合约的10秒K线
+    klines = api.get_kline_serial("SHFE.cu1812", 10)        # 获取SHFE.cu1812合约的10秒K线
 
     while api.wait_update():
         if api.is_changing(klines.iloc[-1], "datetime"):    # 判定最后一根K线的时间是否有变化
@@ -163,14 +163,14 @@ TqSdk中最多可以获取每个K线序列的最后8000根K线，无论哪个周
 
 Tick序列
 ----------------------------------------------------
-:py:meth:`tqsdk.api.TqApi.get_tick_serial` 函数获取指定合约的Tick序列数据::
+:py:meth:`~tqsdk.api.TqApi.get_tick_serial` 函数获取指定合约的Tick序列数据::
 
     ticks = api.get_tick_serial("SHFE.cu1812")  # 获取SHFE.cu1812合约的Tick序列
 
-TqApi.get_tick_serial 的返回值是一个 pandas.DataFrame, 常见用法示例如下::
+:py:meth:`~tqsdk.api.TqApi.get_tick_serial` 的返回值是一个 pandas.DataFrame, 常见用法示例如下::
 
-    ticks.iloc[-1].bid_price1  # 最后一个Tick的买一价
-    ticks.volume  # 成交量序列, 一个 pandas.serial
+    ticks.iloc[-1].bid_price1       # 最后一个Tick的买一价
+    ticks.volume                    # 成交量序列, 一个 pandas.Serial
 
 tick序列的更新监控, 与K线序列采用同样的方式.
 
@@ -197,4 +197,4 @@ tick序列的更新监控, 与K线序列采用同样的方式.
       if api.is_changing(k2):
         print(k2)
 
-  关于 wait_update 和 is_changing 的详细说明, 请见 :ref:`framework`
+  关于 :py:meth:`~tqsdk.api.TqApi.wait_update` 和 :py:meth:`~tqsdk.api.TqApi.is_changing` 的详细说明, 请见 :ref:`framework`
