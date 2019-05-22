@@ -1,30 +1,8 @@
-回测, 参数搜索及其它
+.. _batch_backtest:
+
+批量回测, 参数搜索及其它
 =================================================
-
-在回测结束时获取回测详细信息
--------------------------------------------------
-要在回测结束时调用您自己写的代码, 可以使用 try/except 机制捕获回测结束信号 BacktestFinished, 像这样::
-
-  from tqsdk import BacktestFinished
-  
-  acc = TqSim()
-
-  try:
-    api = TqApi(acc, backtest=TqBacktest(start_dt=date(2018, 5, 1), end_dt=date(2018, 10, 1)))
-    #策略代码在这里
-    #...
-    
-  except BackTestFinished as e:
-    # 回测结束时会执行这里的代码
-    print(acc.trade_log)
-
-回测的详细信息保存在回测所用的模拟账户中, 可以直接访问它的成员变量获取, 常用的有:
-
-* trade_log, 格式为 日期->交易记录及收盘时的权益及持仓
-* account, 资金账户最终状态
-* positions, 账户持仓最终状态
-* quotes, 行情最终状态
-
+在阅读本文档前, 请确保您已经熟悉了 :ref:`backtest` 
 
 参数优化/参数搜索
 -------------------------------------------------
@@ -67,38 +45,35 @@ TqSdk 并不提供专门的参数优化机制. 您可以按照自己的需求, �
   import multiprocessing
   from multiprocessing import Pool
 
-
   def MyStrategy(SHORT):
-      LONG = 60
-      SYMBOL = "SHFE.cu1907"
-      acc = TqSim()
-      try:
-          api = TqApi(acc, backtest=TqBacktest(start_dt=date(2019, 5, 6), end_dt=date(2019, 5, 10)))
-          data_length = LONG + 2
-          klines = api.get_kline_serial(SYMBOL, duration_seconds=60, data_length=data_length)
-          target_pos = TargetPosTask(api, SYMBOL)
-          while True:
-              api.wait_update()
-              if api.is_changing(klines.iloc[-1], "datetime"):
-                  short_avg = ma(klines["close"], SHORT)
-                  long_avg = ma(klines["close"], LONG)
-                  if long_avg.iloc[-2] < short_avg.iloc[-2] and long_avg.iloc[-1] > short_avg.iloc[-1]:
-                      target_pos.set_target_volume(-3)
-                  if short_avg.iloc[-2] < long_avg.iloc[-2] and short_avg.iloc[-1] > long_avg.iloc[-1]:
-                      target_pos.set_target_volume(3)
-      except BacktestFinished:
-          api.close()
-          print("SHORT=", SHORT, "最终权益=", acc.account["balance"])  # 每次回测结束时, 输出使用的参数和最终权益
+    LONG = 60
+    SYMBOL = "SHFE.cu1907"
+    acc = TqSim()
+    try:
+      api = TqApi(acc, backtest=TqBacktest(start_dt=date(2019, 5, 6), end_dt=date(2019, 5, 10)))
+      data_length = LONG + 2
+      klines = api.get_kline_serial(SYMBOL, duration_seconds=60, data_length=data_length)
+      target_pos = TargetPosTask(api, SYMBOL)
+      while True:
+        api.wait_update()
+        if api.is_changing(klines.iloc[-1], "datetime"):
+          short_avg = ma(klines["close"], SHORT)
+          long_avg = ma(klines["close"], LONG)
+          if long_avg.iloc[-2] < short_avg.iloc[-2] and long_avg.iloc[-1] > short_avg.iloc[-1]:
+            target_pos.set_target_volume(-3)
+          if short_avg.iloc[-2] < long_avg.iloc[-2] and short_avg.iloc[-1] > long_avg.iloc[-1]:
+            target_pos.set_target_volume(3)
+    except BacktestFinished:
+      api.close()
+      print("SHORT=", SHORT, "最终权益=", acc.account["balance"])  # 每次回测结束时, 输出使用的参数和最终权益
 
 
   if __name__ == '__main__':
-      multiprocessing.freeze_support()
-      p = Pool(4)                               # 进程池, 建议小于cpu数
-      for s in range(20, 40):
-          p.apply_async(MyStrategy, args=(s,))  # 把20个回测任务交给进程池执行
-      print('Waiting for all subprocesses done...')
-      p.close()
-      p.join()
-      print('All subprocesses done.')
-
-
+    multiprocessing.freeze_support()
+    p = Pool(4)                               # 进程池, 建议小于cpu数
+    for s in range(20, 40):
+      p.apply_async(MyStrategy, args=(s,))  # 把20个回测任务交给进程池执行
+    print('Waiting for all subprocesses done...')
+    p.close()
+    p.join()
+    print('All subprocesses done.')
