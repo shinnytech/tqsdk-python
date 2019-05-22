@@ -21,11 +21,14 @@ import sys
 import time
 import logging
 import copy
+import ctypes
 import asyncio
 import functools
 import websockets
 import requests
 import weakref
+import base64
+import os
 import pandas as pd
 import numpy as np
 from .__version__ import __version__
@@ -268,10 +271,8 @@ api = TqApi("SIM.abcd")
         duration_seconds = int(duration_seconds)  # 转成整数
         dur_id = duration_seconds * 1000000000
         request = (symbol, duration_seconds, data_length, chart_id)
-        if request not in self.requests.setdefault("klines", {}):
-            serial = self._init_serial(self._get_obj(self.data, ["klines", symbol, str(dur_id)]), data_length, self.prototype["klines"]["*"]["*"]["data"]["@"])
-            self.requests["klines"][request] = serial
-            self.serials[id(serial["df"])] = serial
+        serial = self.requests.setdefault("klines", {}).get(request, None)
+        if serial is None or chart_id is not None:
             self.send_chan.send_nowait({
                 "aid": "set_chart",
                 "chart_id": chart_id if chart_id is not None else self._generate_chart_id("realtime", symbol, duration_seconds),
@@ -279,8 +280,10 @@ api = TqApi("SIM.abcd")
                 "duration": dur_id,
                 "view_width": data_length,
             })
-        else:
-            serial = self.requests["klines"][request]
+        if serial is None:
+            serial = self._init_serial(self._get_obj(self.data, ["klines", symbol, str(dur_id)]), data_length, self.prototype["klines"]["*"]["*"]["data"]["@"])
+            self.requests["klines"][request] = serial
+            self.serials[id(serial["df"])] = serial
         deadline = time.time() + 30
         while not self.loop.is_running() and not self._is_serial_ready(serial):
             #@todo: merge diffs
@@ -339,10 +342,8 @@ api = TqApi("SIM.abcd")
         if data_length > 8964:
             data_length = 8964
         request = (symbol, data_length, chart_id)
-        if request not in self.requests.setdefault("ticks", {}):
-            serial = self._init_serial(self._get_obj(self.data, ["ticks", symbol]), data_length, self.prototype["ticks"]["*"]["data"]["@"])
-            self.requests["ticks"][request] = serial
-            self.serials[id(serial["df"])] = serial
+        serial = self.requests.setdefault("ticks", {}).get(request, None)
+        if serial is None or chart_id is not None:
             self.send_chan.send_nowait({
                 "aid": "set_chart",
                 "chart_id": chart_id if chart_id is not None else self._generate_chart_id("realtime", symbol, 0),
@@ -350,8 +351,10 @@ api = TqApi("SIM.abcd")
                 "duration": 0,
                 "view_width": data_length,
             })
-        else:
-            serial = self.requests["ticks"][request]
+        if serial is None:
+            serial = self._init_serial(self._get_obj(self.data, ["ticks", symbol]), data_length, self.prototype["ticks"]["*"]["data"]["@"])
+            self.requests["ticks"][request] = serial
+            self.serials[id(serial["df"])] = serial
         deadline = time.time() + 30
         while not self.loop.is_running() and not self._is_serial_ready(serial):
             #@todo: merge diffs
@@ -1627,6 +1630,31 @@ class TqAccount(object):
         self.broker_id = broker_id
         self.account_id = account_id
         self.password = password
+        self.app_id = "SHINNY_TQ_1.0"
+        self.system_info = ""
+        try:
+            l = ctypes.c_int(344)
+            buf = ctypes.create_string_buffer(l.value)
+            ret = 1
+            lib_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ctpse")
+            if sys.platform.startswith("win"):
+                if ctypes.sizeof(ctypes.c_voidp) == 4:
+                    selib = ctypes.cdll.LoadLibrary(os.path.join(lib_path, "WinDataCollect32.dll"))
+                    ret = getattr(selib, "?CTP_GetSystemInfo@@YAHPADAAH@Z")(buf, ctypes.byref(l))
+                else:
+                    selib = ctypes.cdll.LoadLibrary(os.path.join(lib_path, "WinDataCollect64.dll"))
+                    ret = getattr(selib, "?CTP_GetSystemInfo@@YAHPEADAEAH@Z")(buf, ctypes.byref(l))
+            elif sys.platform.startswith("linux"):
+                selib = ctypes.cdll.LoadLibrary(os.path.join(lib_path, "LinuxDataCollect64.so"))
+                ret = selib._Z17CTP_GetSystemInfoPcRi(buf, ctypes.byref(l))
+            else:
+                raise Exception("不支持该平台")
+            if ret == 0:
+                self.system_info = base64.encodebytes(buf.raw[:l.value]).decode("utf-8")
+            else:
+                raise Exception("错误码: %d" % ret)
+        except Exception as e:
+            logging.getLogger("TqApi.TqAccount").warning("采集穿透式监管客户端信息失败: %s" % e)
 
     async def _run(self, api, api_send_chan, api_recv_chan, md_send_chan, md_recv_chan, td_send_chan, td_recv_chan):
         await td_send_chan.send({
@@ -1634,6 +1662,8 @@ class TqAccount(object):
             "bid": self.broker_id,
             "user_name": self.account_id.rsplit(".", 1)[0],
             "password": self.password,
+            "client_app_id": self.app_id,
+            "client_system_info": self.system_info,
         })
         md_task = api.create_task(self._md_handler(api_recv_chan, md_send_chan, md_recv_chan))
         td_task = api.create_task(self._td_handler(api_recv_chan, td_send_chan, td_recv_chan))
