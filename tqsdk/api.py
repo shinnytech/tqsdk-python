@@ -1650,7 +1650,7 @@ class TqAccount(object):
             else:
                 raise Exception("不支持该平台")
             if ret == 0:
-                self.system_info = base64.encodebytes(buf.raw[:l.value]).decode("utf-8")
+                self.system_info = base64.b64encode(buf.raw[:l.value]).decode("utf-8")
             else:
                 raise Exception("错误码: %d" % ret)
         except Exception as e:
