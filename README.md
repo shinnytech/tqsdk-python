@@ -2,7 +2,7 @@
   <img src ="https://raw.githubusercontent.com/shinnytech/tqsdk-python/master/doc/logo.png"/>
 </p>
 <p align="center">
-    <img src ="https://img.shields.io/badge/version-0.9.3-blueviolet.svg"/>
+    <img src ="https://img.shields.io/badge/version-0.9.4-blueviolet.svg"/>
     <img src ="https://img.shields.io/badge/platform-windows|linux|macos-green.svg"/>
     <img src ="https://img.shields.io/badge/python-3.6+-blue.svg" />
     <img src ="https://img.shields.io/github/license/shinnytech/tqsdk-python.svg?color=orange"/>
