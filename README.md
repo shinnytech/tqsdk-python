@@ -1,8 +1,8 @@
 <p align="center">
-  <img src ="./doc/logo.png"/>
+  <img src ="https://raw.githubusercontent.com/shinnytech/tqsdk-python/master/doc/logo.png"/>
 </p>
 <p align="center">
-    <img src ="https://img.shields.io/badge/version-0.9.2-blueviolet.svg"/>
+    <img src ="https://img.shields.io/badge/version-0.9.3-blueviolet.svg"/>
     <img src ="https://img.shields.io/badge/platform-windows|linux|macos-green.svg"/>
     <img src ="https://img.shields.io/badge/python-3.6+-blue.svg" />
     <img src ="https://img.shields.io/github/license/shinnytech/tqsdk-python.svg?color=orange"/>
@@ -42,7 +42,7 @@ while True:
 
 Architecture
 ---------------
-<img alt="系统架构图" src="https://raw.githubusercontent.com/shinnytech/tqsdk-python/doc/doc/arch.svg?sanitize=true">
+<img alt="系统架构图" src="https://raw.githubusercontent.com/shinnytech/tqsdk-python/master/doc/arch.svg?sanitize=true">
 
 * [行情网关 (Open Md Gateway)](https://github.com/shinnytech/open-md-gateway) 负责提供实时行情和历史数据
 * [交易中继网关 (Open Trade Gateway)](https://github.com/shinnytech/open-trade-gateway) 负责连接到期货公司交易系统
