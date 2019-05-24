@@ -52,7 +52,7 @@ class PrintWriter :
                 "datetime": dt,
                 "instance_id": self.instance_id,
                 "level": "INFO",
-                "content": self.line,
+                "content": self.line[:-1],
             })
             self.line = ""
 
@@ -174,3 +174,4 @@ def run():
 
 if __name__ == "__main__":
     run()
+    os._exit(0)

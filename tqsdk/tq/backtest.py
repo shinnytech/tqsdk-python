@@ -24,10 +24,11 @@ import tqsdk
 from tqsdk import TqApi, TqSim, TqBacktest
 from tqsdk.tq.utility import input_param_backtest
 
-class PrintWriter :
-    def __init__(self, chan, instance_id):
+
+class PrintWriter:
+    def __init__(self, out_file, instance_id):
         self.orign_stdout = sys.stdout
-        self.chan = chan
+        self.out_file = out_file
         self.instance_id = instance_id
         self.line = ""
 
@@ -35,14 +36,16 @@ class PrintWriter :
         self.line += text
         if self.line[-1] == "\n":
             dt = int(datetime.datetime.now().timestamp() * 1e9)
-            self.chan.send_nowait({
+            json.dump({
                 "aid": "log",
                 "datetime": dt,
                 "instance_id": self.instance_id,
                 "level": "INFO",
-                "content": self.line,
-            })
+                "content": self.line[:-1],
+            }, self.out_file)
             self.line = ""
+            self.out_file.write("\n")
+            self.out_file.flush()
 
     def flush(self):
         pass
@@ -190,7 +193,7 @@ def backtest():
 
     # 开始回测
     api = TqApi(s, backtest=TqBacktest(start_dt=start_date, end_dt=end_date))
-    sys.stdout = PrintWriter(api.send_chan, args.instance_id)
+    sys.stdout = PrintWriter(report_file, args.instance_id)
     try:
         json.dump({
             "aid": "desc",
@@ -226,3 +229,4 @@ def backtest():
 
 if __name__ == "__main__":
     backtest()
+    os._exit(0)
