@@ -1616,7 +1616,7 @@ api = TqApi("SIM.abcd")
 
 class TqAccount(object):
     """天勤实盘类"""
-    def __init__(self, broker_id, account_id, password):
+    def __init__(self, broker_id, account_id, password, front_broker=None, front_url=None):
         """
         创建天勤实盘实例
 
@@ -1626,16 +1626,23 @@ class TqAccount(object):
             account_id (str): 帐号
 
             password (str): 密码
+
+            front_broker(str): [可选]CTP交易前置的Broker ID, 用于连接次席服务器, eg: "2020"
+
+            front_url(str): [可选]CTP交易前置地址, 用于连接次席服务器, eg: "tcp://1.2.3.4:1234/"
         """
+        if bool(front_broker) != bool(front_url):
+            raise Exception("front_broker 和 front_url 参数需同时填写")
         self.broker_id = broker_id
         self.account_id = account_id
         self.password = password
+        self.front_broker = front_broker
+        self.front_url = front_url
         self.app_id = "SHINNY_TQ_1.0"
         self.system_info = ""
         try:
             l = ctypes.c_int(344)
             buf = ctypes.create_string_buffer(l.value)
-            ret = 1
             lib_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ctpse")
             if sys.platform.startswith("win"):
                 if ctypes.sizeof(ctypes.c_voidp) == 4:
@@ -1657,14 +1664,19 @@ class TqAccount(object):
             logging.getLogger("TqApi.TqAccount").warning("采集穿透式监管客户端信息失败: %s" % e)
 
     async def _run(self, api, api_send_chan, api_recv_chan, md_send_chan, md_recv_chan, td_send_chan, td_recv_chan):
-        await td_send_chan.send({
+        req = {
             "aid": "req_login",
             "bid": self.broker_id,
             "user_name": self.account_id.rsplit(".", 1)[0],
             "password": self.password,
-            "client_app_id": self.app_id,
-            "client_system_info": self.system_info,
-        })
+        }
+        if self.system_info:
+            req["client_app_id"] = self.app_id
+            req["client_system_info"] = self.system_info
+        if self.front_broker:
+            req["broker_id"] = self.front_broker
+            req["front"] = self.front_url
+        await td_send_chan.send(req)
         md_task = api.create_task(self._md_handler(api_recv_chan, md_send_chan, md_recv_chan))
         td_task = api.create_task(self._td_handler(api_recv_chan, td_send_chan, td_recv_chan))
         try:
