@@ -7,7 +7,7 @@ from tqsdk import TqApi, TqSim
 # 可以指定debug选项将调试信息写入指定的文件中
 api = TqApi(TqSim(), debug="debug.log")
 quote = api.get_quote("SHFE.cu1906")
-print(quote["datetime"], quote["last_price"], quote["ask_price1"], quote["ask_price2"])
+print(quote.datetime, quote.last_price, quote.ask_price1, quote.ask_price2)
 
 while True:
     # 调用 wait_update 等待业务信息发生变化，例如: 行情发生变化, 委托单状态变化, 发生成交等等
@@ -18,7 +18,7 @@ while True:
         print("行情变化", quote)
     # 只有当 cu1906 的最新价有变化，is_changing才会返回 True
     if api.is_changing(quote, "last_price"):
-        print("最新价变化", quote["last_price"])
+        print("最新价变化", quote.last_price)
     # 当 cu1906 的买1价/买1量/卖1价/卖1量中任何一个有变化，is_changing都会返回 True
     if api.is_changing(quote, ["ask_price1", "ask_volume1", "bid_price1", "bid_volume1"]):
-        print("盘口变化", quote["ask_price1"], quote["ask_volume1"], quote["bid_price1"], quote["bid_volume1"])
+        print("盘口变化", quote.ask_price1, quote.ask_volume1, quote.bid_price1, quote.bid_volume1)

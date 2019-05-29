@@ -7,6 +7,7 @@ TqSdk 模块参考
     :maxdepth: 1
 
     tqsdk.api.rst
+    tqsdk.objs.rst
     tqsdk.lib.rst
     tqsdk.ta.rst
     tqsdk.tafunc.rst

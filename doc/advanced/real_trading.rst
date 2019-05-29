@@ -154,7 +154,7 @@ TqSdk可以在windows/linux或macosx环境下运行. 无论您选择使用window
   api = TqApi(TqAccount("H海通期货", "0330203", "123456"))
   # 开仓两手并等待完成
   order = api.insert_order(symbol="SHFE.rb1901", direction="BUY", offset="OPEN", limit_price=4310,volume=2)
-  while order["status"] != "FINISHED":
+  while order.status != "FINISHED":
       api.wait_update()
   print("已开仓")
 
@@ -178,7 +178,7 @@ TqSdk可以在windows/linux或macosx环境下运行. 无论您选择使用window
   api = TqApi(TqAccount(args.broker, args.user_name, args.password))
   # 开仓两手并等待完成
   order = api.insert_order(symbol=args.symbol, direction="BUY", offset="OPEN", limit_price=4310,volume=2)
-  while order["status"] != "FINISHED":
+  while order.status != "FINISHED":
       api.wait_update()
   print("已开仓")
 

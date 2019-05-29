@@ -43,10 +43,10 @@ while True:
         buy_line, sell_line = dual_thrust(quote, klines)
 
     if api.is_changing(quote, "last_price"):
-        if quote["last_price"] > buy_line:  # 高于上轨
+        if quote.last_price > buy_line:  # 高于上轨
             print("高于上轨,目标持仓 多头3手")
             target_pos.set_target_volume(3)  # 交易
-        elif quote["last_price"] < sell_line:  # 低于下轨
+        elif quote.last_price < sell_line:  # 低于下轨
             print("低于下轨,目标持仓 空头3手")
             target_pos.set_target_volume(-3)  # 交易
         else:

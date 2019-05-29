@@ -34,6 +34,7 @@ import numpy as np
 from .__version__ import __version__
 from tqsdk.sim import TqSim
 from tqsdk.subaccount import TqSubAccount
+from tqsdk.objs import Entity, Quote, Account, Position, Order, Trade
 
 
 class TqApi(object):
@@ -178,13 +179,7 @@ api = TqApi("SIM.abcd")
                          * INE: 能源交易所(原油)
 
         Returns:
-            dict: 返回一个如下结构所示的 dict 对象的引用, 当行情更新时, 此对象的内容会被自动更新
-
-            .. literalinclude:: ../../tqsdk/api.py
-                :pyobject: TqApi._gen_quote_prototype
-                :dedent: 12
-                :start-after: {
-                :end-before: }
+            :py:class:`~tqsdk.objs.Quote`: 返回一个盘口行情引用. 其内容将在 :py:meth:`~tqsdk.api.TqApi.wait_update` 时更新.
 
             注意: 在 tqsdk 还没有收到行情数据包时, 此对象中各项内容为 NaN 或 0
 
@@ -195,12 +190,11 @@ api = TqApi("SIM.abcd")
 
             api = TqApi(TqSim())
             quote = api.get_quote("SHFE.cu1812")
-            while True:
-                api.wait_update()
-                print(quote["last_price"])
+            print(quote.last_price)
+            while api.wait_update():
+                print(quote.last_price)
 
             #以上代码将输出
-            nan
             nan
             24575.0
             24575.0
@@ -217,7 +211,7 @@ api = TqApi("SIM.abcd")
         while not self.loop.is_running() and quote["datetime"] == "":
             #@todo: merge diffs
             if not self.wait_update(deadline=deadline):
-                raise Exception("获取行情超时，请检查客户端及网络是否正常，且合约代码填写正确")
+                raise Exception("获取 %s 的行情超时，请检查客户端及网络是否正常，且合约代码填写正确" % (symbol))
         return quote
 
     # ----------------------------------------------------------------------
@@ -288,7 +282,7 @@ api = TqApi("SIM.abcd")
         while not self.loop.is_running() and not self._is_serial_ready(serial):
             #@todo: merge diffs
             if not self.wait_update(deadline=deadline):
-                raise Exception("获取行情超时，请检查客户端及网络是否正常，且合约代码填写正确")
+                raise Exception("获取 %s (%d) 的K线超时，请检查客户端及网络是否正常，且合约代码填写正确" % (symbol, duration_seconds))
         return serial["df"]
 
     # ----------------------------------------------------------------------
@@ -359,7 +353,7 @@ api = TqApi("SIM.abcd")
         while not self.loop.is_running() and not self._is_serial_ready(serial):
             #@todo: merge diffs
             if not self.wait_update(deadline=deadline):
-                raise Exception("获取行情超时，请检查客户端及网络是否正常，且合约代码填写正确")
+                raise Exception("获取 %s 的Tick超时，请检查客户端及网络是否正常，且合约代码填写正确" % (symbol))
         return serial["df"]
 
     # ----------------------------------------------------------------------
@@ -481,8 +475,8 @@ api = TqApi("SIM.abcd")
             单状态: FINISHED, 已成交: 3 手
             ...
         """
-        if isinstance(order_or_order_id, dict):
-            order_id = order_or_order_id.get("order_id", "")
+        if isinstance(order_or_order_id, Order):
+            order_id = order_or_order_id.order_id
         else:
             order_id = order_or_order_id
         msg = {
@@ -498,15 +492,7 @@ api = TqApi("SIM.abcd")
         获取用户账户资金信息
 
         Returns:
-            dict: 本函数总是返回一个如下结构所示的包含用户账户资金信息的dict的引用. 每当其中信息改变时, 此dict会自动更新.
-
-            .. literalinclude:: ../../tqsdk/api.py
-                :pyobject: TqApi._gen_account_prototype
-                :dedent: 12
-                :start-after: {
-                :end-before: }
-
-            注意: 在 tqsdk 还没有收到账户数据包时, 此对象中各项内容为NaN
+            :py:class:`~tqsdk.objs.Account`: 返回一个账户对象引用. 其内容将在 :py:meth:`~tqsdk.api.TqApi.wait_update` 时更新.
 
         Example::
 
@@ -515,9 +501,7 @@ api = TqApi("SIM.abcd")
 
             api = TqApi(TqSim())
             account = api.get_account()
-            while True:
-                api.wait_update()
-                print(account["float_profit"])
+            print(account.float_profit)
 
             # 预计的输出是这样的:
             2180.0
@@ -533,20 +517,12 @@ api = TqApi("SIM.abcd")
         获取用户持仓信息
 
         Args:
-            symbol (str): [可选]合约代码, 默认返回所有持仓
+            symbol (str): [可选]合约代码, 不填则返回所有持仓
 
         Returns:
-            dict: 当指定了symbol时, 返回一个如下结构所示的包含指定symbol持仓信息的引用. 每当其中信息改变时, 此dict会自动更新.
+            :py:class:`~tqsdk.objs.Position`: 当指定了 symbol 时, 返回一个持仓对象引用. 其内容将在 :py:meth:`~tqsdk.api.TqApi.wait_update` 时更新.
 
-            .. literalinclude:: ../../tqsdk/api.py
-                :pyobject: TqApi._gen_position_prototype
-                :dedent: 12
-                :start-after: {
-                :end-before: }
-
-            不带symbol参数调用 get_position 函数, 将返回包含用户所有持仓的一个嵌套dict, 其中每个元素的key为合约代码, value为上述格式的dict
-
-            注意: 在 tqsdk 还没有收到持仓信息时, 此对象中各项内容为空或0
+            不填 symbol 参数调用本函数, 将返回包含用户所有持仓的一个dict, 其中每个元素的key为合约代码, value为 :py:class:`~tqsdk.objs.Position`
 
         Example::
 
@@ -555,12 +531,11 @@ api = TqApi("SIM.abcd")
 
             api = TqApi(TqSim())
             position = api.get_position("DCE.m1809")
-            while True:
-                api.wait_update()
-                print(position["float_profit_long"] + position["float_profit_short"])
+            print(position.float_profit_long + position.float_profit_short)
+            while api.wait_update():
+                print(position.float_profit_long + position.float_profit_short)
 
             # 预计的输出是这样的:
-            300.0
             300.0
             330.0
             ...
@@ -575,20 +550,14 @@ api = TqApi("SIM.abcd")
         获取用户委托单信息
 
         Args:
-            order_id (str): [可选]单号, 默认返回所有委托单
+            order_id (str): [可选]单号, 不填单号则返回所有委托单
 
         Returns:
-            dict: 当指定了order_id时, 返回一个如下结构所示的包含指定order_id委托单信息的引用. 每当其中信息改变时, 此dict会自动更新.
+            :py:class:`~tqsdk.objs.Order`: 当指定了order_id时, 返回一个委托单对象引用. 其内容将在 :py:meth:`~tqsdk.api.TqApi.wait_update` 时更新.
 
-            .. literalinclude:: ../../tqsdk/api.py
-                :pyobject: TqApi._gen_order_prototype
-                :dedent: 12
-                :start-after: {
-                :end-before: }
+            不填order_id参数调用本函数, 将返回包含用户所有委托单的一个dict, 其中每个元素的key为合约代码, value为 :py:class:`~tqsdk.objs.Order`
 
-            不带order_id参数调用get_order函数, 将返回包含用户所有委托单的一个嵌套dict, 其中每个元素的key为合约代码, value为上述格式的dict
-
-            注意: 在 tqsdk 还没有收到委托单信息时, 此对象中各项内容为空
+            注意: 在刚下单后, tqsdk 还没有收到回单信息时, 此对象中各项内容为空
 
         Example::
 
@@ -599,7 +568,7 @@ api = TqApi("SIM.abcd")
             orders = api.get_order()
             while True:
                 api.wait_update()
-                print(sum(o["volume_left"] for oid, o in orders.items() if not oid.startswith("_") and o["status"] == "ALIVE"))
+                print(sum(order.volume_left for oid, order in orders.items() if order.status == "ALIVE"))
 
             # 预计的输出是这样的:
             3
@@ -631,7 +600,7 @@ api = TqApi("SIM.abcd")
             api = TqApi(TqSim())
             quote = api.get_quote("SHFE.cu1812")
             api.wait_update()
-            print(quote["datetime"])
+            print(quote.datetime)
 
             可能输出 ""(空字符串), 表示还没有收到该合约的行情
         """
@@ -688,10 +657,11 @@ api = TqApi("SIM.abcd")
 
             api = TqApi(TqSim())
             quote = api.get_quote("SHFE.cu1812")
+            print(quote.last_price)
             while True:
                 api.wait_update()
                 if api.is_changing(quote, "last_price"):
-                    print(quote["last_price"])
+                    print(quote.last_price)
 
             # 以上代码运行后的输出是这样的:
             51800.0
@@ -811,7 +781,7 @@ api = TqApi("SIM.abcd")
                 quote = api.get_quote("SHFE.cu1812")
                 async with api.register_update_notify(quote) as update_chan:
                     async for _ in update_chan:
-                        print(quote["last_price"])
+                        print(quote.last_price)
 
             api = TqApi(TqSim())
             api.create_task(demo())
@@ -1149,7 +1119,7 @@ api = TqApi("SIM.abcd")
                 else:
                     dv = result.pop(key, None)
                     TqApi._notify_update(dv, True)
-            elif value_type is dict:
+            elif value_type is dict or value_type is Entity:
                 default = None
                 tpersist = persist
                 if key in prototype:
@@ -1180,7 +1150,7 @@ api = TqApi("SIM.abcd")
     @staticmethod
     def _notify_update(target, recursive):
         """同步通知业务数据更新"""
-        if isinstance(target, dict):
+        if isinstance(target, dict) or isinstance(target, Entity):
             for q in target["_listener"]:
                 q.send_nowait(True)
             if recursive:
@@ -1195,7 +1165,7 @@ api = TqApi("SIM.abcd")
         for i in range(len(path)):
             if path[i] not in d:
                 dv = {} if i != len(path) - 1 or default is None else copy.copy(default)
-                if isinstance(dv, dict):
+                if isinstance(dv, dict) or isinstance(dv, Entity):
                     dv["_path"] = d["_path"] + [path[i]]
                     dv["_listener"] = weakref.WeakSet()
                 d[path[i]] = dv
@@ -1206,7 +1176,7 @@ api = TqApi("SIM.abcd")
     def _is_key_exist(diff, path, key):
         """判断指定数据是否存在"""
         for p in path:
-            if not isinstance(diff, dict) or p not in diff:
+            if (not isinstance(diff, dict) and not isinstance(diff, Entity)) or p not in diff:
                 return False
             diff = diff[p]
         if not isinstance(diff, dict):
@@ -1216,12 +1186,11 @@ api = TqApi("SIM.abcd")
                 return True
         return len(key) == 0
 
-    @staticmethod
-    def _gen_prototype():
+    def _gen_prototype(self):
         """所有业务数据的原型"""
         return {
             "quotes": {
-                "#": TqApi._gen_quote_prototype(),  # 行情的数据原型
+                "#": Quote(self),  # 行情的数据原型
             },
             "klines": {
                 "*": {
@@ -1242,57 +1211,19 @@ api = TqApi("SIM.abcd")
             "trade": {
                 "*": {
                     "accounts": {
-                        "@": TqApi._gen_account_prototype(),  # 账户的数据原型
+                        "@": Account(self),  # 账户的数据原型
                     },
                     "orders": {
-                        "@": TqApi._gen_order_prototype(),  # 委托单的数据原型
+                        "@": Order(self),  # 委托单的数据原型
                     },
                     "trades": {
-                        "@": TqApi._gen_trade_prototype(),  # 成交的数据原型
+                        "@": Trade(self),  # 成交的数据原型
                     },
                     "positions": {
-                        "@": TqApi._gen_position_prototype(),  # 持仓的数据原型
+                        "@": Position(self),  # 持仓的数据原型
                     }
                 }
             },
-        }
-
-    @staticmethod
-    def _gen_quote_prototype():
-        """行情的数据原型"""
-        return {
-            "datetime": "",  # "2017-07-26 23:04:21.000001" (行情从交易所发出的时间(北京时间))
-            "ask_price1": float("nan"),  # 6122.0 (卖一价)
-            "ask_volume1": 0,  # 3 (卖一量)
-            "bid_price1": float("nan"),  # 6121.0 (买一价)
-            "bid_volume1": 0,  # 7 (买一量)
-            "last_price": float("nan"),  # 6122.0 (最新价)
-            "highest": float("nan"),  # 6129.0 (当日最高价)
-            "lowest": float("nan"),  # 6101.0 (当日最低价)
-            "open": float("nan"),  # 6102.0 (开盘价)
-            "close": float("nan"),  # nan (收盘价)
-            "average": float("nan"),  # 6119.0 (当日均价)
-            "volume": 0,  # 89252 (成交量)
-            "amount": float("nan"),  # 5461329880.0 (成交额)
-            "open_interest": 0,  # 616424 (持仓量)
-            "settlement": float("nan"),  # nan (结算价)
-            "upper_limit": float("nan"),  # 6388.0 (涨停价)
-            "lower_limit": float("nan"),  # 5896.0 (跌停价)
-            "pre_open_interest": 0,  # 616620 (昨持仓量)
-            "pre_settlement": float("nan"),  # 6142.0 (昨结算价)
-            "pre_close": float("nan"),  # 6106.0 (昨收盘价)
-            "price_tick": float("nan"),  # 10.0 (合约价格单位)
-            "price_decs": 0,  # 0 (合约价格小数位数)
-            "volume_multiple": 0,  # 10 (合约乘数)
-            "max_limit_order_volume": 0,  # 500 (最大限价单手数)
-            "max_market_order_volume": 0,  # 0 (最大市价单手数)
-            "min_limit_order_volume": 0,  # 1 (最小限价单手数)
-            "min_market_order_volume": 0,  # 0 (最小市价单手数)
-            "underlying_symbol": "",  # SHFE.rb1901 (标的合约)
-            "strike_price": float("nan"),  # nan (行权价)
-            "change": float("nan"),  # −20.0 (涨跌)
-            "change_percent": float("nan"),  # −0.00325 (涨跌幅)
-            "expired": False,  # False (合约是否已下市)
         }
 
     @staticmethod
@@ -1325,103 +1256,6 @@ api = TqApi("SIM.abcd")
             "volume": 0,  # 7823 (当日成交量)
             "amount": float("nan"),  # 19237841.0 (成交额)
             "open_interest": 0,  # 1941 (持仓量)
-        }
-
-    @staticmethod
-    def _gen_account_prototype():
-        """账户的数据原型"""
-        return {
-            "currency": "",  # "CNY" (币种)
-            "pre_balance": float("nan"),  # 9912934.78 (昨日账户权益)
-            "static_balance": float("nan"),  # (静态权益)
-            "balance": float("nan"),  # 9963216.55 (账户权益)
-            "available": float("nan"),  # 9480176.15 (可用资金)
-            "float_profit": float("nan"),  # 8910.0 (浮动盈亏)
-            "position_profit": float("nan"),  # 1120.0(持仓盈亏)
-            "close_profit": float("nan"),  # -11120.0 (本交易日内平仓盈亏)
-            "frozen_margin": float("nan"),  # 0.0(冻结保证金)
-            "margin": float("nan"),  # 11232.23 (保证金占用)
-            "frozen_commission": float("nan"),  # 0.0 (冻结手续费)
-            "commission": float("nan"),  # 123.0 (本交易日内交纳的手续费)
-            "frozen_premium": float("nan"),  # 0.0 (冻结权利金)
-            "premium": float("nan"),  # 0.0 (本交易日内交纳的权利金)
-            "deposit": float("nan"),  # 1234.0 (本交易日内的入金金额)
-            "withdraw": float("nan"),  # 890.0 (本交易日内的出金金额)
-            "risk_ratio": float("nan"),  # 0.048482375 (风险度)
-        }
-
-    @staticmethod
-    def _gen_order_prototype():
-        """委托单的数据原型"""
-        return {
-            "order_id": "",  # "123" (委托单ID, 对于一个用户的所有委托单，这个ID都是不重复的)
-            "exchange_order_id": "",  # "1928341" (交易所单号)
-            "exchange_id": "",  # "SHFE" (交易所)
-            "instrument_id": "",  # "rb1901" (交易所内的合约代码)
-            "direction": "",  # "BUY" (下单方向, BUY=买, SELL=卖)
-            "offset": "",  # "OPEN" (开平标志, OPEN=开仓, CLOSE=平仓, CLOSETODAY=平今)
-            "volume_orign": 0,  # 10 (总报单手数)
-            "volume_left": 0,  # 5 (未成交手数)
-            "limit_price": float("nan"),  # 4500.0 (委托价格, 仅当 price_type = LIMIT 时有效)
-            "price_type": "",  # "LIMIT" (价格类型, ANY=市价, LIMIT=限价)
-            "volume_condition": "",  # "ANY" (手数条件, ANY=任何数量, MIN=最小数量, ALL=全部数量)
-            "time_condition": "",  # "GFD" (时间条件, IOC=立即完成，否则撤销, GFS=本节有效, GFD=当日有效, GTC=撤销前有效, GFA=集合竞价有效)
-            "insert_date_time": 0,  # 1501074872000000000 (下单时间(按北京时间)，自unix epoch(1970-01-01 00:00:00 GMT)以来的纳秒数)
-            "last_msg": "",  # "报单成功" (委托单状态信息)
-            "status": "",  # "ALIVE" (委托单状态, ALIVE=有效, FINISHED=已完)
-        }
-
-    @staticmethod
-    def _gen_trade_prototype():
-        """成交的数据原型"""
-        return {
-            "order_id": "",  # "123" (委托单ID, 对于一个用户的所有委托单，这个ID都是不重复的)
-            "trade_id": "",  # "123|19723" (成交ID, 对于一个用户的所有成交，这个ID都是不重复的)
-            "exchange_trade_id": "",  # "829414" (交易所成交号)
-            "exchange_id": "",  # "SHFE" (交易所)
-            "instrument_id": "",  # "rb1901" (交易所内的合约代码)
-            "direction": "",  # "BUY" (下单方向, BUY=买, SELL=卖)
-            "offset": "",  # "OPEN" (开平标志, OPEN=开仓, CLOSE=平仓, CLOSETODAY=平今)
-            "price": float("nan"),  # 4510.0 (成交价格)
-            "volume": 0,  # 5 (成交手数)
-            "trade_date_time": 0,  # 1501074872000000000 (成交时间(按北京时间)，自unix epoch(1970-01-01 00:00:00 GMT)以来的纳秒数)
-        }
-
-    @staticmethod
-    def _gen_position_prototype():
-        """持仓的数据原型"""
-        return {
-            "exchange_id": "",  # "SHFE" (交易所)
-            "instrument_id": "",  # "rb1901" (交易所内的合约代码)
-            "volume_long_today": 0,  # 10 (多头今仓手数)
-            "volume_long_his": 0,  # 5 (多头老仓手数)
-            "volume_long": 0,  # 15 (多头手数)
-            "volume_long_frozen_today": 0,  # 3 (多头今仓冻结)
-            "volume_long_frozen_his": 0,  # 2 (多头老仓冻结)
-            "volume_long_frozen": 0,  # 5 (多头持仓冻结)
-            "volume_short_today": 0,  # 3 (空头今仓手数)
-            "volume_short_his": 0,  # 0 (空头老仓手数)
-            "volume_short": 0,  # 3 (空头手数)
-            "volume_short_frozen_today": 0,  # 0 (空头今仓冻结)
-            "volume_short_frozen_his": 0,  # 0 (空头老仓冻结)
-            "volume_short_frozen": 0,  # 0 (空头持仓冻结)
-            "open_price_long": float("nan"),  # 3120.0 (多头开仓均价)
-            "open_price_short": float("nan"),  # 3310.0 (空头开仓均价)
-            "open_cost_long": float("nan"),  # 468000.0 (多头开仓市值)
-            "open_cost_short": float("nan"),  # 99300.0 (空头开仓市值)
-            "position_price_long": float("nan"),  # 3200.0 (多头持仓均价)
-            "position_price_short": float("nan"),  # 3330.0 (空头持仓均价)
-            "position_cost_long": float("nan"),  # 480000.0 (多头持仓市值)
-            "position_cost_short": float("nan"),  # 99900.0 (空头持仓市值)
-            "float_profit_long": float("nan"),  # 12000.0 (多头浮动盈亏)
-            "float_profit_short": float("nan"),  # 3300.0 (空头浮动盈亏)
-            "float_profit": float("nan"),  # 15300.0 (浮动盈亏)
-            "position_profit_long": float("nan"),  # 0.0 (多头持仓盈亏)
-            "position_profit_short": float("nan"),  # 3900.0 (空头持仓盈亏)
-            "position_profit": float("nan"),  # 3900.0 (持仓盈亏)
-            "margin_long": float("nan"),  # 50000.0 (多头占用保证金)
-            "margin_short": float("nan"),  # 10000.0 (空头占用保证金)
-            "margin": float("nan"),  # 60000.0 (占用保证金)
         }
 
     @staticmethod

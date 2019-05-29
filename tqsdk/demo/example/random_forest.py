@@ -54,7 +54,7 @@ with closing(api):
                 api.wait_update()
                 # 在收盘后预测下一交易日的涨跌情况
                 if api.is_changing(quote, "datetime"):
-                    now = datetime.datetime.strptime(quote["datetime"], "%Y-%m-%d %H:%M:%S.%f")  # 当前quote的时间
+                    now = datetime.datetime.strptime(quote.datetime, "%Y-%m-%d %H:%M:%S.%f")  # 当前quote的时间
                     # 判断是否到达预定收盘时间: 如果到达 则认为本交易日收盘, 此时预测下一交易日的涨跌情况, 并调整为对应仓位
                     if now.hour == close_hour and now.minute >= close_minute:
                         # 1- 获取数据
@@ -68,10 +68,10 @@ with closing(api):
 
                         # 3- 进行交易
                         if predictions[-1] == True:  # 如果预测结果为涨: 买入
-                            print(quote["datetime"], "预测下一交易日为 涨")
+                            print(quote.datetime, "预测下一交易日为 涨")
                             target_pos.set_target_volume(10)
                         else:  # 如果预测结果为跌: 卖出
-                            print(quote["datetime"], "预测下一交易日为 跌")
+                            print(quote.datetime, "预测下一交易日为 跌")
                             target_pos.set_target_volume(-10)
                         break
 

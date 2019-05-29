@@ -110,7 +110,7 @@ SZSE               深圳证券交易所(尚未上线)
     q = api.get_quote("SHFE.cu1812")  # 获取SHFE.cu1812合约的行情
 
     while api.wait_update():
-      print(q["last_price"])    # 收到新行情时都会执行这行
+      print(q.last_price)    # 收到新行情时都会执行这行
 
 
 K线数据

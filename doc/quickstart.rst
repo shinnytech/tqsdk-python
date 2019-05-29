@@ -44,14 +44,14 @@
 
 现在, 我们获得了一个对象 quote. 这个对象总是指向 SHFE.cu1812 合约的最新行情. 我们可以通过 quote 的各个字段访问行情数据::
 
-    print (quote["last_price"], quote["volume"])
+    print (quote.last_price, quote.volume)
 
 
 要等待行情数据更新, 我们还需要一些代码::
 
     while True:
         api.wait_update()
-        print (quote["datetime"], quote["last_price"])
+        print (quote.datetime, quote.last_price)
 
 :py:meth:`~tqsdk.api.TqApi.wait_update` 是一个阻塞函数, 程序在这行上等待, 直到收到数据包才返回.
 
@@ -102,8 +102,8 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 
 与行情数据一样, 它们也通过 api.wait_update() 获得更新, 你也同样可以访问它们的成员变量::
 
-    print("可用资金: %.2f" % (account["available"]))
-    print("今多头: %d 手" % (position["volume_long_today"]))
+    print("可用资金: %.2f" % (account.available))
+    print("今多头: %d 手" % (position.volume_long_today))
 
 要在交易账户中发出一个委托单, 使用 api.insert_order() 函数::
 
@@ -111,7 +111,7 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 
 这个函数调用后会立即返回, order 是一个指向此委托单的引用对象, 你总是可以通过它的成员变量来了解委托单的最新状态::
 
-    print("委托单状态: %s, 已成交: %d 手" % (order["status"], order["volume_orign"] - order["volume_left"]))
+    print("委托单状态: %s, 已成交: %d 手" % (order.status, order.volume_orign - order.volume_left))
 
 要撤销一个委托单, 使用 api.cancel_order() 函数::
 
@@ -158,7 +158,7 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
     while True:
         api.wait_update()
         if api.is_changing(quote_near) or api.is_changing(quote_deferred):
-            spread = quote_near["last_price"] - quote_deferred["last_price"]
+            spread = quote_near.last_price - quote_deferred.last_price
             print("当前价差:", spread)
             if spread > 200:
                 print("目标持仓: 空近月，多远月")

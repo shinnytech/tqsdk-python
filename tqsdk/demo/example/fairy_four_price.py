@@ -35,23 +35,23 @@ while True:
         print("上轨:", top_rail, ",下轨:", bottom_rail, ",昨日收盘价:", klines.close.iloc[-2], ",今日开盘价:", klines.open.iloc[-1])
 
     if api.is_changing(quote, "last_price"):  # 如果行情最新价发生变化
-        print("当前最新价", quote["last_price"])
+        print("当前最新价", quote.last_price)
         # 开仓突破
-        if quote["last_price"] > top_rail and position["volume_long"] == 0:  # 如果价格突破上轨: 买入开仓
-            print("最新价:", quote["last_price"], ", 价格突破上轨,买入开仓")
+        if quote.last_price > top_rail and position.volume_long == 0:  # 如果价格突破上轨: 买入开仓
+            print("最新价:", quote.last_price, ", 价格突破上轨,买入开仓")
             target_pos.set_target_volume(3)  # 设置目标持仓手数，将指定合约调整到目标头寸
-        elif quote["last_price"] < bottom_rail and position["volume_short"] == 0:  # 如果价格跌破下轨: 卖出开仓
-            print("最新价:", quote["last_price"], ", 价格跌破下轨, 卖出开仓")
+        elif quote.last_price < bottom_rail and position.volume_short == 0:  # 如果价格跌破下轨: 卖出开仓
+            print("最新价:", quote.last_price, ", 价格跌破下轨, 卖出开仓")
             target_pos.set_target_volume(-3)
 
         # 平仓止损: 当价格 向上突破上轨 或 向下突破下轨 后, 再次回破当日开盘价
-        if (quote["highest"] > top_rail and quote["last_price"] <= quote["open"]) or (
-                quote["lowest"] < bottom_rail and quote["last_price"] >= quote["open"]):
+        if (quote.highest > top_rail and quote.last_price <= quote.open) or (
+                quote.lowest < bottom_rail and quote.last_price >= quote.open):
             print("平仓止损")
             target_pos.set_target_volume(0)
 
     if api.is_changing(quote, "datetime"):
-        now_time = datetime.strptime(quote["datetime"], "%Y-%m-%d %H:%M:%S.%f")  # 获取当前的行情时间
+        now_time = datetime.strptime(quote.datetime, "%Y-%m-%d %H:%M:%S.%f")  # 获取当前的行情时间
         if now_time.hour == close_hour and now_time.minute >= close_minute:  # 到达平仓时间: 平仓
             print("临近本交易日收盘: 平仓")
             target_pos.set_target_volume(0)

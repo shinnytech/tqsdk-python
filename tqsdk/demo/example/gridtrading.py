@@ -32,34 +32,34 @@ def wait_price(layer):
     """等待行情最新价变动到其他档位,则进入下一档位或回退到上一档位; 如果从下一档位回退到当前档位,则设置为当前对应的持仓手数;
         layer : 当前所在第几个档位层次; layer>0 表示多头方向, layer<0 表示空头方向
     """
-    if layer > 0 or quote["last_price"] <= grid_prices_long[1]:  # 是多头方向
+    if layer > 0 or quote.last_price <= grid_prices_long[1]:  # 是多头方向
         while True:
             api.wait_update()
             # 如果当前档位小于最大档位,并且最新价小于等于下一个档位的价格: 则设置为下一档位对应的手数后进入下一档位层次
-            if layer < GRID_AMOUNT and quote["last_price"] <= grid_prices_long[layer + 1]:
+            if layer < GRID_AMOUNT and quote.last_price <= grid_prices_long[layer + 1]:
                 target_pos.set_target_volume(grid_volume_long[layer + 1])
-                print("最新价: %f, 进入: 多头第 %d 档" % (quote["last_price"], layer + 1))
+                print("最新价: %f, 进入: 多头第 %d 档" % (quote.last_price, layer + 1))
                 wait_price(layer + 1)
                 # 从下一档位回退到当前档位后, 设置回当前对应的持仓手数
                 target_pos.set_target_volume(grid_volume_long[layer + 1])
             # 如果最新价大于当前档位的价格: 则回退到上一档位
-            if quote["last_price"] > grid_prices_long[layer]:
-                print("最新价: %f, 回退到: 多头第 %d 档" % (quote["last_price"], layer))
+            if quote.last_price > grid_prices_long[layer]:
+                print("最新价: %f, 回退到: 多头第 %d 档" % (quote.last_price, layer))
                 return
-    elif layer < 0 or quote["last_price"] >= grid_prices_short[1]:  # 是空头方向
+    elif layer < 0 or quote.last_price >= grid_prices_short[1]:  # 是空头方向
         layer = -layer  # 转为正数便于计算
         while True:
             api.wait_update()
             # 如果当前档位小于最大档位层次,并且最新价大于等于下一个档位的价格: 则设置为下一档位对应的持仓手数后进入下一档位层次
-            if layer < GRID_AMOUNT and quote["last_price"] >= grid_prices_short[layer + 1]:
+            if layer < GRID_AMOUNT and quote.last_price >= grid_prices_short[layer + 1]:
                 target_pos.set_target_volume(-grid_volume_short[layer + 1])
-                print("最新价: %f, 进入: 空头第 %d 档" % (quote["last_price"], layer + 1))
+                print("最新价: %f, 进入: 空头第 %d 档" % (quote.last_price, layer + 1))
                 wait_price(-(layer + 1))
                 # 从下一档位回退到当前档位后, 设置回当前对应的持仓手数
                 target_pos.set_target_volume(-grid_volume_short[layer + 1])
             # 如果最新价小于当前档位的价格: 则回退到上一档位
-            if quote["last_price"] < grid_prices_short[layer]:
-                print("最新价: %f, 回退到: 空头第 %d 档" % (quote["last_price"], layer))
+            if quote.last_price < grid_prices_short[layer]:
+                print("最新价: %f, 回退到: 空头第 %d 档" % (quote.last_price, layer))
                 return
 
 

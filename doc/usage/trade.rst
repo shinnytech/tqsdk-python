@@ -62,9 +62,9 @@ TqApi 提供以下函数来获取交易账户相关信息:
 与其它所有数据一样, 委托单的信息也会在 api.wait_update() 时被自动更新::
 
     order = api.insert_order(symbol="SHFE.rb1901", direction="BUY", offset="OPEN", limit_price=4310,volume=2)
-    while order["status"] != "FINISHED":
+    while order.status != "FINISHED":
         api.wait_update()
-        print("委托单状态: %s, 未成交手数: %d 手" % (order["status"], order["volume_left"]))
+        print("委托单状态: %s, 未成交手数: %d 手" % (order.status, order.volume_left))
 
 要撤销一个委托单, 使用 :py:meth:`~tqsdk.api.TqApi.cancel_order` 函数::
 
@@ -91,7 +91,7 @@ TqApi 提供以下函数来获取交易账户相关信息:
     while True:
         api.wait_update()
         if api.is_changing(quote_near) or api.is_changing(quote_deferred):
-            spread = quote_near["last_price"] - quote_deferred["last_price"]
+            spread = quote_near.last_price - quote_deferred.last_price
             print("当前价差:", spread)
             if spread > 200:
                 print("目标持仓: 空近月，多远月")

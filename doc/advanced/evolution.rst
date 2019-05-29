@@ -7,7 +7,7 @@
 对应代码的修改只需在主循环中加入判断是否接近收盘并平仓::
 
     if api.is_changing(quote, "datetime"):
-        now = datetime.strptime(quote["datetime"], "%Y-%m-%d %H:%M:%S.%f")
+        now = datetime.strptime(quote.datetime, "%Y-%m-%d %H:%M:%S.%f")
         if now.hour == close_hour and now.minute >= close_minute:  # 到达平仓时间: 平仓
             print("临近本交易日收盘: 平仓")
             target_pos.set_target_volume(0)  # 平仓

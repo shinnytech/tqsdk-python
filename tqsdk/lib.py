@@ -67,40 +67,40 @@ class TargetPosTask(object):
     def _init_position(self):
         """初始化当前持仓"""
         if self.current_pos is None:
-            self.current_pos = self.pos["volume_long_today"] + self.pos["volume_long_his"] - self.pos["volume_short_today"] - self.pos["volume_short_his"]
+            self.current_pos = self.pos.volume_long_today + self.pos.volume_long_his - self.pos.volume_short_today - self.pos.volume_short_his
 
     def _get_order(self, offset, vol, pos):
         """获得可平手数"""
         if vol > 0:  # 买单(增加净持仓)
             order_dir = "BUY"
-            ydAvailable=pos["volume_short_his"] - (pos["volume_short_frozen"] - pos["volume_short_frozen_today"])  # 昨空可用
-            tdAvailable=pos["volume_short_today"] - pos["volume_short_frozen_today"]  # 今空可用
+            ydAvailable=pos.volume_short_his - (pos.volume_short_frozen - pos.volume_short_frozen_today)  # 昨空可用
+            tdAvailable=pos.volume_short_today - pos.volume_short_frozen_today  # 今空可用
         else:  # 卖单
             order_dir = "SELL"
-            ydAvailable=pos["volume_long_his"] - (pos["volume_long_frozen"] - pos["volume_long_frozen_today"])  # 昨多可用
-            tdAvailable=pos["volume_long_today"] - pos["volume_long_frozen_today"]  # 今多可用
+            ydAvailable=pos.volume_long_his - (pos.volume_long_frozen - pos.volume_long_frozen_today)  # 昨多可用
+            tdAvailable=pos.volume_long_today - pos.volume_long_frozen_today  # 今多可用
         if offset == "昨":
             order_offset = "CLOSE"
             order_volume = min(abs(vol), ydAvailable if self.exchange == "SHFE" or self.exchange == "INE" or tdAvailable == 0 else 0)
             if vol > 0:
-                pos["volume_short_frozen"] += order_volume
-                pos["volume_short_frozen_his"] += order_volume
+                pos.volume_short_frozen += order_volume
+                pos.volume_short_frozen_his += order_volume
             else:
-                pos["volume_long_frozen"] += order_volume
-                pos["volume_long_frozen_his"] += order_volume
+                pos.volume_long_frozen += order_volume
+                pos.volume_long_frozen_his += order_volume
         elif offset == "今":
             order_offset = "CLOSETODAY" if self.exchange == "SHFE" or self.exchange == "INE" else "CLOSE"
             order_volume = min(abs(vol), tdAvailable if self.exchange == "SHFE" or self.exchange == "INE" else tdAvailable + ydAvailable)
             if vol > 0:
-                pos["volume_short_frozen"] += order_volume
-                pos["volume_short_frozen_today"] += order_volume
-                pos["volume_short_frozen_his"] += max(0, pos["volume_short_frozen_today"] - pos["volume_short_today"])
-                pos["volume_short_frozen_today"] = min(pos["volume_short_frozen_today"], pos["volume_short_today"])
+                pos.volume_short_frozen += order_volume
+                pos.volume_short_frozen_today += order_volume
+                pos.volume_short_frozen_his += max(0, pos.volume_short_frozen_today - pos.volume_short_today)
+                pos.volume_short_frozen_today = min(pos.volume_short_frozen_today, pos.volume_short_today)
             else:
-                pos["volume_long_frozen"] += order_volume
-                pos["volume_long_frozen_today"] += order_volume
-                pos["volume_long_frozen_his"] += max(0, pos["volume_long_frozen_today"] - pos["volume_long_today"])
-                pos["volume_long_frozen_today"] = min(pos["volume_long_frozen_today"], pos["volume_long_today"])
+                pos.volume_long_frozen += order_volume
+                pos.volume_long_frozen_today += order_volume
+                pos.volume_long_frozen_his += max(0, pos.volume_long_frozen_today - pos.volume_long_today)
+                pos.volume_long_frozen_today = min(pos.volume_long_frozen_today, pos.volume_long_today)
         elif offset == "开":
             order_offset = "OPEN"
             order_volume = abs(vol)
@@ -167,7 +167,7 @@ class InsertOrderUntilAllTradedTask(object):
         """负责追价下单的task"""
         async with self.api.register_update_notify() as update_chan:
             # 确保获得初始行情
-            while self.quote["datetime"] == "":
+            while self.quote.datetime == "":
                 await update_chan.recv()
             while self.volume != 0:
                 limit_price = self._get_price()
@@ -178,9 +178,9 @@ class InsertOrderUntilAllTradedTask(object):
                 try:
                     await insert_order_task.task
                     order = insert_order_task.order_chan.recv_latest(order)
-                    self.volume = order["volume_left"]
+                    self.volume = order.volume_left
                     if self.volume != 0 and not check_task.done():
-                        raise Exception("遇到错单: %s %s %s %d手 %f %s" % (self.symbol, self.direction, self.offset, self.volume, limit_price, order["last_msg"]))
+                        raise Exception("遇到错单: %s %s %s %d手 %f %s" % (self.symbol, self.direction, self.offset, self.volume, limit_price, order.last_msg))
                 finally:
                     await check_chan.close()
                     await check_task
@@ -188,7 +188,7 @@ class InsertOrderUntilAllTradedTask(object):
     def _get_price(self):
         """根据最新行情和下单方式计算出最优的下单价格"""
         # 主动买的价格序列(优先判断卖价，如果没有则用买价)
-        price_list = [self.quote["ask_price1"], self.quote["bid_price1"]]
+        price_list = [self.quote.ask_price1, self.quote.bid_price1]
         if self.direction == "SELL":
             price_list.reverse()
         if self.price == "PASSIVE":
@@ -197,9 +197,9 @@ class InsertOrderUntilAllTradedTask(object):
         if limit_price != limit_price:
             limit_price = price_list[1]
         if limit_price != limit_price:
-            limit_price = self.quote["last_price"]
+            limit_price = self.quote.last_price
         if limit_price != limit_price:
-            limit_price = self.quote["pre_close"]
+            limit_price = self.quote.pre_close
         return limit_price
 
     async def _check_price(self, update_chan, order_price, order):
@@ -252,12 +252,12 @@ class InsertOrderTask(object):
         last_left = self.volume
         async with self.api.register_update_notify() as update_chan:
             await self.order_chan.send(last_order)
-            while order["status"] != "FINISHED":
+            while order.status != "FINISHED":
                 await update_chan.recv()
-                if order["volume_left"] != last_left:
-                    vol = last_left - order["volume_left"]
-                    last_left = order["volume_left"]
-                    await self.trade_chan.send(vol if order["direction"] == "BUY" else -vol)
+                if order.volume_left != last_left:
+                    vol = last_left - order.volume_left
+                    last_left = order.volume_left
+                    await self.trade_chan.send(vol if order.direction == "BUY" else -vol)
                 if order != last_order:
                     last_order = order.copy()
                     await self.order_chan.send(last_order)

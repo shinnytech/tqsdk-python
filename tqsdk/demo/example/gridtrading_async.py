@@ -39,17 +39,17 @@ async def price_watcher(open_price, close_price, volume):
     async with api.register_update_notify(quote) as update_chan:  # 当 quote 有更新时会发送通知到 update_chan 上
         while True:
             async for _ in update_chan:  # 当从 update_chan 上收到行情更新通知时判断是否触发开仓条件
-                if (volume > 0 and quote["last_price"] <= open_price) or (volume < 0 and quote["last_price"] >= open_price):
+                if (volume > 0 and quote.last_price <= open_price) or (volume < 0 and quote.last_price >= open_price):
                     break
             target_volume += volume
             target_pos.set_target_volume(target_volume)
-            print("时间:", quote["datetime"], "最新价:", quote["last_price"], "开仓", volume, "手", "总仓位:", target_volume, "手")
+            print("时间:", quote.datetime, "最新价:", quote.last_price, "开仓", volume, "手", "总仓位:", target_volume, "手")
             async for _ in update_chan:  # 当从 update_chan 上收到行情更新通知时判断是否触发平仓条件
-                if (volume > 0 and quote["last_price"] > close_price) or (volume < 0 and quote["last_price"] < close_price):
+                if (volume > 0 and quote.last_price > close_price) or (volume < 0 and quote.last_price < close_price):
                     break
             target_volume -= volume
             target_pos.set_target_volume(target_volume)
-            print("时间:", quote["datetime"], "最新价:", quote["last_price"], "平仓", volume, "手", "总仓位:", target_volume, "手")
+            print("时间:", quote.datetime, "最新价:", quote.last_price, "平仓", volume, "手", "总仓位:", target_volume, "手")
 
 
 for i in range(grid_amount):

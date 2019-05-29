@@ -49,10 +49,10 @@ TqApi 的其它参数请见 :py:class:`tqsdk.api.TqApi`
 TqApi 实例内存中保存了一份完整业务数据截面, 包括行情/K线和交易账户数据. 这些数据可以通过 :py:class:`~tqsdk.api.TqApi` 提供的数据引用函数获取，以获取资金账户为例::
 
     account = api.get_account()  # 获取账户信息引用
-    print(account["balance"])    # 显示账户信息
+    print(account.balance)    # 显示账户信息
 
 值得注意的是, get_account 返回资金账户的一个动态引用, 而不是具体的数值.
-因此只需调用一次 get_account 得到 account 引用，之后任何时刻都可以使用 account["balance"] 获得最新的账户权益.
+因此只需调用一次 get_account 得到 account 引用，之后任何时刻都可以使用 account.balance 获得最新的账户权益.
 当 :py:meth:`~tqsdk.api.TqApi.wait_update` 函数返回时业务截面即完成了从上一个时间截面推进到下一个时间截面。
 
 :py:meth:`~tqsdk.api.TqApi.wait_update` 会在任何数据更新时返回. 如果想知道 :py:meth:`~tqsdk.api.TqApi.wait_update` 到底更新了哪些业务数据可以调用 :py:meth:`~tqsdk.api.TqApi.is_changing` 函数判断感兴趣的业务对象是否有更新，例如::

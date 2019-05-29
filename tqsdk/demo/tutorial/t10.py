@@ -10,7 +10,7 @@ api = TqApi(TqSim())
 quote = api.get_quote("SHFE.cu1906")
 
 # 输出 cu1906 的最新行情时间和最新价
-print(quote["datetime"], quote["last_price"])
+print(quote.datetime, quote.last_price)
 
 # 关闭api,释放资源
 api.close()

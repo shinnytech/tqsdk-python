@@ -18,7 +18,7 @@ TqSdk 是一个由 `信易科技 <https://www.shinnytech.com>`_ 发起并贡献�
 
   while True:
     api.wait_update()                                           # 等待数据更新
-    spread = q_1910["last_price"] - q_2001["last_price"]        # 计算近月合约-远月合约价差
+    spread = q_1910.last_price - q_2001.last_price        # 计算近月合约-远月合约价差
     print("当前价差:", spread)
     if spread > 250:
       print("价差过高: 空近月，多远月")                            
