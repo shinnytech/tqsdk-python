@@ -33,8 +33,8 @@ def ATR(df, n):
         api = TqApi(TqSim())
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         atr = ATR(klines, 14)
-        print(atr["tr"])  # 真实波幅
-        print(atr["atr"])  # 平均真实波幅
+        print(atr.tr)  # 真实波幅
+        print(atr.atr)  # 平均真实波幅
 
         # 预计的输出是这样的:
         [..., 143.0, 48.0, 80.0, ...]

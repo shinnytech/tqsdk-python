@@ -83,8 +83,8 @@ TqSdk 则使用基于网络协作的组件设计. 如下图:
       api.wait_update()
 
       if api.is_changing(klines.iloc[-1], "datetime"):  # 产生新k线:重新计算SMA
-          short_avg = ma(klines["close"], SHORT)  # 短周期
-          long_avg = ma(klines["close"], LONG)  # 长周期
+          short_avg = ma(klines.close, SHORT)  # 短周期
+          long_avg = ma(klines.close, LONG)  # 长周期
 
           # 均线下穿，做空
           if long_avg.iloc[-2] < short_avg.iloc[-2] and long_avg.iloc[-1] > short_avg.iloc[-1]:
