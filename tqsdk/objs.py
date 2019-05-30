@@ -2,16 +2,31 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'chengzhi'
 
+from collections.abc import MutableMapping
 
-class Entity(object):
-    def __contains__(self, key):
-        return self.__dict__.__contains__(key)
+
+class Entity(MutableMapping):
+    def __setitem__(self, key, value):
+        return self.__dict__.__setitem__(key, value)
+
+    def __delitem__(self, key):
+        return
 
     def __getitem__(self, key):
         return self.__dict__.__getitem__(key)
 
-    def __setitem__(self, key, value):
-        return self.__dict__.__setitem__(key, value)
+    def __iter__(self):
+        return iter(self.__dict__)
+
+    def __len__(self):
+        return len(self.__dict__)
+
+    def __str__(self):
+        return str(self.__dict__)
+
+    def __repr__(self):
+        return '{}, D({})'.format(super(Entity, self).__repr__(),
+                                  self.__dict__)
 
 
 class Quote(Entity):
@@ -130,7 +145,7 @@ class Position(Entity):
     """ Position 是一个持仓对象 """
 
     def __init__(self, api):
-        self.api = api
+        self._api = api
         #: "SHFE" (交易所)
         self.exchange_id = ""
         #: "rb1901" (交易所内的合约代码)
