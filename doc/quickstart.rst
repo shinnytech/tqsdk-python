@@ -193,7 +193,9 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 
   api = TqApi(TqAccount("H海通期货", "320102", "123456"))
 
-目前支持的期货公司列表, 请见 :ref:`broker_list` . 
+目前支持的期货公司列表, 请见 :ref:`broker_list` .
+
+关于实盘交易的详细信息, 请见 :ref:`trade`
 
 
 更多内容
