@@ -272,6 +272,31 @@ class Order(Entity):
         """
         return self.exchange_order_id == "" and self.status == "FINISHED"
 
+    @property
+    def trade_price(self):
+        """
+        平均成交价
+
+        :return: 当委托单部分成交或全部成交时, 返回成交部分的平均成交价. 无任何成交时, 返回 nan
+        """
+        tdict = self._api._get_obj(self._api.data, ["trade", self._api.account_id, "trades"])
+        sum_volume = sum([trade.volume for trade_id, trade in tdict.items() if trade.order_id == self.order_id])
+        if sum_volume == 0:
+            return float('nan')
+        sum_amount = sum([trade.volume * trade.price for trade_id, trade in tdict.items() if trade.order_id == self.order_id])
+        return sum_amount / sum_volume
+
+    @property
+    def trade_records(self):
+        """
+        成交记录
+
+        :return: dict, 其中每个元素的key为成交ID, value为 :py:class:`~tqsdk.objs.Trade`
+        """
+        tdict = self._api._get_obj(self._api.data, ["trade", self._api.account_id, "trades"])
+        fts = {trade_id: trade for trade_id, trade in tdict.items() if trade.order_id == self.order_id}
+        return fts
+
 
 class Trade(Entity):
     """ Trade 是一个成交对象 """
