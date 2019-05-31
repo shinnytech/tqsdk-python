@@ -256,7 +256,7 @@ api = TqApi("SIM.abcd")
             k_serial = api.get_kline_serial("SHFE.cu1812", 60)
             while True:
                 api.wait_update()
-                print(k_serial.iloc[-1]["close"])
+                print(k_serial.iloc[-1].close)
 
             # 预计的输出是这样的:
             50970.0
@@ -329,7 +329,7 @@ api = TqApi("SIM.abcd")
             serial = api.get_tick_serial("SHFE.cu1812")
             while True:
                 api.wait_update()
-                print(serial.iloc[-1]["bid_price1"], serial.iloc[-1]["ask_price1"])
+                print(serial.iloc[-1].bid_price1, serial.iloc[-1].ask_price1)
 
             # 预计的输出是这样的:
             50860.0 51580.0
@@ -363,7 +363,7 @@ api = TqApi("SIM.abcd")
     # ----------------------------------------------------------------------
     def insert_order(self, symbol, direction, offset, volume, limit_price=None, order_id=None):
         """
-        发送下单指令
+        发送下单指令. **注意: 指令将在下次调用** :py:meth:`~tqsdk.api.TqApi.wait_update` **时发出**
 
         Args:
             symbol (str): 拟下单的合约symbol, 格式为 交易所代码.合约代码,  例如 "SHFE.cu1801"
@@ -379,13 +379,7 @@ api = TqApi("SIM.abcd")
             order_id (str): [可选]指定下单单号, 默认由 api 自动生成
 
         Returns:
-            dict: 本函数总是返回一个如下结构所示的包含委托单信息的dict的引用. 每当order中信息改变时, 此dict会自动更新.
-
-            .. literalinclude:: ../../tqsdk/api.py
-                :pyobject: TqApi._gen_order_prototype
-                :dedent: 12
-                :start-after: {
-                :end-before: }
+            :py:class:`~tqsdk.objs.Order`: 返回一个委托单对象引用. 其内容将在 :py:meth:`~tqsdk.api.TqApi.wait_update` 时更新.
 
         Example::
 
@@ -396,7 +390,7 @@ api = TqApi("SIM.abcd")
             order = api.insert_order(symbol="DCE.m1809", direction="BUY", offset="OPEN", volume=3)
             while True:
                 api.wait_update()
-                print("单状态: %s, 已成交: %d 手" % (order["status"], order["volume_orign"] - order["volume_left"]))
+                print("单状态: %s, 已成交: %d 手" % (order.status, order.volume_orign - order.volume_left))
 
             # 预计的输出是这样的:
             单状态: ALIVE, 已成交: 0 手
@@ -442,10 +436,10 @@ api = TqApi("SIM.abcd")
     # ----------------------------------------------------------------------
     def cancel_order(self, order_or_order_id):
         """
-        发送撤单指令
+        发送撤单指令. **注意: 指令将在下次调用** :py:meth:`~tqsdk.api.TqApi.wait_update` **时发出**
 
         Args:
-            order_or_order_id (str/dict): 拟撤委托单的 dict 或 单号
+            order_or_order_id (str/ :py:class:`~tqsdk.objs.Order` ): 拟撤委托单或单号
 
         Example::
 
@@ -459,15 +453,15 @@ api = TqApi("SIM.abcd")
             while True:
                 api.wait_update()
                 # 当行情有变化且当前挂单价格不优时，则撤单
-                if order and api.is_changing(quote) and order["status"] == "ALIVE" and quote["bid_price1"] > order["limit_price"]:
+                if order and api.is_changing(quote) and order.status == "ALIVE" and quote.bid_price1 > order.limit_price:
                     print("价格改变，撤单重下")
                     api.cancel_order(order)
                 # 当委托单已撤或还没有下单时则下单
-                if (not order and api.is_changing(quote)) or (api.is_changing(order) and order["volume_left"] != 0 and order["status"] == "FINISHED"):
-                    print("下单: 价格 %f" % quote["bid_price1"])
-                    order = api.insert_order(symbol="DCE.m1809", direction="BUY", offset="OPEN", volume=order.get("volume_left", 3), limit_price=quote["bid_price1"])
+                if (not order and api.is_changing(quote)) or (api.is_changing(order) and order.volume_left != 0 and order.status == "FINISHED"):
+                    print("下单: 价格 %f" % quote.bid_price1)
+                    order = api.insert_order(symbol="DCE.m1809", direction="BUY", offset="OPEN", volume=order.get("volume_left", 3), limit_price=quote.bid_price1)
                 if api.is_changing(order):
-                    print("单状态: %s, 已成交: %d 手" % (order["status"], order["volume_orign"] - order["volume_left"]))
+                    print("单状态: %s, 已成交: %d 手" % (order.status, order.volume_orign - order.volume_left))
 
 
             # 预计的输出是这样的:
@@ -1325,8 +1319,8 @@ api = TqApi("SIM.abcd")
 
             # 在主图最近K线的最低处标一个"最低"文字
             klines = api.get_kline_serial("SHFE.cu1905", 86400)
-            indic = np.where(klines["low"] == klines["low"].min())[0]
-            value = klines["low"].min()
+            indic = np.where(klines.low == klines.low.min())[0]
+            value = klines.low.min()
             api.draw_text(klines, "测试413423", x=indic, y=value, color=0xFF00FF00)
         """
         if id is None:
@@ -1411,7 +1405,7 @@ api = TqApi("SIM.abcd")
 
             # 给主图最后5根K线加一个方框
             klines = api.get_kline_serial("SHFE.cu1905", 86400)
-            api.draw_box(klines, x1=-5, y1=klines.iloc[-5]["close"], x2=-1, y2=klines.iloc[-1]["close"], width=1, color=0xFF0000FF, bg_color=0x8000FF00)
+            api.draw_box(klines, x1=-5, y1=klines.iloc[-5].close, x2=-1, y2=klines.iloc[-1].close, width=1, color=0xFF0000FF, bg_color=0x8000FF00)
         """
         if id is None:
             id = uuid.uuid4().hex
