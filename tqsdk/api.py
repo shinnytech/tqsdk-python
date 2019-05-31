@@ -154,6 +154,10 @@ api = TqApi("SIM.abcd")
             with closing(TqApi(TqSim())) as api:
                 api.insert_order(symbol="DCE.m1901", direction="BUY", offset="OPEN", volume=3)
         """
+        if self.loop.is_running():
+            raise Exception("不能在协程中调用 close, 如需关闭 api 实例需在 wait_update 返回后再关闭")
+        elif asyncio._get_running_loop():
+            pass
         # 检查是否需要发送多余的序列
         for _, serial in self.serials.items():
             self._process_serial_extra_array(serial)
@@ -606,6 +610,8 @@ api = TqApi("SIM.abcd")
         """
         if self.loop.is_running():
             raise Exception("不能在协程中调用 wait_update, 如需在协程中等待业务数据更新请使用 register_update_notify")
+        elif asyncio._get_running_loop():
+            pass
         self.wait_timeout = False
         # 先尝试执行各个task,再请求下个业务数据
         self._run_until_idle()
