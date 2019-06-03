@@ -3,6 +3,7 @@
 __author__ = 'chengzhi'
 
 from collections.abc import MutableMapping
+import copy
 
 
 class Entity(MutableMapping):
@@ -27,6 +28,9 @@ class Entity(MutableMapping):
     def __repr__(self):
         return '{}, D({})'.format(super(Entity, self).__repr__(),
                                   self.__dict__)
+
+    def copy(self):
+        return copy.copy(self)
 
 
 class Quote(Entity):
