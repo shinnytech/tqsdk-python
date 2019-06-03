@@ -2,6 +2,10 @@
 
 版本变更
 =============================
+0.9.7 (2019/06/03):
+
+* 修正持仓数据不能 copy() 的问题
+
 0.9.6 (2019/05/30):
 
 * :py:class:`~tqsdk.objs.Quote`, :py:class:`~tqsdk.objs.Account`, :py:class:`~tqsdk.objs.Position`, :py:class:`~tqsdk.objs.Order`, :py:class:`~tqsdk.objs.Trade` 的成员变量名在IDE中支持自动补全(Pycharm测试可用)
