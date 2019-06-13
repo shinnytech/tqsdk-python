@@ -47,7 +47,7 @@ class TqSubAccount(object):
                     self.pending_peek = True
                     await self._send_diff()
                     if self.pending_peek:
-                        await self.main_recv_chan.send(pack)
+                        await self.main_send_chan.send(pack)
                 else:
                     await self.main_send_chan.send(pack)
         finally:
