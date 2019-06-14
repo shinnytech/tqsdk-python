@@ -23,9 +23,9 @@ while True:
         # 跳过最后一根刚生成的K线
         df = klines.iloc[:-1]
         # 比较收盘价和开盘价，判断是阳线还是阴线
-        # df["close"] 为收盘价序列, df["open"] 为开盘价序列, ">"(pandas.Series.gt) 返回收盘价是否大于开盘价的一个新序列
-        up = df["close"] > df["open"]
-        down = df["close"] < df["open"]
+        # df.close 为收盘价序列, df.open 为开盘价序列, ">"(pandas.Series.gt) 返回收盘价是否大于开盘价的一个新序列
+        up = df.close > df.open
+        down = df.close < df.open
         if all(up):
             print("连续阳线: 目标持仓 多头1手")
             # 设置目标持仓为正数表示多头，负数表示空头，0表示空仓

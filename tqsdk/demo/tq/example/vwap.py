@@ -18,7 +18,7 @@ START_HOUR, START_MINUTE = 9, 35  # 计划交易时段起始时间点
 END_HOUR, END_MINUTE = 10, 50  # 计划交易时段终点时间点
 
 
-api = TqApi()
+api = TqApi(TqSim())
 print("策略开始运行")
 # 根据 HISTORY_DAY_LENGTH 推算出需要订阅的历史数据长度, 需要注意history_day_length与time_cell的比例关系以避免超过订阅限制
 time_slot_start = datetime.time(START_HOUR, START_MINUTE)  # 计划交易时段起始时间点

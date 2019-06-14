@@ -20,7 +20,7 @@ target_pos_deferred = TargetPosTask(api, "SHFE.rb2001")
 while True:
     api.wait_update()
     if api.is_changing(quote_near) or api.is_changing(quote_deferred):
-        spread = quote_near["last_price"] - quote_deferred["last_price"]
+        spread = quote_near.last_price - quote_deferred.last_price
         print("当前价差:", spread)
         if spread > 250:
             print("目标持仓: 空近月，多远月")

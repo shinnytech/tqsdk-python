@@ -39,8 +39,8 @@ quote = api.get_quote(SYMBOL)
 klines = api.get_kline_serial(SYMBOL, 24 * 60 * 60)  # 86400: 使用日线
 position = api.get_position(SYMBOL)
 target_pos = TargetPosTask(api, SYMBOL)
-target_pos_value = position["volume_long"] - position["volume_short"]  # 净目标净持仓数
-open_position_price = position["open_price_long"] if target_pos_value > 0 else position["open_price_short"]  # 开仓价
+target_pos_value = position.volume_long - position.volume_short  # 净目标净持仓数
+open_position_price = position.open_price_long if target_pos_value > 0 else position.open_price_short  # 开仓价
 pivot, bBreak, sSetup, sEnter, bEnter, bSetup, sBreak = get_index_line(klines)  # 七条标准线
 
 while True:
@@ -50,7 +50,7 @@ while True:
         pivot, bBreak, sSetup, sEnter, bEnter, bSetup, sBreak = get_index_line(klines)
 
     if api.is_changing(quote, "datetime"):
-        now = datetime.strptime(quote["datetime"], "%Y-%m-%d %H:%M:%S.%f")
+        now = datetime.strptime(quote.datetime, "%Y-%m-%d %H:%M:%S.%f")
         if now.hour == CLOSE_HOUR and now.minute >= CLOSE_MINUTE:  # 到达平仓时间: 平仓
             print("临近本交易日收盘: 平仓")
             target_pos_value = 0  # 平仓
@@ -58,42 +58,42 @@ while True:
 
     '''交易规则'''
     if api.is_changing(quote, "last_price"):
-        print("最新价: %f" % quote["last_price"])
+        print("最新价: %f" % quote.last_price)
 
         # 开仓价与当前行情价之差大于止损点则止损
-        if (target_pos_value > 0 and open_position_price - quote["last_price"] >= STOP_LOSS_PRICE) or \
-                (target_pos_value < 0 and quote["last_price"] - open_position_price >= STOP_LOSS_PRICE):
+        if (target_pos_value > 0 and open_position_price - quote.last_price >= STOP_LOSS_PRICE) or \
+                (target_pos_value < 0 and quote.last_price - open_position_price >= STOP_LOSS_PRICE):
             target_pos_value = 0  # 平仓
 
         # 反转:
         if target_pos_value > 0:  # 多头持仓
-            if quote["highest"] > sSetup and quote["last_price"] < sEnter:
+            if quote.highest > sSetup and quote.last_price < sEnter:
                 # 多头持仓,当日内最高价超过观察卖出价后，
                 # 盘中价格出现回落，且进一步跌破反转卖出价构成的支撑线时，
                 # 采取反转策略，即在该点位反手做空
                 print("多头持仓,当日内最高价超过观察卖出价后跌破反转卖出价: 反手做空")
                 target_pos_value = -3  # 做空
-                open_position_price = quote["last_price"]
+                open_position_price = quote.last_price
         elif target_pos_value < 0:  # 空头持仓
-            if quote["lowest"] < bSetup and quote["last_price"] > bEnter:
+            if quote.lowest < bSetup and quote.last_price > bEnter:
                 # 空头持仓，当日内最低价低于观察买入价后，
                 # 盘中价格出现反弹，且进一步超过反转买入价构成的阻力线时，
                 # 采取反转策略，即在该点位反手做多
                 print("空头持仓,当日最低价低于观察买入价后超过反转买入价: 反手做多")
                 target_pos_value = 3  # 做多
-                open_position_price = quote["last_price"]
+                open_position_price = quote.last_price
 
         # 突破:
         elif target_pos_value == 0:  # 空仓条件
-            if quote["last_price"] > bBreak:
+            if quote.last_price > bBreak:
                 # 在空仓的情况下，如果盘中价格超过突破买入价，
                 # 则采取趋势策略，即在该点位开仓做多
                 print("空仓,盘中价格超过突破买入价: 开仓做多")
                 target_pos_value = 3  # 做多
-                open_position_price = quote["last_price"]
-            elif quote["last_price"] < sBreak:
+                open_position_price = quote.last_price
+            elif quote.last_price < sBreak:
                 # 在空仓的情况下，如果盘中价格跌破突破卖出价，
                 # 则采取趋势策略，即在该点位开仓做空
                 print("空仓,盘中价格跌破突破卖出价: 开仓做空")
                 target_pos_value = -3  # 做空
-                open_position_price = quote["last_price"]
+                open_position_price = quote.last_price
