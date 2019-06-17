@@ -58,8 +58,6 @@ class TqApi(object):
 
                 * str: 连接天勤终端, 实盘交易填写期货公司提供的帐号, 使用天勤终端内置的模拟交易填写"SIM", 需先在天勤终端内登录交易
 
-                * TqApi: 连接到另一个以master模式运行的TqApi, 本TqApi实例将以slave模式运行
-
             url (str): [可选]指定服务器的地址
                 * 当 account 为 TqAccount 类型时, 可以通过该参数指定交易服务器地址, 默认使用 opentd.shinnytech.com. 行情始终使用 openmd.shinnytech.com
 
@@ -134,7 +132,7 @@ api = TqApi("SIM.abcd")
         # 根据master/slave分别执行不同的初始化任务
         self.is_slave = isinstance(account, TqApi)
         if not self.is_slave:
-            self.slaves = []
+            self._slaves = []
             self.account_id = account if isinstance(account, str) else account.account_id
             if sys.platform.startswith("win"):
                 self.create_task(self._windows_patch())  # Windows系统下asyncio不支持KeyboardInterrupt的临时补丁
@@ -151,54 +149,22 @@ api = TqApi("SIM.abcd")
                 raise
             self.diffs = []  # 截面数据不算做更新数据
         else:
-            self.master = account
-            if self.master.is_slave:
+            self._master = account
+            if self._master.is_slave:
                 raise Exception("不可以为slave再创建slave")
-            self.account_id = self.master.account_id
-            self.master.add_slave(self)
-
-    @staticmethod
-    def deep_copy_dict(source, dest):
-        for key, value in source.items():
-            if key.startswith("_"):
-                continue
-            if isinstance(value, dict):
-                dest[key] = {}
-                TqApi.deep_copy_dict(value, dest[key])
-            else:
-                dest[key] = value
-
-    def add_slave(self, slave_api):
-        self.slaves.append(slave_api)
-        dst = {}
-        TqApi.deep_copy_dict(self.data, dst)
-        slave_api.slave_recv_pack({
-            "aid": "rtn_data",
-            "data": [dst]
-        })
-
-    def slave_send_pack(self, pack):
-        if pack.get("aid", None) == "subscribe_quote":
-            new_subscribe_set = self.requests["quotes"] | set(pack["ins_list"].split(","))
-            if new_subscribe_set != self.requests["quotes"]:
-                self.requests["quotes"] = new_subscribe_set
-                self.loop.call_soon_threadsafe(lambda: self.send_pack({
-                            "aid": "subscribe_quote",
-                            "ins_list": ",".join(self.requests["quotes"])
-                        }))
-            return
-        self.loop.call_soon_threadsafe(lambda: self.send_pack(pack))
-
-    def slave_recv_pack(self, pack):
-        self.loop.call_soon_threadsafe(lambda: self.recv_chan.send_nowait(pack))
-
-    def send_pack(self, pack):
-        if not self.is_slave:
-            self.send_chan.send_nowait(pack)
-        else:
-            self.master.slave_send_pack(pack)
+            self.account_id = self._master.account_id
+            self._master._add_slave(self)
 
     # ----------------------------------------------------------------------
+    def copy(self):
+        """
+        创建当前TqApi的一个副本. 这个副本可以在另一个线程中使用
+
+        Returns:
+            :py:class:`~tqsdk.api.TqApi`: 返回当前TqApi的一个副本. 这个副本可以在另一个线程中使用
+        """
+        return TqApi(self)
+
     def close(self):
         """
         关闭天勤接口实例并释放相应资源
@@ -265,7 +231,7 @@ api = TqApi("SIM.abcd")
         quote = self._get_obj(self.data, ["quotes", symbol], self.prototype["quotes"]["#"])
         if symbol not in self.requests.setdefault("quotes", set()):
             self.requests["quotes"].add(symbol)
-            self.send_pack({
+            self._send_pack({
                 "aid": "subscribe_quote",
                 "ins_list": ",".join(self.requests["quotes"]),
             })
@@ -329,7 +295,7 @@ api = TqApi("SIM.abcd")
         request = (symbol, duration_seconds, data_length, chart_id)
         serial = self.requests.setdefault("klines", {}).get(request, None)
         if serial is None or chart_id is not None:
-            self.send_pack({
+            self._send_pack({
                 "aid": "set_chart",
                 "chart_id": chart_id if chart_id is not None else self._generate_chart_id("realtime", symbol, duration_seconds),
                 "ins_list": symbol,
@@ -400,7 +366,7 @@ api = TqApi("SIM.abcd")
         request = (symbol, data_length, chart_id)
         serial = self.requests.setdefault("ticks", {}).get(request, None)
         if serial is None or chart_id is not None:
-            self.send_pack({
+            self._send_pack({
                 "aid": "set_chart",
                 "chart_id": chart_id if chart_id is not None else self._generate_chart_id("realtime", symbol, 0),
                 "ins_list": symbol,
@@ -477,7 +443,7 @@ api = TqApi("SIM.abcd")
             msg["price_type"] = "LIMIT"
             msg["time_condition"] = "GFD"
             msg["limit_price"] = limit_price
-        self.send_pack(msg)
+        self._send_pack(msg)
         order = self.get_order(order_id)
         order.update({
             "order_id": order_id,
@@ -540,7 +506,7 @@ api = TqApi("SIM.abcd")
             "user_id": self.account_id,
             "order_id": order_id,
         }
-        self.send_pack(msg)
+        self._send_pack(msg)
 
     # ----------------------------------------------------------------------
     def get_account(self):
@@ -876,7 +842,7 @@ api = TqApi("SIM.abcd")
                 account = TqSim(account_id=self.account_id)
             url = None
         if isinstance(account, str):  # 如果帐号类型是字符串，则连接天勤客户端
-            self.send_pack({
+            self._send_pack({
                 "aid": "req_login",
                 "user_name": self.account_id,
             })
@@ -1054,7 +1020,7 @@ api = TqApi("SIM.abcd")
                 serial_id: serial_data,
             }
         }
-        self.send_pack(pack)
+        self._send_pack(pack)
 
     def _run_once(self):
         """执行 ioloop 直到 ioloop.stop 被调用"""
@@ -1164,8 +1130,8 @@ api = TqApi("SIM.abcd")
             if pack is None:
                 return
             if not self.is_slave:
-                for slave in self.slaves:
-                    slave.slave_recv_pack(pack)
+                for slave in self._slaves:
+                    slave._slave_recv_pack(pack)
             self.pending_diffs.extend(pack.get("data", []))
 
     @staticmethod
@@ -1358,6 +1324,50 @@ api = TqApi("SIM.abcd")
             days += 7 - week_day
         return begin_mark + days * 86400000000000
 
+    @staticmethod
+    def _deep_copy_dict(source, dest):
+        for key, value in source.items():
+            if key.startswith("_"):
+                continue
+            if isinstance(value, dict):
+                dest[key] = {}
+                TqApi._deep_copy_dict(value, dest[key])
+            else:
+                dest[key] = value
+
+    def _add_slave(self, slave_api):
+        self._slaves.append(slave_api)
+        dst = {}
+        TqApi._deep_copy_dict(self.data, dst)
+        slave_api._slave_recv_pack({
+            "aid": "rtn_data",
+            "data": [dst]
+        })
+
+    def _slave_send_pack(self, pack):
+        if pack.get("aid", None) == "subscribe_quote":
+            self.loop.call_soon_threadsafe(lambda: self._send_subscribe_quote(pack))
+            return
+        self.loop.call_soon_threadsafe(lambda: self._send_pack(pack))
+
+    def _slave_recv_pack(self, pack):
+        self.loop.call_soon_threadsafe(lambda: self.recv_chan.send_nowait(pack))
+
+    def _send_subscribe_quote(self, pack):
+        new_subscribe_set = self.requests["quotes"] | set(pack["ins_list"].split(","))
+        if new_subscribe_set != self.requests["quotes"]:
+            self.requests["quotes"] = new_subscribe_set
+            self.loop.call_soon_threadsafe(lambda: self._send_pack({
+                "aid": "subscribe_quote",
+                "ins_list": ",".join(self.requests["quotes"])
+            }))
+
+    def _send_pack(self, pack):
+        if not self.is_slave:
+            self.send_chan.send_nowait(pack)
+        else:
+            self._master._slave_send_pack(pack)
+
     def draw_text(self, base_k_dataframe, text, x=None, y=None, id=None, board="MAIN", color=0xFFFF0000):
         """
         配合天勤使用时, 在天勤的行情图上绘制一个字符串
@@ -1499,7 +1509,7 @@ api = TqApi("SIM.abcd")
                 serial_id: serial_data,
             }
         }
-        self.send_pack(pack)
+        self._send_pack(pack)
 
     def _offset_to_x(self, base_k_dataframe, x):
         if x is None:
