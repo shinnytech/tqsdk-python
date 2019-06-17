@@ -138,22 +138,22 @@ api = TqApi("SIM.abcd")
                 self.create_task(self._windows_patch())  # Windows系统下asyncio不支持KeyboardInterrupt的临时补丁
             self.create_task(self._notify_watcher())  # 监控服务器发送的通知
             self._setup_connection(account, url, backtest)  # 初始化通讯连接
-            deadline = time.time() + 60
-            try:
-                while self.data.get("mdhis_more_data", True) or self.data.get("trade", {}).get(self.account_id, {}).get(
-                        "trade_more_data", True):
-                    if not self.wait_update(deadline=deadline):  # 等待连接成功并收取截面数据
-                        raise Exception("接收数据超时，请检查客户端及网络是否正常")
-            except:
-                self.close()
-                raise
-            self.diffs = []  # 截面数据不算做更新数据
         else:
             self._master = account
             if self._master.is_slave:
                 raise Exception("不可以为slave再创建slave")
             self.account_id = self._master.account_id
             self._master._add_slave(self)
+        deadline = time.time() + 60
+        try:
+            while self.data.get("mdhis_more_data", True) or self.data.get("trade", {}).get(self.account_id, {}).get(
+                    "trade_more_data", True):
+                if not self.wait_update(deadline=deadline):  # 等待连接成功并收取截面数据
+                    raise Exception("接收数据超时，请检查客户端及网络是否正常")
+        except:
+            self.close()
+            raise
+        self.diffs = []  # 截面数据不算做更新数据
 
     # ----------------------------------------------------------------------
     def copy(self):
@@ -228,6 +228,8 @@ api = TqApi("SIM.abcd")
             24575.0
             ...
         """
+        if symbol not in self.data.get("quotes", {}):
+            raise Exception("代码 %s 不存在, 请检查合约代码是否填写正确" % (symbol))
         quote = self._get_obj(self.data, ["quotes", symbol], self.prototype["quotes"]["#"])
         if symbol not in self.requests.setdefault("quotes", set()):
             self.requests["quotes"].add(symbol)
@@ -288,6 +290,8 @@ api = TqApi("SIM.abcd")
             50960.0
             ...
         """
+        if symbol not in self.data.get("quotes", {}):
+            raise Exception("代码 %s 不存在, 请检查合约代码是否填写正确" % (symbol))
         if data_length > 8964:
             data_length = 8964
         duration_seconds = int(duration_seconds)  # 转成整数
@@ -361,6 +365,8 @@ api = TqApi("SIM.abcd")
             50820.0 51580.0
             ...
         """
+        if symbol not in self.data.get("quotes", {}):
+            raise Exception("代码 %s 不存在, 请检查合约代码是否填写正确" % (symbol))
         if data_length > 8964:
             data_length = 8964
         request = (symbol, data_length, chart_id)
