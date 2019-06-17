@@ -1363,10 +1363,10 @@ api = TqApi("SIM.abcd")
         new_subscribe_set = self.requests["quotes"] | set(pack["ins_list"].split(","))
         if new_subscribe_set != self.requests["quotes"]:
             self.requests["quotes"] = new_subscribe_set
-            self.loop.call_soon_threadsafe(lambda: self._send_pack({
+            self._send_pack({
                 "aid": "subscribe_quote",
                 "ins_list": ",".join(self.requests["quotes"])
-            }))
+            })
 
     def _send_pack(self, pack):
         if not self.is_slave:
