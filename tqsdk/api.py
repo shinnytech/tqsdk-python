@@ -51,12 +51,14 @@ class TqApi(object):
         创建天勤接口实例
 
         Args:
-            account (TqAccount/TqSim/str): 交易账号:
+            account (TqAccount/TqSim/str/TqApi): 交易账号:
                 * TqAccount: 使用实盘帐号, 直连行情和交易服务器(不通过天勤终端), 需提供期货公司/帐号/密码
 
                 * TqSim: 使用 Api 自带的模拟功能, 直连行情服务器或连接天勤终端(例如使用历史复盘进行测试)接收行情数据
 
                 * str: 连接天勤终端, 实盘交易填写期货公司提供的帐号, 使用天勤终端内置的模拟交易填写"SIM", 需先在天勤终端内登录交易
+
+                * TqApi: 连接到另一个以master模式运行的TqApi, 本TqApi实例将以slave模式运行
 
             url (str): [可选]指定服务器的地址
                 * 当 account 为 TqAccount 类型时, 可以通过该参数指定交易服务器地址, 默认使用 opentd.shinnytech.com. 行情始终使用 openmd.shinnytech.com
@@ -101,14 +103,8 @@ api = TqApi("7382621.abcd")  # 7382621 是期货账号, 必须与天勤当前登
 api = TqApi("SIM.abcd") 
 """
             raise TypeError(msg)
-        self.loop = asyncio.new_event_loop() if loop is None else loop  # 创建一个新的 ioloop, 避免和其他框架/环境产生干扰
-        # 回测需要行情和交易 lockstep, 而 asyncio 没有将内部的 _ready 队列暴露出来, 因此 monkey patch call_soon 函数用来判断是否有任务等待执行
-        self.loop.call_soon = functools.partial(self._call_soon, self.loop.call_soon)
-        self.event_rev, self.check_rev = 0, 0
-        self.requests = {}  # 记录已发出的请求
-        self.serials = {}  # 记录所有数据序列
-        self.account_id = account if isinstance(account, str) else account.account_id
-        self.logger = logging.getLogger("TqApi")  # 调试信息输出
+        # 初始化 logger
+        self.logger = logging.getLogger("TqApi")
         if debug and not self.logger.handlers:
             self.logger.setLevel(logging.DEBUG)
             sh = logging.StreamHandler()
@@ -118,6 +114,15 @@ api = TqApi("SIM.abcd")
             fh = logging.FileHandler(filename=debug)
             fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
             self.logger.addHandler(fh)
+        # 初始化loop
+        self.loop = asyncio.new_event_loop() if loop is None else loop  # 创建一个新的 ioloop, 避免和其他框架/环境产生干扰
+        # 回测需要行情和交易 lockstep, 而 asyncio 没有将内部的 _ready 队列暴露出来, 因此 monkey patch call_soon 函数用来判断是否有任务等待执行
+        self.loop.call_soon = functools.partial(self._call_soon, self.loop.call_soon)
+        self.event_rev, self.check_rev = 0, 0
+        self.requests = {
+            "quotes": set(),
+        }  # 记录已发出的请求
+        self.serials = {}  # 记录所有数据序列
         self.send_chan, self.recv_chan = TqChan(self), TqChan(self)  # 消息收发队列
         self.data = {"_path": [], "_listener": weakref.WeakSet()}  # 数据存储
         self.diffs = []  # 自上次wait_update返回后收到更新数据的数组
@@ -126,19 +131,72 @@ api = TqApi("SIM.abcd")
         self.tasks = set()  # 由api维护的所有根task，不包含子task，子task由其父task维护
         self.exceptions = []  # 由api维护的所有task抛出的例外
         self.wait_timeout = False  # wait_update 是否触发超时
-        if sys.platform.startswith("win"):
-            self.create_task(self._windows_patch())  # Windows系统下asyncio不支持KeyboardInterrupt的临时补丁
-        self.create_task(self._notify_watcher())  # 监控服务器发送的通知
-        self._setup_connection(account, url, backtest)  # 初始化通讯连接
-        deadline = time.time() + 60
-        try:
-            while self.data.get("mdhis_more_data", True) or self.data.get("trade", {}).get(self.account_id, {}).get("trade_more_data", True):
-                if not self.wait_update(deadline=deadline):  # 等待连接成功并收取截面数据
-                    raise Exception("接收数据超时，请检查客户端及网络是否正常")
-        except:
-            self.close()
-            raise
-        self.diffs = []  # 截面数据不算做更新数据
+        # 根据master/slave分别执行不同的初始化任务
+        self.is_slave = isinstance(account, TqApi)
+        if not self.is_slave:
+            self.slaves = []
+            self.account_id = account if isinstance(account, str) else account.account_id
+            if sys.platform.startswith("win"):
+                self.create_task(self._windows_patch())  # Windows系统下asyncio不支持KeyboardInterrupt的临时补丁
+            self.create_task(self._notify_watcher())  # 监控服务器发送的通知
+            self._setup_connection(account, url, backtest)  # 初始化通讯连接
+            deadline = time.time() + 60
+            try:
+                while self.data.get("mdhis_more_data", True) or self.data.get("trade", {}).get(self.account_id, {}).get(
+                        "trade_more_data", True):
+                    if not self.wait_update(deadline=deadline):  # 等待连接成功并收取截面数据
+                        raise Exception("接收数据超时，请检查客户端及网络是否正常")
+            except:
+                self.close()
+                raise
+            self.diffs = []  # 截面数据不算做更新数据
+        else:
+            self.master = account
+            if self.master.is_slave:
+                raise Exception("不可以为slave再创建slave")
+            self.account_id = self.master.account_id
+            self.master.add_slave(self)
+
+    @staticmethod
+    def deep_copy_dict(source, dest):
+        for key, value in source.items():
+            if key.startswith("_"):
+                continue
+            if isinstance(value, dict):
+                dest[key] = {}
+                TqApi.deep_copy_dict(value, dest[key])
+            else:
+                dest[key] = value
+
+    def add_slave(self, slave_api):
+        self.slaves.append(slave_api)
+        dst = {}
+        TqApi.deep_copy_dict(self.data, dst)
+        slave_api.slave_recv_pack({
+            "aid": "rtn_data",
+            "data": [dst]
+        })
+
+    def slave_send_pack(self, pack):
+        if pack.get("aid", None) == "subscribe_quote":
+            new_subscribe_set = self.requests["quotes"] | set(pack["ins_list"].split(","))
+            if new_subscribe_set != self.requests["quotes"]:
+                self.requests["quotes"] = new_subscribe_set
+                self.loop.call_soon_threadsafe(lambda: self.send_pack({
+                            "aid": "subscribe_quote",
+                            "ins_list": ",".join(self.requests["quotes"])
+                        }))
+            return
+        self.loop.call_soon_threadsafe(lambda: self.send_pack(pack))
+
+    def slave_recv_pack(self, pack):
+        self.loop.call_soon_threadsafe(lambda: self.recv_chan.send_nowait(pack))
+
+    def send_pack(self, pack):
+        if not self.is_slave:
+            self.send_chan.send_nowait(pack)
+        else:
+            self.master.slave_send_pack(pack)
 
     # ----------------------------------------------------------------------
     def close(self):
@@ -207,7 +265,7 @@ api = TqApi("SIM.abcd")
         quote = self._get_obj(self.data, ["quotes", symbol], self.prototype["quotes"]["#"])
         if symbol not in self.requests.setdefault("quotes", set()):
             self.requests["quotes"].add(symbol)
-            self.send_chan.send_nowait({
+            self.send_pack({
                 "aid": "subscribe_quote",
                 "ins_list": ",".join(self.requests["quotes"]),
             })
@@ -271,7 +329,7 @@ api = TqApi("SIM.abcd")
         request = (symbol, duration_seconds, data_length, chart_id)
         serial = self.requests.setdefault("klines", {}).get(request, None)
         if serial is None or chart_id is not None:
-            self.send_chan.send_nowait({
+            self.send_pack({
                 "aid": "set_chart",
                 "chart_id": chart_id if chart_id is not None else self._generate_chart_id("realtime", symbol, duration_seconds),
                 "ins_list": symbol,
@@ -342,7 +400,7 @@ api = TqApi("SIM.abcd")
         request = (symbol, data_length, chart_id)
         serial = self.requests.setdefault("ticks", {}).get(request, None)
         if serial is None or chart_id is not None:
-            self.send_chan.send_nowait({
+            self.send_pack({
                 "aid": "set_chart",
                 "chart_id": chart_id if chart_id is not None else self._generate_chart_id("realtime", symbol, 0),
                 "ins_list": symbol,
@@ -419,7 +477,7 @@ api = TqApi("SIM.abcd")
             msg["price_type"] = "LIMIT"
             msg["time_condition"] = "GFD"
             msg["limit_price"] = limit_price
-        self.send_chan.send_nowait(msg)
+        self.send_pack(msg)
         order = self.get_order(order_id)
         order.update({
             "order_id": order_id,
@@ -482,7 +540,7 @@ api = TqApi("SIM.abcd")
             "user_id": self.account_id,
             "order_id": order_id,
         }
-        self.send_chan.send_nowait(msg)
+        self.send_pack(msg)
 
     # ----------------------------------------------------------------------
     def get_account(self):
@@ -553,7 +611,7 @@ api = TqApi("SIM.abcd")
         Returns:
             :py:class:`~tqsdk.objs.Order`: 当指定了order_id时, 返回一个委托单对象引用. 其内容将在 :py:meth:`~tqsdk.api.TqApi.wait_update` 时更新.
 
-            不填order_id参数调用本函数, 将返回包含用户所有委托单的一个dict, 其中每个元素的key为合约代码, value为 :py:class:`~tqsdk.objs.Order`
+            不填order_id参数调用本函数, 将返回包含用户所有委托单的一个dict, 其中每个元素的key为委托单号, value为 :py:class:`~tqsdk.objs.Order`
 
             注意: 在刚下单后, tqsdk 还没有收到回单信息时, 此对象中各项内容为空
 
@@ -612,7 +670,8 @@ api = TqApi("SIM.abcd")
         # 检查是否需要发送多余的序列
         for _, serial in self.serials.items():
             self._process_serial_extra_array(serial)
-        self.send_chan.send_nowait({"aid": "peek_message"})
+        if not self.is_slave:
+            self.send_chan.send_nowait({"aid": "peek_message"})
         # 先 _fetch_msg 再判断 deadline, 避免当 deadline 立即触发时无法接收数据
         update_task = self.create_task(self._fetch_msg())
         deadline_handle = None if deadline is None else self.loop.call_later(max(0, deadline - time.time()), self._set_wait_timeout)
@@ -817,7 +876,7 @@ api = TqApi("SIM.abcd")
                 account = TqSim(account_id=self.account_id)
             url = None
         if isinstance(account, str):  # 如果帐号类型是字符串，则连接天勤客户端
-            self.send_chan.send_nowait({
+            self.send_pack({
                 "aid": "req_login",
                 "user_name": self.account_id,
             })
@@ -995,7 +1054,7 @@ api = TqApi("SIM.abcd")
                 serial_id: serial_data,
             }
         }
-        self.send_chan.send_nowait(pack)
+        self.send_pack(pack)
 
     def _run_once(self):
         """执行 ioloop 直到 ioloop.stop 被调用"""
@@ -1104,6 +1163,9 @@ api = TqApi("SIM.abcd")
             pack = await self.recv_chan.recv()
             if pack is None:
                 return
+            if not self.is_slave:
+                for slave in self.slaves:
+                    slave.slave_recv_pack(pack)
             self.pending_diffs.extend(pack.get("data", []))
 
     @staticmethod
@@ -1437,7 +1499,7 @@ api = TqApi("SIM.abcd")
                 serial_id: serial_data,
             }
         }
-        self.send_chan.send_nowait(pack)
+        self.send_pack(pack)
 
     def _offset_to_x(self, base_k_dataframe, x):
         if x is None:
