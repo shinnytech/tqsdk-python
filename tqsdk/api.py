@@ -263,15 +263,15 @@ api = TqApi("SIM.abcd")
         Returns:
             pandas.DataFrame: 本函数总是返回一个 pandas.DataFrame 实例. 行数=data_length, 包含以下列:
 
-            id: int, 1234 (k线序列号)
-            datetime: int, 1501080715000000000 (K线起点时间(按北京时间)，自unix epoch(1970-01-01 00:00:00 GMT)以来的纳秒数)
-            open: float, 51450.0 (K线起始时刻的最新价)
-            high: float, 51450.0 (K线时间范围内的最高价)
-            low: float, 51450.0 (K线时间范围内的最低价)
-            close: float, 51450.0 (K线结束时刻的最新价)
-            volume: int, 11 (K线时间范围内的成交量)
-            open_oi: int, 27354 (K线起始时刻的持仓量)
-            close_oi: int, 27355 (K线结束时刻的持仓量)
+            * id: int, 1234 (k线序列号)
+            * datetime: int, 1501080715000000000 (K线起点时间(按北京时间)，自unix epoch(1970-01-01 00:00:00 GMT)以来的纳秒数)
+            * open: float, 51450.0 (K线起始时刻的最新价)
+            * high: float, 51450.0 (K线时间范围内的最高价)
+            * low: float, 51450.0 (K线时间范围内的最低价)
+            * close: float, 51450.0 (K线结束时刻的最新价)
+            * volume: int, 11 (K线时间范围内的成交量)
+            * open_oi: int, 27354 (K线起始时刻的持仓量)
+            * close_oi: int, 27355 (K线结束时刻的持仓量)
 
         Example::
 
@@ -334,19 +334,19 @@ api = TqApi("SIM.abcd")
         Returns:
             pandas.DataFrame: 本函数总是返回一个 pandas.DataFrame 实例. 行数=data_length, 包含以下列:
 
-            id: int, tick序列号
-            datetime: int, 1501074872000000000 (tick从交易所发出的时间(按北京时间)，自unix epoch(1970-01-01 00:00:00 GMT)以来的纳秒数)
-            last_price: float, 3887.0 (最新价)
-            average: float, 3820.0 (当日均价)
-            highest: float, 3897.0 (当日最高价)
-            lowest: float, 3806.0 (当日最低价)
-            ask_price1: float, 3886.0 (卖一价)
-            ask_volume1: int, 3 (卖一量)
-            bid_price1: float, 3881.0 (买一价)
-            bid_volume1: int, 18 (买一量)
-            volume: int 7823 (当日成交量)
-            amount: float, 19237841.0 (成交额)
-            open_interest: int, 1941 (持仓量)
+            * id: int, tick序列号
+            * datetime: int, 1501074872000000000 (tick从交易所发出的时间(按北京时间)，自unix epoch(1970-01-01 00:00:00 GMT)以来的纳秒数)
+            * last_price: float, 3887.0 (最新价)
+            * average: float, 3820.0 (当日均价)
+            * highest: float, 3897.0 (当日最高价)
+            * lowest: float, 3806.0 (当日最低价)
+            * ask_price1: float, 3886.0 (卖一价)
+            * ask_volume1: int, 3 (卖一量)
+            * bid_price1: float, 3881.0 (买一价)
+            * bid_volume1: int, 18 (买一量)
+            * volume: int 7823 (当日成交量)
+            * amount: float, 19237841.0 (成交额)
+            * open_interest: int, 1941 (持仓量)
 
         Example::
 
