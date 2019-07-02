@@ -33,7 +33,6 @@ import pandas as pd
 import numpy as np
 from .__version__ import __version__
 from tqsdk.sim import TqSim
-from tqsdk.subaccount import TqSubAccount
 from tqsdk.objs import Entity, Quote, Account, Position, Order, Trade
 
 
@@ -880,10 +879,6 @@ api = TqApi("SIM.abcd")
                 td_url = url if url else "wss://opentd.shinnytech.com/trade/user0"
                 self.create_task(self._connect(td_url, ws_td_send_chan, ws_td_recv_chan))  # 启动交易websocket连接
                 self.create_task(account._run(self, self.send_chan, self.recv_chan, ws_md_send_chan, ws_md_recv_chan, ws_td_send_chan, ws_td_recv_chan))
-        if "." in self.account_id and (isinstance(account, str) or isinstance(account, TqAccount)):
-            main_send_chan, main_recv_chan = self.send_chan, self.recv_chan
-            self.send_chan, self.recv_chan = TqChan(self), TqChan(self)
-            self.create_task(TqSubAccount(self.account_id)._run(self, self.send_chan, self.recv_chan, main_send_chan, main_recv_chan))
 
     def _fetch_symbol_info(self, url):
         """获取合约信息"""
