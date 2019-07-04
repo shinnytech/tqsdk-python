@@ -85,7 +85,7 @@ class TargetPosTask(object):
                 frozen_volume = sum([order.volume_left for order in self.pos.orders.values() if not order.is_dead() and order.offset == order_offset and order.direction == order_dir])
             else:
                 frozen_volume = sum([order.volume_left for order in self.pos.orders.values() if not order.is_dead() and order.offset != "OPEN" and order.direction == order_dir])
-            order_volume = max(0, pos_all - frozen_volume)
+            order_volume = min(abs(vol), max(0, pos_all - frozen_volume))
         elif offset == "今":
             if self.exchange == "SHFE" or self.exchange == "INE":
                 order_offset = "CLOSETODAY"
@@ -97,7 +97,7 @@ class TargetPosTask(object):
             else:
                 order_offset = "CLOSE"
                 frozen_volume = sum([order.volume_left for order in self.pos.orders.values() if not order.is_dead() and order.offset != "OPEN" and order.direction == order_dir])
-            order_volume = max(0, pos_all - frozen_volume)
+            order_volume = min(abs(vol), max(0, pos_all - frozen_volume))
         elif offset == "开":
             order_offset = "OPEN"
             order_volume = abs(vol)
@@ -111,8 +111,10 @@ class TargetPosTask(object):
         async for target_pos in self.pos_chan:
             # 确定调仓增减方向
             delta_volume = target_pos - self.pos.pos
+            print ("_target_pos_task", target_pos, self.pos.pos)
             all_tasks = []
             for each_priority in self.offset_priority + ",":  # 按不同模式的优先级顺序报出不同的offset单，股指(“昨开”)平昨优先从不平今就先报平昨，原油平今优先("今昨开")就报平今
+                print("delta_volume", delta_volume)
                 if each_priority == ",":
                     await gather(*[each.task for each in all_tasks])
                     all_tasks =[]
@@ -121,6 +123,7 @@ class TargetPosTask(object):
                 if order_volume == 0:  # 如果没有则直接到下一种offset
                     continue
                 order_task = InsertOrderUntilAllTradedTask(self.api, self.symbol, order_dir, offset=order_offset,volume=order_volume, price=self.price,trade_chan=self.trade_chan)
+                print("InsertOrderUntilAllTradedTask", order_dir, order_offset, order_volume)
                 all_tasks.append(order_task)
                 delta_volume -= order_volume if order_dir == "BUY" else -order_volume
             self.current_pos = target_pos
