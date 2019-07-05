@@ -278,9 +278,9 @@ class TqSim(object):
         self._send_account()
         self._adjust_account()
         for symbol, position in self.positions.items():
-            position["pos_long_his"]=position["pos_long"]
+            position["pos_long_his"]=position["volume_long"]
             position["pos_long_today"]=0
-            position["pos_short_his"]=position["pos_short"]
+            position["pos_short_his"]=position["volume_short"]
             position["pos_short_today"]=0
             position["volume_long_today"] = 0
             position["volume_long_his"] = position["volume_long"]
