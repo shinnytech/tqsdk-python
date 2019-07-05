@@ -278,6 +278,10 @@ class TqSim(object):
         self._send_account()
         self._adjust_account()
         for symbol, position in self.positions.items():
+            position["pos_long_his"]=position["pos_long"]
+            position["pos_long_today"]=0
+            position["pos_short_his"]=position["pos_short"]
+            position["pos_short_today"]=0
             position["volume_long_today"] = 0
             position["volume_long_his"] = position["volume_long"]
             position["volume_short_today"] = 0
@@ -411,6 +415,20 @@ class TqSim(object):
                     if position["volume_long_his"] < 0:
                         position["volume_long_today"] += position["volume_long_his"]
                         position["volume_long_his"] = 0
+
+            if priority[0]=="T":
+                position["pos_long_today"] +=volume_long
+                if len(priority) >1:
+                    if position["pos_long_today"]<0:
+                        position["pos_long_his"] += position["pos_long_today"]
+                        position["pos_long_today"]=0
+            else:
+                position["pos_long_his"]+=volume_long
+                if len(priority) > 1:
+                    if position["pos_long_his"] < 0:
+                        position["pos_long_today"] += position["pos_long_his"]
+                        position["pos_long_his"] = 0
+
             self._adjust_account(float_profit=float_profit, position_profit=-close_profit, close_profit=close_profit, margin=margin)
         if volume_short:
             margin = volume_short * self.quotes[symbol]["margin"]
@@ -439,6 +457,19 @@ class TqSim(object):
                     if position["volume_short_his"] < 0:
                         position["volume_short_today"] += position["volume_short_his"]
                         position["volume_short_his"] = 0
+
+            if priority[0] == "T":
+                position["pos_short_today"] += volume_short
+                if len(priority) > 1:
+                    if position["pos_short_today"] < 0:
+                        position["pos_short_his"] += position["pos_short_today"]
+                        position["pos_short_today"] = 0
+            else:
+                position["pos_short_his"] += volume_short
+                if len(priority) > 1:
+                    if position["pos_short_his"] < 0:
+                        position["pos_short_today"] += position["pos_short_his"]
+                        position["pos_short_his"] = 0
             self._adjust_account(float_profit=float_profit, position_profit=-close_profit, close_profit=close_profit, margin=margin)
         self._send_position(position)
         return position["volume_long_his"] - position["volume_long_frozen_his"] >= 0 and position["volume_long_today"] - position["volume_long_frozen_today"] >= 0 and\
@@ -463,6 +494,10 @@ class TqSim(object):
                 "symbol": symbol,
                 "exchange_id": symbol.split(".", maxsplit=1)[0],
                 "instrument_id": symbol.split(".", maxsplit=1)[1],
+                "pos_long_his": 0,
+                "pos_long_today": 0,
+                "pos_short_his": 0,
+                "pos_short_today": 0,
                 "volume_long_today": 0,
                 "volume_long_his": 0,
                 "volume_long": 0,
