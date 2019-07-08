@@ -34,7 +34,6 @@ import os
 import pandas as pd
 import numpy as np
 from .__version__ import __version__
-from tqsdk import tqhelper
 from tqsdk.sim import TqSim
 from tqsdk.objs import Entity, Quote, Account, Position, Order, Trade
 
@@ -108,16 +107,18 @@ class TqApi(object):
         args = parser.parse_args()
         if account is None:
             account = args.instance_id
-        if backtest is None:
-            from tqsdk.backtest import TqBacktest
-            start_date = datetime.datetime.strptime(args.dt_start, '%Y%m%d')
-            end_date = datetime.datetime.strptime(args.dt_end, '%Y%m%d')
-            report_file = open(args.output_file, "a+")
-            backtest = TqBacktest(start_dt=start_date, end_dt=end_date)
         if args.action == "run":
+            from tqsdk import tqhelper
             tqhelper.redirect_output_to_net(self, args.instance_id)
             tqhelper.monitor_extern_process(args.tq_pid)
         elif args.action == "backtest":
+            from tqsdk import tqhelper
+            if backtest is None:
+                from tqsdk.backtest import TqBacktest
+                start_date = datetime.datetime.strptime(args.dt_start, '%Y%m%d')
+                end_date = datetime.datetime.strptime(args.dt_end, '%Y%m%d')
+                report_file = open(args.output_file, "a+")
+                backtest = TqBacktest(start_dt=start_date, end_dt=end_date)
             tqhelper.redirect_output_to_file(report_file, account, args.instance_id)
             self.create_task(tqhelper.account_watcher(self, account, report_file))
             tqhelper.monitor_extern_process(args.tq_pid)
