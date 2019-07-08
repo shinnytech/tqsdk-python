@@ -19,7 +19,9 @@ import json
 import uuid
 import sys
 import time
+import datetime
 import logging
+import argparse
 import copy
 import ctypes
 import asyncio
@@ -32,6 +34,7 @@ import os
 import pandas as pd
 import numpy as np
 from .__version__ import __version__
+from tqsdk import tqhelper
 from tqsdk.sim import TqSim
 from tqsdk.objs import Entity, Quote, Account, Position, Order, Trade
 
@@ -89,6 +92,37 @@ class TqApi(object):
             from tqsdk import TqApi, TqSim, TqBacktest
             api = TqApi(TqSim(), backtest=TqBacktest(start_dt=date(2018, 5, 1), end_dt=date(2018, 10, 1)))
         """
+        # 初始化loop
+        self.loop = asyncio.new_event_loop() if loop is None else loop  # 创建一个新的 ioloop, 避免和其他框架/环境产生干扰
+        self.send_chan, self.recv_chan = TqChan(self), TqChan(self)  # 消息收发队列
+        self.tasks = set()  # 由api维护的所有根task，不包含子task，子task由其父task维护
+        self.exceptions = []  # 由api维护的所有task抛出的例外
+        # 处理命令行参数
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--action', type=str, required=False)
+        parser.add_argument('--instance_id', type=str, required=False)
+        parser.add_argument('--output_file', type=str, required=False)
+        parser.add_argument('--dt_start', type=str, required=False)
+        parser.add_argument('--dt_end', type=str, required=False)
+        parser.add_argument('--tq_pid', type=int, required=False)
+        args = parser.parse_args()
+        if args.action == "run":
+            if account is None:
+                account = args.instance_id
+            tqhelper.redirect_output_to_net(self, args.instance_id)
+            tqhelper.monitor_extern_process(args.tq_pid)
+        elif args.action == "backtest":
+            from tqsdk.backtest import TqBacktest
+            start_date = datetime.datetime.strptime(args.dt_start, '%Y%m%d')
+            end_date = datetime.datetime.strptime(args.dt_end, '%Y%m%d')
+            account = TqSim()
+            report_file = open(args.output_file, "a+")
+            backtest = TqBacktest(start_dt=start_date, end_dt=end_date)
+            tqhelper.redirect_output_to_file(report_file, account, args.instance_id)
+            self.create_task(tqhelper.account_watcher(self, account, report_file))
+            tqhelper.monitor_extern_process(args.tq_pid)
+        else:
+            pass
         if account is None:
             msg = """__init__() missing 1 required positional argument: 'account'  
             
@@ -111,8 +145,6 @@ api = TqApi("SIM.abcd")
             fh = logging.FileHandler(filename=debug)
             fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
             self.logger.addHandler(fh)
-        # 初始化loop
-        self.loop = asyncio.new_event_loop() if loop is None else loop  # 创建一个新的 ioloop, 避免和其他框架/环境产生干扰
         # 回测需要行情和交易 lockstep, 而 asyncio 没有将内部的 _ready 队列暴露出来, 因此 monkey patch call_soon 函数用来判断是否有任务等待执行
         self.loop.call_soon = functools.partial(self._call_soon, self.loop.call_soon)
         self.event_rev, self.check_rev = 0, 0
@@ -120,13 +152,10 @@ api = TqApi("SIM.abcd")
             "quotes": set(),
         }  # 记录已发出的请求
         self.serials = {}  # 记录所有数据序列
-        self.send_chan, self.recv_chan = TqChan(self), TqChan(self)  # 消息收发队列
         self.data = {"_path": [], "_listener": weakref.WeakSet()}  # 数据存储
         self.diffs = []  # 自上次wait_update返回后收到更新数据的数组
         self.pending_diffs = []  # 从网络上收到的待处理的 diffs, 只在 wait_update 函数执行过程中才可能为非空
         self.prototype = self._gen_prototype()  # 各业务数据的原型, 用于决定默认值及将收到的数据转为特定的类型
-        self.tasks = set()  # 由api维护的所有根task，不包含子task，子task由其父task维护
-        self.exceptions = []  # 由api维护的所有task抛出的例外
         self.wait_timeout = False  # wait_update 是否触发超时
         # 根据master/slave分别执行不同的初始化任务
         self.is_slave = isinstance(account, TqApi)
