@@ -8,7 +8,6 @@
     :maxdepth: 2
 
     backtest.rst
-    sub_account.rst
     multi_strategy.rst
     for_vnpy_user.rst
     for_ctp_user.rst

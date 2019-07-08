@@ -20,7 +20,7 @@ TianQin Python SDK User Guide
     advanced/index.rst
     reference/index.rst
     demo/index.rst
-    tq.rst
+    tq/index.rst
     faq.rst
     version.rst
 

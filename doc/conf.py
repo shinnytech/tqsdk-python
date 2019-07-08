@@ -131,7 +131,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'TianQinPythonSDK.tex', u'TianQin Javascript SDK Documentation',
+    (master_doc, 'TianQinPythonSDK.tex', u'TianQin Python SDK Documentation',
      u'TianQIn', 'manual'),
 ]
 
@@ -141,7 +141,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'tianqinpythonsdk', u'TianQin Javascript SDK Documentation',
+    (master_doc, 'tianqinpythonsdk', u'TianQin Python SDK Documentation',
      [author], 1)
 ]
 
@@ -152,8 +152,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'TianQinPythonSDK', u'TianQin Javascript SDK Documentation',
-     author, 'TianQinPythonSDK', 'One line description of project.',
+    (master_doc, 'TianQinPythonSDK', u'TianQin Python SDK Documentation',
+     author, 'TianQinPythonSDK', 'TianQin Python SDK.',
      'Miscellaneous'),
 ]
 

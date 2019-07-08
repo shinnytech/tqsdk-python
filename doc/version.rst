@@ -2,6 +2,16 @@
 
 版本变更
 =============================
+0.9.9 (2019/06/30)
+
+* 持仓对象 :py:class:`~tqsdk.objs.Position` 增加了实时持仓手数属性 pos_long_his, pos_long_today, pos_short_his, pos_short_today ，这些属性在成交时与成交记录同步更新
+* 修正 :py:class:`~tqsdk.lib.TargetPosTask` 因为持仓手数更新不同步导致下单手数错误的bug
+* 取消直连模式下的交易单元支持，现在只有TqSdk只有连接天勤终端使用时才能使用交易单元机制
+
+0.9.8 (2019/06/17):
+
+* :py:class:`~tqsdk.api.TqApi` 增加 copy 函数，支持在一个进程中用master/slave模式创建多个TqApi实例
+
 0.9.7 (2019/06/03):
 
 * 修正持仓数据不能 copy() 的问题
