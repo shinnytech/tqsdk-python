@@ -106,24 +106,24 @@ class TqApi(object):
         parser.add_argument('--dt_end', type=str, required=False)
         parser.add_argument('--tq_pid', type=int, required=False)
         args = parser.parse_args()
-        if args.action == "run":
-            if account is None:
-                account = args.instance_id
-            tqhelper.redirect_output_to_net(self, args.instance_id)
-            tqhelper.monitor_extern_process(args.tq_pid)
-        elif args.action == "backtest":
+        if account is None:
+            account = args.instance_id
+        if backtest is None:
             from tqsdk.backtest import TqBacktest
             start_date = datetime.datetime.strptime(args.dt_start, '%Y%m%d')
             end_date = datetime.datetime.strptime(args.dt_end, '%Y%m%d')
-            account = TqSim()
             report_file = open(args.output_file, "a+")
             backtest = TqBacktest(start_dt=start_date, end_dt=end_date)
+        if args.action == "run":
+            tqhelper.redirect_output_to_net(self, args.instance_id)
+            tqhelper.monitor_extern_process(args.tq_pid)
+        elif args.action == "backtest":
             tqhelper.redirect_output_to_file(report_file, account, args.instance_id)
             self.create_task(tqhelper.account_watcher(self, account, report_file))
             tqhelper.monitor_extern_process(args.tq_pid)
         else:
             pass
-        if account is None:
+        if account is None and backtest is None:
             msg = """__init__() missing 1 required positional argument: 'account'  
             
 只有在天勤中运行策略程序时, 才可以省略账户信息. 如果需要在天勤外运行策略程序, 您必须在创建TqApi时明确提供账号和策略ID, 像这样:
