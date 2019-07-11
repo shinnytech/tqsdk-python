@@ -3,139 +3,62 @@
 __author__ = 'tianqin'
 
 
-'''
-'''
-
-import sys
 import os
 import sys
 import json
-import argparse
 import logging
-import importlib
 import datetime
 import threading
-import _winapi
 
 
-class PrintWriterNet:
-    def __init__(self, chan, instance_id):
-        self.orign_stdout = sys.stdout
-        self.chan = chan
-        self.instance_id = instance_id
-        self.line = ""
-
-    def write(self, text):
-        self.line += text
-        if self.line[-1] == "\n":
-            dt = int(datetime.datetime.now().timestamp() * 1e9)
-            self.chan.send_nowait({
-                "aid": "log",
-                "datetime": dt,
-                "instance_id": self.instance_id,
-                "level": "INFO",
-                "content": self.line[:-1],
-            })
-            self.line = ""
-
-    def flush(self):
-        pass
-
-
-class LogHandlerNet(logging.Handler):
-    def __init__(self, chan, instance_id):
+class LogHandlerFile(logging.Handler):
+    def __init__(self, out_file, dt_func):
         logging.Handler.__init__(self)
-        self.chan = chan
-        self.instance_id = instance_id
+        self.out_file = out_file
+        self.dt_func = dt_func
 
     def emit(self, record):
-        dt = int(datetime.datetime.now().timestamp()*1e9)
-        if record.exc_info:
-            if record.exc_info[2].tb_next:
-                msg = "%s, line %d, %s" % (record.msg, record.exc_info[2].tb_next.tb_lineno, str(record.exc_info[1]))
-            else:
-                msg = "%s, %s" % (record.msg, str(record.exc_info[1]))
-        else:
-            msg = record.msg
-        self.chan.send_nowait({
+        json.dump({
             "aid": "log",
-            "datetime": dt,
-            "instance_id": self.instance_id,
+            "datetime": self.dt_func(),
             "level": str(record.levelname),
-            "content": msg,
-        })
-
-
-def redirect_output_to_net(api, instance_id):
-    sys.stdout = PrintWriterNet(api.send_chan, instance_id)
-    logger = logging.getLogger("TQ")
-    logger.setLevel(logging.INFO)
-    th = LogHandlerNet(api.send_chan, instance_id)
-    th.setLevel(logging.INFO)
-    logger.addHandler(th)
+            "content": record.msg,
+        }, self.out_file)
+        self.out_file.write("\n")
+        self.out_file.flush()
 
 
 class PrintWriterFile:
-    def __init__(self, out_file, instance_id):
-        self.orign_stdout = sys.stdout
-        self.out_file = out_file
-        self.instance_id = instance_id
+    def __init__(self):
         self.line = ""
 
     def write(self, text):
         self.line += text
         if self.line[-1] == "\n":
-            dt = int(datetime.datetime.now().timestamp() * 1e9)
-            json.dump({
-                "aid": "log",
-                "datetime": dt,
-                "instance_id": self.instance_id,
-                "level": "INFO",
-                "content": self.line[:-1],
-            }, self.out_file)
+            logging.getLogger("TQ").info(self.line)
             self.line = ""
-            self.out_file.write("\n")
-            self.out_file.flush()
 
     def flush(self):
         pass
 
 
-class TqBacktestLogger(logging.Handler):
-    def __init__(self, sim, out):
-        logging.Handler.__init__(self)
-        self.sim = sim
-        self.out = out
-
-    def emit(self, record):
-        if record.exc_info:
-            if record.exc_info[2].tb_next:
-                msg = "%s, line %d, %s" % (record.msg, record.exc_info[2].tb_next.tb_lineno, str(record.exc_info[1]))
-            else:
-                msg = "%s, %s" % (record.msg, str(record.exc_info[1]))
-        else:
-            msg = record.msg
-        json.dump({
-            "aid": "log",
-            "datetime": self.sim._get_current_timestamp(),
-            "level": str(record.levelname),
-            "content": msg,
-        }, self.out)
-        self.out.write("\n")
-        self.out.flush()
+def exception_handler(type, value, tb):
+    while tb.tb_next:
+        tb = tb.tb_next
+    msg = "程序异常: %s, line %d" % (str(value), tb.tb_lineno)
+    logging.getLogger("TQ").error(msg)
 
 
-def redirect_output_to_file(report_file, tqsim, instance_id):
-    sys.stdout = PrintWriterFile(report_file, instance_id)
-    logger = logging.getLogger("TQ")
-    logger.setLevel(logging.INFO)
-    logger.addHandler(TqBacktestLogger(tqsim, report_file))
+def setup_output_file(report_file, instance_id, dt_func):
+    sys.stdout = PrintWriterFile()
+    sys.excepthook = exception_handler
+    logging.getLogger("TQ").addHandler(LogHandlerFile(report_file, dt_func=dt_func))
 
 
-def write_snapshot(sim, out, account, positions):
+def write_snapshot(dt_func, out, account, positions):
     json.dump({
         "aid": "snapshot",
-        "datetime": sim._get_current_timestamp(),
+        "datetime": dt_func(),
         "accounts": {
             "CNY": {k: v for k, v in account.items() if not k.startswith("_")},
         },
@@ -145,11 +68,10 @@ def write_snapshot(sim, out, account, positions):
     out.flush()
 
 
-async def account_watcher(api, sim, out):
+async def account_watcher(api, dt_func, out):
     account = api.get_account()
     positions = api.get_position()
     trades = api._get_obj(api.data, ["trade", api.account_id, "trades"])
-    write_snapshot(sim, out, account, positions)
     try:
         async with api.register_update_notify() as update_chan:
             async for _ in update_chan:
@@ -159,7 +81,7 @@ async def account_watcher(api, sim, out):
                         account_changed = True
                         json.dump({
                             "aid": "order",
-                            "datetime": sim._get_current_timestamp(),
+                            "datetime": dt_func(),
                             "order": {k: v for k, v in api.get_order(oid).items() if not k.startswith("_")},
                         }, out)
                         out.write("\n")
@@ -168,23 +90,24 @@ async def account_watcher(api, sim, out):
                         account_changed = True
                         json.dump({
                             "aid": "trade",
-                            "datetime": sim._get_current_timestamp(),
+                            "datetime": dt_func(),
                             "trade": {k: v for k, v in trades[tid].items() if not k.startswith("_")},
                         }, out)
                         out.write("\n")
                         out.flush()
                 if account_changed:
-                    write_snapshot(sim, out, account, positions)
+                    write_snapshot(dt_func, out, account, positions)
     finally:
-        write_snapshot(sim, out, account, positions)
+        write_snapshot(dt_func, out, account, positions)
 
 
 class TqMonitorThread (threading.Thread):
     def __init__(self, tq_pid):
-        threading.Thread.__init__(self)
+        threading.Thread.__init__(self, daemon=True)
         self.tq_pid = tq_pid
 
     def run(self):
+        import _winapi
         p = _winapi.OpenProcess(_winapi.PROCESS_ALL_ACCESS, False, self.tq_pid)
         os.waitpid(p, 0)
         os._exit(0)

@@ -91,6 +91,9 @@ class TqApi(object):
             from tqsdk import TqApi, TqSim, TqBacktest
             api = TqApi(TqSim(), backtest=TqBacktest(start_dt=date(2018, 5, 1), end_dt=date(2018, 10, 1)))
         """
+        # 初始化logger
+        logger = logging.getLogger("TQ")
+        logger.setLevel(logging.INFO)
         # 初始化loop
         self.loop = asyncio.new_event_loop() if loop is None else loop  # 创建一个新的 ioloop, 避免和其他框架/环境产生干扰
         self.send_chan, self.recv_chan = TqChan(self), TqChan(self)  # 消息收发队列
@@ -98,33 +101,14 @@ class TqApi(object):
         self.exceptions = []  # 由api维护的所有task抛出的例外
         # 处理命令行参数
         parser = argparse.ArgumentParser()
-        parser.add_argument('--action', type=str, required=False)
-        parser.add_argument('--instance_id', type=str, required=False)
-        parser.add_argument('--output_file', type=str, required=False)
-        parser.add_argument('--dt_start', type=str, required=False)
-        parser.add_argument('--dt_end', type=str, required=False)
-        parser.add_argument('--tq_pid', type=int, required=False)
+        parser.add_argument('--_action', type=str, required=False)
+        parser.add_argument('--_account_id', type=str, required=False)
+        parser.add_argument('--_output_file', type=str, required=False)
+        parser.add_argument('--_dt_start', type=str, required=False)
+        parser.add_argument('--_dt_end', type=str, required=False)
+        parser.add_argument('--_tq_pid', type=int, required=False)
         args = parser.parse_args()
-        if account is None:
-            account = args.instance_id
-        if args.action == "run":
-            from tqsdk import tqhelper
-            tqhelper.redirect_output_to_net(self, args.instance_id)
-            tqhelper.monitor_extern_process(args.tq_pid)
-        elif args.action == "backtest":
-            from tqsdk import tqhelper
-            if backtest is None:
-                from tqsdk.backtest import TqBacktest
-                start_date = datetime.datetime.strptime(args.dt_start, '%Y%m%d')
-                end_date = datetime.datetime.strptime(args.dt_end, '%Y%m%d')
-                report_file = open(args.output_file, "a+")
-                backtest = TqBacktest(start_dt=start_date, end_dt=end_date)
-            tqhelper.redirect_output_to_file(report_file, account, args.instance_id)
-            self.create_task(tqhelper.account_watcher(self, account, report_file))
-            tqhelper.monitor_extern_process(args.tq_pid)
-        else:
-            pass
-        if account is None and backtest is None:
+        if account is None and backtest is None and args._action is None:
             msg = """__init__() missing 1 required positional argument: 'account'  
             
 只有在天勤中运行策略程序时, 才可以省略账户信息. 如果需要在天勤外运行策略程序, 您必须在创建TqApi时明确提供账号和策略ID, 像这样:
@@ -161,7 +145,33 @@ api = TqApi("SIM.abcd")
         # 根据master/slave分别执行不同的初始化任务
         self.is_slave = isinstance(account, TqApi)
         if not self.is_slave:
+            account = args._account_id
             self._slaves = []
+            if args._action == "run":
+                from tqsdk import tqhelper
+                if account is None:
+                    account = args._account_id
+                report_file = open(args._output_file, "a+")
+                dt_func = lambda: int(datetime.datetime.now().timestamp() * 1e9)
+                tqhelper.setup_output_file(report_file, args._account_id, dt_func)
+                self.create_task(tqhelper.account_watcher(self, dt_func, report_file))
+                tqhelper.monitor_extern_process(args._tq_pid)
+            elif args._action == "backtest":
+                from tqsdk import tqhelper
+                if not isinstance(account, TqSim):
+                    account = TqSim()
+                if backtest is None:
+                    from tqsdk.backtest import TqBacktest
+                    start_date = datetime.datetime.strptime(args._dt_start, '%Y%m%d')
+                    end_date = datetime.datetime.strptime(args._dt_end, '%Y%m%d')
+                    backtest = TqBacktest(start_dt=start_date, end_dt=end_date)
+                report_file = open(args._output_file, "a+")
+                dt_func = lambda: account._get_current_timestamp()
+                tqhelper.setup_output_file(report_file, args._account_id, dt_func)
+                self.create_task(tqhelper.account_watcher(self, dt_func, report_file))
+                tqhelper.monitor_extern_process(args._tq_pid)
+            else:
+                pass
             self.account_id = account if isinstance(account, str) else account.account_id
             if sys.platform.startswith("win"):
                 self.create_task(self._windows_patch())  # Windows系统下asyncio不支持KeyboardInterrupt的临时补丁
