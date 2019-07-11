@@ -2,10 +2,10 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'chengzhi'
 
-from tqsdk import TqApi, TqSim
+from tqsdk import TqApi
 import datetime
 
-api = TqApi(TqSim())
+api = TqApi()
 # 获得cu1906 tick序列的引用
 ticks = api.get_tick_serial("SHFE.cu1906")
 # 获得cu1906 10秒K线的引用

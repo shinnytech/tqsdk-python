@@ -52,9 +52,9 @@ class TargetPosTask(object):
         Example::
 
             # 设置 rb1810 持仓为多头5手
-            from tqsdk import TqApi, TqSim, TargetPosTask
+            from tqsdk import TqApi, TargetPosTask
 
-            api = TqApi(TqSim())
+            api = TqApi()
             target_pos = TargetPosTask(api, "SHFE.rb1810")
             target_pos.set_target_volume(5)
             while True:

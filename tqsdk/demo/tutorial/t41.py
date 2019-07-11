@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 #  -*- coding: utf-8 -*-
 
-from tqsdk import TqApi, TqSim
+from tqsdk import TqApi
 
-api = TqApi(TqSim())
+api = TqApi()
 quote = api.get_quote("SHFE.rb1910")
 # 开仓两手并等待完成
 order = api.insert_order(symbol="SHFE.rb1910", direction="BUY", offset="OPEN", limit_price=quote.ask_price1,volume=2)

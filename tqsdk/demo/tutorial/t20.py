@@ -2,10 +2,10 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'chengzhi'
 
-from tqsdk import TqApi, TqSim
+from tqsdk import TqApi
 
 # 可以指定debug选项将调试信息写入指定的文件中
-api = TqApi(TqSim(), debug="debug.log")
+api = TqApi(debug="debug.log")
 quote = api.get_quote("SHFE.cu1906")
 print(quote.datetime, quote.last_price, quote.ask_price1, quote.ask_price2)
 

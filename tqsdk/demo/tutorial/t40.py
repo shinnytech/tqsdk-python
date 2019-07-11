@@ -2,9 +2,9 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'chengzhi'
 
-from tqsdk import TqApi, TqSim
+from tqsdk import TqApi
 
-api = TqApi(TqSim())
+api = TqApi()
 # 获得 m1909 的持仓引用，当持仓有变化时 position 中的字段会对应更新
 position = api.get_position("DCE.m1909")
 # 获得资金账户引用，当账户有变化时 account 中的字段会对应更新

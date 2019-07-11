@@ -108,17 +108,6 @@ class TqApi(object):
         parser.add_argument('--_dt_end', type=str, required=False)
         parser.add_argument('--_tq_pid', type=int, required=False)
         args = parser.parse_args()
-        if account is None and backtest is None and args._action is None:
-            msg = """__init__() missing 1 required positional argument: 'account'  
-            
-只有在天勤中运行策略程序时, 才可以省略账户信息. 如果需要在天勤外运行策略程序, 您必须在创建TqApi时明确提供账号和策略ID, 像这样:
-
-api = TqApi("7382621.abcd")  # 7382621 是期货账号, 必须与天勤当前登录的期货账号一致. abcd 是策略ID, 可以任意设定, 用于策略运行监控 
-
-当天勤处于复盘模式时, 自动创建了一个名叫 "SIM" 的模拟账号, 此时TqApi也需要明确指定 "SIM" 作为期货账号: 
-api = TqApi("SIM.abcd") 
-"""
-            raise TypeError(msg)
         # 初始化 logger
         self.logger = logging.getLogger("TqApi")
         if debug and not self.logger.handlers:
@@ -145,12 +134,10 @@ api = TqApi("SIM.abcd")
         # 根据master/slave分别执行不同的初始化任务
         self.is_slave = isinstance(account, TqApi)
         if not self.is_slave:
-            account = args._account_id
             self._slaves = []
             if args._action == "run":
                 from tqsdk import tqhelper
-                if account is None:
-                    account = args._account_id
+                account = args._account_id
                 report_file = open(args._output_file, "a+")
                 dt_func = lambda: int(datetime.datetime.now().timestamp() * 1e9)
                 tqhelper.setup_output_file(report_file, args._account_id, dt_func)
@@ -171,7 +158,8 @@ api = TqApi("SIM.abcd")
                 self.create_task(tqhelper.account_watcher(self, dt_func, report_file))
                 tqhelper.monitor_extern_process(args._tq_pid)
             else:
-                pass
+                if account is None:
+                    account = TqSim()
             self.account_id = account if isinstance(account, str) else account.account_id
             if sys.platform.startswith("win"):
                 self.create_task(self._windows_patch())  # Windows系统下asyncio不支持KeyboardInterrupt的临时补丁

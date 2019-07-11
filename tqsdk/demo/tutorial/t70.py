@@ -2,13 +2,13 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'chengzhi'
 
-from tqsdk import TqApi, TqSim, TargetPosTask
+from tqsdk import TqApi, TargetPosTask
 
 '''
 如果当前价格大于10秒K线的MA15则开多仓
 如果小于则平仓
 '''
-api = TqApi(TqSim())
+api = TqApi()
 # 获得 m1909 10秒K线的引用
 klines = api.get_kline_serial("DCE.m1909", 10)
 # 创建 m1909 的目标持仓 task，该 task 负责调整 m1909 的仓位到指定的目标仓位

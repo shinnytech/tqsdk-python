@@ -2,14 +2,14 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'chengzhi'
 
-from tqsdk import TqApi, TqSim, TargetPosTask
+from tqsdk import TqApi, TargetPosTask
 
 '''
 价差回归
 当近月-远月的价差大于200时做空近月，做多远月
 当价差小于150时平仓
 '''
-api = TqApi(TqSim())
+api = TqApi()
 quote_near = api.get_quote("SHFE.rb1910")
 quote_deferred = api.get_quote("SHFE.rb2001")
 # 创建 rb1910 的目标持仓 task，该 task 负责调整 rb1910 的仓位到指定的目标仓位

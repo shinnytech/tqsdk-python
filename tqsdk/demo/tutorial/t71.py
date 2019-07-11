@@ -2,13 +2,13 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'yanqiong'
 
-from tqsdk import TqApi, TqSim, TargetPosTask
+from tqsdk import TqApi, TargetPosTask
 
 '''
 连续3根阴线就做空，连续3根阳线就做多，否则空仓
 '''
 
-api = TqApi(TqSim())
+api = TqApi()
 # 设定连续多少根阳线/阴线
 length = 3
 # 获得 rb1910 10秒K线的引用, 长度为 length+1
