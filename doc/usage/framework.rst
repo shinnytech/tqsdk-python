@@ -35,7 +35,7 @@ TqApi 的其它参数请见 :py:class:`tqsdk.api.TqApi`
 * 尝试从服务器接收一个数据包, 并用收到的数据包更新内存中的业务数据截面.
 * 如果没有收到数据包，则挂起等待
 
-@todo: 这里需补一个运行时序图, 解释 :py:meth:`~tqsdk.api.TqApi.wait_update` 函数作用
+.. figure:: ../images/wait_update.png
 
 因此, TqSdk 要求策略程序必须反复调用 :py:meth:`~tqsdk.api.TqApi.wait_update`, 才能保证整个程序正常运行. 一般会将 :py:meth:`~tqsdk.api.TqApi.wait_update` 放在一个循环中反复调用::
 
@@ -66,7 +66,7 @@ TqApi 实例内存中保存了一份完整业务数据截面, 包括行情/K线�
 
 一个典型程序的结构
 ----------------------------------------------------
-以一个通常的策略流程为例：判断开仓条件，开仓，判断平仓条件，平仓，使用 `TqSdk`_ 写出的代码::
+以一个通常的策略流程为例：判断开仓条件，开仓，判断平仓条件，平仓，使用 TqSdk 写出的代码::
 
     from tqsdk import TqApi, TqSim, TargetPosTask
 
@@ -88,6 +88,3 @@ TqApi 实例内存中保存了一份完整业务数据截面, 包括行情/K线�
 
     #至此就完成一次完整的开平仓流程，如果平仓后还需再判断开仓条件可以把开仓循环和平仓循环再套到一个大循环中。
 
-
-.. _TqSdk: https://doc.shinnytech.com/pysdk/latest/index.html
-.. _DIFF: https://doc.shinnytech.com/diff/latest/index.html
