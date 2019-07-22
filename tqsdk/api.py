@@ -140,7 +140,7 @@ class TqApi(object):
                 account = args._account_id
                 report_file = open(args._output_file, "a+")
                 dt_func = lambda: int(datetime.datetime.now().timestamp() * 1e9)
-                tqhelper.setup_output_file(report_file, args._account_id, dt_func)
+                tqhelper.setup_output_file(report_file, dt_func)
                 self.create_task(tqhelper.account_watcher(self, dt_func, report_file))
                 tqhelper.monitor_extern_process(args._tq_pid)
             elif args._action == "backtest":
@@ -154,7 +154,7 @@ class TqApi(object):
                     backtest = TqBacktest(start_dt=start_date, end_dt=end_date)
                 report_file = open(args._output_file, "a+")
                 dt_func = lambda: account._get_current_timestamp()
-                tqhelper.setup_output_file(report_file, args._account_id, dt_func)
+                tqhelper.setup_output_file(report_file, dt_func)
                 self.create_task(tqhelper.account_watcher(self, dt_func, report_file))
                 tqhelper.monitor_extern_process(args._tq_pid)
             else:
@@ -487,6 +487,7 @@ class TqApi(object):
             "volume_orign": volume,
             "volume_left": volume,
             "status": "ALIVE",
+            "_this_session": True,
         })
         return order
 
@@ -634,6 +635,29 @@ class TqApi(object):
         if order_id:
             return self._get_obj(self.data, ["trade", self.account_id, "orders", order_id], self.prototype["trade"]["*"]["orders"]["@"])
         return self._get_obj(self.data, ["trade", self.account_id, "orders"])
+
+    # ----------------------------------------------------------------------
+    def get_trade(self, trade_id=None):
+        """
+        获取用户成交信息
+
+        Args:
+            trade_id (str): [可选]成交号, 不填成交号则返回所有委托单
+
+        Returns:
+            :py:class:`~tqsdk.objs.Trade`: 当指定了trade_id时, 返回一个成交对象引用. 其内容将在 :py:meth:`~tqsdk.api.TqApi.wait_update` 时更新.
+
+            不填trade_id参数调用本函数, 将返回包含用户当前交易日成交记录的一个dict, 其中每个元素的key为成交号, value为 :py:class:`~tqsdk.objs.Trade`
+
+            推荐优先使用 :py:meth:`~tqsdk.objs.Order.trade_records` 获取某个委托单的相应成交记录, 仅当确有需要时才使用本函数.
+
+        Example::
+
+
+        """
+        if trade_id:
+            return self._get_obj(self.data, ["trade", self.account_id, "trades", trade_id], self.prototype["trade"]["*"]["trades"]["@"])
+        return self._get_obj(self.data, ["trade", self.account_id, "trades"])
 
     # ----------------------------------------------------------------------
     def wait_update(self, deadline=None):
@@ -1039,10 +1063,8 @@ class TqApi(object):
             })
 
     def _send_series_data(self, symbol, duration, serial_id, serial_data):
-        chart_id = self.account_id.replace(".", "_")
         pack = {
             "aid": "set_chart_data",
-            "chart_id": chart_id,
             "symbol": symbol,
             "dur_nano": duration,
             "datas": {

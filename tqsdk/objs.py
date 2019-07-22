@@ -294,6 +294,7 @@ class Order(Entity):
         self.last_msg = ""
         #: 委托单状态, ALIVE=有效, FINISHED=已完
         self.status = ""
+        self._this_session = False
 
     @property
     def is_dead(self):
