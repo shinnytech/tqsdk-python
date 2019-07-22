@@ -117,6 +117,7 @@ class TargetPosTask(object):
             for each_priority in self.offset_priority + ",":  # 按不同模式的优先级顺序报出不同的offset单，股指(“昨开”)平昨优先从不平今就先报平昨，原油平今优先("今昨开")就报平今
                 if each_priority == ",":
                     await gather(*[each.task for each in all_tasks])
+                    pending_forzen = 0
                     all_tasks = []
                     continue
                 order_offset, order_dir, order_volume = self._get_order(each_priority, delta_volume, pending_forzen)
