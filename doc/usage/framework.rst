@@ -7,7 +7,7 @@ TqApi
 ----------------------------------------------------
 :py:class:`tqsdk.api.TqApi` 是 TqSdk 的核心类. 通常情况下, 每个使用了 TqSdk 的程序都应该包括一个 TqApi 实例::
 
-    api = TqApi(TqSim())
+    api = TqApi()
 
 TqApi 实例负责:
 
@@ -17,13 +17,14 @@ TqApi 实例负责:
 * 管理协程任务.
 * 执行策略回测.
 
-TqApi 创建时, 必须提供一个account参数. 它可以是:
+TqApi 创建时, 需要提供一个account参数. 它可以是:
 
 * 一个 :py:class:`tqsdk.api.TqAccount` 实例: 使用实盘帐号, 直连行情和交易服务器(不通过天勤终端), 需提供期货公司/帐号/密码
 * 一个 :py:class:`tqsdk.sim.TqSim` 实例: 使用 Api 自带的模拟功能, 直连行情服务器或连接天勤终端(例如使用历史复盘进行测试)接收行情数据
 * 一个字符串: 连接天勤终端, 实盘交易填写期货公司提供的帐号, 使用天勤终端内置的模拟交易填写"SIM", 需先在天勤终端内登录交易
+* 如果未提供 account 参数, 或者 account == None, 则会自动创建并使用一个 :py:class:`tqsdk.sim.TqSim` 实例
 
-TqApi 的其它参数请见 :py:class:`tqsdk.api.TqApi`
+TqApi 的其它构建参数请见 :py:class:`tqsdk.api.TqApi`
 
 
 关键函数: wait_update
@@ -70,7 +71,7 @@ TqApi 实例内存中保存了一份完整业务数据截面, 包括行情/K线�
 
     from tqsdk import TqApi, TqSim, TargetPosTask
 
-    api = TqApi(TqSim())
+    api = TqApi()
     klines = api.get_kline_serial("SHFE.rb1901", 60)
     target_pos = TargetPosTask(api, "SHFE.rb1901")
 

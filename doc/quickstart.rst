@@ -180,7 +180,7 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 -------------------------------------------------
 自己的交易程序写好以后, 我们总是希望在实盘运行前, 能先进行一下模拟测试. 要进行模拟测试, 只需要在创建TqApi实例时, 传入一个backtest参数::
 
-    api = TqApi(TqSim(), backtest=TqBacktest(start_dt=date(2018, 5, 1), end_dt=date(2018, 10, 1)))
+    api = TqApi(backtest=TqBacktest(start_dt=date(2018, 5, 1), end_dt=date(2018, 10, 1)))
 
 这样, 程序运行时就会按照 TqBacktest 指定的时间范围进行模拟交易测试, 并输出测试结果.
 
@@ -189,7 +189,7 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 
 实盘交易
 -------------------------------------------------
-要让策略程序在实盘账号运行, 请使用 :py:class:`~tqsdk.api.TqAccount` , 填入 期货公司, 账号, 密码::
+要让策略程序在实盘账号运行, 请在创建TqApi时传入一个 :py:class:`~tqsdk.api.TqAccount` , 填入 期货公司, 账号, 密码::
 
   api = TqApi(TqAccount("H海通期货", "320102", "123456"))
 
