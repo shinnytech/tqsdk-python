@@ -19,8 +19,6 @@ class TargetPosTask(object):
 
             price (str): [可选]下单方式, ACTIVE=对价下单, PASSIVE=挂价下单
 
-            init_pos (int): [可选]初始持仓，默认整个账户的该合净持仓
-
             offset_priority (str): [可选]开平仓顺序，昨=平昨仓，今=平今仓，开=开仓，逗号=等待之前操作完成
                                    对于下单指令区分平今/昨的交易所(如上期所)，按照今/昨仓的数量计算是否能平今/昨仓
                                    对于下单指令不区分平今/昨的交易所(如中金所)，按照“先平当日新开仓，再平历史仓”的规则计算是否能平今/昨仓
@@ -62,7 +60,7 @@ class TargetPosTask(object):
         """
         self.pos_chan.send_nowait(volume)
 
-    def _get_order(self, offset, vol):
+    def _get_order(self, offset, vol, pending_frozen):
         """
         根据指定的offset和预期下单手数vol, 返回符合要求的委托单最大报单手数
         :param offset: "昨" / "今" / "开"
@@ -82,9 +80,11 @@ class TargetPosTask(object):
                     pos_all = self.pos.pos_short_his
                 else:
                     pos_all = self.pos.pos_long_his
-                frozen_volume = sum([order.volume_left for order in self.pos.orders.values() if not order.is_dead() and order.offset == order_offset and order.direction == order_dir])
+                frozen_volume = sum([order.volume_left for order in self.pos.orders.values() if not order.is_dead and order.offset == order_offset and order.direction == order_dir])
             else:
-                frozen_volume = sum([order.volume_left for order in self.pos.orders.values() if not order.is_dead() and order.offset != "OPEN" and order.direction == order_dir])
+                frozen_volume = pending_frozen + sum([order.volume_left for order in self.pos.orders.values() if not order.is_dead and order.offset != "OPEN" and order.direction == order_dir])
+                if (self.pos.pos_short_today if vol > 0 else self.pos.pos_long_today) - frozen_volume > 0:  # 判断是否有未冻结的今仓手数: 若有则不平昨仓
+                    pos_all = frozen_volume
             order_volume = min(abs(vol), max(0, pos_all - frozen_volume))
         elif offset == "今":
             if self.exchange == "SHFE" or self.exchange == "INE":
@@ -93,10 +93,11 @@ class TargetPosTask(object):
                     pos_all = self.pos.pos_short_today
                 else:
                     pos_all = self.pos.pos_long_today
-                frozen_volume = sum([order.volume_left for order in self.pos.orders.values() if not order.is_dead() and order.offset == order_offset and order.direction == order_dir])
+                frozen_volume = sum([order.volume_left for order in self.pos.orders.values() if not order.is_dead and order.offset == order_offset and order.direction == order_dir])
             else:
                 order_offset = "CLOSE"
-                frozen_volume = sum([order.volume_left for order in self.pos.orders.values() if not order.is_dead() and order.offset != "OPEN" and order.direction == order_dir])
+                frozen_volume = pending_frozen + sum([order.volume_left for order in self.pos.orders.values() if not order.is_dead and order.offset != "OPEN" and order.direction == order_dir])
+                pos_all = self.pos.pos_short_today if vol > 0 else self.pos.pos_long_today
             order_volume = min(abs(vol), max(0, pos_all - frozen_volume))
         elif offset == "开":
             order_offset = "OPEN"
@@ -111,19 +112,21 @@ class TargetPosTask(object):
         async for target_pos in self.pos_chan:
             # 确定调仓增减方向
             delta_volume = target_pos - self.pos.pos
+            pending_forzen = 0
             all_tasks = []
             for each_priority in self.offset_priority + ",":  # 按不同模式的优先级顺序报出不同的offset单，股指(“昨开”)平昨优先从不平今就先报平昨，原油平今优先("今昨开")就报平今
                 if each_priority == ",":
                     await gather(*[each.task for each in all_tasks])
-                    all_tasks =[]
+                    all_tasks = []
                     continue
-                order_offset, order_dir, order_volume = self._get_order(each_priority, delta_volume)
+                order_offset, order_dir, order_volume = self._get_order(each_priority, delta_volume, pending_forzen)
                 if order_volume == 0:  # 如果没有则直接到下一种offset
                     continue
+                elif order_offset != "OPEN":
+                    pending_forzen += order_volume
                 order_task = InsertOrderUntilAllTradedTask(self.api, self.symbol, order_dir, offset=order_offset,volume=order_volume, price=self.price,trade_chan=self.trade_chan)
                 all_tasks.append(order_task)
                 delta_volume -= order_volume if order_dir == "BUY" else -order_volume
-            self.current_pos = target_pos
 
 
 class InsertOrderUntilAllTradedTask(object):
@@ -198,7 +201,7 @@ class InsertOrderUntilAllTradedTask(object):
 
     async def _check_price(self, update_chan, order_price, order):
         """判断价格是否变化的task"""
-        async with self.api.register_update_notify(chan = update_chan):
+        async with self.api.register_update_notify(chan=update_chan):
             async for _ in update_chan:
                 new_price = self._get_price()
                 if (self.direction == "BUY" and new_price > order_price) or (self.direction == "SELL" and new_price < order_price):
@@ -246,7 +249,7 @@ class InsertOrderTask(object):
         last_left = self.volume
         async with self.api.register_update_notify() as update_chan:
             await self.order_chan.send(last_order)
-            while order.status != "FINISHED":
+            while order.status != "FINISHED" or (order.volume_orign - order.volume_left) != sum([trade.volume for trade in order.trade_records.values()]):
                 await update_chan.recv()
                 if order.volume_left != last_left:
                     vol = last_left - order.volume_left
