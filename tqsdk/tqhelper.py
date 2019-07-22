@@ -49,7 +49,7 @@ def exception_handler(type, value, tb):
     logging.getLogger("TQ").error(msg)
 
 
-def setup_output_file(report_file, instance_id, dt_func):
+def setup_output_file(report_file, dt_func):
     sys.stdout = PrintWriterFile()
     sys.excepthook = exception_handler
     logging.getLogger("TQ").addHandler(LogHandlerFile(report_file, dt_func=dt_func))
@@ -78,20 +78,27 @@ async def account_watcher(api, dt_func, out):
                 account_changed = api.is_changing(account, "static_balance")
                 for d in api.diffs:
                     for oid in d.get("trade", {}).get(api.account_id, {}).get("orders", {}).keys():
+                        order = api.get_order(oid)
+                        if order._this_session is not True:
+                            continue
                         account_changed = True
                         json.dump({
                             "aid": "order",
                             "datetime": dt_func(),
-                            "order": {k: v for k, v in api.get_order(oid).items() if not k.startswith("_")},
+                            "order": {k: v for k, v in order.items() if not k.startswith("_")},
                         }, out)
                         out.write("\n")
                         out.flush()
                     for tid in d.get("trade", {}).get(api.account_id, {}).get("trades", {}).keys():
+                        trade = api.get_trade(tid)
+                        order = api.get_order(trade.order_id)
+                        if order._this_session is not True:
+                            continue
                         account_changed = True
                         json.dump({
                             "aid": "trade",
                             "datetime": dt_func(),
-                            "trade": {k: v for k, v in trades[tid].items() if not k.startswith("_")},
+                            "trade": {k: v for k, v in trade.items() if not k.startswith("_")},
                         }, out)
                         out.write("\n")
                         out.flush()

@@ -2,7 +2,7 @@
 
 版本变更
 =============================
-0.9.9 (2019/06/30)
+0.9.9 (2019/07/22)
 
 * 持仓对象 :py:class:`~tqsdk.objs.Position` 增加了实时持仓手数属性 pos_long_his, pos_long_today, pos_short_his, pos_short_today ，这些属性在成交时与成交记录同步更新
 * 修正 :py:class:`~tqsdk.lib.TargetPosTask` 因为持仓手数更新不同步导致下单手数错误的bug

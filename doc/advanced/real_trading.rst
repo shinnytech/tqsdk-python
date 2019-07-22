@@ -149,7 +149,7 @@ TqSdk可以在windows/linux或macosx环境下运行. 无论您选择使用window
 
   #  -*- coding: utf-8 -*-
 
-  from tqsdk import TqApi, TqSim
+  from tqsdk import TqApi, TqAccount
 
   api = TqApi(TqAccount("H海通期货", "0330203", "123456"))
   # 开仓两手并等待完成

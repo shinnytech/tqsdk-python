@@ -17,7 +17,6 @@ TqSdk并不需要依赖天勤软件即可运行。天勤软件为TqSdk用户提�
 
     quickstart.rst
     mdreplay.rst
-    sub_account.rst
     report.rst
     chart.rst
     onlytq.rst
