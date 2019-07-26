@@ -15,6 +15,7 @@ sys.path.insert(0, os.path.abspath('../'))
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = ['sphinx.ext.autodoc', 'sphinx.ext.intersphinx', 'sphinx.ext.githubpages']
+smartquotes = False
 
 # 设置 graphviz_dot 路径
 graphviz_dot = 'dot'

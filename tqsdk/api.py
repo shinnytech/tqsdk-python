@@ -651,9 +651,6 @@ class TqApi(object):
 
             推荐优先使用 :py:meth:`~tqsdk.objs.Order.trade_records` 获取某个委托单的相应成交记录, 仅当确有需要时才使用本函数.
 
-        Example::
-
-
         """
         if trade_id:
             return self._get_obj(self.data, ["trade", self.account_id, "trades", trade_id], self.prototype["trade"]["*"]["trades"]["@"])

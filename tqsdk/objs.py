@@ -162,29 +162,29 @@ class Position(Entity):
         self.pos_short_his = 0
         #: 空头今仓手数
         self.pos_short_today = 0
-        #: 多头今仓手数
+        #: 期货公司查询的多头今仓手数 (deprecated)
         self.volume_long_today = 0
-        #: 多头老仓手数
+        #: 期货公司查询的多头老仓手数 (deprecated)
         self.volume_long_his = 0
-        #: 多头手数
+        #: 期货公司查询的多头手数 (deprecated)
         self.volume_long = 0
-        #: 多头今仓冻结
+        #: 期货公司查询的多头今仓冻结 (deprecated)
         self.volume_long_frozen_today = 0
-        #: 多头老仓冻结
+        #: 期货公司查询的多头老仓冻结 (deprecated)
         self.volume_long_frozen_his = 0
-        #: 多头持仓冻结
+        #: 期货公司查询的多头持仓冻结 (deprecated)
         self.volume_long_frozen = 0
-        #: 空头今仓手数
+        #: 期货公司查询的空头今仓手数 (deprecated)
         self.volume_short_today = 0
-        #: 空头老仓手数
+        #: 期货公司查询的空头老仓手数 (deprecated)
         self.volume_short_his = 0
-        #: 空头手数
+        #: 期货公司查询的空头手数 (deprecated)
         self.volume_short = 0
-        #: 空头今仓冻结
+        #: 期货公司查询的空头今仓冻结 (deprecated)
         self.volume_short_frozen_today = 0
-        #: 空头老仓冻结
+        #: 期货公司查询的空头老仓冻结 (deprecated)
         self.volume_short_frozen_his = 0
-        #: 空头持仓冻结
+        #: 期货公司查询的空头持仓冻结 (deprecated)
         self.volume_short_frozen = 0
         #: 多头开仓均价
         self.open_price_long = float("nan")
