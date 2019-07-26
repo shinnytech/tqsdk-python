@@ -281,7 +281,7 @@ class TqApi(object):
         Args:
             symbol (str): 指定合约代码.
 
-            duration_seconds (int): K线数据周期，以秒为单位。例如: 1分钟线为60,1小时线为3600,日线为86400
+            duration_seconds (int): K线数据周期，以秒为单位。例如: 1分钟线为60,1小时线为3600,日线为86400。 注意: 周期在日线以内时此参数可以任意填写, 在日线以上时只能是日线(86400)的整数倍
 
             data_length (int): 需要获取的序列长度。每个序列最大支持请求 8964 个数据
 
@@ -320,7 +320,7 @@ class TqApi(object):
         if symbol not in self.data.get("quotes", {}):
             raise Exception("代码 %s 不存在, 请检查合约代码是否填写正确" % (symbol))
         duration_seconds = int(duration_seconds)  # 转成整数
-        if duration_seconds <= 0 or duration_seconds > 24 * 60 * 60:
+        if duration_seconds <= 0 or duration_seconds > 86400 and duration_seconds % 86400 != 0:
             raise Exception("K线数据周期 %d 错误, 请检查K线数据周期值是否填写正确" % (duration_seconds))
         data_length = int(data_length)
         if data_length <= 0:
