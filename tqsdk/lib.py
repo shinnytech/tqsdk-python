@@ -31,11 +31,17 @@ class TargetPosTask(object):
         """
         super(TargetPosTask, self).__init__()
         self.api = api
+        if symbol not in api.data.get("quotes", {}):
+            raise Exception("代码 %s 不存在, 请检查合约代码是否填写正确" % (symbol))
         self.symbol = symbol
         self.exchange = symbol.split(".")[0]
+        if price not in ("ACTIVE", "PASSIVE"):
+            raise Exception("下单方式(price) %s 错误, 请检查 price 参数是否填写正确" % (price))
         self.price = price
-        self.pos = self.api.get_position(self.symbol)
+        if len(offset_priority.replace(",", "").replace("今", "", 1).replace("昨", "", 1).replace("开", "", 1)) > 0:
+            raise Exception("开平仓顺序(offset_priority) %s 错误, 请检查 offset_priority 参数是否填写正确" % (offset_priority))
         self.offset_priority = offset_priority
+        self.pos = self.api.get_position(self.symbol)
         self.pos_chan = TqChan(self.api, last_only=True)
         self.trade_chan = trade_chan if trade_chan is not None else TqChan(self.api)
         self.task = self.api.create_task(self._target_pos_task())
@@ -58,7 +64,7 @@ class TargetPosTask(object):
             while True:
                 api.wait_update()
         """
-        self.pos_chan.send_nowait(volume)
+        self.pos_chan.send_nowait(int(volume))
 
     def _get_order(self, offset, vol, pending_frozen):
         """
@@ -152,10 +158,18 @@ class InsertOrderUntilAllTradedTask(object):
             trade_chan (TqChan): [可选]成交通知channel, 当有成交发生时会将成交手数(多头为正数，空头为负数)发到该channel上
         """
         self.api = api
+        if symbol not in api.data.get("quotes", {}):
+            raise Exception("代码 %s 不存在, 请检查合约代码是否填写正确" % (symbol))
         self.symbol = symbol
+        if direction not in ("BUY", "SELL"):
+            raise Exception("下单方向(direction) %s 错误, 请检查 direction 参数是否填写正确" % (direction))
         self.direction = direction
+        if offset not in ("OPEN", "CLOSE", "CLOSETODAY"):
+            raise Exception("开平标志(offset) %s 错误, 请检查 offset 是否填写正确" % (offset))
         self.offset = offset
-        self.volume = volume
+        self.volume = int(volume)
+        if price not in ("ACTIVE", "PASSIVE"):
+            raise Exception("下单方式(price) %s 错误, 请检查 price 参数是否填写正确" % (price))
         self.price = price
         self.trade_chan = trade_chan if trade_chan is not None else TqChan(self.api)
         self.quote = self.api.get_quote(self.symbol)
@@ -234,11 +248,17 @@ class InsertOrderTask(object):
             trade_chan (TqChan): [可选]成交通知channel, 当有成交发生时会将成交手数(多头为正数，空头为负数)发到该channel上
         """
         self.api = api
+        if symbol not in api.data.get("quotes", {}):
+            raise Exception("代码 %s 不存在, 请检查合约代码是否填写正确" % (symbol))
         self.symbol = symbol
+        if direction not in ("BUY", "SELL"):
+            raise Exception("下单方向(direction) %s 错误, 请检查 direction 参数是否填写正确" % (direction))
         self.direction = direction
+        if offset not in ("OPEN", "CLOSE", "CLOSETODAY"):
+            raise Exception("开平标志(offset) %s 错误, 请检查 offset 是否填写正确" % (offset))
         self.offset = offset
-        self.volume = volume
-        self.limit_price = limit_price
+        self.volume = int(volume)
+        self.limit_price = float(limit_price) if limit_price is not None else None
         self.order_chan = order_chan if order_chan is not None else TqChan(self.api)
         self.trade_chan = trade_chan if trade_chan is not None else TqChan(self.api)
         self.task = self.api.create_task(self._run())
