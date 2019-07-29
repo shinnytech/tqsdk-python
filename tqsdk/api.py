@@ -281,7 +281,7 @@ class TqApi(object):
         Args:
             symbol (str): 指定合约代码.
 
-            duration_seconds (int): K线数据周期，以秒为单位。例如: 1分钟线为60,1小时线为3600,日线为86400
+            duration_seconds (int): K线数据周期，以秒为单位。例如: 1分钟线为60,1小时线为3600,日线为86400。 注意: 周期在日线以内时此参数可以任意填写, 在日线以上时只能是日线(86400)的整数倍
 
             data_length (int): 需要获取的序列长度。每个序列最大支持请求 8964 个数据
 
@@ -319,9 +319,14 @@ class TqApi(object):
         """
         if symbol not in self.data.get("quotes", {}):
             raise Exception("代码 %s 不存在, 请检查合约代码是否填写正确" % (symbol))
+        duration_seconds = int(duration_seconds)  # 转成整数
+        if duration_seconds <= 0 or duration_seconds > 86400 and duration_seconds % 86400 != 0:
+            raise Exception("K线数据周期 %d 错误, 请检查K线数据周期值是否填写正确" % (duration_seconds))
+        data_length = int(data_length)
+        if data_length <= 0:
+            raise Exception("K线数据序列长度 %d 错误, 请检查序列长度是否填写正确" % (data_length))
         if data_length > 8964:
             data_length = 8964
-        duration_seconds = int(duration_seconds)  # 转成整数
         dur_id = duration_seconds * 1000000000
         request = (symbol, duration_seconds, data_length, chart_id)
         serial = self.requests.setdefault("klines", {}).get(request, None)
@@ -394,6 +399,9 @@ class TqApi(object):
         """
         if symbol not in self.data.get("quotes", {}):
             raise Exception("代码 %s 不存在, 请检查合约代码是否填写正确" % (symbol))
+        data_length = int(data_length)
+        if data_length <= 0:
+            raise Exception("K线数据序列长度 %d 错误, 请检查序列长度是否填写正确" % (data_length))
         if data_length > 8964:
             data_length = 8964
         request = (symbol, data_length, chart_id)
@@ -455,6 +463,14 @@ class TqApi(object):
             单状态: FINISHED, 已成交: 3 手
             ...
         """
+        if symbol not in self.data.get("quotes", {}):
+            raise Exception("合约代码 %s 不存在, 请检查合约代码是否填写正确" % (symbol))
+        if direction not in ("BUY", "SELL"):
+            raise Exception("下单方向(direction) %s 错误, 请检查 direction 参数是否填写正确" % (direction))
+        if offset not in ("OPEN", "CLOSE", "CLOSETODAY"):
+            raise Exception("开平标志(offset) %s 错误, 请检查 offset 是否填写正确" % (offset))
+        volume = int(volume)
+        limit_price = float(limit_price) if limit_price is not None else None
         if not order_id:
             order_id = self._generate_order_id()
         (exchange_id, instrument_id) = symbol.split(".", 1)
@@ -597,6 +613,8 @@ class TqApi(object):
             ...
         """
         if symbol:
+            if symbol not in self.data.get("quotes", {}):
+                raise Exception("代码 %s 不存在, 请检查合约代码是否填写正确" % (symbol))
             return self._get_obj(self.data, ["trade", self.account_id, "positions", symbol], self.prototype["trade"]["*"]["positions"]["@"])
         return self._get_obj(self.data, ["trade", self.account_id, "positions"])
 
