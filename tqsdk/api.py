@@ -470,6 +470,8 @@ class TqApi(object):
         if offset not in ("OPEN", "CLOSE", "CLOSETODAY"):
             raise Exception("开平标志(offset) %s 错误, 请检查 offset 是否填写正确" % (offset))
         volume = int(volume)
+        if volume <= 0:
+            raise Exception("下单手数(volume) %s 错误, 请检查 volume 是否填写正确" % (volume))
         limit_price = float(limit_price) if limit_price is not None else None
         if not order_id:
             order_id = self._generate_order_id()

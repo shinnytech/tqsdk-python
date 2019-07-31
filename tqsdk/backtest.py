@@ -44,13 +44,16 @@ class TqBacktest(object):
         """
         if isinstance(start_dt, datetime):
             self.current_dt = int(start_dt.timestamp()*1e9)
-        else:
+        elif isinstance(start_dt, date):
             self.current_dt = TqApi._get_trading_day_start_time(int(datetime(start_dt.year, start_dt.month, start_dt.day).timestamp())*1000000000)
+        else:
+            raise Exception("回测起始时间(start_dt)类型 %s 错误, 请检查 start_dt 数据类型是否填写正确" % (type(start_dt)))
         if isinstance(end_dt, datetime):
             self.end_dt = int(end_dt.timestamp()*1e9)
-        else:
+        elif isinstance(end_dt, date):
             self.end_dt = TqApi._get_trading_day_end_time(int(datetime(end_dt.year, end_dt.month, end_dt.day).timestamp())*1000000000)
-
+        else:
+            raise Exception("回测结束时间(end_dt)类型 %s 错误, 请检查 end_dt 数据类型是否填写正确" % (type(end_dt)))
     async def _run(self, api, sim_send_chan, sim_recv_chan, md_send_chan, md_recv_chan):
         """回测task"""
         self.api = api

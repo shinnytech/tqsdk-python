@@ -168,6 +168,8 @@ class InsertOrderUntilAllTradedTask(object):
             raise Exception("开平标志(offset) %s 错误, 请检查 offset 是否填写正确" % (offset))
         self.offset = offset
         self.volume = int(volume)
+        if self.volume <= 0:
+            raise Exception("下单手数(volume) %s 错误, 请检查 volume 是否填写正确" % (volume))
         if price not in ("ACTIVE", "PASSIVE"):
             raise Exception("下单方式(price) %s 错误, 请检查 price 参数是否填写正确" % (price))
         self.price = price
