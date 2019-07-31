@@ -14,7 +14,7 @@ def ref(series, n):
     """
     简单移动: 求series序列位移n个周期的结果
 
-        注意: n为0的情况下, 或当n为有效值但当前的series序列元素个数不足n个, 函数返回 NaN 序列
+        注意: 当n为0, 函数返回原序列; 当n为有效值但当前的series序列元素个数不足 n + 1 个, 函数返回 NaN 序列
 
     Args:
         series (pandas.Series): 数据序列

@@ -23,7 +23,9 @@ class TqSim(object):
             account_id (str): [可选]帐号, 默认为 "TQSIM"
         """
         self.account_id = account_id
-        self.init_balance = init_balance
+        self.init_balance = float(init_balance)
+        if self.init_balance <= 0:
+            raise Exception("初始资金(init_balance) %s 错误, 请检查 init_balance 是否填写正确" % (init_balance))
         self.current_datetime = "1990-01-01 00:00:00.000000"
         self.trading_day_end = "1990-01-01 18:00:00.000000"
 
