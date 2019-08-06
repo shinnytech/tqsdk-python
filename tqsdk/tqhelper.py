@@ -35,7 +35,7 @@ class PrintWriterFile:
     def write(self, text):
         self.line += text
         if self.line[-1] == "\n":
-            logging.getLogger("TQ").info(self.line)
+            logging.getLogger("TQ").info(self.line[:-1])
             self.line = ""
 
     def flush(self):
