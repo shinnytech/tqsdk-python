@@ -107,7 +107,7 @@ class TqApi(object):
         parser.add_argument('--_dt_start', type=str, required=False)
         parser.add_argument('--_dt_end', type=str, required=False)
         parser.add_argument('--_tq_pid', type=int, required=False)
-        args = parser.parse_args()
+        args, unknown = parser.parse_known_args()
         # 初始化 logger
         self.logger = logging.getLogger("TqApi")
         if debug and not self.logger.handlers:
