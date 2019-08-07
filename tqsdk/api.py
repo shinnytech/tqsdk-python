@@ -107,6 +107,7 @@ class TqApi(object):
         parser.add_argument('--_dt_start', type=str, required=False)
         parser.add_argument('--_dt_end', type=str, required=False)
         parser.add_argument('--_tq_pid', type=int, required=False)
+        parser.add_argument('--_tq_url', type=str, required=False)
         args, unknown = parser.parse_known_args()
         # 初始化 logger
         self.logger = logging.getLogger("TqApi")
@@ -164,7 +165,7 @@ class TqApi(object):
             if sys.platform.startswith("win"):
                 self.create_task(self._windows_patch())  # Windows系统下asyncio不支持KeyboardInterrupt的临时补丁
             self.create_task(self._notify_watcher())  # 监控服务器发送的通知
-            self._setup_connection(account, url, backtest)  # 初始化通讯连接
+            self._setup_connection(account, url, backtest, args._tq_url)  # 初始化通讯连接
         else:
             self._master = account
             if self._master.is_slave:
@@ -909,7 +910,7 @@ class TqApi(object):
         self.event_rev += 1
         return org_call_soon(callback, *args, **kargs)
 
-    def _setup_connection(self, account, url, backtest):
+    def _setup_connection(self, account, url, backtest, tq_url):
         """初始化数据连接"""
         if backtest:  # 如果处于回测模式则将帐号转为模拟帐号，并直接连接 openmd
             if not isinstance(account, TqSim):
@@ -948,6 +949,14 @@ class TqApi(object):
                 td_url = url if url else "wss://opentd.shinnytech.com/trade/user0"
                 self.create_task(self._connect(td_url, ws_td_send_chan, ws_td_recv_chan))  # 启动交易websocket连接
                 self.create_task(account._run(self, self.send_chan, self.recv_chan, ws_md_send_chan, ws_md_recv_chan, ws_td_send_chan, ws_td_recv_chan))
+        if tq_url:
+            tq_send_chan, tq_recv_chan = TqChan(self), TqChan(self)  # 连接到天勤的channel
+            self.create_task(self._connect(tq_url, tq_send_chan, tq_recv_chan))  # 启动到天勤客户端的连接
+            upstream_send_chan, upstream_recv_chan = self.send_chan, self.recv_chan # 连接上游的channel
+            self.send_chan, self.recv_chan = TqChan(self), TqChan(self)  # 连接到下游的channel
+            self.create_task(Forwarding()._forward(self,self.send_chan,self.recv_chan,upstream_send_chan, upstream_recv_chan, tq_send_chan, tq_recv_chan))
+
+
 
     def _fetch_symbol_info(self, url):
         """获取合约信息"""
@@ -1586,6 +1595,38 @@ class TqApi(object):
             return int(base_k_dataframe["id"].iloc[-1]) + 1 + x
         elif x >= 0:
             return int(base_k_dataframe["id"].iloc[0]) + x
+
+class Forwarding(object):
+    """
+    作为数据转发的中间模块, 创建与天勤的新连接, 并过滤TqApi向上游发送的数据.
+    对于这个新连接: 发送所有的 set_chart_data 类型数据包,以及抄送所有的 subscribe_quote, set_chart类型数据包
+    """
+
+    async def _forward(self, api, api_send_chan, api_recv_chan, upstream_send_chan, upstream_recv_chan, tq_send_chan, tq_recv_chan):
+        to_downstream_task = api.create_task(self._forward_to_downstream(api_recv_chan, upstream_recv_chan))  # 转发给下游
+        to_upstream_task = api.create_task(self._forward_to_upstream(api_send_chan, upstream_send_chan, tq_send_chan))  # 转发给上游
+        try:
+            async for pack in tq_recv_chan:
+                pass
+        finally:
+            to_downstream_task.cancel()
+            to_upstream_task.cancel()
+
+    async def _forward_to_downstream(self, api_recv_chan, upstream_recv_chan):
+        """转发给下游"""
+        async for pack in upstream_recv_chan:
+            await api_recv_chan.send(pack)
+
+    async def _forward_to_upstream(self, api_send_chan, upstream_send_chan, tq_send_chan):
+        """转发给上游"""
+        async for pack in api_send_chan:
+            if pack["aid"] == "set_chart_data":
+                await tq_send_chan.send(pack)
+            elif pack["aid"] == "set_chart" or pack["aid"] == "subscribe_quote":
+                await tq_send_chan.send(pack.copy())
+                await upstream_send_chan.send(pack)
+            else:
+                await upstream_send_chan.send(pack)
 
 
 class TqAccount(object):
