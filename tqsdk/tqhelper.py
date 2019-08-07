@@ -7,8 +7,8 @@ import os
 import sys
 import json
 import logging
-import datetime
 import threading
+import tempfile
 
 
 class LogHandlerFile(logging.Handler):
@@ -115,11 +115,74 @@ class TqMonitorThread (threading.Thread):
 
     def run(self):
         import _winapi
-        p = _winapi.OpenProcess(_winapi.PROCESS_ALL_ACCESS, False, self.tq_pid)
-        os.waitpid(p, 0)
-        os._exit(0)
+        try:
+            p = _winapi.OpenProcess(_winapi.PROCESS_ALL_ACCESS, False, self.tq_pid)
+            os.waitpid(p, 0)
+        except:
+            pass
+        finally:
+            os._exit(0)
 
 
 def monitor_extern_process(tq_pid):
     TqMonitorThread(tq_pid).start()
+
+
+if sys.platform != "win32":
+    import fcntl
+
+
+class SingleInstanceException(BaseException):
+    pass
+
+
+def get_self_full_name():
+    s = os.path.abspath(sys.argv[0])
+    return s[0].upper() + s[1:]
+
+class SingleInstance(object):
+    def __init__(self, flavor_id=""):
+        self.initialized = False
+        self.instance_id = get_self_full_name().replace(
+            "/", "-").replace(":", "").replace("\\", "-") + '-%s' % flavor_id
+        self.lockfile = os.path.normpath(
+            tempfile.gettempdir() + '/' + self.instance_id + '.lock')
+
+        if sys.platform == 'win32':
+            try:
+                # file already exists, we try to remove (in case previous
+                # execution was interrupted)
+                if os.path.exists(self.lockfile):
+                    os.unlink(self.lockfile)
+                self.fd = os.open(
+                    self.lockfile, os.O_CREAT | os.O_EXCL | os.O_RDWR)
+            except OSError:
+                type, e, tb = sys.exc_info()
+                if e.errno == 13:
+                    raise SingleInstanceException()
+                print(e.errno)
+                raise
+        else:  # non Windows
+            self.fp = open(self.lockfile, 'w')
+            self.fp.flush()
+            try:
+                fcntl.lockf(self.fp, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except IOError:
+                raise SingleInstanceException()
+        self.initialized = True
+
+    def __del__(self):
+        if not self.initialized:
+            return
+        try:
+            if sys.platform == 'win32':
+                if hasattr(self, 'fd'):
+                    os.close(self.fd)
+                    os.unlink(self.lockfile)
+            else:
+                fcntl.lockf(self.fp, fcntl.LOCK_UN)
+                if os.path.isfile(self.lockfile):
+                    os.unlink(self.lockfile)
+        except Exception as e:
+            sys.exit(-1)
 

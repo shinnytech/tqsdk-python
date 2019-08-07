@@ -52,19 +52,19 @@ class TqApi(object):
         创建天勤接口实例
 
         Args:
-            account (TqAccount/TqSim/str/TqApi): 交易账号:
-                * TqAccount: 使用实盘帐号, 直连行情和交易服务器(不通过天勤终端), 需提供期货公司/帐号/密码
+            account (None/TqAccount/TqSim/TqApi): [可选]交易账号:
+                * None: 账号将根据命令行参数决定
 
-                * TqSim: 使用 Api 自带的模拟功能, 直连行情服务器或连接天勤终端(例如使用历史复盘进行测试)接收行情数据
+                * :py:class:`~tqsdk.api.TqAccount` : 使用实盘账号, 直连行情和交易服务器(不通过天勤终端), 需提供期货公司/帐号/密码
 
-                * str: 连接天勤终端, 实盘交易填写期货公司提供的帐号, 使用天勤终端内置的模拟交易填写"SIM", 需先在天勤终端内登录交易
+                * :py:class:`~tqsdk.sim.TqSim` : 使用 TqApi 自带的内部模拟账号
+
+                * :py:class:`~tqsdk.sim.TqApi` : 对 master TqApi 创建一个 slave 副本, 以便在其它线程中使用
 
             url (str): [可选]指定服务器的地址
                 * 当 account 为 TqAccount 类型时, 可以通过该参数指定交易服务器地址, 默认使用 opentd.shinnytech.com. 行情始终使用 openmd.shinnytech.com
 
                 * 当 account 为 TqSim 类型时, 可以通过该参数指定行情服务器地址, 默认使用 openmd.shinnytech.com, 可以指定为天勤终端的地址
-
-                * 当 account 为 str 类型时, 可以通过该参数指定天勤终端的地址, 默认本机
 
             backtest (TqBacktest): [可选]传入 TqBacktest 对象将进入回测模式, 回测模式下会将帐号转为 TqSim 并只连接 openmd.shinnytech.com 接收行情数据
 
@@ -78,11 +78,7 @@ class TqApi(object):
             from tqsdk import TqApi, TqAccount
             api = TqApi(TqAccount("H海通期货", "022631", "123456"))
 
-            # 使用实盘帐号连接天勤终端(需先在天勤终端内登录交易)
-            from tqsdk import TqApi
-            api = TqApi("022631")
-
-            # 使用模拟帐号直连行情和交易服务器
+            # 使用模拟帐号直连行情服务器
             from tqsdk import TqApi, TqSim
             api = TqApi(TqSim())
 
@@ -102,11 +98,15 @@ class TqApi(object):
         # 处理命令行参数
         parser = argparse.ArgumentParser()
         parser.add_argument('--_action', type=str, required=False)
-        parser.add_argument('--_account_id', type=str, required=False)
-        parser.add_argument('--_output_file', type=str, required=False)
-        parser.add_argument('--_dt_start', type=str, required=False)
-        parser.add_argument('--_dt_end', type=str, required=False)
         parser.add_argument('--_tq_pid', type=int, required=False)
+        parser.add_argument('--_tq_url', type=str, required=False)
+        parser.add_argument('--_output_path', type=str, required=False)
+        parser.add_argument('--_broker_id', type=str, required=False)
+        parser.add_argument('--_account_id', type=str, required=False)
+        parser.add_argument('--_password', type=str, required=False)
+        parser.add_argument('--_start_dt', type=str, required=False)
+        parser.add_argument('--_end_dt', type=str, required=False)
+        parser.add_argument('--_md_url', type=str, required=False)
         args, unknown = parser.parse_known_args()
         # 初始化 logger
         self.logger = logging.getLogger("TqApi")
@@ -131,40 +131,81 @@ class TqApi(object):
         self.pending_diffs = []  # 从网络上收到的待处理的 diffs, 只在 wait_update 函数执行过程中才可能为非空
         self.prototype = self._gen_prototype()  # 各业务数据的原型, 用于决定默认值及将收到的数据转为特定的类型
         self.wait_timeout = False  # wait_update 是否触发超时
+        self._tq_url = args._tq_url
         # 根据master/slave分别执行不同的初始化任务
+        self._register_instance_pack = None
         self.is_slave = isinstance(account, TqApi)
         if not self.is_slave:
             self._slaves = []
             if args._action == "run":
                 from tqsdk import tqhelper
-                account = args._account_id
-                report_file = open(args._output_file, "a+")
+                account = TqAccount(args._broker_id, args._account_id, args._password)
+                self._si = tqhelper.SingleInstance(args._account_id)
+                self._instance_id = self._si.instance_id
+                self._instance_type = "RUN"
+                report_file = open(os.path.join(args._output_path, self._instance_id), "a+")
                 dt_func = lambda: int(datetime.datetime.now().timestamp() * 1e9)
                 tqhelper.setup_output_file(report_file, dt_func)
                 self.create_task(tqhelper.account_watcher(self, dt_func, report_file))
-                tqhelper.monitor_extern_process(args._tq_pid)
+                if args._tq_pid:
+                    tqhelper.monitor_extern_process(args._tq_pid)
+                self._register_instance_pack = {
+                    "aid": "register_instance",
+                    "instance_id": self._instance_id,
+                    "full_path": tqhelper.get_self_full_name(),
+                    "instance_pid": os.getpid(),
+                    "instance_type": "RUN",
+                    "broker_id": args._broker_id,
+                    "account_id": args._account_id,
+                    "password": args._password,
+                }
             elif args._action == "backtest":
                 from tqsdk import tqhelper
                 if not isinstance(account, TqSim):
                     account = TqSim()
-                if backtest is None:
-                    from tqsdk.backtest import TqBacktest
-                    start_date = datetime.datetime.strptime(args._dt_start, '%Y%m%d')
-                    end_date = datetime.datetime.strptime(args._dt_end, '%Y%m%d')
-                    backtest = TqBacktest(start_dt=start_date, end_dt=end_date)
-                report_file = open(args._output_file, "a+")
+                self._si = tqhelper.SingleInstance("%s-%s" % (args._start_dt, args._end_dt))
+                self._instance_id = self._si.instance_id
+                self._instance_type = "BACKTEST"
+                from tqsdk.backtest import TqBacktest
+                start_date = datetime.datetime.strptime(args._start_dt, '%Y%m%d')
+                end_date = datetime.datetime.strptime(args._end_dt, '%Y%m%d')
+                backtest = TqBacktest(start_dt=start_date, end_dt=end_date)
+                report_file = open(os.path.join(args._output_path, self._instance_id), "a+")
                 dt_func = lambda: account._get_current_timestamp()
                 tqhelper.setup_output_file(report_file, dt_func)
                 self.create_task(tqhelper.account_watcher(self, dt_func, report_file))
-                tqhelper.monitor_extern_process(args._tq_pid)
+                if args._tq_pid:
+                    tqhelper.monitor_extern_process(args._tq_pid)
+                self._register_instance_pack = {
+                    "aid": "register_instance",
+                    "instance_id": self._instance_id,
+                    "full_path": tqhelper.get_self_full_name(),
+                    "instance_pid": os.getpid(),
+                    "instance_type": "BACKTEST",
+                    "start_dt": args._start_dt,
+                    "end_dt": args._end_dt,
+                }
+            elif args._action == "MDREPLAY":
+                from tqsdk import tqhelper
+                if not isinstance(account, TqSim):
+                    account = TqSim()
+                self._si = tqhelper.SingleInstance("SIMxxx") #todo: 复盘进程的
+                self._instance_id = self._si.instance_id
+                report_file = open(os.path.join(args._output_path, self._instance_id), "a+")
+                dt_func = lambda: account._get_current_timestamp()
+                tqhelper.setup_output_file(report_file, dt_func)
+                self.create_task(tqhelper.account_watcher(self, dt_func, report_file))
+                if args._tq_pid:
+                    tqhelper.monitor_extern_process(args._tq_pid)
             else:
                 if account is None:
                     account = TqSim()
-            self.account_id = account if isinstance(account, str) else account.account_id
+            self._account = account
+            self.account_id = self._account.account_id
             if sys.platform.startswith("win"):
                 self.create_task(self._windows_patch())  # Windows系统下asyncio不支持KeyboardInterrupt的临时补丁
             self.create_task(self._notify_watcher())  # 监控服务器发送的通知
-            self._setup_connection(account, url, backtest)  # 初始化通讯连接
+            self._setup_connection(account, url, backtest, args._tq_url)  # 初始化通讯连接
         else:
             self._master = account
             if self._master.is_slave:
@@ -909,45 +950,38 @@ class TqApi(object):
         self.event_rev += 1
         return org_call_soon(callback, *args, **kargs)
 
-    def _setup_connection(self, account, url, backtest):
+    def _setup_connection(self, account, url, backtest, tq_url):
         """初始化数据连接"""
         if backtest:  # 如果处于回测模式则将帐号转为模拟帐号，并直接连接 openmd
             if not isinstance(account, TqSim):
                 account = TqSim(account_id=self.account_id)
             url = None
-        if isinstance(account, str):  # 如果帐号类型是字符串，则连接天勤客户端
-            self._send_pack({
-                "aid": "req_login",
-                "user_name": self.account_id,
-            })
-            self.recv_chan.send_nowait({
-                "aid":"rtn_data",
-                "data":[{
-                    "quotes": self._fetch_symbol_info(TqApi.DEFAULT_INS_URL),  # 获取合约信息
-                    "trade": {self.account_id:{"trade_more_data": False}},  # 天勤以 mdhis_more_data 来标记账户截面发送结束
-                }],
-            })
-            self.create_task(self._connect((url if url else "ws://127.0.0.1:7777/"), self.send_chan, self.recv_chan))  # 启动到天勤客户端的连接
+        # 默认连接 opemmd, 除非使用模拟帐号并指定了 url (例如: 使用模拟帐号连接天勤客户端使用历史复盘)
+        ws_md_send_chan, ws_md_recv_chan = TqChan(self), TqChan(self)
+        md_url = url if url and isinstance(account, TqSim) else TqApi.DEFAULT_MD_URL
+        ws_md_recv_chan.send_nowait({
+            "aid": "rtn_data",
+            "data": [{"quotes": self._fetch_symbol_info(TqApi.DEFAULT_INS_URL)}]
+        })  # 获取合约信息
+        self.create_task(self._connect(md_url, ws_md_send_chan, ws_md_recv_chan))  # 启动行情websocket连接
+        if backtest:  # 如果处于回测模式，则将行情连接对接到 backtest 上
+            bt_send_chan, bt_recv_chan = TqChan(self), TqChan(self)
+            self.create_task(backtest._run(self, bt_send_chan, bt_recv_chan, ws_md_send_chan, ws_md_recv_chan))
+            ws_md_send_chan, ws_md_recv_chan = bt_send_chan, bt_recv_chan
+        if isinstance(account, TqSim):
+            self.create_task(account._run(self, self.send_chan, self.recv_chan, ws_md_send_chan, ws_md_recv_chan))
         else:
-            # 默认连接 opemmd, 除非使用模拟帐号并指定了 url (例如: 使用模拟帐号连接天勤客户端使用历史复盘)
-            ws_md_send_chan, ws_md_recv_chan = TqChan(self), TqChan(self)
-            md_url = url if url and isinstance(account, TqSim) else TqApi.DEFAULT_MD_URL
-            ws_md_recv_chan.send_nowait({
-                "aid": "rtn_data",
-                "data": [{"quotes": self._fetch_symbol_info(TqApi.DEFAULT_INS_URL)}]
-            })  # 获取合约信息
-            self.create_task(self._connect(md_url, ws_md_send_chan, ws_md_recv_chan))  # 启动行情websocket连接
-            if backtest:  # 如果处于回测模式，则将行情连接对接到 backtest 上
-                bt_send_chan, bt_recv_chan = TqChan(self), TqChan(self)
-                self.create_task(backtest._run(self, bt_send_chan, bt_recv_chan, ws_md_send_chan, ws_md_recv_chan))
-                ws_md_send_chan, ws_md_recv_chan = bt_send_chan, bt_recv_chan
-            if isinstance(account, TqSim):
-                self.create_task(account._run(self, self.send_chan, self.recv_chan, ws_md_send_chan, ws_md_recv_chan))
-            else:
-                ws_td_send_chan, ws_td_recv_chan = TqChan(self), TqChan(self)
-                td_url = url if url else "wss://opentd.shinnytech.com/trade/user0"
-                self.create_task(self._connect(td_url, ws_td_send_chan, ws_td_recv_chan))  # 启动交易websocket连接
-                self.create_task(account._run(self, self.send_chan, self.recv_chan, ws_md_send_chan, ws_md_recv_chan, ws_td_send_chan, ws_td_recv_chan))
+            ws_td_send_chan, ws_td_recv_chan = TqChan(self), TqChan(self)
+            td_url = url if url else "wss://opentd.shinnytech.com/trade/user0"
+            self.create_task(self._connect(td_url, ws_td_send_chan, ws_td_recv_chan))  # 启动交易websocket连接
+            self.create_task(account._run(self, self.send_chan, self.recv_chan, ws_md_send_chan, ws_md_recv_chan, ws_td_send_chan, ws_td_recv_chan))
+        if tq_url and self._register_instance_pack:
+            tq_send_chan, tq_recv_chan = TqChan(self), TqChan(self)  # 连接到天勤的channel
+            tq_send_chan.send_nowait(self._register_instance_pack)
+            self.create_task(self._connect(tq_url, tq_send_chan, tq_recv_chan))  # 启动到天勤客户端的连接
+            upstream_send_chan, upstream_recv_chan = self.send_chan, self.recv_chan # 连接上游的channel
+            self.send_chan, self.recv_chan = TqChan(self), TqChan(self)  # 连接到下游的channel
+            self.create_task(Forwarding()._forward(self,self.send_chan,self.recv_chan,upstream_send_chan, upstream_recv_chan, tq_send_chan, tq_recv_chan))
 
     def _fetch_symbol_info(self, url):
         """获取合约信息"""
@@ -1563,14 +1597,12 @@ class TqApi(object):
         self._send_chart_data(base_k_dataframe, id, serial)
 
     def _send_chart_data(self, base_kserial_frame, serial_id, serial_data):
-        chart_id = self.account_id.replace(".", "_")
         s = self.serials[id(base_kserial_frame)]
         p = s["root"]["_path"]
         symbol = p[-2]
         dur_nano = int(p[-1])
         pack = {
             "aid": "set_chart_data",
-            "chart_id": chart_id,
             "symbol": symbol,
             "dur_nano": dur_nano,
             "datas": {
@@ -1586,6 +1618,38 @@ class TqApi(object):
             return int(base_k_dataframe["id"].iloc[-1]) + 1 + x
         elif x >= 0:
             return int(base_k_dataframe["id"].iloc[0]) + x
+
+class Forwarding(object):
+    """
+    作为数据转发的中间模块, 创建与天勤的新连接, 并过滤TqApi向上游发送的数据.
+    对于这个新连接: 发送所有的 set_chart_data 类型数据包,以及抄送所有的 subscribe_quote, set_chart类型数据包
+    """
+
+    async def _forward(self, api, api_send_chan, api_recv_chan, upstream_send_chan, upstream_recv_chan, tq_send_chan, tq_recv_chan):
+        to_downstream_task = api.create_task(self._forward_to_downstream(api_recv_chan, upstream_recv_chan))  # 转发给下游
+        to_upstream_task = api.create_task(self._forward_to_upstream(api_send_chan, upstream_send_chan, tq_send_chan))  # 转发给上游
+        try:
+            async for pack in tq_recv_chan:
+                pass
+        finally:
+            to_downstream_task.cancel()
+            to_upstream_task.cancel()
+
+    async def _forward_to_downstream(self, api_recv_chan, upstream_recv_chan):
+        """转发给下游"""
+        async for pack in upstream_recv_chan:
+            await api_recv_chan.send(pack)
+
+    async def _forward_to_upstream(self, api_send_chan, upstream_send_chan, tq_send_chan):
+        """转发给上游"""
+        async for pack in api_send_chan:
+            if pack["aid"] == "set_chart_data":
+                await tq_send_chan.send(pack)
+            elif pack["aid"] == "set_chart" or pack["aid"] == "subscribe_quote":
+                await tq_send_chan.send(pack.copy())
+                await upstream_send_chan.send(pack)
+            else:
+                await upstream_send_chan.send(pack)
 
 
 class TqAccount(object):
