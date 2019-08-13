@@ -100,7 +100,7 @@ class TqApi(object):
         self.loop = asyncio.new_event_loop() if loop is None else loop  # 创建一个新的 ioloop, 避免和其他框架/环境产生干扰
 
         # 初始化 logger
-        self.logger = logging.getLogger("TQ")
+        self.logger = logging.getLogger("TqApi")
         self.logger.setLevel(logging.INFO)
         sh = logging.StreamHandler()
         sh.setLevel(logging.INFO)
