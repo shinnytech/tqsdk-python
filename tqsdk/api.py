@@ -35,7 +35,7 @@ import pandas as pd
 import numpy as np
 from .__version__ import __version__
 from tqsdk.sim import TqSim
-from tqsdk.objs import Entity, Quote, Account, Position, Order, Trade
+from tqsdk.objs import Entity, Quote, Kline, Tick, Account, Position, Order, Trade
 
 
 class TqApi(object):
@@ -127,7 +127,9 @@ class TqApi(object):
             "quotes": set(),
         }  # 记录已发出的请求
         self.serials = {}  # 记录所有数据序列
-        self.data = {"_path": [], "_listener": weakref.WeakSet()}  # 数据存储
+        self.data = Entity()  # 数据存储
+        self.data["_path"] = []
+        self.data["_listener"] = weakref.WeakSet()
         self.diffs = []  # 自上次wait_update返回后收到更新数据的数组
         self.pending_diffs = []  # 从网络上收到的待处理的 diffs, 只在 wait_update 函数执行过程中才可能为非空
         self.prototype = self._gen_prototype()  # 各业务数据的原型, 用于决定默认值及将收到的数据转为特定的类型
@@ -956,8 +958,6 @@ class TqApi(object):
             self.send_chan, self.recv_chan = TqChan(self), TqChan(self)  # 连接到下游的channel
             self.create_task(Forwarding()._forward(self,self.send_chan,self.recv_chan,upstream_send_chan, upstream_recv_chan, tq_send_chan, tq_recv_chan))
 
-
-
     def _fetch_symbol_info(self, url):
         """获取合约信息"""
         rsp = requests.get(url, headers={"Accept": "application/json"}, timeout=30)
@@ -1269,8 +1269,8 @@ class TqApi(object):
         d = root
         for i in range(len(path)):
             if path[i] not in d:
-                dv = {} if i != len(path) - 1 or default is None else copy.copy(default)
-                if isinstance(dv, dict) or isinstance(dv, Entity):
+                dv = Entity() if i != len(path) - 1 or default is None else copy.copy(default)
+                if isinstance(dv, Entity):
                     dv["_path"] = d["_path"] + [path[i]]
                     dv["_listener"] = weakref.WeakSet()
                 d[path[i]] = dv
@@ -1281,7 +1281,7 @@ class TqApi(object):
     def _is_key_exist(diff, path, key):
         """判断指定数据是否存在"""
         for p in path:
-            if (not isinstance(diff, dict) and not isinstance(diff, Entity)) or p not in diff:
+            if not isinstance(diff, dict) or p not in diff:
                 return False
             diff = diff[p]
         if not isinstance(diff, dict):
@@ -1301,7 +1301,7 @@ class TqApi(object):
                 "*": {
                     "*": {
                         "data": {
-                            "@": TqApi._gen_kline_prototype(),  # K线的数据原型
+                            "@": Kline(self),  # K线的数据原型
                         }
                     }
                 }
@@ -1309,7 +1309,7 @@ class TqApi(object):
             "ticks": {
                 "*": {
                     "data": {
-                        "@": TqApi._gen_tick_prototype(),  # Tick的数据原型
+                        "@": Tick(self),  # Tick的数据原型
                     }
                 }
             },
@@ -1329,38 +1329,6 @@ class TqApi(object):
                     }
                 }
             },
-        }
-
-    @staticmethod
-    def _gen_kline_prototype():
-        """K线的数据原型"""
-        return {
-            "datetime": 0,  # 1501080715000000000 (K线起点时间(按北京时间)，自unix epoch(1970-01-01 00:00:00 GMT)以来的纳秒数)
-            "open": float("nan"),  # 51450.0 (K线起始时刻的最新价)
-            "high": float("nan"),  # 51450.0 (K线时间范围内的最高价)
-            "low": float("nan"),  # 51450.0 (K线时间范围内的最低价)
-            "close": float("nan"),  # 51450.0 (K线结束时刻的最新价)
-            "volume": 0,  # 11 (K线时间范围内的成交量)
-            "open_oi": 0,  # 27354 (K线起始时刻的持仓量)
-            "close_oi": 0,  # 27355 (K线结束时刻的持仓量)
-        }
-
-    @staticmethod
-    def _gen_tick_prototype():
-        """Tick的数据原型"""
-        return {
-            "datetime": 0,  # 1501074872000000000 (tick从交易所发出的时间(按北京时间)，自unix epoch(1970-01-01 00:00:00 GMT)以来的纳秒数)
-            "last_price": float("nan"),  # 3887.0 (最新价)
-            "average": float("nan"),  # 3820.0 (当日均价)
-            "highest": float("nan"),  # 3897.0 (当日最高价)
-            "lowest": float("nan"),  # 3806.0 (当日最低价)
-            "ask_price1": float("nan"),  # 3886.0 (卖一价)
-            "ask_volume1": 0,  # 3 (卖一量)
-            "bid_price1": float("nan"),  # 3881.0 (买一价)
-            "bid_volume1": 0,  # 18 (买一量)
-            "volume": 0,  # 7823 (当日成交量)
-            "amount": float("nan"),  # 19237841.0 (成交额)
-            "open_interest": 0,  # 1941 (持仓量)
         }
 
     @staticmethod
@@ -1404,9 +1372,7 @@ class TqApi(object):
     @staticmethod
     def _deep_copy_dict(source, dest):
         for key, value in source.items():
-            if key.startswith("_"):
-                continue
-            if isinstance(value, dict):
+            if isinstance(value, Entity):
                 dest[key] = {}
                 TqApi._deep_copy_dict(value, dest[key])
             else:
@@ -1596,12 +1562,12 @@ class TqApi(object):
         elif x >= 0:
             return int(base_k_dataframe["id"].iloc[0]) + x
 
+
 class Forwarding(object):
     """
     作为数据转发的中间模块, 创建与天勤的新连接, 并过滤TqApi向上游发送的数据.
     对于这个新连接: 发送所有的 set_chart_data 类型数据包,以及抄送所有的 subscribe_quote, set_chart类型数据包
     """
-
     async def _forward(self, api, api_send_chan, api_recv_chan, upstream_send_chan, upstream_recv_chan, tq_send_chan, tq_recv_chan):
         to_downstream_task = api.create_task(self._forward_to_downstream(api_recv_chan, upstream_recv_chan))  # 转发给下游
         to_upstream_task = api.create_task(self._forward_to_upstream(api_send_chan, upstream_send_chan, tq_send_chan))  # 转发给上游

@@ -7,9 +7,9 @@ R-Breaker策略(隔夜留仓)
 参考: https://www.shinnytech.com/blog/r-breaker
 '''
 
-from tqsdk import TqApi, TqSim, TargetPosTask
+from tqsdk import TqApi, TargetPosTask
 
-SYMBOL = "SHFE.au1906"  # 合约代码
+SYMBOL = "SHFE.au1912"  # 合约代码
 STOP_LOSS_PRICE = 10  # 止损点(价格)
 
 
@@ -32,7 +32,7 @@ def get_index_line(klines):
     return pivot, bBreak, sSetup, sEnter, bEnter, bSetup, sBreak
 
 
-api = TqApi(TqSim())
+api = TqApi()
 quote = api.get_quote(SYMBOL)
 klines = api.get_kline_serial(SYMBOL, 24*60*60)  # 86400: 使用日线
 position = api.get_position(SYMBOL)

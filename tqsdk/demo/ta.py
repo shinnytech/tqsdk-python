@@ -3,12 +3,12 @@
 __author__ = 'chengzhi'
 
 import datetime
-from tqsdk import TqApi, TqSim
+from tqsdk import TqApi
 from tqsdk.ta import *
 
-api = TqApi(TqSim())
+api = TqApi()
 # 获得 cu1909 10秒K线的引用
-klines = api.get_kline_serial("SHFE.cu1909", 10, data_length=3000)
+klines = api.get_kline_serial("SHFE.cu1910", 10, data_length=3000)
 
 print("K线时间", datetime.datetime.fromtimestamp(klines.iloc[-1]["datetime"] / 1e9))
 print(klines)

@@ -6,7 +6,7 @@ import weakref
 from datetime import date, datetime
 from tqsdk.api import TqApi, TqChan
 from tqsdk.exceptions import BacktestFinished
-
+from tqsdk.objs import Entity
 
 class TqBacktest(object):
     """
@@ -63,7 +63,9 @@ class TqBacktest(object):
         self.md_send_chan = md_send_chan
         self.md_recv_chan = md_recv_chan
         self.pending_peek = False
-        self.data = {"_path": [], "_listener": weakref.WeakSet()}  # 数据存储
+        self.data = Entity()  # 数据存储
+        self.data["_path"] = []
+        self.data["_listener"] = weakref.WeakSet()
         self.serials = {}  # 所有原始数据序列
         self.quotes = {}
         self.diffs = []

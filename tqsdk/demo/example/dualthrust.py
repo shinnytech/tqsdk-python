@@ -7,14 +7,14 @@ Dual Thrust策略
 参考: https://www.shinnytech.com/blog/dual-thrust
 '''
 
-from tqsdk import TqApi, TqSim, TargetPosTask
+from tqsdk import TqApi, TargetPosTask
 
-SYMBOL = "DCE.jd1909"  # 合约代码
+SYMBOL = "DCE.jd2001"  # 合约代码
 NDAY = 5  # 天数
 K1 = 0.2  # 上轨K值
 K2 = 0.2  # 下轨K值
 
-api = TqApi(TqSim())
+api = TqApi()
 print("策略开始运行")
 
 quote = api.get_quote(SYMBOL)

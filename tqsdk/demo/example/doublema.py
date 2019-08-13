@@ -5,14 +5,14 @@ __author__ = 'limin'
 '''
 双均线策略
 '''
-from tqsdk import TqApi, TqSim, TargetPosTask
+from tqsdk import TqApi, TargetPosTask
 from tqsdk.tafunc import ma
 
 SHORT = 30  # 短周期
 LONG = 60  # 长周期
 SYMBOL = "SHFE.bu1912"  # 合约代码
 
-api = TqApi(TqSim())
+api = TqApi()
 print("策略开始运行")
 
 data_length = LONG + 2  # k线数据长度

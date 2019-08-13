@@ -17,17 +17,17 @@ class Entity(MutableMapping):
         return self.__dict__.__getitem__(key)
 
     def __iter__(self):
-        return iter(self.__dict__)
+        return iter({k: v for k, v in self.__dict__.items() if not k.startswith("_")})
 
     def __len__(self):
-        return len(self.__dict__)
+        return len({k: v for k, v in self.__dict__.items() if not k.startswith("_")})
 
     def __str__(self):
-        return str(self.__dict__)
+        return str({k: v for k, v in self.__dict__.items() if not k.startswith("_")})
 
     def __repr__(self):
         return '{}, D({})'.format(super(Entity, self).__repr__(),
-                                  self.__dict__)
+                                  {k: v for k, v in self.__dict__.items() if not k.startswith("_")})
 
     def copy(self):
         return copy.copy(self)
@@ -102,6 +102,60 @@ class Quote(Entity):
         self.change_percent = float("nan")
         #: 合约是否已下市
         self.expired = False
+
+
+class Kline(Entity):
+    """ Kline 是一个K线对象 """
+
+    def __init__(self, api):
+        self._api = api
+        #: K线起点时间(按北京时间)，自unix epoch(1970-01-01 00:00:00 GMT)以来的纳秒数
+        self.datetime = 0
+        #: K线起始时刻的最新价
+        self.open = float("nan")
+        #: K线时间范围内的最高价
+        self.high = float("nan")
+        #: K线时间范围内的最低价
+        self.low = float("nan")
+        #: K线结束时刻的最新价
+        self.close = float("nan")
+        #: K线时间范围内的成交量
+        self.volume = 0
+        #: K线起始时刻的持仓量
+        self.open_oi = 0
+        #: K线结束时刻的持仓量
+        self.close_oi = 0
+
+
+class Tick(Entity):
+    """ Tick 是一个tick对象 """
+
+    def __init__(self, api):
+        self._api = api
+        #: tick从交易所发出的时间(按北京时间)，自unix epoch(1970-01-01 00:00:00 GMT)以来的纳秒数
+        self.datetime = 0
+        #: 最新价
+        self.last_price = float("nan")
+        #: 当日均价
+        self.average = float("nan")
+        #: 当日最高价
+        self.highest = float("nan")
+        #: 当日最低价
+        self.lowest = float("nan")
+        #: 卖一价
+        self.ask_price1 = float("nan")
+        #: 卖一量
+        self.ask_volume1 = 0
+        #: 买一价
+        self.bid_price1 = float("nan")
+        #:买一量
+        self.bid_volume1 = 0
+        #: 当日成交量
+        self.volume = 0
+        #: 成交额
+        self.amount = float("nan")
+        #: 持仓量
+        self.open_interest = 0
 
 
 class Account(Entity):
@@ -256,12 +310,14 @@ class Position(Entity):
         :return: dict, 其中每个元素的key为委托单ID, value为 :py:class:`~tqsdk.objs.Order`
         """
         tdict = self._api._get_obj(self._api.data, ["trade", self._api.account_id, "orders"])
-        fts = {order_id: order for order_id, order in tdict.items() if (not order_id.startswith("_")) and order.instrument_id == self.instrument_id and order.exchange_id == self.exchange_id and order.status == "ALIVE"}
+        fts = {order_id: order for order_id, order in tdict.items() if (not order_id.startswith(
+            "_")) and order.instrument_id == self.instrument_id and order.exchange_id == self.exchange_id and order.status == "ALIVE"}
         return fts
 
 
 class Order(Entity):
     """ Order 是一个委托单对象 """
+
     def __init__(self, api):
         self._api = api
         #: 委托单ID, 对于一个用户的所有委托单，这个ID都是不重复的
@@ -331,10 +387,12 @@ class Order(Entity):
         :return: 当委托单部分成交或全部成交时, 返回成交部分的平均成交价. 无任何成交时, 返回 nan
         """
         tdict = self._api._get_obj(self._api.data, ["trade", self._api.account_id, "trades"])
-        sum_volume = sum([trade.volume for trade_id, trade in tdict.items() if (not trade_id.startswith("_")) and trade.order_id == self.order_id])
+        sum_volume = sum([trade.volume for trade_id, trade in tdict.items() if
+                          (not trade_id.startswith("_")) and trade.order_id == self.order_id])
         if sum_volume == 0:
             return float('nan')
-        sum_amount = sum([trade.volume * trade.price for trade_id, trade in tdict.items() if (not trade_id.startswith("_")) and trade.order_id == self.order_id])
+        sum_amount = sum([trade.volume * trade.price for trade_id, trade in tdict.items() if
+                          (not trade_id.startswith("_")) and trade.order_id == self.order_id])
         return sum_amount / sum_volume
 
     @property
@@ -345,7 +403,8 @@ class Order(Entity):
         :return: dict, 其中每个元素的key为成交ID, value为 :py:class:`~tqsdk.objs.Trade`
         """
         tdict = self._api._get_obj(self._api.data, ["trade", self._api.account_id, "trades"])
-        fts = {trade_id: trade for trade_id, trade in tdict.items() if (not trade_id.startswith("_")) and trade.order_id == self.order_id}
+        fts = {trade_id: trade for trade_id, trade in tdict.items() if
+               (not trade_id.startswith("_")) and trade.order_id == self.order_id}
         return fts
 
 

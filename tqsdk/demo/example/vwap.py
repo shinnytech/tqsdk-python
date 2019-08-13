@@ -8,7 +8,7 @@ Volume Weighted Average Price策略
 '''
 
 import datetime
-from tqsdk import TqApi, TqSim, TargetPosTask
+from tqsdk import TqApi, TargetPosTask
 
 TIME_CELL = 5*60  # 等时长下单的时间单元, 单位: 秒
 TARGET_VOLUME = 300  # 目标交易手数 (>0: 多头, <0: 空头)
@@ -18,7 +18,7 @@ START_HOUR, START_MINUTE = 9, 35  # 计划交易时段起始时间点
 END_HOUR, END_MINUTE = 10, 50  # 计划交易时段终点时间点
 
 
-api = TqApi(TqSim())
+api = TqApi()
 print("策略开始运行")
 # 根据 HISTORY_DAY_LENGTH 推算出需要订阅的历史数据长度, 需要注意history_day_length与time_cell的比例关系以避免超过订阅限制
 time_slot_start = datetime.time(START_HOUR, START_MINUTE)  # 计划交易时段起始时间点

@@ -10,14 +10,14 @@ demo仅用于示范如何使用TqSdk获取行情及编写策略程序
 若需实际应用, 需要用户根据自己的交易经验进行修改
 '''
 
-from tqsdk import TqApi, TqSim, TargetPosTask
+from tqsdk import TqApi, TargetPosTask
 from datetime import datetime
 import time
 
-symbol = "SHFE.cu1905"  # 合约代码
+symbol = "SHFE.cu1910"  # 合约代码
 close_hour, close_minute = 14, 50  # 平仓时间
 
-api = TqApi(TqSim())  # 使用模拟帐号直连行情和交易服务器
+api = TqApi()  # 使用模拟帐号直连行情和交易服务器
 quote = api.get_quote(symbol)  # 获取指定合约的盘口行情
 klines = api.get_kline_serial(symbol, 24 * 60 * 60)  # 获取日线
 position = api.get_position(symbol)  # 持仓信息

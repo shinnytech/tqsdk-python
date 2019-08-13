@@ -8,21 +8,21 @@ __author__ = 'limin'
 """
 
 from functools import reduce
-from tqsdk import TqApi, TargetPosTask, TqSim
+from tqsdk import TqApi, TargetPosTask
 
-SYMBOL = "DCE.jd1909"  # 合约代码
+SYMBOL = "DCE.jd2001"  # 合约代码
 START_PRICE = 4247  # 起始价位
 GRID_AMOUNT = 10  # 网格在多头、空头方向的格子(档位)数量
 
-api = TqApi(TqSim())
+api = TqApi()
 grid_region_long = [0.005] * GRID_AMOUNT  # 多头每格价格跌幅(网格密度)
 grid_region_short = [0.005] * GRID_AMOUNT  # 空头每格价格涨幅(网格密度)
-grid_volume_long = [i for i in range(GRID_AMOUNT + 1)]  # 多头每格交易手数
-grid_volume_short = [i for i in range(GRID_AMOUNT + 1)]  # 空头每格交易手数
+grid_volume_long = [i for i in range(GRID_AMOUNT + 1)]  # 多头每格持仓手数
+grid_volume_short = [i for i in range(GRID_AMOUNT + 1)]  # 空头每格持仓手数
 grid_prices_long = [reduce(lambda p, r: p*(1-r), grid_region_long[:i], START_PRICE) for i in range(GRID_AMOUNT + 1)]  # 多头每格的触发价位列表
 grid_prices_short = [reduce(lambda p, r: p*(1+r), grid_region_short[:i], START_PRICE) for i in range(GRID_AMOUNT + 1)]  # 空头每格的触发价位列表
 
-print("策略开始运行, 起始价位: %f, 多头每格交易量:%s, 多头每格的价位:%s, 空头每格的价位:%s" % (START_PRICE, grid_volume_long, grid_prices_long, grid_prices_short))
+print("策略开始运行, 起始价位: %f, 多头每格持仓手数:%s, 多头每格的价位:%s, 空头每格的价位:%s" % (START_PRICE, grid_volume_long, grid_prices_long, grid_prices_short))
 quote = api.get_quote(SYMBOL)  # 行情数据
 target_pos = TargetPosTask(api, SYMBOL)
 position = api.get_position(SYMBOL)  # 持仓信息

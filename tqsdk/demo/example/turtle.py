@@ -9,12 +9,12 @@ __author__ = 'limin'
 
 import json
 import time
-from tqsdk import TqApi, TqSim, TargetPosTask
+from tqsdk import TqApi, TargetPosTask
 from tqsdk.ta import ATR
 
 
 class Turtle:
-    def __init__(self, account, symbol, donchian_channel_open_position=20, donchian_channel_stop_profit=10, atr_day_length=20, max_risk_ratio=0.5):
+    def __init__(self, symbol, account=None, donchian_channel_open_position=20, donchian_channel_stop_profit=10, atr_day_length=20, max_risk_ratio=0.5):
         self.account = account  # 交易账号
         self.symbol = symbol  # 合约代码
         self.donchian_channel_open_position = donchian_channel_open_position  # 唐奇安通道的天数周期(开仓)
@@ -37,7 +37,7 @@ class Turtle:
         kline_length = max(donchian_channel_open_position + 1, donchian_channel_stop_profit + 1, atr_day_length * 5)
         self.klines = self.api.get_kline_serial(self.symbol, 24 * 60 * 60, data_length=kline_length)
         self.account = self.api.get_account()
-        self.target_pos = TargetPosTask(self.api, self.symbol, init_pos=self.state["position"])
+        self.target_pos = TargetPosTask(self.api, self.symbol)
 
     def recalc_paramter(self):
         # 平均真实波幅(N值)
@@ -117,7 +117,7 @@ class Turtle:
             self.try_close()
 
 
-turtle = Turtle(TqSim(), "SHFE.au1812")
+turtle = Turtle("SHFE.au1912")
 print("策略开始运行")
 try:
     turtle.state = json.load(open("turtle_state.json", "r"))  # 读取数据: 本策略目标净持仓数,上一次开仓价
