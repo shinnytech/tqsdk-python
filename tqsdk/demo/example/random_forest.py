@@ -5,7 +5,7 @@ __author__ = 'limin'
 import pandas as pd
 import datetime
 from contextlib import closing
-from tqsdk import TqApi, TqSim, TqBacktest, BacktestFinished, TargetPosTask
+from tqsdk import TqApi, TqBacktest, BacktestFinished, TargetPosTask
 from tqsdk.tafunc import sma, ema2, trma
 from sklearn.ensemble import RandomForestClassifier
 
@@ -41,7 +41,7 @@ def get_prediction_data(klines, n):
 
 
 predictions = []  # 用于记录每次的预测结果(在每个交易日收盘时用收盘数据预测下一交易日的涨跌,并记录在此列表里)
-api = TqApi(TqSim(), backtest=TqBacktest(start_dt=datetime.date(2018, 7, 2), end_dt=datetime.date(2018, 9, 26)))
+api = TqApi(backtest=TqBacktest(start_dt=datetime.date(2018, 7, 2), end_dt=datetime.date(2018, 9, 26)))
 quote = api.get_quote(symbol)
 klines = api.get_kline_serial(symbol, duration_seconds=24 * 60 * 60)  # 日线
 target_pos = TargetPosTask(api, symbol)

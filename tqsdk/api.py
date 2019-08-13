@@ -19,9 +19,7 @@ import json
 import uuid
 import sys
 import time
-import datetime
 import logging
-import argparse
 import copy
 import ctypes
 import asyncio
@@ -42,6 +40,8 @@ from tqsdk import tqhelper
 class TqApi(object):
     """
     天勤接口及数据管理类.
+
+    该类中所有参数只针对天勤外部IDE编写使用, 在天勤内使用 api = TqApi() 即可指定为当前天勤终端登录用户
 
     通常情况下, 一个线程中应该只有一个TqApi的实例, 它负责维护网络连接, 接收行情及账户数据, 并在内存中维护业务数据截面
     """
@@ -417,11 +417,11 @@ class TqApi(object):
 
             direction (str): "BUY" 或 "SELL"
 
-            offset (str): "OPEN", "CLOSE" 或 "CLOSETODAY"
+            offset (str): "OPEN", "CLOSE" 或 "CLOSETODAY" (上期所和原油分平今/平昨, 平今用"CLOSETODAY", 平昨用"CLOSE"; 其他交易所直接用CLOSE 默认先平今再平昨)
 
             volume (int): 需要下单的手数
 
-            limit_price (float): [可选]下单价格, 默认市价单
+            limit_price (float): [可选]下单价格, 默认市价单 (上期所和原油不支持市价单, 需填写此参数值)
 
             order_id (str): [可选]指定下单单号, 默认由 api 自动生成
 

@@ -39,7 +39,7 @@ quote = api.get_quote(SYMBOL)
 klines = api.get_kline_serial(SYMBOL, 24 * 60 * 60)  # 86400: 使用日线
 position = api.get_position(SYMBOL)
 target_pos = TargetPosTask(api, SYMBOL)
-target_pos_value = position.volume_long - position.volume_short  # 净目标净持仓数
+target_pos_value = position.pos_long - position.pos_short  # 净目标净持仓数
 open_position_price = position.open_price_long if target_pos_value > 0 else position.open_price_short  # 开仓价
 pivot, bBreak, sSetup, sEnter, bEnter, bSetup, sBreak = get_index_line(klines)  # 七条标准线
 

@@ -37,10 +37,10 @@ while True:
     if api.is_changing(quote, "last_price"):  # 如果行情最新价发生变化
         print("当前最新价", quote.last_price)
         # 开仓突破
-        if quote.last_price > top_rail and position.volume_long == 0:  # 如果价格突破上轨: 买入开仓
+        if quote.last_price > top_rail and position.pos_long == 0:  # 如果价格突破上轨: 买入开仓
             print("最新价:", quote.last_price, ", 价格突破上轨,买入开仓")
             target_pos.set_target_volume(3)  # 设置目标持仓手数，将指定合约调整到目标头寸
-        elif quote.last_price < bottom_rail and position.volume_short == 0:  # 如果价格跌破下轨: 卖出开仓
+        elif quote.last_price < bottom_rail and position.pos_short == 0:  # 如果价格跌破下轨: 卖出开仓
             print("最新价:", quote.last_price, ", 价格跌破下轨, 卖出开仓")
             target_pos.set_target_volume(-3)
 
