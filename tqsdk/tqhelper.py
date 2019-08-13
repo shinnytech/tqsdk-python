@@ -5,7 +5,6 @@ __author__ = 'tianqin'
 
 import os
 import sys
-import json
 import logging
 import threading
 import tempfile
@@ -24,7 +23,7 @@ class LogHandlerChan(logging.Handler):
             "aid": "log",
             "datetime": self.dt_func(),
             "level": str(record.levelname),
-            "content": record.msg,
+            "content": record.msg % record.args,
         })
 
 
