@@ -2,6 +2,13 @@
 
 版本变更
 =============================
+0.9.15 (2019/08/14)
+
+* 调整tqsdk与天勤的连接机制
+* 去除get_order()及get_position()等函数的返回值中与业务无关的"_path", "_listener" 数据, 使其只返回业务数据
+* 添加对公开函数输入值类型及范围的检查
+
+
 0.9.9 (2019/07/22)
 
 * 持仓对象 :py:class:`~tqsdk.objs.Position` 增加了实时持仓手数属性 pos_long_his, pos_long_today, pos_short_his, pos_short_today ，这些属性在成交时与成交记录同步更新
@@ -13,9 +20,11 @@
 
 * :py:class:`~tqsdk.api.TqApi` 增加 copy 函数，支持在一个进程中用master/slave模式创建多个TqApi实例
 
+
 0.9.7 (2019/06/03):
 
 * 修正持仓数据不能 copy() 的问题
+
 
 0.9.6 (2019/05/30):
 

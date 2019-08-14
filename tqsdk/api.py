@@ -417,7 +417,7 @@ class TqApi(object):
 
             direction (str): "BUY" 或 "SELL"
 
-            offset (str): "OPEN", "CLOSE" 或 "CLOSETODAY" (上期所和原油分平今/平昨, 平今用"CLOSETODAY", 平昨用"CLOSE"; 其他交易所直接用CLOSE 默认先平今再平昨)
+            offset (str): "OPEN", "CLOSE" 或 "CLOSETODAY" (上期所和原油分平今/平昨, 平今用"CLOSETODAY", 平昨用"CLOSE"; 其他交易所直接用"CLOSE" 默认先平今再平昨)
 
             volume (int): 需要下单的手数
 
@@ -578,7 +578,7 @@ class TqApi(object):
         Returns:
             :py:class:`~tqsdk.objs.Position`: 当指定了 symbol 时, 返回一个持仓对象引用. 其内容将在 :py:meth:`~tqsdk.api.TqApi.wait_update` 时更新.
 
-            不填 symbol 参数调用本函数, 将返回包含用户所有持仓的一个dict, 其中每个元素的key为合约代码, value为 :py:class:`~tqsdk.objs.Position`
+            不填 symbol 参数调用本函数, 将返回包含用户所有持仓的一个tqsdk.objs.Entity对象引用, 使用方法与dict一致, 其中每个元素的key为合约代码, value为 :py:class:`~tqsdk.objs.Position`
 
         Example::
 
@@ -613,7 +613,7 @@ class TqApi(object):
         Returns:
             :py:class:`~tqsdk.objs.Order`: 当指定了order_id时, 返回一个委托单对象引用. 其内容将在 :py:meth:`~tqsdk.api.TqApi.wait_update` 时更新.
 
-            不填order_id参数调用本函数, 将返回包含用户所有委托单的一个dict, 其中每个元素的key为委托单号, value为 :py:class:`~tqsdk.objs.Order`
+            不填order_id参数调用本函数, 将返回包含用户所有委托单的一个tqsdk.objs.Entity对象引用, 使用方法与dict一致, 其中每个元素的key为委托单号, value为 :py:class:`~tqsdk.objs.Order`
 
             注意: 在刚下单后, tqsdk 还没有收到回单信息时, 此对象中各项内容为空
 
@@ -649,7 +649,7 @@ class TqApi(object):
         Returns:
             :py:class:`~tqsdk.objs.Trade`: 当指定了trade_id时, 返回一个成交对象引用. 其内容将在 :py:meth:`~tqsdk.api.TqApi.wait_update` 时更新.
 
-            不填trade_id参数调用本函数, 将返回包含用户当前交易日成交记录的一个dict, 其中每个元素的key为成交号, value为 :py:class:`~tqsdk.objs.Trade`
+            不填trade_id参数调用本函数, 将返回包含用户当前交易日所有成交记录的一个tqsdk.objs.Entity对象引用, 使用方法与dict一致, 其中每个元素的key为成交号, value为 :py:class:`~tqsdk.objs.Trade`
 
             推荐优先使用 :py:meth:`~tqsdk.objs.Order.trade_records` 获取某个委托单的相应成交记录, 仅当确有需要时才使用本函数.
 
