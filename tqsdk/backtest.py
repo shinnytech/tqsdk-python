@@ -59,7 +59,7 @@ class TqBacktest(object):
     async def _run(self, api, sim_send_chan, sim_recv_chan, md_send_chan, md_recv_chan):
         """回测task"""
         self.api = api
-        self.logger = api.logger.getChild("TqBacktest")  # 调试信息输出
+        self.logger = api._logger.getChild("TqBacktest")  # 调试信息输出
         self.sim_send_chan = sim_send_chan
         self.sim_recv_chan = sim_recv_chan
         self.md_send_chan = md_send_chan
@@ -101,7 +101,7 @@ class TqBacktest(object):
         async for pack in self.md_recv_chan:
             await self.md_send_chan.send({"aid": "peek_message"})
             for d in pack.get("data", []):
-                TqApi._merge_diff(self.data, d, self.api.prototype, False)
+                TqApi._merge_diff(self.data, d, self.api._prototype, False)
 
     async def _send_snapshot(self):
         """发送初始合约信息"""

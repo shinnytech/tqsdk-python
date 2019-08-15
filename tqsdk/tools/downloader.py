@@ -106,8 +106,8 @@ class DataDownloader:
             "focus_position": 0,
         }
         # 还没有发送过任何请求, 先请求定位左端点
-        await self.api.send_chan.send(chart_info)
-        chart = self.api._get_obj(self.api.data, ["charts", chart_info["chart_id"]])
+        await self.api._send_chan.send(chart_info)
+        chart = self.api._get_obj(self.api._data, ["charts", chart_info["chart_id"]])
         current_id = None  # 当前数据指针
         csv_header = []
         data_cols = ["open", "high", "low", "close", "volume", "open_oi", "close_oi"] if self.dur_nano != 0 else \
@@ -115,7 +115,7 @@ class DataDownloader:
         serials = []
         for symbol in self.symbol_list:
             path = ["klines", symbol, str(self.dur_nano)] if self.dur_nano != 0 else ["ticks", symbol]
-            serial = self.api._get_obj(self.api.data, path)
+            serial = self.api._get_obj(self.api._data, path)
             serials.append(serial)
         try:
             with open(self.csv_file_name, 'w', newline='') as csvfile:
@@ -127,7 +127,7 @@ class DataDownloader:
                             continue
                         left_id = chart.get("left_id", -1)
                         right_id = chart.get("right_id", -1)
-                        if (left_id == -1 and right_id == -1) or self.api.data.get("mdhis_more_data", True):
+                        if (left_id == -1 and right_id == -1) or self.api._data.get("mdhis_more_data", True):
                             # 定位信息还没收到, 或数据序列还没收到
                             continue
                         for serial in serials:
@@ -164,10 +164,10 @@ class DataDownloader:
                         chart_info.pop("focus_datetime", None)
                         chart_info.pop("focus_position", None)
                         chart_info["left_kline_id"] = current_id
-                        await self.api.send_chan.send(chart_info)
+                        await self.api._send_chan.send(chart_info)
         finally:
             # 释放chart资源
-            await self.api.send_chan.send({
+            await self.api._send_chan.send({
                 "aid": "set_chart",
                 "chart_id": chart_info["chart_id"],
                 "ins_list": "",

@@ -34,7 +34,7 @@ class TqSim(object):
     async def _run(self, api, api_send_chan, api_recv_chan, md_send_chan, md_recv_chan):
         """模拟交易task"""
         self.api = api
-        self.logger = api.logger.getChild("TqSim")  # 调试信息输出
+        self.logger = api._logger.getChild("TqSim")  # 调试信息输出
         self.api_send_chan = api_send_chan
         self.api_recv_chan = api_recv_chan
         self.md_send_chan = md_send_chan

@@ -67,7 +67,7 @@ async def account_watcher(api, dt_func, tq_send_chan):
         async with api.register_update_notify() as update_chan:
             async for _ in update_chan:
                 account_changed = api.is_changing(account, "static_balance")
-                for d in api.diffs:
+                for d in api._diffs:
                     for oid in d.get("trade", {}).get(api._account.account_id, {}).get("orders", {}).keys():
                         order = api.get_order(oid)
                         if order._this_session is not True:
