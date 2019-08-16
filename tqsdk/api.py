@@ -29,6 +29,7 @@ import requests
 import weakref
 import base64
 import os
+from typing import Union
 import pandas as pd
 import numpy as np
 from .__version__ import __version__
@@ -203,7 +204,7 @@ class TqApi(object):
         self._loop.close()
 
     # ----------------------------------------------------------------------
-    def get_quote(self, symbol):
+    def get_quote(self, symbol) -> Quote:
         """
         获取指定合约的盘口行情.
 
@@ -254,7 +255,7 @@ class TqApi(object):
         return quote
 
     # ----------------------------------------------------------------------
-    def get_kline_serial(self, symbol, duration_seconds, data_length=200, chart_id=None):
+    def get_kline_serial(self, symbol, duration_seconds, data_length=200, chart_id=None) -> pd.DataFrame:
         """
         获取k线序列数据
 
@@ -332,7 +333,7 @@ class TqApi(object):
         return serial["df"]
 
     # ----------------------------------------------------------------------
-    def get_tick_serial(self, symbol, data_length=200, chart_id=None):
+    def get_tick_serial(self, symbol, data_length=200, chart_id=None) -> pd.DataFrame:
         """
         获取tick序列数据
 
@@ -408,7 +409,7 @@ class TqApi(object):
         return serial["df"]
 
     # ----------------------------------------------------------------------
-    def insert_order(self, symbol, direction, offset, volume, limit_price=None, order_id=None):
+    def insert_order(self, symbol, direction, offset, volume, limit_price=None, order_id=None) -> Order:
         """
         发送下单指令. **注意: 指令将在下次调用** :py:meth:`~tqsdk.api.TqApi.wait_update` **时发出**
 
@@ -543,7 +544,7 @@ class TqApi(object):
         self._send_pack(msg)
 
     # ----------------------------------------------------------------------
-    def get_account(self):
+    def get_account(self) -> Account:
         """
         获取用户账户资金信息
 
@@ -568,7 +569,7 @@ class TqApi(object):
         return self._get_obj(self._data, ["trade", self._account.account_id, "accounts", "CNY"], self._prototype["trade"]["*"]["accounts"]["@"])
 
     # ----------------------------------------------------------------------
-    def get_position(self, symbol=None):
+    def get_position(self, symbol=None) -> Union[Position, Entity]:
         """
         获取用户持仓信息
 
@@ -603,7 +604,7 @@ class TqApi(object):
         return self._get_obj(self._data, ["trade", self._account.account_id, "positions"])
 
     # ----------------------------------------------------------------------
-    def get_order(self, order_id=None):
+    def get_order(self, order_id=None) -> Union[Order, Entity]:
         """
         获取用户委托单信息
 
@@ -639,7 +640,7 @@ class TqApi(object):
         return self._get_obj(self._data, ["trade", self._account.account_id, "orders"])
 
     # ----------------------------------------------------------------------
-    def get_trade(self, trade_id=None):
+    def get_trade(self, trade_id=None) -> Union[Trade, Entity]:
         """
         获取用户成交信息
 
@@ -714,7 +715,7 @@ class TqApi(object):
             update_task.cancel()
 
     # ----------------------------------------------------------------------
-    def is_changing(self, obj, key=None):
+    def is_changing(self, obj, key=None) -> bool:
         """
         判定obj最近是否有更新
 
@@ -776,7 +777,7 @@ class TqApi(object):
         return False
 
     # ----------------------------------------------------------------------
-    def is_serial_ready(self, obj):
+    def is_serial_ready(self, obj) -> bool:
         """
         判断是否已经从服务器收到了所有订阅的数据
 
