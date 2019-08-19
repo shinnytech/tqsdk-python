@@ -8,6 +8,7 @@ from asyncio import gather
 
 class TargetPosTask(object):
     """目标持仓 task, 该 task 可以将指定合约调整到目标头寸"""
+
     def __init__(self, api, symbol, price="ACTIVE", offset_priority="今昨,开", trade_chan=None):
         """
         创建目标持仓task实例，负责调整归属于该task的持仓(默认为整个账户的该合约净持仓)
@@ -86,10 +87,13 @@ class TargetPosTask(object):
                     pos_all = self.pos.pos_short_his
                 else:
                     pos_all = self.pos.pos_long_his
-                frozen_volume = sum([order.volume_left for order in self.pos.orders.values() if not order.is_dead and order.offset == order_offset and order.direction == order_dir])
+                frozen_volume = sum([order.volume_left for order in self.pos.orders.values() if
+                                     not order.is_dead and order.offset == order_offset and order.direction == order_dir])
             else:
-                frozen_volume = pending_frozen + sum([order.volume_left for order in self.pos.orders.values() if not order.is_dead and order.offset != "OPEN" and order.direction == order_dir])
-                if (self.pos.pos_short_today if vol > 0 else self.pos.pos_long_today) - frozen_volume > 0:  # 判断是否有未冻结的今仓手数: 若有则不平昨仓
+                frozen_volume = pending_frozen + sum([order.volume_left for order in self.pos.orders.values() if
+                                                      not order.is_dead and order.offset != "OPEN" and order.direction == order_dir])
+                if (
+                self.pos.pos_short_today if vol > 0 else self.pos.pos_long_today) - frozen_volume > 0:  # 判断是否有未冻结的今仓手数: 若有则不平昨仓
                     pos_all = frozen_volume
             order_volume = min(abs(vol), max(0, pos_all - frozen_volume))
         elif offset == "今":
@@ -99,10 +103,12 @@ class TargetPosTask(object):
                     pos_all = self.pos.pos_short_today
                 else:
                     pos_all = self.pos.pos_long_today
-                frozen_volume = sum([order.volume_left for order in self.pos.orders.values() if not order.is_dead and order.offset == order_offset and order.direction == order_dir])
+                frozen_volume = sum([order.volume_left for order in self.pos.orders.values() if
+                                     not order.is_dead and order.offset == order_offset and order.direction == order_dir])
             else:
                 order_offset = "CLOSE"
-                frozen_volume = pending_frozen + sum([order.volume_left for order in self.pos.orders.values() if not order.is_dead and order.offset != "OPEN" and order.direction == order_dir])
+                frozen_volume = pending_frozen + sum([order.volume_left for order in self.pos.orders.values() if
+                                                      not order.is_dead and order.offset != "OPEN" and order.direction == order_dir])
                 pos_all = self.pos.pos_short_today if vol > 0 else self.pos.pos_long_today
             order_volume = min(abs(vol), max(0, pos_all - frozen_volume))
         elif offset == "开":
@@ -131,14 +137,17 @@ class TargetPosTask(object):
                     continue
                 elif order_offset != "OPEN":
                     pending_forzen += order_volume
-                order_task = InsertOrderUntilAllTradedTask(self.api, self.symbol, order_dir, offset=order_offset,volume=order_volume, price=self.price,trade_chan=self.trade_chan)
+                order_task = InsertOrderUntilAllTradedTask(self.api, self.symbol, order_dir, offset=order_offset,
+                                                           volume=order_volume, price=self.price,
+                                                           trade_chan=self.trade_chan)
                 all_tasks.append(order_task)
                 delta_volume -= order_volume if order_dir == "BUY" else -order_volume
 
 
 class InsertOrderUntilAllTradedTask(object):
     """追价下单task, 该task会在行情变化后自动撤单重下，直到全部成交"""
-    def __init__(self, api, symbol, direction, offset, volume, price = "ACTIVE", trade_chan = None):
+
+    def __init__(self, api, symbol, direction, offset, volume, price="ACTIVE", trade_chan=None):
         """
         创建追价下单task实例
 
@@ -185,7 +194,8 @@ class InsertOrderUntilAllTradedTask(object):
                 await update_chan.recv()
             while self.volume != 0:
                 limit_price = self._get_price()
-                insert_order_task = InsertOrderTask(self.api, self.symbol, self.direction, self.offset, self.volume, limit_price = limit_price, trade_chan = self.trade_chan)
+                insert_order_task = InsertOrderTask(self.api, self.symbol, self.direction, self.offset, self.volume,
+                                                    limit_price=limit_price, trade_chan=self.trade_chan)
                 order = await insert_order_task.order_chan.recv()
                 check_chan = TqChan(self.api, last_only=True)
                 check_task = self.api.create_task(self._check_price(check_chan, limit_price, order))
@@ -194,7 +204,8 @@ class InsertOrderUntilAllTradedTask(object):
                     order = insert_order_task.order_chan.recv_latest(order)
                     self.volume = order.volume_left
                     if self.volume != 0 and not check_task.done():
-                        raise Exception("遇到错单: %s %s %s %d手 %f %s" % (self.symbol, self.direction, self.offset, self.volume, limit_price, order.last_msg))
+                        raise Exception("遇到错单: %s %s %s %d手 %f %s" % (
+                        self.symbol, self.direction, self.offset, self.volume, limit_price, order.last_msg))
                 finally:
                     await check_chan.close()
                     await check_task
@@ -221,14 +232,16 @@ class InsertOrderUntilAllTradedTask(object):
         async with self.api.register_update_notify(chan=update_chan):
             async for _ in update_chan:
                 new_price = self._get_price()
-                if (self.direction == "BUY" and new_price > order_price) or (self.direction == "SELL" and new_price < order_price):
+                if (self.direction == "BUY" and new_price > order_price) or (
+                        self.direction == "SELL" and new_price < order_price):
                     self.api.cancel_order(order)
                     break
 
 
 class InsertOrderTask(object):
     """下单task"""
-    def __init__(self, api, symbol, direction, offset, volume, limit_price=None, order_chan = None, trade_chan = None):
+
+    def __init__(self, api, symbol, direction, offset, volume, limit_price=None, order_chan=None, trade_chan=None):
         """
         创建下单task实例
 
@@ -272,7 +285,8 @@ class InsertOrderTask(object):
         last_left = self.volume
         async with self.api.register_update_notify() as update_chan:
             await self.order_chan.send(last_order)
-            while order.status != "FINISHED" or (order.volume_orign - order.volume_left) != sum([trade.volume for trade in order.trade_records.values()]):
+            while order.status != "FINISHED" or (order.volume_orign - order.volume_left) != sum(
+                    [trade.volume for trade in order.trade_records.values()]):
                 await update_chan.recv()
                 if order.volume_left != last_left:
                     vol = last_left - order.volume_left

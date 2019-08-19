@@ -1017,7 +1017,7 @@ def BBIBOLL(df, n, m):
     """
     new_df = pd.DataFrame()
     new_df["bbiboll"] = (tafunc.ma(df["close"], 3) + tafunc.ma(df["close"], 6) + tafunc.ma(df["close"],
-                                                                                              12) + tafunc.ma(
+                                                                                           12) + tafunc.ma(
         df["close"], 24)) / 4
     new_df["upr"] = new_df["bbiboll"] + m * new_df["bbiboll"].rolling(n).std()
     new_df["dwn"] = new_df["bbiboll"] - m * new_df["bbiboll"].rolling(n).std()

@@ -17,7 +17,7 @@ target_pos = TargetPosTask(api, "DCE.m1909")
 while True:
     api.wait_update()
     if api.is_changing(klines):
-        ma = sum(klines.close.iloc[-15:])/15
+        ma = sum(klines.close.iloc[-15:]) / 15
         print("最新价", klines.close.iloc[-1], "MA", ma)
         if klines.close.iloc[-1] > ma:
             print("最新价大于MA: 目标多头5手")

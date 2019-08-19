@@ -2,7 +2,6 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'tianqin'
 
-
 import os
 import sys
 import logging
@@ -56,7 +55,8 @@ def write_snapshot(dt_func, tq_send_chan, account, positions):
         "accounts": {
             "CNY": {k: v for k, v in account.items() if not k.startswith("_")},
         },
-        "positions": {k: {pk: pv for pk, pv in v.items() if not pk.startswith("_")} for k, v in positions.items() if not k.startswith("_")},
+        "positions": {k: {pk: pv for pk, pv in v.items() if not pk.startswith("_")} for k, v in positions.items() if
+                      not k.startswith("_")},
     })
 
 
@@ -95,7 +95,7 @@ async def account_watcher(api, dt_func, tq_send_chan):
         write_snapshot(dt_func, tq_send_chan, account, positions)
 
 
-class TqMonitorThread (threading.Thread):
+class TqMonitorThread(threading.Thread):
     def __init__(self, tq_pid):
         threading.Thread.__init__(self, daemon=True)
         self.tq_pid = tq_pid
@@ -176,9 +176,12 @@ class Forwarding(object):
     作为数据转发的中间模块, 创建与天勤的新连接, 并过滤TqApi向上游发送的数据.
     对于这个新连接: 发送所有的 set_chart_data 类型数据包,以及抄送所有的 subscribe_quote, set_chart类型数据包
     """
-    async def _forward(self, api, api_send_chan, api_recv_chan, upstream_send_chan, upstream_recv_chan, tq_send_chan, tq_recv_chan):
+
+    async def _forward(self, api, api_send_chan, api_recv_chan, upstream_send_chan, upstream_recv_chan, tq_send_chan,
+                       tq_recv_chan):
         to_downstream_task = api.create_task(self._forward_to_downstream(api_recv_chan, upstream_recv_chan))  # 转发给下游
-        to_upstream_task = api.create_task(self._forward_to_upstream(api_send_chan, upstream_send_chan, tq_send_chan))  # 转发给上游
+        to_upstream_task = api.create_task(
+            self._forward_to_upstream(api_send_chan, upstream_send_chan, tq_send_chan))  # 转发给上游
         try:
             async for pack in tq_recv_chan:
                 pass
@@ -317,11 +320,10 @@ def link_tq(api):
     # 全局信息转发到天勤
     logger = logging.getLogger("TQ")
     logger.setLevel(logging.INFO)
-    logger.addHandler(LogHandlerChan(tq_send_chan, dt_func=dt_func)) #log输出到天勤接口
+    logger.addHandler(LogHandlerChan(tq_send_chan, dt_func=dt_func))  # log输出到天勤接口
     sys.stdout = PrintWriterToLog(logger)  # print信息转向log输出
-    sys.excepthook = exception_handler # exception信息转向log输出
+    sys.excepthook = exception_handler  # exception信息转向log输出
 
     # 向api注入监控任务, 将运行信息主动推送到天勤
     api.create_task(account_watcher(api, dt_func, tq_send_chan))
     return tq_send_chan, tq_recv_chan
-

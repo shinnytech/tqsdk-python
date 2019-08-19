@@ -5,6 +5,7 @@ __author__ = 'limin'
 '''
 R-Breaker策略(非隔夜留仓: 在每日收盘前，对所持合约进行平仓)
 参考: https://www.shinnytech.com/blog/r-breaker
+注: 该示例策略仅用于功能示范, 实盘时请根据自己的策略/经验进行修改
 '''
 
 from datetime import datetime

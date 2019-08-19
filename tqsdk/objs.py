@@ -216,29 +216,29 @@ class Position(Entity):
         self.pos_short_his = 0
         #: 空头今仓手数
         self.pos_short_today = 0
-        #: 期货公司查询的多头今仓手数 (deprecated)
+        #: 期货公司查询的多头今仓手数 (不推荐, 推荐使用pos_long_today)
         self.volume_long_today = 0
-        #: 期货公司查询的多头老仓手数 (deprecated)
+        #: 期货公司查询的多头老仓手数 (不推荐, 推荐使用pos_long_his)
         self.volume_long_his = 0
-        #: 期货公司查询的多头手数 (deprecated)
+        #: 期货公司查询的多头手数 (不推荐, 推荐使用pos_long)
         self.volume_long = 0
-        #: 期货公司查询的多头今仓冻结 (deprecated)
+        #: 期货公司查询的多头今仓冻结 (不推荐)
         self.volume_long_frozen_today = 0
-        #: 期货公司查询的多头老仓冻结 (deprecated)
+        #: 期货公司查询的多头老仓冻结 (不推荐)
         self.volume_long_frozen_his = 0
-        #: 期货公司查询的多头持仓冻结 (deprecated)
+        #: 期货公司查询的多头持仓冻结 (不推荐)
         self.volume_long_frozen = 0
-        #: 期货公司查询的空头今仓手数 (deprecated)
+        #: 期货公司查询的空头今仓手数 (不推荐, 推荐使用pos_short_today)
         self.volume_short_today = 0
-        #: 期货公司查询的空头老仓手数 (deprecated)
+        #: 期货公司查询的空头老仓手数 (不推荐, 推荐使用pos_short_his)
         self.volume_short_his = 0
-        #: 期货公司查询的空头手数 (deprecated)
+        #: 期货公司查询的空头手数 (不推荐, 推荐使用pos_short)
         self.volume_short = 0
-        #: 期货公司查询的空头今仓冻结 (deprecated)
+        #: 期货公司查询的空头今仓冻结 (不推荐)
         self.volume_short_frozen_today = 0
-        #: 期货公司查询的空头老仓冻结 (deprecated)
+        #: 期货公司查询的空头老仓冻结 (不推荐)
         self.volume_short_frozen_his = 0
-        #: 期货公司查询的空头持仓冻结 (deprecated)
+        #: 期货公司查询的空头持仓冻结 (不推荐)
         self.volume_short_frozen = 0
         #: 多头开仓均价
         self.open_price_long = float("nan")
@@ -310,7 +310,8 @@ class Position(Entity):
         :return: dict, 其中每个元素的key为委托单ID, value为 :py:class:`~tqsdk.objs.Order`
         """
         tdict = self._api._get_obj(self._api._data, ["trade", self._api._account.account_id, "orders"])
-        fts = {order_id: order for order_id, order in tdict.items() if (not order_id.startswith("_")) and order.instrument_id == self.instrument_id and order.exchange_id == self.exchange_id and order.status == "ALIVE"}
+        fts = {order_id: order for order_id, order in tdict.items() if (not order_id.startswith(
+            "_")) and order.instrument_id == self.instrument_id and order.exchange_id == self.exchange_id and order.status == "ALIVE"}
         return fts
 
 
@@ -386,7 +387,8 @@ class Order(Entity):
         :return: 当委托单部分成交或全部成交时, 返回成交部分的平均成交价. 无任何成交时, 返回 nan
         """
         tdict = self._api._get_obj(self._api._data, ["trade", self._api._account.account_id, "trades"])
-        sum_volume = sum([trade.volume for trade_id, trade in tdict.items() if (not trade_id.startswith("_")) and trade.order_id == self.order_id])
+        sum_volume = sum([trade.volume for trade_id, trade in tdict.items() if
+                          (not trade_id.startswith("_")) and trade.order_id == self.order_id])
         if sum_volume == 0:
             return float('nan')
         sum_amount = sum([trade.volume * trade.price for trade_id, trade in tdict.items() if
@@ -401,7 +403,8 @@ class Order(Entity):
         :return: dict, 其中每个元素的key为成交ID, value为 :py:class:`~tqsdk.objs.Trade`
         """
         tdict = self._api._get_obj(self._api._data, ["trade", self._api._account.account_id, "trades"])
-        fts = {trade_id: trade for trade_id, trade in tdict.items() if (not trade_id.startswith("_")) and trade.order_id == self.order_id}
+        fts = {trade_id: trade for trade_id, trade in tdict.items() if
+               (not trade_id.startswith("_")) and trade.order_id == self.order_id}
         return fts
 
 

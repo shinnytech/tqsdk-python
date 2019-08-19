@@ -15,6 +15,7 @@ pd.set_option('display.width', None)  # 设置Pandas显示的宽度
 '''
 应用随机森林对某交易日涨跌情况的预测(使用sklearn包)
 参考:https://www.joinquant.com/post/1571
+注: 该示例策略仅用于功能示范, 实盘时请根据自己的策略/经验进行修改
 '''
 
 symbol = "SHFE.ru1811"  # 交易合约代码

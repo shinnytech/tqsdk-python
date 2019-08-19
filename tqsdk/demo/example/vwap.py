@@ -5,6 +5,7 @@ __author__ = 'limin'
 '''
 Volume Weighted Average Price策略
 参考: https://www.shinnytech.com/blog/vwap
+注: 该示例策略仅用于功能示范, 实盘时请根据自己的策略/经验进行修改
 '''
 
 import datetime
