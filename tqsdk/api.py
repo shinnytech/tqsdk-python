@@ -1581,7 +1581,7 @@ class TqAccount(object):
         req = {
             "aid": "req_login",
             "bid": self.broker_id,
-            "user_name": self.account_id.rsplit(".", 1)[0],
+            "user_name": self.account_id,
             "password": self.password,
         }
         if self.system_info:
