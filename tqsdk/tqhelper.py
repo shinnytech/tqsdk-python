@@ -10,6 +10,8 @@ import threading
 import tempfile
 import argparse
 import datetime
+import traceback
+from functools import partial
 
 
 class LogHandlerChan(logging.Handler):
@@ -19,12 +21,16 @@ class LogHandlerChan(logging.Handler):
         self.dt_func = dt_func
 
     def emit(self, record):
-        self.chan.send_nowait({
+        d = {
             "aid": "log",
             "datetime": self.dt_func(),
             "level": str(record.levelname),
             "content": record.msg % record.args,
-        })
+        }
+        if record.exc_info:
+            ls = traceback.format_exception(record.exc_info[0], record.exc_info[1], record.exc_info[2])
+            d["content"] += "".join(ls)
+        self.chan.send_nowait(d)
 
 
 class PrintWriterToLog:
@@ -46,11 +52,10 @@ class PrintWriterToLog:
             self.orign_stdout.flush()
 
 
-def exception_handler(type, value, tb):
-    while tb.tb_next:
-        tb = tb.tb_next
-    msg = "程序异常: %s, line %d" % (str(value), tb.tb_lineno)
-    logging.getLogger("TQ").error(msg)
+def exception_handler(api, orign_hook, type, value, tb):
+    logging.getLogger("TQ").error("程序异常", exc_info=(type, value, tb))
+    api.close()
+    orign_hook(type, value, tb)
 
 
 def write_snapshot(dt_func, tq_send_chan, account, positions):
@@ -355,7 +360,7 @@ def link_tq(api):
     logger.setLevel(logging.INFO)
     logger.addHandler(LogHandlerChan(tq_send_chan, dt_func=dt_func)) #log输出到天勤接口
     sys.stdout = PrintWriterToLog(logger)  # print信息转向log输出
-    sys.excepthook = exception_handler # exception信息转向log输出
+    sys.excepthook = partial(exception_handler, api, sys.excepthook) # exception信息转向log输出
 
     # 向api注入监控任务, 将账户交易信息主动推送到天勤
     api.create_task(account_watcher(api, dt_func, tq_send_chan))
