@@ -9,6 +9,8 @@ import threading
 import tempfile
 import argparse
 import datetime
+import traceback
+from functools import partial
 
 
 class LogHandlerChan(logging.Handler):
@@ -18,34 +20,41 @@ class LogHandlerChan(logging.Handler):
         self.dt_func = dt_func
 
     def emit(self, record):
-        self.chan.send_nowait({
+        d = {
             "aid": "log",
             "datetime": self.dt_func(),
             "level": str(record.levelname),
             "content": record.msg % record.args,
-        })
+        }
+        if record.exc_info:
+            ls = traceback.format_exception(record.exc_info[0], record.exc_info[1], record.exc_info[2])
+            d["content"] += "".join(ls)
+        self.chan.send_nowait(d)
 
 
 class PrintWriterToLog:
     def __init__(self, logger):
+        self.orign_stdout = sys.stdout
         self.line = ""
         self.logger = logger
 
     def write(self, text):
+        if self.orign_stdout:
+            self.orign_stdout.write(text)
         self.line += text
         if self.line[-1] == "\n":
             self.logger.info(self.line[:-1])
             self.line = ""
 
     def flush(self):
-        pass
+        if self.orign_stdout:
+            self.orign_stdout.flush()
 
 
-def exception_handler(type, value, tb):
-    while tb.tb_next:
-        tb = tb.tb_next
-    msg = "程序异常: %s, line %d" % (str(value), tb.tb_lineno)
-    logging.getLogger("TQ").error(msg)
+def exception_handler(api, orign_hook, type, value, tb):
+    logging.getLogger("TQ").error("程序异常", exc_info=(type, value, tb))
+    api.close()
+    orign_hook(type, value, tb)
 
 
 def write_snapshot(dt_func, tq_send_chan, account, positions):
@@ -176,14 +185,22 @@ class Forwarding(object):
     作为数据转发的中间模块, 创建与天勤的新连接, 并过滤TqApi向上游发送的数据.
     对于这个新连接: 发送所有的 set_chart_data 类型数据包,以及抄送所有的 subscribe_quote, set_chart类型数据包
     """
+    def __init__(self, api, api_send_chan, api_recv_chan, upstream_send_chan, upstream_recv_chan, tq_send_chan, tq_recv_chan):
+        self.api = api
+        self.api_send_chan = api_send_chan
+        self.api_recv_chan = api_recv_chan
+        self.upstream_send_chan = upstream_send_chan
+        self.upstream_recv_chan = upstream_recv_chan
+        self.tq_send_chan = tq_send_chan
+        self.tq_recv_chan = tq_recv_chan
+        self.subscribed = None
+        self.order_symbols = set()
 
-    async def _forward(self, api, api_send_chan, api_recv_chan, upstream_send_chan, upstream_recv_chan, tq_send_chan,
-                       tq_recv_chan):
-        to_downstream_task = api.create_task(self._forward_to_downstream(api_recv_chan, upstream_recv_chan))  # 转发给下游
-        to_upstream_task = api.create_task(
-            self._forward_to_upstream(api_send_chan, upstream_send_chan, tq_send_chan))  # 转发给上游
+    async def _forward(self):
+        to_downstream_task = self.api.create_task(self._forward_to_downstream(self.api_recv_chan, self.upstream_recv_chan))  # 转发给下游
+        to_upstream_task = self.api.create_task(self._forward_to_upstream(self.api_send_chan, self.upstream_send_chan, self.tq_send_chan))  # 转发给上游
         try:
-            async for pack in tq_recv_chan:
+            async for pack in self.tq_recv_chan:
                 pass
         finally:
             to_downstream_task.cancel()
@@ -199,11 +216,32 @@ class Forwarding(object):
         async for pack in api_send_chan:
             if pack["aid"] == "set_chart_data":
                 await tq_send_chan.send(pack)
+            elif pack["aid"] == "insert_order":
+                self.order_symbols.add(pack["exchange_id"] + "." + pack["instrument_id"])
+                await self._send_subscribed_to_tq()
+                await upstream_send_chan.send(pack)
             elif pack["aid"] == "set_chart" or pack["aid"] == "subscribe_quote":
-                await tq_send_chan.send(pack.copy())
+                await self._send_subscribed_to_tq()
                 await upstream_send_chan.send(pack)
             else:
                 await upstream_send_chan.send(pack)
+
+    async def _send_subscribed_to_tq(self):
+        d = []
+        for item in self.api.requests["klines"].keys():
+            d.append({"symbol": item[0], "dur_nano": item[1] * 1000000000})
+        for item in self.api.requests["ticks"].keys():
+            d.append({"symbol": item[0], "dur_nano": 0})
+        for symbol in self.api.requests["quotes"]:
+            d.append({"symbol": symbol})
+        for symbol in self.order_symbols:
+            d.append({"symbol": symbol})
+        if d != self.subscribed:
+            self.subscribed = d
+            await self.tq_send_chan.send({
+                "aid": "subscribed",
+                "subscribed": self.subscribed
+            })
 
 
 def link_tq(api):
@@ -317,13 +355,13 @@ def link_tq(api):
     else:
         raise Exception("_action 参数异常")
 
-    # 全局信息转发到天勤
+    # print输出, exception信息转发到天勤
     logger = logging.getLogger("TQ")
     logger.setLevel(logging.INFO)
     logger.addHandler(LogHandlerChan(tq_send_chan, dt_func=dt_func))  # log输出到天勤接口
     sys.stdout = PrintWriterToLog(logger)  # print信息转向log输出
-    sys.excepthook = exception_handler  # exception信息转向log输出
+    sys.excepthook = partial(exception_handler, api, sys.excepthook) # exception信息转向log输出
 
-    # 向api注入监控任务, 将运行信息主动推送到天勤
+    # 向api注入监控任务, 将账户交易信息主动推送到天勤
     api.create_task(account_watcher(api, dt_func, tq_send_chan))
     return tq_send_chan, tq_recv_chan

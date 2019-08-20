@@ -131,6 +131,8 @@ class TqApi(object):
         # 内部关键数据
         self._requests = {
             "quotes": set(),
+            "klines": {},
+            "ticks": {},
         }  # 记录已发出的请求
         self._serials = {}  # 记录所有数据序列
         self._data = Entity()  # 数据存储
@@ -250,7 +252,7 @@ class TqApi(object):
         if symbol not in self._data.get("quotes", {}):
             raise Exception("代码 %s 不存在, 请检查合约代码是否填写正确" % (symbol))
         quote = self._get_obj(self._data, ["quotes", symbol], self._prototype["quotes"]["#"])
-        if symbol not in self._requests.setdefault("quotes", set()):
+        if symbol not in self._requests["quotes"]:
             self._requests["quotes"].add(symbol)
             self._send_pack({
                 "aid": "subscribe_quote",
@@ -322,7 +324,7 @@ class TqApi(object):
             data_length = 8964
         dur_id = duration_seconds * 1000000000
         request = (symbol, duration_seconds, data_length, chart_id)
-        serial = self._requests.setdefault("klines", {}).get(request, None)
+        serial = self._requests["klines"].get(request, None)
         if serial is None or chart_id is not None:
             self._send_pack({
                 "aid": "set_chart",
@@ -400,7 +402,7 @@ class TqApi(object):
         if data_length > 8964:
             data_length = 8964
         request = (symbol, data_length, chart_id)
-        serial = self._requests.setdefault("ticks", {}).get(request, None)
+        serial = self._requests["ticks"].get(request, None)
         if serial is None or chart_id is not None:
             self._send_pack({
                 "aid": "set_chart",
@@ -961,9 +963,8 @@ class TqApi(object):
             upstream_send_chan, upstream_recv_chan = self._send_chan, self._recv_chan  # 连接上游的channel
             self._send_chan, self._recv_chan = TqChan(self), TqChan(self)  # 连接到下游的channel
             from tqsdk.tqhelper import Forwarding
-            self.create_task(
-                Forwarding()._forward(self, self._send_chan, self._recv_chan, upstream_send_chan, upstream_recv_chan,
-                                      self._tq_send_chan, self._tq_recv_chan))
+            self.create_task(Forwarding(self, self._send_chan, self._recv_chan, upstream_send_chan, upstream_recv_chan,
+                                                  self._tq_send_chan, self._tq_recv_chan)._forward())
 
     def _fetch_symbol_info(self, url):
         """获取合约信息"""
@@ -1636,7 +1637,7 @@ class TqAccount(object):
         req = {
             "aid": "req_login",
             "bid": self.broker_id,
-            "user_name": self.account_id.rsplit(".", 1)[0],
+            "user_name": self.account_id,
             "password": self.password,
         }
         if self.system_info:
