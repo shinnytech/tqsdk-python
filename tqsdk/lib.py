@@ -11,16 +11,22 @@ class TargetPosTask(object):
 
     def __init__(self, api, symbol, price="ACTIVE", offset_priority="今昨,开", trade_chan=None):
         """
-        创建目标持仓task实例，负责调整归属于该task的持仓(默认为整个账户的该合约净持仓)
+        创建目标持仓task实例，负责调整归属于该task的持仓 **(默认为整个账户的该合约净持仓)**.
+
+        **注意:** TargetPosTask 在 set_target_volume 时并不下单或撤单, 它的下单和撤单动作, 是在之后的每次 wait_update 时执行的. 因此, **需保证 set_target_volume 后还会继续调用wait_update()**
 
         Args:
             api (TqApi): TqApi实例，该task依托于指定api下单/撤单
 
             symbol (str): 负责调整的合约代码
 
-            price (str): [可选]下单方式, ACTIVE=对价下单, PASSIVE=挂价下单
+            price (str): [可选]下单方式, ACTIVE=对价下单, PASSIVE=挂价下单.
+
+                * 在持仓调整过程中,若下单方向为买: 对价为卖一价, 挂价为买一价
+                * 在持仓调整过程中,若下单方向为卖: 对价为买一价, 挂价为卖一价
 
             offset_priority (str): [可选]开平仓顺序，昨=平昨仓，今=平今仓，开=开仓，逗号=等待之前操作完成
+
                                    对于下单指令区分平今/昨的交易所(如上期所)，按照今/昨仓的数量计算是否能平今/昨仓
                                    对于下单指令不区分平今/昨的交易所(如中金所)，按照“先平当日新开仓，再平历史仓”的规则计算是否能平今/昨仓
 
@@ -63,6 +69,7 @@ class TargetPosTask(object):
             target_pos = TargetPosTask(api, "SHFE.rb1810")
             target_pos.set_target_volume(5)
             while True:
+                # 需在 set_target_volume 后调用wait_update()以发出指令
                 api.wait_update()
         """
         self.pos_chan.send_nowait(int(volume))

@@ -10,4 +10,5 @@
     mddatas.rst
     ta.rst
     trade.rst
+    targetpostask.rst
     backtest.rst

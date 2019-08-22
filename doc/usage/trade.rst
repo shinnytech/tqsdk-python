@@ -83,50 +83,7 @@ TqApi 提供以下函数来获取交易账户相关信息:
 
     api.cancel_order(order)
 
-
-交易辅助工具
-----------------------------------------------------
-除 insert_order 和 cancel_order 外, TqSdk 提供了一些更强的交易辅助工具. 使用这些工具, 可以简化交易逻辑的编码工作.
-
-:py:class:`~tqsdk.lib.TargetPosTask` 是按照目标持仓手数自动调仓的工具, 使用示例如下::
-
-    target_pos = TargetPosTask(api, "SHFE.rb1901")      #创建一个自动调仓工具, 负责调整SHFE.rb1901的持仓
-    target_pos.set_target_volume(5)                     #要求自动调仓工具将持仓调整到5手
-    do_something_else()                                 #现在你可以做别的事了, 自动调仓工具将会在后台自动下单/撤单/跟单, 直到持仓手数达到5手为止
-
-下面是一个更实际的价差交易例子::
-
-    # 创建 rb1810 的目标持仓 task，该 task 负责调整 rb1810 的仓位到指定的目标仓位
-    target_pos_near = TargetPosTask(api, "SHFE.rb1810")
-    # 创建 rb1901 的目标持仓 task，该 task 负责调整 rb1901 的仓位到指定的目标仓位
-    target_pos_deferred = TargetPosTask(api, "SHFE.rb1901")
-
-    while True:
-        api.wait_update()
-        if api.is_changing(quote_near) or api.is_changing(quote_deferred):
-            spread = quote_near.last_price - quote_deferred.last_price
-            print("当前价差:", spread)
-            if spread > 200:
-                print("目标持仓: 空近月，多远月")
-                # 设置目标持仓为正数表示多头，负数表示空头，0表示空仓
-                target_pos_near.set_target_volume(-1)
-                target_pos_deferred.set_target_volume(1)
-            elif spread < 150:
-                print("目标持仓: 空仓")
-                target_pos_near.set_target_volume(0)
-                target_pos_deferred.set_target_volume(0)
-
-
-使用 TargetPosTask 时, 需注意以下要点:
-
-* 为每个合约只创建一个 TargetPosTask 实例. 一旦创建好后, 可以调用任意多次 set_target_volume 函数, 它总是以最后一次 set_target_volume 设定的手数为工作目标
-* TargetPosTask 在工作时, 会负责下单和追单, 直至持仓手数达到目标为止
-* TargetPosTask 在 set_target_volume 时并不下单或撤单. 它的下单和撤单动作, 是在之后的每次 wait_update 时执行的. 因此, 需保证 set_target_volume 后还会继续调用wait_update
-* 不要试图在程序运行中销毁 TargetPosTask 实例.
-
-
-:py:class:`~tqsdk.lib.InsertOrderUntilAllTradedTask` 是追价下单task, 该task会在行情变化后自动撤单重下，直到全部成交
-
+* **除 insert_order 和 cancel_order 外, TqSdk 提供了一些更强的交易辅助工具比如** :py:class:`~tqsdk.lib.TargetPosTask`. **使用这些工具, 可以简化交易逻辑的编码工作.**
 
 .. _broker_list:
 
