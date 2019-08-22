@@ -48,6 +48,7 @@ class TqApi(object):
     """
 
     DEFAULT_INS_URL = "https://openmd.shinnytech.com/t/md/symbols/latest.json"
+
     def __init__(self, account=None, url=None, backtest=None, debug=None, loop=None):
         """
         创建天勤接口实例
@@ -183,7 +184,12 @@ class TqApi(object):
         Returns:
             :py:class:`~tqsdk.api.TqApi`: 返回当前TqApi的一个副本. 这个副本可以在另一个线程中使用
         """
-        return TqApi(self)
+        slave_api = TqApi(self)
+        # 将当前api的_data值复制到_copy_diff中, 然后merge到副本api的_data里
+        _copy_diff = {}
+        TqApi._deep_copy_dict(self._data, _copy_diff)
+        slave_api._merge_diff(slave_api._data, _copy_diff, slave_api._prototype, False)
+        return slave_api
 
     def close(self):
         """
@@ -964,7 +970,7 @@ class TqApi(object):
             self._send_chan, self._recv_chan = TqChan(self), TqChan(self)  # 连接到下游的channel
             from tqsdk.tqhelper import Forwarding
             self.create_task(Forwarding(self, self._send_chan, self._recv_chan, upstream_send_chan, upstream_recv_chan,
-                                                  self._tq_send_chan, self._tq_recv_chan)._forward())
+                                        self._tq_send_chan, self._tq_recv_chan)._forward())
 
     def _fetch_symbol_info(self, url):
         """获取合约信息"""
