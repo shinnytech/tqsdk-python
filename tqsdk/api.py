@@ -40,7 +40,7 @@ from tqsdk import tqhelper
 
 class TqApi(object):
     """
-    天勤接口及数据管理类.
+    天勤接口及数据管理类
 
     该类中所有参数只针对天勤外部IDE编写使用, 在天勤内使用 api = TqApi() 即可指定为当前天勤终端登录用户
 
@@ -701,20 +701,28 @@ class TqApi(object):
 
         调用此函数将阻塞当前线程, 等待天勤主进程发送业务数据更新并返回
 
+        注: 它是TqApi中最重要的一个函数, 每次调用它时都会发生这些事:
+            * 实际发出网络数据包(如行情订阅指令或交易指令等).
+            * 尝试从服务器接收一个数据包, 并用收到的数据包更新内存中的业务数据截面.
+            * 让正在运行中的后台任务获得动作机会(如策略程序创建的后台调仓任务只会在wait_update()时发出交易指令).
+            * 如果没有收到数据包，则挂起等待.
+
         Args:
             deadline (float): [可选]指定截止时间，自unix epoch(1970-01-01 00:00:00 GMT)以来的秒数(time.time())。默认没有超时(无限等待)
 
         Returns:
             bool: 如果收到业务数据更新则返回 True, 如果到截止时间依然没有收到业务数据更新则返回 False
 
-        注意: 由于存在网络延迟, 因此有数据更新不代表之前发出的所有请求都被处理了, 例如::
+        注意:
+            * 天勤终端里策略日志窗口输出的内容由每次调用wait_update()时发出.
+            * 由于存在网络延迟, 因此有数据更新不代表之前发出的所有请求都被处理了, 例如::
 
-            from tqsdk import TqApi, TqSim
+                from tqsdk import TqApi, TqSim
 
-            api = TqApi(TqSim())
-            quote = api.get_quote("SHFE.cu1812")
-            api.wait_update()
-            print(quote.datetime)
+                api = TqApi(TqSim())
+                quote = api.get_quote("SHFE.cu1812")
+                api.wait_update()
+                print(quote.datetime)
 
             可能输出 ""(空字符串), 表示还没有收到该合约的行情
         """

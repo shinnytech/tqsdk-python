@@ -278,7 +278,7 @@ class Position(Entity):
     @property
     def pos(self):
         """
-        净持仓手数.
+        净持仓手数
 
         :return: int, ==0表示无持仓或多空持仓手数相等. <0表示空头持仓大于多头持仓, >0表示多头持仓大于空头持仓
         """
@@ -287,7 +287,7 @@ class Position(Entity):
     @property
     def pos_long(self):
         """
-        多头持仓手数.
+        多头持仓手数
 
         :return: int, ==0表示无多头持仓. >0表示多头持仓手数
         """
@@ -296,7 +296,7 @@ class Position(Entity):
     @property
     def pos_short(self):
         """
-        空头持仓手数.
+        空头持仓手数
 
         :return: int, ==0表示无空头持仓. >0表示空头持仓手数
         """
