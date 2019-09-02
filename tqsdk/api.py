@@ -1197,7 +1197,8 @@ class TqApi(object):
                 }) as client:
                     if not first_connect:  # 如果不是第一次连接, 即为重连
                         self._logger.warning("与 %s 的网络连接已恢复", url)
-                    send_task = self.create_task(self._send_handler(client, url, resend_request, send_chan))
+                    send_task = self.create_task(
+                        self._send_handler(client, url, resend_request, send_chan, first_connect))
                     try:
                         async for msg in client:
                             self._logger.debug("websocket message received from %s: %s", url, msg)
@@ -1214,25 +1215,29 @@ class TqApi(object):
                     first_connect = False
             await asyncio.sleep(10)
 
-    async def _send_handler(self, client, url, resend_request, send_chan):
+    async def _send_handler(self, client, url, resend_request, send_chan, first_connect):
         """websocket客户端数据发送协程"""
         try:
             for msg in resend_request.values():
-                await client.send(msg)
+                await send_chan.send(msg)
                 self._logger.debug("websocket init message sent to %s: %s", url, msg)
-            await client.send('{"aid": "peek_message"}')
+            if not first_connect:  # 如果是重连
+                await send_chan.send({
+                    "aid": "peek_message"
+                })
+                self._logger.debug("websocket init message sent to %s: %s", url, '{"aid": "peek_message"}')
             async for pack in send_chan:
-                msg = json.dumps(pack)
                 aid = pack.get("aid")
                 if aid == "subscribe_quote":
-                    resend_request["subscribe_quote"] = msg
+                    resend_request["subscribe_quote"] = pack
                 elif aid == "set_chart":
                     if pack["ins_list"]:
-                        resend_request[pack["chart_id"]] = msg
+                        resend_request[pack["chart_id"]] = pack
                     else:
                         resend_request.pop(pack["chart_id"], None)
                 elif aid == "req_login":
-                    resend_request["req_login"] = msg
+                    resend_request["req_login"] = pack
+                msg = json.dumps(pack)
                 await client.send(msg)
                 self._logger.debug("websocket message sent to %s: %s", url, msg)
         except asyncio.CancelledError:  # 取消任务不抛出异常，不然等待者无法区分是该任务抛出的取消异常还是有人直接取消等待者
