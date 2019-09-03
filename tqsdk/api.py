@@ -931,7 +931,7 @@ class TqApi(object):
         if chan is None:
             chan = TqChan(self, last_only=True)
         if not isinstance(obj, list):
-            obj = [obj] if obj else [self._data]
+            obj = [obj] if obj is not None else [self._data]
         for o in obj:
             listener = self._serials[id(o)]["root"]["_listener"] if isinstance(o, pd.DataFrame) else o["_listener"]
             listener.add(chan)
