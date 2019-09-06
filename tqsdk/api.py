@@ -931,7 +931,7 @@ class TqApi(object):
         if chan is None:
             chan = TqChan(self, last_only=True)
         if not isinstance(obj, list):
-            obj = [obj] if obj else [self._data]
+            obj = [obj] if obj is not None else [self._data]
         for o in obj:
             listener = self._serials[id(o)]["root"]["_listener"] if isinstance(o, pd.DataFrame) else o["_listener"]
             listener.add(chan)
@@ -1189,14 +1189,16 @@ class TqApi(object):
     async def _connect(self, url, send_chan, recv_chan):
         """启动websocket客户端"""
         resend_request = {}  # 重连时需要重发的请求
+        first_connect = True  # 首次连接标志
         while True:
             try:
                 async with websockets.connect(url, max_size=None, extra_headers={
                     "User-Agent": "tqsdk-python %s" % __version__
                 }) as client:
-                    if resend_request:
+                    if not first_connect:  # 如果不是第一次连接, 即为重连
                         self._logger.warning("与 %s 的网络连接已恢复", url)
-                    send_task = self.create_task(self._send_handler(client, url, resend_request, send_chan))
+                    send_task = self.create_task(
+                        self._send_handler(client, url, resend_request, send_chan, first_connect))
                     try:
                         async for msg in client:
                             self._logger.debug("websocket message received from %s: %s", url, msg)
@@ -1208,26 +1210,34 @@ class TqApi(object):
             # 而这里的 except 又需要处理所有子函数及子函数的子函数等等可能抛出的例外, 因此这里只能遇到问题之后再补, 并且无法避免 false positive 和 false negative
             except (websockets.exceptions.ConnectionClosed, OSError):
                 self._logger.warning("与 %s 的网络连接断开，请检查客户端及网络是否正常", url)
+            finally:
+                if first_connect:
+                    first_connect = False
             await asyncio.sleep(10)
 
-    async def _send_handler(self, client, url, resend_request, send_chan):
+    async def _send_handler(self, client, url, resend_request, send_chan, first_connect):
         """websocket客户端数据发送协程"""
         try:
             for msg in resend_request.values():
-                await client.send(msg)
+                await send_chan.send(msg)
                 self._logger.debug("websocket init message sent to %s: %s", url, msg)
+            if not first_connect:  # 如果是重连
+                await send_chan.send({
+                    "aid": "peek_message"
+                })
+                self._logger.debug("websocket init message sent to %s: %s", url, '{"aid": "peek_message"}')
             async for pack in send_chan:
-                msg = json.dumps(pack)
                 aid = pack.get("aid")
                 if aid == "subscribe_quote":
-                    resend_request["subscribe_quote"] = msg
+                    resend_request["subscribe_quote"] = pack
                 elif aid == "set_chart":
                     if pack["ins_list"]:
-                        resend_request[pack["chart_id"]] = msg
+                        resend_request[pack["chart_id"]] = pack
                     else:
                         resend_request.pop(pack["chart_id"], None)
                 elif aid == "req_login":
-                    resend_request["req_login"] = msg
+                    resend_request["req_login"] = pack
+                msg = json.dumps(pack)
                 await client.send(msg)
                 self._logger.debug("websocket message sent to %s: %s", url, msg)
         except asyncio.CancelledError:  # 取消任务不抛出异常，不然等待者无法区分是该任务抛出的取消异常还是有人直接取消等待者
