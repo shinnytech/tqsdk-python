@@ -49,7 +49,7 @@ class TqApi(object):
 
     DEFAULT_INS_URL = "https://openmd.shinnytech.com/t/md/symbols/latest.json"
 
-    def __init__(self, account=None, url=None, backtest=None, debug=None, loop=None):
+    def __init__(self, account=None, url=None, backtest=None, debug=None, loop=None, _ins_url=None, _md_url=None, _td_url=None):
         """
         创建天勤接口实例
 
@@ -105,6 +105,12 @@ class TqApi(object):
             self._md_url = url
         if url and isinstance(self._account, TqAccount):
             self._td_url = url
+        if _ins_url:
+            self._ins_url = _ins_url
+        if _md_url:
+            self._md_url = _md_url
+        if _td_url:
+            self._td_url = _td_url
         self._loop = asyncio.new_event_loop() if loop is None else loop  # 创建一个新的 ioloop, 避免和其他框架/环境产生干扰
 
         # 初始化 logger
