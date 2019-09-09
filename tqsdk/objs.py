@@ -11,7 +11,7 @@ class Entity(MutableMapping):
         return self.__dict__.__setitem__(key, value)
 
     def __delitem__(self, key):
-        return
+        return self.__dict__.__delitem__(key)
 
     def __getitem__(self, key):
         return self.__dict__.__getitem__(key)
