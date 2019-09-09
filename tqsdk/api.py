@@ -1189,7 +1189,9 @@ class TqApi(object):
     async def _connect(self, url, send_chan, recv_chan):
         """启动websocket客户端"""
         resend_request = {}  # 重连时需要重发的请求
+        pos_symbols = {}  # 断线前持有的所有合约代码
         first_connect = True  # 首次连接标志
+        un_processed = False  # 重连后尚未处理完标志
         while True:
             try:
                 async with websockets.connect(url, max_size=None, extra_headers={
@@ -1197,12 +1199,115 @@ class TqApi(object):
                 }) as client:
                     if not first_connect:  # 如果不是第一次连接, 即为重连
                         self._logger.warning("与 %s 的网络连接已恢复", url)
+                        un_processed = True  # 重连后数据未处理完
+                        t_pending_diffs = []
+                        t_data = Entity()
+                        t_data["_path"] = []
+                        t_data["_listener"] = weakref.WeakSet()
+
+                        if url == self._md_url:  # 获取重连时需发送的所有 set_chart 指令包
+                            set_chart_packs = {k: v for k, v in resend_request.items() if v.get("aid") == "set_chart"}
                     send_task = self.create_task(
                         self._send_handler(client, url, resend_request, send_chan, first_connect))
                     try:
                         async for msg in client:
                             self._logger.debug("websocket message received from %s: %s", url, msg)
-                            await recv_chan.send(json.loads(msg))
+                            # 处理在重连后K线等行情没有一次性发送完全而导致部分数据为nan或-1等无用数据; 处理初重连前的持仓信息中多余的合约信息
+                            pack = json.loads(msg)
+                            if url == self._td_url:  # 如果是交易连接, 则保存所有的持仓合约
+                                for d in pack.get("data", []):
+                                    for user, trade_data in d.get("trade", {}).items():
+                                        if user not in pos_symbols:
+                                            pos_symbols[user] = set()
+                                        pos_symbols[user].update(trade_data.get("positions", {}).keys())
+                            if not first_connect and un_processed:  # 如果重连连接刚建立
+                                pack_data = pack.get("data", [])
+                                t_pending_diffs.extend(pack_data)
+                                for d in pack_data:
+                                    self._merge_diff(t_data, d, self._prototype, False)
+                                if url == self._md_url:  # 如果连接行情系统: 将断线前订阅的所有行情数据收集到一起后才同时发送给下游, 以保证数据完整
+                                    # 处理seriesl(k线/tick)
+                                    if not all(
+                                            [v.items() <= self._get_obj(t_data, ["charts", k, "state"]).items() for k, v
+                                             in set_chart_packs.items()]):
+                                        await client.send(json.dumps({
+                                                                         "aid": "peek_message"
+                                                                     }))
+                                        self._logger.debug("websocket message sent to %s: %s, due to charts state", url,
+                                                           '{"aid": "peek_message"}')
+                                        continue  # 如果当前请求还没收齐回应, 不应继续处理
+                                    # 在接收并处理完成指令后, 此时发送给客户端的数据包中的 left_id或right_id 至少有一个不是-1 , 并且 mdhis_more_data是False；否则客户端需要继续等待数据完全发送
+                                    if not all([(self._get_obj(t_data, ["charts", k]).get("left_id",
+                                                                                          -1) != -1 or self._get_obj(
+                                            t_data, ["charts", k]).get("right_id", -1) != -1) and not t_data.get(
+                                            "mdhis_more_data", True) for k in set_chart_packs.keys()]):
+                                        await client.send(json.dumps({
+                                                                         "aid": "peek_message"
+                                                                     }))
+                                        self._logger.debug(
+                                            "websocket message sent to %s: %s, due to left_id or last_id", url,
+                                            '{"aid": "peek_message"}')
+                                        continue  # 如果当前所有数据未接收完全(定位信息还没收到, 或数据序列还没收到), 不应继续处理
+                                    all_received = True  # 订阅K线数据完全接收标志
+                                    for k, v in set_chart_packs.items():  # 判断已订阅的数据是否接收完全
+                                        for symbol in v["ins_list"].split(","):
+                                            if symbol:
+                                                path = ["klines", symbol, str(v["duration"])] if v[
+                                                                                                     "duration"] != 0 else [
+                                                    "ticks", symbol]
+                                                serial = self._get_obj(t_data, path)
+                                                if serial.get("last_id", -1) == -1:
+                                                    all_received = False
+                                                    break
+                                        if not all_received:
+                                            break
+                                    if not all_received:
+                                        await client.send(json.dumps({
+                                                                         "aid": "peek_message"
+                                                                     }))
+                                        self._logger.debug("websocket message sent to %s: %s, due to last_id", url,
+                                                           '{"aid": "peek_message"}')
+                                        continue
+                                    # 处理实时行情quote
+                                    if t_data.get("ins_list", "") != resend_request.get("subscribe_quote", {}).get(
+                                            "ins_list", ""):
+                                        await client.send(json.dumps({
+                                                                         "aid": "peek_message"
+                                                                     }))
+                                        self._logger.debug("websocket message sent to %s: %s, due to subscribe_quote",
+                                                           url, '{"aid": "peek_message"}')
+                                        continue  # 如果实时行情quote未接收完全, 不应继续处理
+
+                                elif url == self._td_url:  # 如果连接交易系统: 判断断线前的持仓合约比重连后真实持仓更多, 若是则发送删除指令将其删除
+                                    if not all([(not t_data.get("trade", {}).get(user, {}).get("trade_more_data", True))
+                                                for user in pos_symbols.keys()]):
+                                        await client.send(json.dumps({
+                                                                         "aid": "peek_message"
+                                                                     }))
+                                        self._logger.debug("websocket message sent to %s: %s, due to 'trade_more_data'",
+                                                           url, '{"aid": "peek_message"}')
+                                        continue  # 如果交易数据未接收完全, 不应继续处理
+                                    for user, trade_data in t_data.get("trade", {}).items():
+                                        symbols = set(trade_data.get("positions", {}).keys())  # 当前真实持仓中的合约
+                                        if pos_symbols.get(user, set()) > symbols:  # 如果此用户历史持仓中的合约比当前真实持仓中更多: 删除多余合约信息
+                                            t_pending_diffs.append({
+                                                "trade": {
+                                                    user: {
+                                                        "positions": {symbol: None for symbol in
+                                                                      (pos_symbols[
+                                                                           user] - symbols)}
+                                                    }
+                                                }
+                                            })
+
+                                await recv_chan.send({
+                                                         "aid": "rtn_data",
+                                                         "data": t_pending_diffs
+                                                     })
+                                un_processed = False
+                                continue
+
+                            await recv_chan.send(pack)
                     finally:
                         send_task.cancel()
                         await send_task
