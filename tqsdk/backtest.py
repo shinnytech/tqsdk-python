@@ -83,27 +83,27 @@ class TqBacktest(object):
                 self.logger.debug("TqBacktest message received: %s", pack)
                 if pack["aid"] == "subscribe_quote":
                     self.diffs.append({
-                                          "ins_list": pack["ins_list"]
-                                      })
+                        "ins_list": pack["ins_list"]
+                    })
                     for ins in pack["ins_list"].split(","):
                         await self._ensure_quote(ins)
                     await self._send_diff()
                 elif pack["aid"] == "set_chart":
                     if pack["ins_list"]:
                         self.diffs.append({
-                                              "charts": {
-                                                  pack["chart_id"]: {
-                                                      "state": pack
-                                                  }
-                                              }
-                                          })
+                            "charts": {
+                                pack["chart_id"]: {
+                                    "state": pack
+                                }
+                            }
+                        })
                         await self._ensure_serial(pack["ins_list"], pack["duration"])
                     else:
                         self.diffs.append({
-                                              "charts": {
-                                                  pack["chart_id"]: None
-                                              }
-                                          })
+                            "charts": {
+                                pack["chart_id"]: None
+                            }
+                        })
                     await self._send_diff()
                 elif pack["aid"] == "peek_message":
                     self.pending_peek = True
@@ -117,8 +117,8 @@ class TqBacktest(object):
     async def _md_handler(self):
         async for pack in self.md_recv_chan:
             await self.md_send_chan.send({
-                                             "aid": "peek_message"
-                                         })
+                "aid": "peek_message"
+            })
             for d in pack.get("data", []):
                 TqApi._merge_diff(self.data, d, self.api._prototype, False)
 
@@ -185,10 +185,10 @@ class TqBacktest(object):
             for ins, diff in quotes.items():
                 for d in diff:
                     self.diffs.append({
-                                          "quotes": {
-                                              ins: d
-                                          }
-                                      })
+                        "quotes": {
+                            ins: d
+                        }
+                    })
             if self.diffs:
                 rtn_data = {
                     "aid": "rtn_data",
@@ -273,9 +273,7 @@ class TqBacktest(object):
                             await self.md_send_chan.send(chart_info.copy())
                         if current_id > right_id:
                             break
-                        item = serial["data"].get(str(current_id), {}).copy()
-                        del item["_path"]
-                        del item["_listener"]
+                        item = {k: v for k, v in serial["data"].get(str(current_id), {}).items()}
                         if dur == 0:
                             diff = {
                                 "ticks": {
@@ -345,7 +343,7 @@ class TqBacktest(object):
 
     @staticmethod
     def _get_quotes_from_tick(tick):
-        quote = tick.copy()
+        quote = {k: v for k, v in tick.items()}
         quote["datetime"] = datetime.fromtimestamp(tick["datetime"] / 1e9).strftime("%Y-%m-%d %H:%M:%S.%f")
         return [quote]
 
