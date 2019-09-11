@@ -20,9 +20,9 @@ TqApi 实例负责:
 TqApi 创建时, 需要提供一个account参数. 它可以是:
 
 * 一个 :py:class:`tqsdk.api.TqAccount` 实例: 使用实盘帐号, 直连行情和交易服务器(不通过天勤终端), 需提供期货公司/帐号/密码
-* 一个 :py:class:`tqsdk.sim.TqSim` 实例: 使用 Api 自带的模拟功能, 直连行情服务器或连接天勤终端(例如使用历史复盘进行测试)接收行情数据
-* 一个字符串: 连接天勤终端, 实盘交易填写期货公司提供的帐号, 使用天勤终端内置的模拟交易填写"SIM", 需先在天勤终端内登录交易
+* 一个 :py:class:`tqsdk.sim.TqSim` 实例: 使用 Api 自带的模拟功能, 直连行情服务器接收行情数据
 * 如果未提供 account 参数, 或者 account == None, 则会自动创建并使用一个 :py:class:`tqsdk.sim.TqSim` 实例
+* 一个 :py:class:`tqsdk.sim.TqApi` 实例: 对 master TqApi 创建一个 slave 副本, 以便在其它线程中使用
 
 TqApi 的其它构建参数请见 :py:class:`tqsdk.api.TqApi`
 

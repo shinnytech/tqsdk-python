@@ -3,7 +3,7 @@
 __author__ = 'limin'
 
 '''
-R-Breaker策略(隔夜留仓)
+R-Breaker策略(隔夜留仓) (难度：初级)
 参考: https://www.shinnytech.com/blog/r-breaker
 注: 该示例策略仅用于功能示范, 实盘时请根据自己的策略/经验进行修改
 '''

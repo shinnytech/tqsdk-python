@@ -3,7 +3,7 @@
 __author__ = 'limin'
 
 '''
-海龟策略
+海龟策略 (难度：中级)
 参考: https://www.shinnytech.com/blog/turtle/
 注: 该示例策略仅用于功能示范, 实盘时请根据自己的策略/经验进行修改
 '''
@@ -15,7 +15,8 @@ from tqsdk.ta import ATR
 
 
 class Turtle:
-    def __init__(self, symbol, account=None, donchian_channel_open_position=20, donchian_channel_stop_profit=10, atr_day_length=20, max_risk_ratio=0.5):
+    def __init__(self, symbol, account=None, donchian_channel_open_position=20, donchian_channel_stop_profit=10,
+                 atr_day_length=20, max_risk_ratio=0.5):
         self.account = account  # 交易账号
         self.symbol = symbol  # 合约代码
         self.donchian_channel_open_position = donchian_channel_open_position  # 唐奇安通道的天数周期(开仓)
@@ -80,7 +81,8 @@ class Turtle:
                 print("最新价: ", self.quote.last_price)
                 if self.state["position"] > 0:  # 持多单
                     # 加仓策略: 如果是多仓且行情最新价在上一次建仓（或者加仓）的基础上又上涨了0.5N，就再加一个Unit的多仓,并且风险度在设定范围内(以防爆仓)
-                    if self.quote.last_price >= self.state["last_price"] + 0.5 * self.n and self.account.risk_ratio <= self.max_risk_ratio:
+                    if self.quote.last_price >= self.state[
+                        "last_price"] + 0.5 * self.n and self.account.risk_ratio <= self.max_risk_ratio:
                         print("加仓:加1个Unit的多仓")
                         self.set_position(self.state["position"] + self.unit)
                     # 止损策略: 如果是多仓且行情最新价在上一次建仓（或者加仓）的基础上又下跌了2N，就卖出全部头寸止损
@@ -94,7 +96,8 @@ class Turtle:
 
                 elif self.state["position"] < 0:  # 持空单
                     # 加仓策略: 如果是空仓且行情最新价在上一次建仓（或者加仓）的基础上又下跌了0.5N，就再加一个Unit的空仓,并且风险度在设定范围内(以防爆仓)
-                    if self.quote.last_price <= self.state["last_price"] - 0.5 * self.n and self.account.risk_ratio <= self.max_risk_ratio:
+                    if self.quote.last_price <= self.state[
+                        "last_price"] - 0.5 * self.n and self.account.risk_ratio <= self.max_risk_ratio:
                         print("加仓:加1个Unit的空仓")
                         self.set_position(self.state["position"] - self.unit)
                     # 止损策略: 如果是空仓且行情最新价在上一次建仓（或者加仓）的基础上又上涨了2N，就平仓止损

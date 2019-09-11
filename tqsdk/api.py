@@ -49,7 +49,8 @@ class TqApi(object):
 
     DEFAULT_INS_URL = "https://openmd.shinnytech.com/t/md/symbols/latest.json"
 
-    def __init__(self, account=None, url=None, backtest=None, debug=None, loop=None, _ins_url=None, _md_url=None, _td_url=None):
+    def __init__(self, account=None, url=None, backtest=None, debug=None, loop=None, _ins_url=None, _md_url=None,
+                 _td_url=None):
         """
         创建天勤接口实例
 
@@ -290,7 +291,8 @@ class TqApi(object):
             duration_seconds (int): K线数据周期, 以秒为单位。例如: 1分钟线为60,1小时线为3600,日线为86400。\
             注意: 周期在日线以内时此参数可以任意填写, 在日线以上时只能是日线(86400)的整数倍
 
-            data_length (int): 需要获取的序列长度。每个序列最大支持请求 8964 个数据
+            data_length (int): 需要获取的序列长度。默认200根, 返回的K线序列数据是从当前最新一根K线开始往回取data_length根。\
+            每个序列最大支持请求 8964 个数据
 
             chart_id (str): [可选]指定序列id, 默认由 api 自动生成
 
@@ -445,8 +447,8 @@ class TqApi(object):
 
             direction (str): "BUY" 或 "SELL"
 
-            offset (str): "OPEN", "CLOSE" 或 "CLOSETODAY" \
-            (上期所和原油分平今/平昨, 平今用"CLOSETODAY", 平昨用"CLOSE"; 其他交易所直接用"CLOSE" 默认先平今再平昨)
+            offset (str): "OPEN", "CLOSE" 或 "CLOSETODAY"  \
+            (上期所和原油分平今/平昨, 平今用"CLOSETODAY", 平昨用"CLOSE"; 其他交易所直接用"CLOSE" 按照交易所的规则平仓)
 
             volume (int): 需要下单的手数
 
@@ -613,7 +615,9 @@ class TqApi(object):
             其内容将在 :py:meth:`~tqsdk.api.TqApi.wait_update` 时更新.
 
             不填 symbol 参数调用本函数, 将返回包含用户所有持仓的一个tqsdk.objs.Entity对象引用, 使用方法与dict一致, \
-            其中每个元素的key为合约代码, value为 :py:class:`~tqsdk.objs.Position`
+            其中每个元素的key为合约代码, value为 :py:class:`~tqsdk.objs.Position`。
+
+            为保留一些可供用户查询的历史信息, 如 volume_long_yd(本交易日开盘前的多头持仓手数) 等字段, 因此服务器会返回当天已平仓合约( pos_long 和 pos_short 等字段为0)的持仓信息
 
         Example::
 
@@ -1237,19 +1241,19 @@ class TqApi(object):
                                             [v.items() <= self._get_obj(t_data, ["charts", k, "state"]).items() for k, v
                                              in set_chart_packs.items()]):
                                         await client.send(json.dumps({
-                                                                         "aid": "peek_message"
-                                                                     }))
+                                            "aid": "peek_message"
+                                        }))
                                         self._logger.debug("websocket message sent to %s: %s, due to charts state", url,
                                                            '{"aid": "peek_message"}')
                                         continue  # 如果当前请求还没收齐回应, 不应继续处理
                                     # 在接收并处理完成指令后, 此时发送给客户端的数据包中的 left_id或right_id 至少有一个不是-1 , 并且 mdhis_more_data是False；否则客户端需要继续等待数据完全发送
                                     if not all([(self._get_obj(t_data, ["charts", k]).get("left_id",
                                                                                           -1) != -1 or self._get_obj(
-                                            t_data, ["charts", k]).get("right_id", -1) != -1) and not t_data.get(
-                                            "mdhis_more_data", True) for k in set_chart_packs.keys()]):
+                                        t_data, ["charts", k]).get("right_id", -1) != -1) and not t_data.get(
+                                        "mdhis_more_data", True) for k in set_chart_packs.keys()]):
                                         await client.send(json.dumps({
-                                                                         "aid": "peek_message"
-                                                                     }))
+                                            "aid": "peek_message"
+                                        }))
                                         self._logger.debug(
                                             "websocket message sent to %s: %s, due to left_id or last_id", url,
                                             '{"aid": "peek_message"}')
@@ -1269,8 +1273,8 @@ class TqApi(object):
                                             break
                                     if not all_received:
                                         await client.send(json.dumps({
-                                                                         "aid": "peek_message"
-                                                                     }))
+                                            "aid": "peek_message"
+                                        }))
                                         self._logger.debug("websocket message sent to %s: %s, due to last_id", url,
                                                            '{"aid": "peek_message"}')
                                         continue
@@ -1278,8 +1282,8 @@ class TqApi(object):
                                     if t_data.get("ins_list", "") != resend_request.get("subscribe_quote", {}).get(
                                             "ins_list", ""):
                                         await client.send(json.dumps({
-                                                                         "aid": "peek_message"
-                                                                     }))
+                                            "aid": "peek_message"
+                                        }))
                                         self._logger.debug("websocket message sent to %s: %s, due to subscribe_quote",
                                                            url, '{"aid": "peek_message"}')
                                         continue  # 如果实时行情quote未接收完全, 不应继续处理
@@ -1288,8 +1292,8 @@ class TqApi(object):
                                     if not all([(not t_data.get("trade", {}).get(user, {}).get("trade_more_data", True))
                                                 for user in pos_symbols.keys()]):
                                         await client.send(json.dumps({
-                                                                         "aid": "peek_message"
-                                                                     }))
+                                            "aid": "peek_message"
+                                        }))
                                         self._logger.debug("websocket message sent to %s: %s, due to 'trade_more_data'",
                                                            url, '{"aid": "peek_message"}')
                                         continue  # 如果交易数据未接收完全, 不应继续处理
@@ -1307,9 +1311,9 @@ class TqApi(object):
                                             })
 
                                 await recv_chan.send({
-                                                         "aid": "rtn_data",
-                                                         "data": t_pending_diffs
-                                                     })
+                                    "aid": "rtn_data",
+                                    "data": t_pending_diffs
+                                })
                                 un_processed = False
                                 continue
 
