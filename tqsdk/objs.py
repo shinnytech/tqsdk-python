@@ -11,7 +11,7 @@ class Entity(MutableMapping):
         return self.__dict__.__setitem__(key, value)
 
     def __delitem__(self, key):
-        return
+        return self.__dict__.__delitem__(key)
 
     def __getitem__(self, key):
         return self.__dict__.__getitem__(key)
@@ -167,9 +167,9 @@ class Account(Entity):
         self.currency = ""
         #: 昨日账户权益
         self.pre_balance = float("nan")
-        #: 静态权益
+        #: 静态权益 （静态权益 = 昨日结算的权益 + 今日入金 - 今日出金, 以服务器查询ctp后返回的金额为准）
         self.static_balance = float("nan")
-        #: 账户权益
+        #: 账户权益 （账户权益 = 动态权益 = 静态权益 + 平仓盈亏 + 持仓盈亏 - 手续费）
         self.balance = float("nan")
         #: 可用资金
         self.available = float("nan")
@@ -260,13 +260,13 @@ class Position(Entity):
         self.float_profit_long = float("nan")
         #: 空头浮动盈亏
         self.float_profit_short = float("nan")
-        #: 浮动盈亏
+        #: 浮动盈亏 （浮动盈亏: 相对于开仓价的盈亏）
         self.float_profit = float("nan")
         #: 多头持仓盈亏
         self.position_profit_long = float("nan")
         #: 空头持仓盈亏
         self.position_profit_short = float("nan")
-        #: 持仓盈亏
+        #: 持仓盈亏 （持仓盈亏: 相对于上一交易日结算价的盈亏）
         self.position_profit = float("nan")
         #: 多头占用保证金
         self.margin_long = float("nan")

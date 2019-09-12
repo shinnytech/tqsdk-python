@@ -3,7 +3,7 @@
 __author__ = 'limin'
 
 '''
-Dual Thrust策略
+Dual Thrust策略 (难度：中级)
 参考: https://www.shinnytech.com/blog/dual-thrust
 注: 该示例策略仅用于功能示范, 实盘时请根据自己的策略/经验进行修改
 '''

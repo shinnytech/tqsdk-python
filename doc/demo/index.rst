@@ -23,8 +23,8 @@
 .. toctree::
     :maxdepth: 1
 
+    example/rbreaker.rst
     example/gridtrading.rst
     example/turtle.rst
     example/dualthrust.rst
-    example/rbreaker.rst
     example/vwap.rst

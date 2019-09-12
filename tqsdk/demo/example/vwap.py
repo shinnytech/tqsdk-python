@@ -3,7 +3,7 @@
 __author__ = 'limin'
 
 '''
-Volume Weighted Average Price策略
+Volume Weighted Average Price策略 (难度：高级)
 参考: https://www.shinnytech.com/blog/vwap
 注: 该示例策略仅用于功能示范, 实盘时请根据自己的策略/经验进行修改
 '''
@@ -11,36 +11,38 @@ Volume Weighted Average Price策略
 import datetime
 from tqsdk import TqApi, TargetPosTask
 
-TIME_CELL = 5*60  # 等时长下单的时间单元, 单位: 秒
+TIME_CELL = 5 * 60  # 等时长下单的时间单元, 单位: 秒
 TARGET_VOLUME = 300  # 目标交易手数 (>0: 多头, <0: 空头)
 SYMBOL = "DCE.jd1909"  # 交易合约代码
 HISTORY_DAY_LENGTH = 20  # 使用多少天的历史数据用来计算每个时间单元的下单手数
 START_HOUR, START_MINUTE = 9, 35  # 计划交易时段起始时间点
 END_HOUR, END_MINUTE = 10, 50  # 计划交易时段终点时间点
 
-
 api = TqApi()
 print("策略开始运行")
 # 根据 HISTORY_DAY_LENGTH 推算出需要订阅的历史数据长度, 需要注意history_day_length与time_cell的比例关系以避免超过订阅限制
 time_slot_start = datetime.time(START_HOUR, START_MINUTE)  # 计划交易时段起始时间点
 time_slot_end = datetime.time(END_HOUR, END_MINUTE)  # 计划交易时段终点时间点
-klines = api.get_kline_serial(SYMBOL, TIME_CELL, data_length=int(10*60*60/TIME_CELL*HISTORY_DAY_LENGTH))
+klines = api.get_kline_serial(SYMBOL, TIME_CELL, data_length=int(10 * 60 * 60 / TIME_CELL * HISTORY_DAY_LENGTH))
 target_pos = TargetPosTask(api, SYMBOL)
 position = api.get_position(SYMBOL)  # 持仓信息
 
+
 def get_kline_time(kline_datetime):
     """获取k线的时间(不包含日期)"""
-    kline_time = datetime.datetime.fromtimestamp(kline_datetime//1000000000).time()  # 每根k线的时间
+    kline_time = datetime.datetime.fromtimestamp(kline_datetime // 1000000000).time()  # 每根k线的时间
     return kline_time
+
 
 def get_market_day(kline_datetime):
     """获取k线所对应的交易日"""
-    kline_dt = datetime.datetime.fromtimestamp(kline_datetime//1000000000)  # 每根k线的日期和时间
+    kline_dt = datetime.datetime.fromtimestamp(kline_datetime // 1000000000)  # 每根k线的日期和时间
     if kline_dt.hour >= 18:  # 当天18点以后: 移到下一个交易日
         kline_dt = kline_dt + datetime.timedelta(days=1)
     while kline_dt.weekday() >= 5:  # 是周六或周日,移到周一
         kline_dt = kline_dt + datetime.timedelta(days=1)
     return kline_dt.date()
+
 
 # 添加辅助列: time及date, 分别为K线时间的时:分:秒和其所属的交易日
 klines["time"] = klines.datetime.apply(lambda x: get_kline_time(x))
@@ -71,12 +73,11 @@ predicted_volume = {}  # 记录每个时间单元需调整的持仓量
 percentage_left = 1  # 剩余比例
 volume_left = TARGET_VOLUME  # 剩余手数
 for index, value in predicted_percent.items():
-    volume = round(volume_left*(value/percentage_left))
+    volume = round(volume_left * (value / percentage_left))
     predicted_volume[index] = volume
     percentage_left -= value
     volume_left -= volume
 print("各时间单元应下单手数: %s" % predicted_volume)
-
 
 # 交易
 current_volume = 0  # 记录已调整持仓量
@@ -84,7 +85,7 @@ while True:
     api.wait_update()
     # 新产生一根K线并且在计划交易时间段内: 调整目标持仓量
     if api.is_changing(klines.iloc[-1], "datetime"):
-        t = datetime.datetime.fromtimestamp(klines.iloc[-1]["datetime"]//1000000000).time()
+        t = datetime.datetime.fromtimestamp(klines.iloc[-1]["datetime"] // 1000000000).time()
         if t in predicted_volume:
             current_volume += predicted_volume[t]
             print("到达下一时间单元,调整持仓为: %d" % current_volume)

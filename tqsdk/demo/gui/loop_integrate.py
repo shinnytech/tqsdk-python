@@ -1,4 +1,5 @@
 import asyncio
+import sys
 import PySimpleGUI as sg
 from tqsdk import TqApi
 
@@ -18,15 +19,16 @@ async def gui_task():
     window = sg.Window('价差显示', layout)
 
     while True:
-        event, values = window.Read(timeout=1)
+        event, values = window.Read(timeout=0)
         if event is None or event == 'Exit':
-            break
+            sys.exit(0)
         window.Element('rb1910.last').Update(quote_a.last_price)
         window.Element('rb2001.last').Update(quote_b.last_price)
         window.Element('spread').Update(quote_b.last_price - quote_a.last_price)
+        await asyncio.sleep(1) #注意, 这里必须使用 asyncio.sleep, 不能用time.sleep
+
 
 loop.create_task(gui_task())
 
 while True:
     api.wait_update()
-

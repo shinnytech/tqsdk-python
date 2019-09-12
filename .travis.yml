@@ -1,0 +1,38 @@
+language: python
+
+python: "3.6"
+
+install:
+  - pip install -r requirements.txt
+  - pip install autodocsumm sphinx_rtd_theme
+
+script:
+  - python setup.py sdist
+  - python setup.py bdist_wheel -p any
+  - rm -rf build
+  - python setup.py bdist_wheel -p manylinux1_x86_64
+  - rm -rf build
+  - python setup.py bdist_wheel -p win32
+  - rm -rf build
+  - python setup.py bdist_wheel -p win_amd64
+  - rm -rf build
+  - sphinx-build doc build/doc
+
+deploy:
+  - provider: pypi
+    user: $PYPI_USERNAME
+    password: $PYPI_PASSWORD
+    skip_cleanup: true
+    skip_existing: true
+    on:
+      tags: true
+  - provider: s3
+    access_key_id: $AWS_KEY_ID
+    secret_access_key: $AWS_ACCESS_KEY
+    bucket: shinnydeploy
+    region: ap-east-1
+    local_dir: build/doc
+    upload-dir: "docs/tqsdk-python/$TRAVIS_BRANCH"
+    skip_cleanup: true
+    on:
+      all_branches: true
