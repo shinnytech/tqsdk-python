@@ -1,4 +1,5 @@
 websockets>=6.0
 requests
 numpy
-pandas
+pandas>=0.24.0
+numba
