@@ -26,6 +26,13 @@ deploy:
     skip_existing: true
     on:
       tags: true
+  - provider: releases
+    api_key: $GITHUB_TOKEN
+    file_glob: true
+    file: dist/*
+    skip_cleanup: true
+    on:
+      tags: true
   - provider: s3
     access_key_id: $AWS_KEY_ID
     secret_access_key: $AWS_ACCESS_KEY
@@ -33,6 +40,16 @@ deploy:
     region: ap-east-1
     local_dir: build/doc
     upload-dir: "docs/tqsdk-python/$TRAVIS_BRANCH"
+    skip_cleanup: true
+    on:
+      all_branches: true
+  - provider: s3
+    access_key_id: $AWS_KEY_ID
+    secret_access_key: $AWS_ACCESS_KEY
+    bucket: shinnydeploy
+    region: ap-east-1
+    local_dir: dist
+    upload-dir: "dist/tqsdk-python/$TRAVIS_BRANCH"
     skip_cleanup: true
     on:
       all_branches: true
