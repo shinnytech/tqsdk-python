@@ -26,6 +26,7 @@ import asyncio
 import functools
 import websockets
 import requests
+import random
 import weakref
 import base64
 import os
@@ -47,6 +48,7 @@ class TqApi(object):
     通常情况下, 一个线程中应该只有一个TqApi的实例, 它负责维护网络连接, 接收行情及账户数据, 并在内存中维护业务数据截面
     """
 
+    RD = random.Random()
     DEFAULT_INS_URL = "https://openmd.shinnytech.com/t/md/symbols/latest.json"
 
     def __init__(self, account=None, url=None, backtest=None, debug=None, loop=None, _ins_url=None, _md_url=None,
@@ -1492,13 +1494,13 @@ class TqApi(object):
     @staticmethod
     def _generate_chart_id(module, symbol, duration_seconds):
         """生成chart id"""
-        chart_id = "PYSDK_" + module + "_" + uuid.uuid4().hex
+        chart_id = "PYSDK_" + module + "_" + uuid.UUID(int=TqApi.RD.getrandbits(128)).hex
         return chart_id
 
     @staticmethod
     def _generate_order_id():
         """生成order id"""
-        return uuid.uuid4().hex
+        return uuid.UUID(int=TqApi.RD.getrandbits(128)).hex
 
     @staticmethod
     def _get_trading_day_start_time(trading_day):
@@ -1597,7 +1599,7 @@ class TqApi(object):
             api.draw_text(klines, "测试413423", x=indic, y=value, color=0xFF00FF00)
         """
         if id is None:
-            id = uuid.uuid4().hex
+            id = uuid.UUID(int=TqApi.RD.getrandbits(128)).hex
         if y is None:
             y = base_k_dataframe["close"].iloc[-1]
         serial = {
@@ -1637,7 +1639,7 @@ class TqApi(object):
             width (int): 线宽度, 可选, 缺省为 1
         """
         if id is None:
-            id = uuid.uuid4().hex
+            id = uuid.UUID(int=TqApi.RD.getrandbits(128)).hex
         serial = {
             "type": line_type,
             "x1": self._offset_to_x(base_k_dataframe, x1),
@@ -1684,7 +1686,7 @@ class TqApi(object):
             y2=klines.iloc[-1].close, width=1, color=0xFF0000FF, bg_color=0x8000FF00)
         """
         if id is None:
-            id = uuid.uuid4().hex
+            id = uuid.UUID(int=TqApi.RD.getrandbits(128)).hex
         serial = {
             "type": "BOX",
             "x1": self._offset_to_x(base_k_dataframe, x1),
