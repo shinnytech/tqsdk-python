@@ -4,25 +4,35 @@
 =================================================
 希望快速开始使用 TqSdk?  本页面将介绍如何开始使用 TqSdk.
 
-首先, 请确认:
-
-* TqSdk 已经 :ref:`安装成功 <install>`
-* TqSdk 已经更新到 :ref:`最新版本 <version>`
-
 如果您以前曾经使用过其它框架编写过策略程序, 这些内容可以快速帮助您了解 TqSdk 与它们的区别:
 
 * :ref:`for_ctp_user`
 * :ref:`for_vnpy_user`
 
-注意: TqSdk 使用了 python3 的原生协程和异步通讯库 asyncio，部分 IDE 不支持 asyncio，例如:
+注意: TqSdk 使用了 python3 的原生协程和异步通讯库 asyncio，部分 Python IDE 不支持 asyncio，例如:
 
 * spyder: 详见 https://github.com/spyder-ide/spyder/issues/7096
 * jupyter: 详见 https://github.com/jupyter/notebook/issues/3397
 
-可以直接运行示例代码，或使用支持 asyncio 的 IDE (例如: pycharm)
+可以直接运行示例代码，或使用支持 asyncio 的 IDE (例如: pycharm / vscode)
 
-让我们从一个简单的例子开始
 
+安装
+-------------------------------------------------
+在安装 TqSdk 前, 你需要先准备适当的环境和Python包管理工具, 包括:
+
+* Python 3.6 或以上版本
+* Windows 7 以上版本, Mac Os, 或 Linux
+
+
+你可以选择使用 `pip` 命令安装 TqSdk, 或者下载源代码安装. 对于一般用户, 我们推荐采用 pip 命令安装::
+
+    pip install tqsdk
+
+同时我们也提供了天勤终端GUI，方便有需求的用户配合GUI界面使用，详情请参考 :ref:`tq_quickstart` .
+
+
+下面让我们从一个简单的例子开始
 
 .. _quickstart_1:
 
@@ -174,7 +184,7 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 这部分的完整示例程序请见 :ref:`tutorial_t80` .
 
 
-.. _tutorial_backtest:
+.. _quickstart_backtest:
 
 策略回测
 -------------------------------------------------
@@ -187,18 +197,37 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 关于策略程序回测的详细信息, 请见 :ref:`backtest`
 
 
+.. _real_trading:
+
 实盘交易
 -------------------------------------------------
 要让策略程序在实盘账号运行, 请在创建TqApi时传入一个 :py:class:`~tqsdk.api.TqAccount` , 填入 期货公司, 账号, 密码::
 
-  api = TqApi(TqAccount("H海通期货", "320102", "123456"))
+  api = TqApi(TqAccount("H海通期货", "412432343", "123456"))
 
 目前支持的期货公司列表, 请见 :ref:`broker_list` .
 
 关于实盘交易的详细信息, 请见 :ref:`trade`
 
 
+.. _sim_trading:
+
+模拟交易和论坛
+-------------------------------------------------
+请点击 `注册论坛账号 <https://www.shinnytech.com/registration>`_ ，填写以下对应信息之后，并点击激活邮件后即可进入 `用户论坛 <https://www.shinnytech.com/qa>`_ .
+
+.. figure:: images/tq_register.png
+
+如果您需要使用模拟交易, 注册好的论坛【邮箱地址】和【密码】可作为模拟账号, 通过TqAccount进行登录::
+
+  api = TqApi(TqAccount("快期模拟", "test111@qq.com", "123456"))
+
+特别的，如果创建TqApi实例时没有提供任何TqAcccount，则每次会自动创建一个临时模拟账号，当程序运行结束时，临时账号内的记录将全部丢失::
+
+  api = TqApi()
+
+
 更多内容
 -------------------------------------------------
 * 要完整了解TqSdk的使用, 请阅读 :ref:`usage`
-* 更多TqSdk的示例 :ref:`demo`
+* 更多TqSdk的示例, 请见 :ref:`demo`
