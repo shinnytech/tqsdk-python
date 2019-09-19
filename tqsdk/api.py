@@ -1772,7 +1772,7 @@ class TqAccount(object):
             else:
                 raise Exception("错误码: %d" % ret)
         except Exception as e:
-            logging.getLogger("TqApi.TqAccount").warning("采集穿透式监管客户端信息失败: %s" % e)
+            logging.getLogger("TqApi.TqAccount").debug("采集穿透式监管客户端信息失败: %s" % e)
 
     async def _run(self, api, api_send_chan, api_recv_chan, md_send_chan, md_recv_chan, td_send_chan, td_recv_chan):
         req = {
