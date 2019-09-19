@@ -117,17 +117,18 @@ class TqApi(object):
         self._loop = asyncio.new_event_loop() if loop is None else loop  # 创建一个新的 ioloop, 避免和其他框架/环境产生干扰
 
         # 初始化 logger
+
         self._logger = logging.getLogger("TqApi")
-        self._logger.setLevel(logging.INFO)
-        sh = logging.StreamHandler()
-        sh.setLevel(logging.INFO)
-        sh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-        self._logger.addHandler(sh)
-        if debug:
-            self._logger.setLevel(logging.DEBUG)
-            fh = logging.FileHandler(filename=debug)
-            fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-            self._logger.addHandler(fh)
+        self._logger.setLevel(logging.DEBUG)
+        if not self._logger.handlers:
+            sh = logging.StreamHandler()
+            sh.setLevel(logging.INFO)
+            sh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+            self._logger.addHandler(sh)
+            if debug:
+                fh = logging.FileHandler(filename=debug)
+                fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+                self._logger.addHandler(fh)
 
         # 初始化loop
         self._send_chan, self._recv_chan = TqChan(self), TqChan(self)  # 消息收发队列
