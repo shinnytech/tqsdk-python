@@ -6,10 +6,10 @@ from tqsdk import TqApi
 import datetime
 
 api = TqApi()
-# 获得cu1909 tick序列的引用
-ticks = api.get_tick_serial("SHFE.cu1909")
-# 获得cu1909 10秒K线的引用
-klines = api.get_kline_serial("SHFE.cu1909", 10)
+# 获得cu1911 tick序列的引用
+ticks = api.get_tick_serial("SHFE.cu1911")
+# 获得cu1911 10秒K线的引用
+klines = api.get_kline_serial("SHFE.cu1911", 10)
 print(datetime.datetime.fromtimestamp(klines.iloc[-1]["datetime"] / 1e9))
 
 while True:

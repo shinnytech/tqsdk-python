@@ -545,16 +545,13 @@ class TqApi(object):
             while True:
                 api.wait_update()
                 # 当行情有变化且当前挂单价格不优时，则撤单
-                if order and api.is_changing(quote) and order.status == "ALIVE" \
-                and quote.bid_price1 > order.limit_price:
+                if order and api.is_changing(quote) and order.status == "ALIVE" and quote.bid_price1 > order.limit_price:
                     print("价格改变，撤单重下")
                     api.cancel_order(order)
                 # 当委托单已撤或还没有下单时则下单
-                if (not order and api.is_changing(quote)) or (api.is_changing(order) \
-                and order.volume_left != 0 and order.status == "FINISHED"):
+                if (not order and api.is_changing(quote)) or (api.is_changing(order) and order.volume_left != 0 and order.status == "FINISHED"):
                     print("下单: 价格 %f" % quote.bid_price1)
-                    order = api.insert_order(symbol="DCE.m1809", direction="BUY", offset="OPEN", \
-                    volume=order.get("volume_left", 3), limit_price=quote.bid_price1)
+                    order = api.insert_order(symbol="DCE.m1809", direction="BUY", offset="OPEN", volume=order.get("volume_left", 3), limit_price=quote.bid_price1)
                 if api.is_changing(order):
                     print("单状态: %s, 已成交: %d 手" % (order.status, order.volume_orign - order.volume_left))
 
