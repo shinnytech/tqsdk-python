@@ -12,4 +12,5 @@ TqSdk并不需要依赖任何IDE即可工作。对于习惯使用vscode/pycharm�
     :maxdepth: 2
 
     tq/index.rst
+    vscode/index.rst
     drawindex.rst
