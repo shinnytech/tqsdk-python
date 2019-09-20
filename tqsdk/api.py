@@ -312,22 +312,34 @@ class TqApi(object):
             * open_oi: int, 27354 (K线起始时刻的持仓量)
             * close_oi: int, 27355 (K线结束时刻的持仓量)
 
-        Example::
+        Example1::
 
             # 获取 SHFE.cu1812 的1分钟线
             from tqsdk import TqApi, TqSim
 
             api = TqApi(TqSim())
-            k_serial = api.get_kline_serial("SHFE.cu1812", 60)
+            klines = api.get_kline_serial("SHFE.cu1812", 60)
             while True:
                 api.wait_update()
-                print(k_serial.iloc[-1].close)
+                print(klines.iloc[-1].close)
 
             # 预计的输出是这样的:
             50970.0
             50970.0
             50960.0
             ...
+
+        Example2::
+
+            # 将K线的纳秒时间转换为 datetime.datetime 类型
+            from datetime import datetime
+            ...
+
+            klines = api.get_kline_serial("DCE.jd2001", 10)
+            kline_time = datetime.fromtimestamp(klines.iloc[-1]["datetime"] / 1e9)  # datetime.datetime 类型值
+            print(type(kline_time), kline_time)
+            print(kline_time.year, kline_time.month, kline_time.day, kline_time.hour, kline_time.minute, kline_time.second)
+
         """
         if symbol not in self._data.get("quotes", {}):
             raise Exception("代码 %s 不存在, 请检查合约代码是否填写正确" % (symbol))
@@ -850,10 +862,10 @@ class TqApi(object):
             from tqsdk import TqApi, TqSim
 
             api = TqApi(TqSim())
-            k_serial = api.get_kline_serial("SHFE.cu1812", 60, data_length=3000)
+            klines = api.get_kline_serial("SHFE.cu1812", 60, data_length=3000)
             while True:
                 api.wait_update()
-                print(api.is_serial_ready(k_serial))
+                print(api.is_serial_ready(klines))
 
             # 预计的输出是这样的:
             False

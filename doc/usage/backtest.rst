@@ -15,6 +15,31 @@
 回测结束后会输出交易记录和每日收盘时的账户资金情况，以及最大回撤、夏普比率等指标，这些数据可以导入到 excel 中或使用其他分析工具进一步处理。
 
 
+在回测结束时获取回测详细信息
+-------------------------------------------------
+要在回测结束时调用您自己写的代码, 可以使用 try/except 机制捕获回测结束信号 BacktestFinished, 像这样::
+
+  from tqsdk import BacktestFinished
+
+  acc = TqSim()
+
+  try:
+    api = TqApi(acc, backtest=TqBacktest(start_dt=date(2018, 5, 1), end_dt=date(2018, 10, 1)))
+    #策略代码在这里
+    #...
+
+  except BacktestFinished as e:
+    # 回测结束时会执行这里的代码
+    print(acc.trade_log)
+
+回测的详细信息保存在回测所用的模拟账户中, 可以直接访问它的成员变量获取, 常用的有:
+
+* trade_log, 格式为 日期->交易记录及收盘时的权益及持仓
+* account, 资金账户最终状态
+* positions, 账户持仓最终状态
+* quotes, 行情最终状态
+
+
 回测时的成交规则和推进
 -------------------------------------------------
 策略回测时使用内置模拟账户 :py:class:`~tqsdk.sim.TqSim` , 撮合成交规则为对价成交. 即限价单的价格达到对手盘价格时判定为成交. 不会出现委托单部分成交的情况.
@@ -85,31 +110,6 @@ TqSdk回测框架使用一套复杂的规则来推进行情:
   print(ka.iloc[-1].datetime, kb.iloc[-1].datetime)   # 2018/01/01 09:00:20, 2018/01/01 09:00:15
   api.wait_update()                                         # 再推一步, 时间推到 09:00:30, ka, kb都更新了
   print(ka.iloc[-1].datetime, kb.iloc[-1].datetime)   # 2018/01/01 09:00:30, 2018/01/01 09:00:30
-  
-
-在回测结束时获取回测详细信息
--------------------------------------------------
-要在回测结束时调用您自己写的代码, 可以使用 try/except 机制捕获回测结束信号 BacktestFinished, 像这样::
-
-  from tqsdk import BacktestFinished
-  
-  acc = TqSim()
-
-  try:
-    api = TqApi(acc, backtest=TqBacktest(start_dt=date(2018, 5, 1), end_dt=date(2018, 10, 1)))
-    #策略代码在这里
-    #...
-    
-  except BacktestFinished as e:
-    # 回测结束时会执行这里的代码
-    print(acc.trade_log)
-
-回测的详细信息保存在回测所用的模拟账户中, 可以直接访问它的成员变量获取, 常用的有:
-
-* trade_log, 格式为 日期->交易记录及收盘时的权益及持仓
-* account, 资金账户最终状态
-* positions, 账户持仓最终状态
-* quotes, 行情最终状态
 
 
 了解更多
