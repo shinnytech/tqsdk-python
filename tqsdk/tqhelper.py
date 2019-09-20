@@ -305,6 +305,8 @@ def link_tq(api):
 
     # 根据运行模式分别执行不同的初始化任务
     if args._action == "run":
+        if isinstance(api._account, TqAccount) and args._broker_id != "快期模拟" and api._account.account_id != args._account_id:
+            raise Exception("策略代码与命令行中的账户参数冲突")
         instance = SingleInstance(args._account_id)
         api._account = TqAccount(args._broker_id, args._account_id, args._password)
         api._backtest = None
