@@ -6,6 +6,7 @@
 
 如果您以前曾经使用过其它框架编写过策略程序, 这些内容可以快速帮助您了解 TqSdk 与它们的区别:
 
+* :ref:`intro`
 * :ref:`for_ctp_user`
 * :ref:`for_vnpy_user`
 
