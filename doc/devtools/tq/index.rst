@@ -6,6 +6,7 @@
 
 .. toctree::
     :maxdepth: 2
+
     quickstart.rst
     strategybacktest.rst
     strategyrun.rst

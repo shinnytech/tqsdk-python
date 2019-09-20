@@ -1,3 +1,5 @@
+.. _gui:
+
 与Gui库共同工作
 =================================================
 某些情况下, 我们可能需要在一个 Python GUI 程序中使用TqSdk库. TqSdk 可以与Tkinter, PyQt, WxPython, PySimpleGui 等大多数常见 Python Gui 库配合工作.

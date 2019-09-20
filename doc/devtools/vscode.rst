@@ -12,22 +12,22 @@
 ----------------------------------------------------
 在  Vs Code extension 中输入 "天勤量化"或“tqsdk”, 点击【install】按钮
 
-.. figure:: ../../images/vscode_install.png
+.. figure:: ../images/vscode_install.png
 
 插件安装好以后, 需要先配置账户参数才能使用,可以右键选项,选择【设置天勤参数】
 
-.. figure:: ../../images/vscode_setting_config.png
+.. figure:: ../images/vscode_setting_config.png
 
 然后配置如下信息
 
 * 实盘交易账号(选填)
 * 模拟交易账号(没有的话可以前往 :ref:`sim_trading` 注册)
 
-.. figure:: ../../images/vscode_setting_account.png
+.. figure:: ../images/vscode_setting_account.png
 
 配置完毕后，点击菜单栏上的【天勤量化】，将出现一个这样的面板:
 
-.. figure:: ../../images/vscode_click_tianqinlianghua.png
+.. figure:: ../images/vscode_click_tianqinlianghua.png
 
 祝贺你， Vs Code插件已经安装配置完毕，可以开始使用了
 
@@ -36,13 +36,13 @@ Vs Code插件策略运行
 ----------------------------------------------------
 要运行策略程序，请在策略程序的右键菜单中选择【在实盘中运行】或【在模拟账户中运行】
 
-.. figure:: ../../images/vscode_click.png
+.. figure:: ../images/vscode_click.png
 
 一旦策略程序开始运行，右侧的天勤面板中将输出策略运行日志。如果策略程序中有绘图输出，也会输出到右侧面板中:
 
 插件会自动保存用户策略的全部报单和print输出信息到硬盘文件，并可在reports目录下随时查看
 
-.. figure:: ../../images/vscode_strategy_picture.png
+.. figure:: ../images/vscode_strategy_picture.png
 
 
 注意：当右键菜单已经设置了账户信息，但与代码中设置的不一致时，将以右键设置的账户信息为准::
@@ -58,11 +58,11 @@ Vs Code插件回测策略
 
 同时我们也提供自定义回测区间功能，右键选择【设置天勤参数】，即可进入设置自定义回测区间
 
-.. figure:: ../../images/vscode_setting_backtesttime.png
+.. figure:: ../images/vscode_setting_backtesttime.png
 
 设置成功之后，菜单栏中的【回测策略（自定义回测区间）】即可以刚刚设置的自定义回测区间回测任何策略
 
-.. figure:: ../../images/vscode_backtest_setting_finished.png
+.. figure:: ../images/vscode_backtest_setting_finished.png
 
 回测策略程序时，策略交易记录和日志同样会在天勤面板中输出
 
@@ -71,15 +71,15 @@ Vs Code插件复盘行情
 ----------------------------------------------------
 在Vs Code中提供和天勤终端一致的历史复盘功能，只需点击右下角【复盘控制器 展开】即可
 
-.. figure:: ../../images/vscode_repaly.png
+.. figure:: ../images/vscode_repaly.png
 
 打开复盘，依次点击日期框，选择历史复盘具体日期，然后点击确定，历史复盘环境即开始创建
 
-.. figure:: ../../images/vscode_setting_config.png
+.. figure:: ../images/vscode_setting_config.png
 
 复盘环境创建完成之后，复盘状态会显示为暂停中，这时选择需要在复盘环境中运行的策略，右键点击【复盘环境运行策略文件】
 
-.. figure:: ../../images/vscode_run_replay.png
+.. figure:: ../images/vscode_run_replay.png
 
 在Vs Code插件中绘图形
 --------------------------------------------------------------------------
@@ -94,14 +94,14 @@ Vs Code插件复盘行情
 
 以下面代码为例，我们来看看策略程序打包成独立应用程序，具体有什么表现效果
 
-.. literalinclude:: ../../../tqsdk/demo/gui/param_input.py
+.. literalinclude:: ../../tqsdk/demo/gui/param_input.py
   :language: python
   
 首先右键点击【策略程序打包成独立应用程序】
 
-.. figure:: ../../images/vscode_save_exe.png
+.. figure:: ../images/vscode_save_exe.png
 
 打包完成之后，运行对应exe文件画面显示效果如下
 
-.. figure:: ../../images/vscode_gui_performance.png
+.. figure:: ../images/vscode_gui_performance.png
 
