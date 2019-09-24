@@ -123,11 +123,15 @@ class TqApi(object):
         if not self._logger.handlers:
             sh = logging.StreamHandler()
             sh.setLevel(logging.INFO)
-            sh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+            if backtest:  # 如果回测, 则去除将第一个本地时间
+                log_format=logging.Formatter('%(levelname)s - %(message)s')
+            else:
+                log_format=logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+            sh.setFormatter(log_format)
             self._logger.addHandler(sh)
             if debug:
                 fh = logging.FileHandler(filename=debug)
-                fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+                fh.setFormatter(log_format)
                 self._logger.addHandler(fh)
 
         # 初始化loop
