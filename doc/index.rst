@@ -5,7 +5,7 @@
 
 .. _pysdk:
 
-TianQin Python SDK User Guide
+TianQin Python Sdk User Guide
 ========================================
 
 本文档是 TqSdk 的使用说明. 从 TqSdk 中的一些关键概念开始, 逐步介绍如何充分利用 TqSdk 全部功能。
@@ -14,13 +14,12 @@ TianQin Python SDK User Guide
     :maxdepth: 2
 
     intro.rst
-    install.rst
     quickstart.rst
     usage/index.rst
+    devtools/index.rst
     advanced/index.rst
     reference/index.rst
     demo/index.rst
-    tq/index.rst
-    faq.rst
+    qa.rst
     version.rst
 

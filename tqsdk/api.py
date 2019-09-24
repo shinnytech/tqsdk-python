@@ -26,6 +26,7 @@ import asyncio
 import functools
 import websockets
 import requests
+import random
 import weakref
 import base64
 import os
@@ -47,6 +48,7 @@ class TqApi(object):
     通常情况下, 一个线程中应该只有一个TqApi的实例, 它负责维护网络连接, 接收行情及账户数据, 并在内存中维护业务数据截面
     """
 
+    RD = random.Random()
     DEFAULT_INS_URL = "https://openmd.shinnytech.com/t/md/symbols/latest.json"
 
     def __init__(self, account=None, url=None, backtest=None, debug=None, loop=None, _ins_url=None, _md_url=None,
@@ -115,17 +117,18 @@ class TqApi(object):
         self._loop = asyncio.new_event_loop() if loop is None else loop  # 创建一个新的 ioloop, 避免和其他框架/环境产生干扰
 
         # 初始化 logger
+
         self._logger = logging.getLogger("TqApi")
-        self._logger.setLevel(logging.INFO)
-        sh = logging.StreamHandler()
-        sh.setLevel(logging.INFO)
-        sh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-        self._logger.addHandler(sh)
-        if debug:
-            self._logger.setLevel(logging.DEBUG)
-            fh = logging.FileHandler(filename=debug)
-            fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-            self._logger.addHandler(fh)
+        self._logger.setLevel(logging.DEBUG)
+        if not self._logger.handlers:
+            sh = logging.StreamHandler()
+            sh.setLevel(logging.INFO)
+            sh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+            self._logger.addHandler(sh)
+            if debug:
+                fh = logging.FileHandler(filename=debug)
+                fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+                self._logger.addHandler(fh)
 
         # 初始化loop
         self._send_chan, self._recv_chan = TqChan(self), TqChan(self)  # 消息收发队列
@@ -309,22 +312,34 @@ class TqApi(object):
             * open_oi: int, 27354 (K线起始时刻的持仓量)
             * close_oi: int, 27355 (K线结束时刻的持仓量)
 
-        Example::
+        Example1::
 
             # 获取 SHFE.cu1812 的1分钟线
             from tqsdk import TqApi, TqSim
 
             api = TqApi(TqSim())
-            k_serial = api.get_kline_serial("SHFE.cu1812", 60)
+            klines = api.get_kline_serial("SHFE.cu1812", 60)
             while True:
                 api.wait_update()
-                print(k_serial.iloc[-1].close)
+                print(klines.iloc[-1].close)
 
             # 预计的输出是这样的:
             50970.0
             50970.0
             50960.0
             ...
+
+        Example2::
+
+            # 将K线的纳秒时间转换为 datetime.datetime 类型
+            from datetime import datetime
+            ...
+
+            klines = api.get_kline_serial("DCE.jd2001", 10)
+            kline_time = datetime.fromtimestamp(klines.iloc[-1]["datetime"] / 1e9)  # datetime.datetime 类型值
+            print(type(kline_time), kline_time)
+            print(kline_time.year, kline_time.month, kline_time.day, kline_time.hour, kline_time.minute, kline_time.second)
+
         """
         if symbol not in self._data.get("quotes", {}):
             raise Exception("代码 %s 不存在, 请检查合约代码是否填写正确" % (symbol))
@@ -542,16 +557,13 @@ class TqApi(object):
             while True:
                 api.wait_update()
                 # 当行情有变化且当前挂单价格不优时，则撤单
-                if order and api.is_changing(quote) and order.status == "ALIVE" \
-                and quote.bid_price1 > order.limit_price:
+                if order and api.is_changing(quote) and order.status == "ALIVE" and quote.bid_price1 > order.limit_price:
                     print("价格改变，撤单重下")
                     api.cancel_order(order)
                 # 当委托单已撤或还没有下单时则下单
-                if (not order and api.is_changing(quote)) or (api.is_changing(order) \
-                and order.volume_left != 0 and order.status == "FINISHED"):
+                if (not order and api.is_changing(quote)) or (api.is_changing(order) and order.volume_left != 0 and order.status == "FINISHED"):
                     print("下单: 价格 %f" % quote.bid_price1)
-                    order = api.insert_order(symbol="DCE.m1809", direction="BUY", offset="OPEN", \
-                    volume=order.get("volume_left", 3), limit_price=quote.bid_price1)
+                    order = api.insert_order(symbol="DCE.m1809", direction="BUY", offset="OPEN", volume=order.get("volume_left", 3), limit_price=quote.bid_price1)
                 if api.is_changing(order):
                     print("单状态: %s, 已成交: %d 手" % (order.status, order.volume_orign - order.volume_left))
 
@@ -850,10 +862,10 @@ class TqApi(object):
             from tqsdk import TqApi, TqSim
 
             api = TqApi(TqSim())
-            k_serial = api.get_kline_serial("SHFE.cu1812", 60, data_length=3000)
+            klines = api.get_kline_serial("SHFE.cu1812", 60, data_length=3000)
             while True:
                 api.wait_update()
-                print(api.is_serial_ready(k_serial))
+                print(api.is_serial_ready(klines))
 
             # 预计的输出是这样的:
             False
@@ -1492,13 +1504,13 @@ class TqApi(object):
     @staticmethod
     def _generate_chart_id(module, symbol, duration_seconds):
         """生成chart id"""
-        chart_id = "PYSDK_" + module + "_" + uuid.uuid4().hex
+        chart_id = "PYSDK_" + module + "_" + uuid.UUID(int=TqApi.RD.getrandbits(128)).hex
         return chart_id
 
     @staticmethod
     def _generate_order_id():
         """生成order id"""
-        return uuid.uuid4().hex
+        return uuid.UUID(int=TqApi.RD.getrandbits(128)).hex
 
     @staticmethod
     def _get_trading_day_start_time(trading_day):
@@ -1597,7 +1609,7 @@ class TqApi(object):
             api.draw_text(klines, "测试413423", x=indic, y=value, color=0xFF00FF00)
         """
         if id is None:
-            id = uuid.uuid4().hex
+            id = uuid.UUID(int=TqApi.RD.getrandbits(128)).hex
         if y is None:
             y = base_k_dataframe["close"].iloc[-1]
         serial = {
@@ -1637,7 +1649,7 @@ class TqApi(object):
             width (int): 线宽度, 可选, 缺省为 1
         """
         if id is None:
-            id = uuid.uuid4().hex
+            id = uuid.UUID(int=TqApi.RD.getrandbits(128)).hex
         serial = {
             "type": line_type,
             "x1": self._offset_to_x(base_k_dataframe, x1),
@@ -1684,7 +1696,7 @@ class TqApi(object):
             y2=klines.iloc[-1].close, width=1, color=0xFF0000FF, bg_color=0x8000FF00)
         """
         if id is None:
-            id = uuid.uuid4().hex
+            id = uuid.UUID(int=TqApi.RD.getrandbits(128)).hex
         serial = {
             "type": "BOX",
             "x1": self._offset_to_x(base_k_dataframe, x1),
@@ -1770,7 +1782,7 @@ class TqAccount(object):
             else:
                 raise Exception("错误码: %d" % ret)
         except Exception as e:
-            logging.getLogger("TqApi.TqAccount").warning("采集穿透式监管客户端信息失败: %s" % e)
+            logging.getLogger("TqApi.TqAccount").debug("采集穿透式监管客户端信息失败: %s" % e)
 
     async def _run(self, api, api_send_chan, api_recv_chan, md_send_chan, md_recv_chan, td_send_chan, td_recv_chan):
         req = {

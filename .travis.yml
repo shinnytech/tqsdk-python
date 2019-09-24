@@ -19,11 +19,11 @@ script:
   - sphinx-build doc build/doc
 
 deploy:
-  - provider: pypi
-    user: $PYPI_USERNAME
-    password: $PYPI_PASSWORD
+  - provider: releases
+    api_key: $GITHUB_TOKEN
+    file_glob: true
+    file: dist/*
     skip_cleanup: true
-    skip_existing: true
     on:
       tags: true
   - provider: s3
@@ -36,3 +36,20 @@ deploy:
     skip_cleanup: true
     on:
       all_branches: true
+  - provider: s3
+    access_key_id: $AWS_KEY_ID
+    secret_access_key: $AWS_ACCESS_KEY
+    bucket: shinnydeploy
+    region: ap-east-1
+    local_dir: dist
+    upload-dir: "dist/tqsdk-python/$TRAVIS_BRANCH"
+    skip_cleanup: true
+    on:
+      all_branches: true
+  - provider: pypi
+    user: $PYPI_USERNAME
+    password: $PYPI_PASSWORD
+    skip_cleanup: true
+    skip_existing: true
+    on:
+      tags: true

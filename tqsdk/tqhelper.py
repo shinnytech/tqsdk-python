@@ -349,7 +349,7 @@ def link_tq(api):
             "instance_id": instance.instance_id,
             "full_path": get_self_full_name(),
             "instance_pid": os.getpid(),
-            "instance_type": "RUN",
+            "instance_type": "REPLAY",
             "account_id": "SIM",
         })
     else:

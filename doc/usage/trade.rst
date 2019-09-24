@@ -7,7 +7,7 @@
 ----------------------------------------------------
 TqSdk 要求在创建 TqApi 时指定交易账户。一旦TqApi创建成功，后续所有通过TqApi发出的交易指令均在此账户中进行. 
 
-要使用实盘交易账户, 请使用 :py:class:`~tqsdk.api.TqAccount`. ::
+要使用实盘交易账户, 请使用 :py:class:`~tqsdk.api.TqAccount` (注：使用前请先import TqAccount) . ::
 
     api = TqApi(TqAccount("H海通期货", "320102", "123456"))
 

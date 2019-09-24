@@ -13,7 +13,7 @@ from tqsdk import TqApi, TargetPosTask
 
 TIME_CELL = 5 * 60  # 等时长下单的时间单元, 单位: 秒
 TARGET_VOLUME = 300  # 目标交易手数 (>0: 多头, <0: 空头)
-SYMBOL = "DCE.jd1909"  # 交易合约代码
+SYMBOL = "DCE.jd2001"  # 交易合约代码
 HISTORY_DAY_LENGTH = 20  # 使用多少天的历史数据用来计算每个时间单元的下单手数
 START_HOUR, START_MINUTE = 9, 35  # 计划交易时段起始时间点
 END_HOUR, END_MINUTE = 10, 50  # 计划交易时段终点时间点
