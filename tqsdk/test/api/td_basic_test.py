@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 #  -*- coding: utf-8 -*-
+import os
 import random
 import unittest
 from tqsdk.test.api.helper import MockInsServer, MockServer
@@ -11,6 +12,8 @@ class TestTdBasic(unittest.TestCase):
     交易部分基本功能测试.
 
     测试TqApi交易相关函数, 以及TqApi与交易服务器交互是否符合设计预期
+
+    注: 在本地运行测试用例前需设置IDE中运行环境变量(Environment variables): PYTHONHASHSEED=32
     """
 
     def setUp(self):
@@ -34,7 +37,8 @@ class TestTdBasic(unittest.TestCase):
         下单
         """
         # 预设服务器端响应
-        self.mock.run("test_td_basic_insert_order_simulate.script")
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        self.mock.run(os.path.join(dir_path, "test_td_basic_insert_order_simulate.script"))
         # 测试: 模拟账户下单
         TqApi.RD = random.Random(2)
         api = TqApi(_ins_url=self.ins_url, _td_url=self.td_url, _md_url=self.md_url)
@@ -82,7 +86,8 @@ class TestTdBasic(unittest.TestCase):
         撤单
         """
         # 预设服务器端响应
-        self.mock.run("test_td_basic_cancel_order_simulate.script")
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        self.mock.run(os.path.join(dir_path, "test_td_basic_cancel_order_simulate.script"))
         # 测试: 模拟账户
         TqApi.RD = random.Random(2)
         api = TqApi(_ins_url=self.ins_url, _td_url=self.td_url, _md_url=self.md_url)
@@ -109,7 +114,8 @@ class TestTdBasic(unittest.TestCase):
         获取账户资金信息
         """
         # 预设服务器端响应
-        self.mock.run("test_td_basic_get_account_simulate.script")
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        self.mock.run(os.path.join(dir_path, "test_td_basic_get_account_simulate.script"))
         # 测试: 获取数据
         api = TqApi(_ins_url=self.ins_url, _td_url=self.td_url, _md_url=self.md_url)
         TqApi.RD = random.Random(4)
@@ -134,7 +140,8 @@ class TestTdBasic(unittest.TestCase):
         获取持仓
         """
         # 预设服务器端响应
-        self.mock.run("test_td_basic_get_position_simulate.script")
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        self.mock.run(os.path.join(dir_path, "test_td_basic_get_position_simulate.script"))
         # 测试: 获取数据
         api = TqApi(_ins_url=self.ins_url, _td_url=self.td_url, _md_url=self.md_url)
         order1 = api.insert_order("DCE.jd2001", "BUY", "OPEN", 1, limit_price=4592)
@@ -203,7 +210,8 @@ class TestTdBasic(unittest.TestCase):
         获取成交记录
         """
         # 预设服务器端响应
-        self.mock.run("test_td_basic_get_trade_simulate.script")
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        self.mock.run(os.path.join(dir_path, "test_td_basic_get_trade_simulate.script"))
         # 测试: 模拟账户
         TqApi.RD = random.Random(4)
         api = TqApi(_ins_url=self.ins_url, _td_url=self.td_url, _md_url=self.md_url)
@@ -241,7 +249,8 @@ class TestTdBasic(unittest.TestCase):
         获取委托单信息
         """
         # 预设服务器端响应
-        self.mock.run("test_td_basic_get_order_simulate.script")
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        self.mock.run(os.path.join(dir_path, "test_td_basic_get_order_simulate.script"))
         # 测试: 模拟账户下单
         TqApi.RD = random.Random(4)
         api = TqApi(_ins_url=self.ins_url, _td_url=self.td_url, _md_url=self.md_url)

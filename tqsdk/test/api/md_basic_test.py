@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 #  -*- coding: utf-8 -*-
+import os
 import random
 import unittest
-import time
 from tqsdk.test.api.helper import MockInsServer, MockServer
 from tqsdk import TqApi
 
@@ -12,6 +12,8 @@ class TestMdBasic(unittest.TestCase):
     行情部分基本功能测试.
 
     测试TqApi行情相关函数, 以及TqApi与行情服务器交互是否符合设计预期
+
+    注: 在本地运行测试用例前需设置IDE中运行环境变量(Environment variables): PYTHONHASHSEED=32
     """
 
     def setUp(self):
@@ -35,7 +37,8 @@ class TestMdBasic(unittest.TestCase):
 
         """
         # 预设服务器端响应
-        self.mock.run("test_md_basic_get_quote_normal.script")
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        self.mock.run(os.path.join(dir_path, "test_md_basic_get_quote_normal.script"))
         # 获取行情
         api = TqApi(_ins_url=self.ins_url, _td_url=self.td_url, _md_url=self.md_url)
         q = api.get_quote("SHFE.cu1909")
@@ -80,7 +83,8 @@ class TestMdBasic(unittest.TestCase):
         获取K线数据
         """
         # 预设服务器端响应
-        self.mock.run("test_md_basic_get_kline_serial.script")
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        self.mock.run(os.path.join(dir_path, "test_md_basic_get_kline_serial.script"))
 
         # 测试: 获取K线数据
         TqApi.RD = random.Random(1)
@@ -110,7 +114,8 @@ class TestMdBasic(unittest.TestCase):
         获取tick数据
         """
         # 预设服务器端响应
-        self.mock.run("test_md_basic_get_tick_serial.script")
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        self.mock.run(os.path.join(dir_path, "test_md_basic_get_tick_serial.script"))
 
         # 测试: 获取tick数据
         TqApi.RD = random.Random(2)
