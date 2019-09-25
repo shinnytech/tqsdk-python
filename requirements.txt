@@ -3,3 +3,4 @@ requests
 numpy
 pandas>=0.24.0
 numba
+aiohttp
