@@ -222,9 +222,10 @@ class TqApi(object):
         elif asyncio._get_running_loop():
             raise Exception(
                 "TqSdk 使用了 python3 的原生协程和异步通讯库 asyncio，您所使用的 IDE 不支持 asyncio, 请使用 pycharm 或其它支持 asyncio 的 IDE")
-        # 检查是否需要发送多余的序列
-        for _, serial in self._serials.items():
-            self._process_serial_extra_array(serial)
+        # 如果连接了天勤，则: 检查是否需要发送多余的序列
+        if self._to_tq:
+            for _, serial in self._serials.items():
+                self._process_serial_extra_array(serial)
         self._run_until_idle()  # 由于有的处于 ready 状态 task 可能需要报撤单, 因此一直运行到没有 ready 状态的 task
         for task in self._tasks:
             task.cancel()
@@ -759,9 +760,10 @@ class TqApi(object):
         self._wait_timeout = False
         # 先尝试执行各个task,再请求下个业务数据
         self._run_until_idle()
-        # 检查是否需要发送多余的序列
-        for _, serial in self._serials.items():
-            self._process_serial_extra_array(serial)
+        # 如果连接了天勤，则: 检查是否需要发送多余的序列
+        if self._to_tq:
+            for _, serial in self._serials.items():
+                self._process_serial_extra_array(serial)
         if not self._is_slave:
             self._send_chan.send_nowait({
                 "aid": "peek_message"
@@ -1607,6 +1609,8 @@ class TqApi(object):
             value = klines.low.min()
             api.draw_text(klines, "测试413423", x=indic, y=value, color=0xFF00FF00)
         """
+        if not self._to_tq:  # 如果未连接天勤，不做操作
+            return
         if id is None:
             id = uuid.UUID(int=TqApi.RD.getrandbits(128)).hex
         if y is None:
@@ -1647,6 +1651,8 @@ class TqApi(object):
 
             width (int): 线宽度, 可选, 缺省为 1
         """
+        if not self._to_tq:  # 如果未连接天勤，不做操作
+            return
         if id is None:
             id = uuid.UUID(int=TqApi.RD.getrandbits(128)).hex
         serial = {
@@ -1694,6 +1700,8 @@ class TqApi(object):
             api.draw_box(klines, x1=-5, y1=klines.iloc[-5].close, x2=-1, \
             y2=klines.iloc[-1].close, width=1, color=0xFF0000FF, bg_color=0x8000FF00)
         """
+        if not self._to_tq:  # 如果未连接天勤，不做操作
+            return
         if id is None:
             id = uuid.UUID(int=TqApi.RD.getrandbits(128)).hex
         serial = {
