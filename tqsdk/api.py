@@ -124,9 +124,9 @@ class TqApi(object):
             sh = logging.StreamHandler()
             sh.setLevel(logging.INFO)
             if backtest:  # 如果回测, 则去除将第一个本地时间
-                log_format=logging.Formatter('%(levelname)s - %(message)s')
+                log_format = logging.Formatter('%(levelname)s - %(message)s')
             else:
-                log_format=logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+                log_format = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
             sh.setFormatter(log_format)
             self._logger.addHandler(sh)
             if debug:
@@ -157,6 +157,7 @@ class TqApi(object):
         self._pending_diffs = []  # 从网络上收到的待处理的 diffs, 只在 wait_update 函数执行过程中才可能为非空
         self._prototype = self._gen_prototype()  # 各业务数据的原型, 用于决定默认值及将收到的数据转为特定的类型
         self._wait_timeout = False  # wait_update 是否触发超时
+        self._to_tq = False  # flag: 是否连接了天勤
 
         # slave模式的api不需要完整初始化流程
         self._is_slave = isinstance(account, TqApi)
@@ -165,12 +166,10 @@ class TqApi(object):
             self._master = account
             if self._master._is_slave:
                 raise Exception("不可以为slave再创建slave")
-            self._master._add_slave(self)
+            self._master._slaves.append(self)
             self._account = self._master._account
-            return
-
-        # 与天勤配合
-        self._tq_send_chan, self._tq_recv_chan = tqhelper.link_tq(self)
+            self._to_tq = self._master._to_tq
+            return  # 注: 如果是slave,则初始化到这里结束并返回,以下代码不执行
 
         # 初始化
         if sys.platform.startswith("win"):
@@ -971,6 +970,10 @@ class TqApi(object):
 
     def _setup_connection(self):
         """初始化"""
+
+        # 与天勤配合
+        tq_send_chan, tq_recv_chan = tqhelper.link_tq(self)
+
         # 连接合约和行情服务器
         ws_md_send_chan, ws_md_recv_chan = TqChan(self), TqChan(self)
         ws_md_recv_chan.send_nowait({
@@ -999,12 +1002,13 @@ class TqApi(object):
                                    ws_td_send_chan, ws_td_recv_chan))
 
         # 抄送部分数据包到天勤
-        if self._tq_send_chan and self._tq_recv_chan:
+        if tq_send_chan and tq_recv_chan:
+            self._to_tq = True
             upstream_send_chan, upstream_recv_chan = self._send_chan, self._recv_chan  # 连接上游的channel
             self._send_chan, self._recv_chan = TqChan(self), TqChan(self)  # 连接到下游的channel
             from tqsdk.tqhelper import Forwarding
             self.create_task(Forwarding(self, self._send_chan, self._recv_chan, upstream_send_chan, upstream_recv_chan,
-                                        self._tq_send_chan, self._tq_recv_chan)._forward())
+                                        tq_send_chan, tq_recv_chan)._forward())
 
     def _fetch_symbol_info(self, url):
         """获取合约信息"""
@@ -1551,15 +1555,6 @@ class TqApi(object):
                 TqApi._deep_copy_dict(value, dest[key])
             else:
                 dest[key] = value
-
-    def _add_slave(self, slave_api):
-        self._slaves.append(slave_api)
-        dst = {}
-        TqApi._deep_copy_dict(self._data, dst)
-        slave_api._slave_recv_pack({
-            "aid": "rtn_data",
-            "data": [dst]
-        })
 
     def _slave_send_pack(self, pack):
         if pack.get("aid", None) == "subscribe_quote":
