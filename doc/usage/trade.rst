@@ -50,7 +50,7 @@ TqApi 提供以下函数来获取交易账户相关信息:
     order = api.insert_order(symbol="SHFE.rb1901", direction="BUY", offset="OPEN", limit_price=4310, volume=2)
     print(order)
 
-这个函数调用后会立即返回一个指向此委托单的引用对象, 它是一个dict, 内容如下::
+这个函数调用后会立即返回一个指向此委托单的对象引用, 使用方法与dict一致, 内容如下::
 
     {
         "order_id": "",  # "123" (委托单ID, 对于一个用户的所有委托单，这个ID都是不重复的)

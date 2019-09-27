@@ -10,8 +10,8 @@
 
 
 * PYTHON SDK使用文档: https://doc.shinnytech.com/pysdk/latest/
-* 天勤行情终端下载: https://www.shinnytech.com/tianqin
-* 天勤使用文档: https://doc.shinnytech.com/tq/latest/
+* 天勤vscode插件使用文档: https://doc.shinnytech.com/pysdk/latest/devtools/vscode.html
+* 天勤用户论坛: https://www.shinnytech.com/qa/
 """
 __author__ = 'chengzhi'
 
@@ -633,7 +633,7 @@ class TqApi(object):
             不填 symbol 参数调用本函数, 将返回包含用户所有持仓的一个tqsdk.objs.Entity对象引用, 使用方法与dict一致, \
             其中每个元素的key为合约代码, value为 :py:class:`~tqsdk.objs.Position`。
 
-            为保留一些可供用户查询的历史信息, 如 volume_long_yd(本交易日开盘前的多头持仓手数) 等字段, 因此服务器会返回当天已平仓合约( pos_long 和 pos_short 等字段为0)的持仓信息
+            注意: 为保留一些可供用户查询的历史信息, 如 volume_long_yd(本交易日开盘前的多头持仓手数) 等字段, 因此服务器会返回当天已平仓合约( pos_long 和 pos_short 等字段为0)的持仓信息
 
         Example::
 
