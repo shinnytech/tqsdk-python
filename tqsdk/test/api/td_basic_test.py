@@ -9,11 +9,12 @@ from tqsdk import TqApi
 
 class TestTdBasic(unittest.TestCase):
     """
-    交易部分基本功能测试.
+    测试TqApi交易相关函数基本功能, 以及TqApi与交易服务器交互是否符合设计预期
 
-    测试TqApi交易相关函数, 以及TqApi与交易服务器交互是否符合设计预期
-
-    注: 在本地运行测试用例前需设置IDE中运行环境变量(Environment variables): PYTHONHASHSEED=32
+    注：
+    1: 在本地运行测试用例前需设置运行环境变量(Environment variables), 保证api中dict及set等类型的数据序列在每次运行时元素顺序一致: PYTHONHASHSEED=32
+    2：若测试用例中调用了会使用uuid的功能函数时（如insert_order()会使用uuid生成order_id）,
+        则：在生成script文件时及测试用例中都需设置 TqApi.RD = random.Random(x), 以保证两次生成的uuid一致, x取值范围为0-2^32
     """
 
     def setUp(self):
@@ -25,7 +26,6 @@ class TestTdBasic(unittest.TestCase):
         self.td_url = "ws://127.0.0.1:5200/"
 
     def tearDown(self):
-
         self.ins.close()
         self.mock.close()
 

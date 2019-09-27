@@ -9,11 +9,12 @@ from tqsdk import TqApi
 
 class TestFuncBasic(unittest.TestCase):
     """
-    功能函数部分基本功能测试.
+    TqApi中功能函数的基本功能测试.
 
-    测试TqApi功能相关函数
-
-    注: 在本地运行测试用例前需设置IDE中运行环境变量(Environment variables): PYTHONHASHSEED=32
+    注：
+    1: 在本地运行测试用例前需设置运行环境变量(Environment variables), 保证api中dict及set等类型的数据序列在每次运行时元素顺序一致: PYTHONHASHSEED=32
+    2：若测试用例中调用了会使用uuid的功能函数时（如insert_order()会使用uuid生成order_id）,
+        则：在生成script文件时及测试用例中都需设置 TqApi.RD = random.Random(x), 以保证两次生成的uuid一致, x取值范围为0-2^32
     """
 
     def setUp(self):
