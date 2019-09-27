@@ -70,14 +70,14 @@ class TqSim(object):
         self.all_subscribe = set()  # 客户端+模拟交易模块订阅的合约集合
         self._send_account()  # 发送初始账户信息
         self.diffs.append({
-                              "trade": {
-                                  self.account_id: {
-                                      "orders": {},
-                                      "positions": {},
-                                      "trade_more_data": False
-                                  }
-                              }
-                          })
+            "trade": {
+                self.account_id: {
+                    "orders": {},
+                    "positions": {},
+                    "trade_more_data": False
+                }
+            }
+        })
         md_task = self.api.create_task(self._md_handler())  # 将所有 md_recv_chan 上收到的包投递到 api_send_chan 上
         try:
             async for pack in self.api_send_chan:
@@ -265,14 +265,14 @@ class TqSim(object):
         trade_log = self._ensure_trade_log()
         trade_log["trades"].append(trade)
         self.diffs.append({
-                              "trade": {
-                                  self.account_id: {
-                                      "trades": {
-                                          trade["trade_id"]: trade.copy()
-                                      }
-                                  }
-                              }
-                          })
+            "trade": {
+                self.account_id: {
+                    "trades": {
+                        trade["trade_id"]: trade.copy()
+                    }
+                }
+            }
+        })
         if order["exchange_id"] == "SHFE" or order["exchange_id"] == "INE":
             priority = "H" if order["offset"] == "CLOSE" else "T"
         else:
@@ -437,13 +437,13 @@ class TqSim(object):
             float_profit = 0 if volume_long > 0 else position["float_profit_long"] / position[
                 "volume_long"] * volume_long
             position["open_cost_long"] += volume_long * position["last_price"] * volume_multiple if volume_long > 0 else \
-            position["open_cost_long"] / position["volume_long"] * volume_long
+                position["open_cost_long"] / position["volume_long"] * volume_long
             position["position_cost_long"] += volume_long * position[
                 "last_price"] * volume_multiple if volume_long > 0 else position["position_cost_long"] / position[
                 "volume_long"] * volume_long
             position["volume_long"] += volume_long
             position["open_price_long"] = position["open_cost_long"] / volume_multiple / position["volume_long"] if \
-            position["volume_long"] else float("nan")
+                position["volume_long"] else float("nan")
             position["position_price_long"] = position["position_cost_long"] / volume_multiple / position[
                 "volume_long"] if position["volume_long"] else float("nan")
             position["float_profit_long"] += float_profit
@@ -494,7 +494,7 @@ class TqSim(object):
                 "volume_short"] * volume_short
             position["volume_short"] += volume_short
             position["open_price_short"] = position["open_cost_short"] / volume_multiple / position["volume_short"] if \
-            position["volume_short"] else float("nan")
+                position["volume_short"] else float("nan")
             position["position_price_short"] = position["position_cost_short"] / volume_multiple / position[
                 "volume_short"] if position["volume_short"] else float("nan")
             position["float_profit_short"] += float_profit
@@ -611,36 +611,36 @@ class TqSim(object):
 
     def _send_order(self, order):
         self.diffs.append({
-                              "trade": {
-                                  self.account_id: {
-                                      "orders": {
-                                          order["order_id"]: order.copy()
-                                      }
-                                  }
-                              }
-                          })
+            "trade": {
+                self.account_id: {
+                    "orders": {
+                        order["order_id"]: order.copy()
+                    }
+                }
+            }
+        })
 
     def _send_position(self, position):
         self.diffs.append({
-                              "trade": {
-                                  self.account_id: {
-                                      "positions": {
-                                          position["exchange_id"] + "." + position["instrument_id"]: position.copy()
-                                      }
-                                  }
-                              }
-                          })
+            "trade": {
+                self.account_id: {
+                    "positions": {
+                        position["exchange_id"] + "." + position["instrument_id"]: position.copy()
+                    }
+                }
+            }
+        })
 
     def _send_account(self):
         self.diffs.append({
-                              "trade": {
-                                  self.account_id: {
-                                      "accounts": {
-                                          "CNY": self.account.copy()
-                                      }
-                                  }
-                              }
-                          })
+            "trade": {
+                self.account_id: {
+                    "accounts": {
+                        "CNY": self.account.copy()
+                    }
+                }
+            }
+        })
 
     def _get_current_timestamp(self):
         return int(datetime.strptime(self.current_datetime, "%Y-%m-%d %H:%M:%S.%f").timestamp() * 1e6) * 1000
