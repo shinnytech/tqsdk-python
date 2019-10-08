@@ -2,6 +2,12 @@
 #  -*- coding: utf-8 -*-
 __author__ = "Ringo"
 
+'''
+价格动量 策略 (难度：初级)
+参考: https://www.shinnytech.com/blog/momentum-strategy/
+注: 该示例策略仅用于功能示范, 实盘时请根据自己的策略/经验进行修改
+'''
+
 from tqsdk import TqAccount, TqApi, TargetPosTask
 
 # 设置指定合约,获取N条K线计算价格动量
