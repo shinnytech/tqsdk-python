@@ -29,3 +29,7 @@
     example/turtle.rst
     example/dualthrust.rst
     example/vwap.rst
+    example/escalator.rst
+    example/abberation.rst
+    example/momentum.rst
+    example/fairy_four_price.rst
