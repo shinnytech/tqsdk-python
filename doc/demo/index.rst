@@ -30,6 +30,6 @@
     example/dualthrust.rst
     example/vwap.rst
     example/escalator.rst
-    example/abberation.rst
+    example/aberration.rst
     example/momentum.rst
     example/fairy_four_price.rst

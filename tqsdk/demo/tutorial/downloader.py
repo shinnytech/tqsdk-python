@@ -4,7 +4,7 @@ __author__ = 'chengzhi'
 
 from datetime import datetime
 from contextlib import closing
-from tqsdk import TqApi, TqSim
+from tqsdk import TqApi
 from tqsdk.tools import DataDownloader
 
 api = TqApi()
