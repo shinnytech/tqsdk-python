@@ -7,7 +7,7 @@ from contextlib import closing
 from tqsdk import TqApi, TqSim
 from tqsdk.tools import DataDownloader
 
-api = TqApi(TqSim())
+api = TqApi()
 # 下载从 2018-01-01凌晨6点 到 2018-06-01下午4点 的 cu1805 分钟线数据
 kd = DataDownloader(api, symbol_list="SHFE.cu1805", dur_sec=60,
                     start_dt=datetime(2018, 1, 1, 6, 0 ,0), end_dt=datetime(2018, 6, 1, 16, 0, 0), csv_file_name="kline.csv")
