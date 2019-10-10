@@ -110,8 +110,8 @@ class TqMonitorThread(threading.Thread):
         self.tq_pid = tq_pid
 
     def run(self):
-        import _winapi
         try:
+            import _winapi
             p = _winapi.OpenProcess(_winapi.PROCESS_ALL_ACCESS, False, self.tq_pid)
             os.waitpid(p, 0)
         except:
