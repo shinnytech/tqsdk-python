@@ -39,7 +39,7 @@ class TestMdBasic(unittest.TestCase):
         """
         # 预设服务器端响应
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        self.mock.run(os.path.join(dir_path, "test_md_basic_get_quote_normal.script"))
+        self.mock.run(os.path.join(dir_path, "log_file\\test_md_basic_get_quote_normal.script"))
         # 获取行情
         api = TqApi(_ins_url=self.ins_url, _td_url=self.td_url, _md_url=self.md_url)
         q = api.get_quote("SHFE.cu1909")
@@ -85,7 +85,7 @@ class TestMdBasic(unittest.TestCase):
         """
         # 预设服务器端响应
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        self.mock.run(os.path.join(dir_path, "test_md_basic_get_kline_serial.script"))
+        self.mock.run(os.path.join(dir_path, "log_file\\test_md_basic_get_kline_serial.script"))
 
         # 测试: 获取K线数据
         TqApi.RD = random.Random(1)
@@ -116,7 +116,7 @@ class TestMdBasic(unittest.TestCase):
         """
         # 预设服务器端响应
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        self.mock.run(os.path.join(dir_path, "test_md_basic_get_tick_serial.script"))
+        self.mock.run(os.path.join(dir_path, "log_file\\test_md_basic_get_tick_serial.script"))
 
         # 测试: 获取tick数据
         TqApi.RD = random.Random(2)
