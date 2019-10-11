@@ -78,7 +78,9 @@ todo_include_todos = False
 # html_theme = 'classic'
 html_theme = 'sphinx_rtd_theme'
 
-# html_theme_options = {}
+html_theme_options = {
+    'analytics_id': 'UA-18345151-2',
+}
 # html_sidebars = {
 #    '**': ['localtoc.html','globaltoc.html','relations.html', 'sourcelink.html', 'searchbox.html'],
 #    'using/windows': ['windowssidebar.html', 'searchbox.html'],
