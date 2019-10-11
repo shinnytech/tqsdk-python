@@ -29,11 +29,12 @@ class TestFuncBasic(unittest.TestCase):
         self.ins.close()
         self.mock.close()
 
-    # @unittest.skip("无条件跳过")
     def test_is_changing(self):
+        """is_changing() 测试"""
+
         # 预设服务器端响应
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        self.mock.run(os.path.join(dir_path, "log_file\\test_func_basic_is_changing.script"))
+        self.mock.run(os.path.join(dir_path, "log_file", "test_func_basic_is_changing.script"))
         # 测试: 模拟账户下单
         TqApi.RD = random.Random(4)
         api = TqApi(_ins_url=self.ins_url, _td_url=self.td_url, _md_url=self.md_url)

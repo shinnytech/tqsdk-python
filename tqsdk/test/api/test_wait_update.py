@@ -30,7 +30,6 @@ class TestWaitUpdateFunction(unittest.TestCase):
         self.ins.close()
         self.mock.close()
 
-    # @unittest.skip("无条件跳过")
     def test_wait_update_1(self):
         """
         若未连接天勤时修改了K线字段,则不应发送set_chart_data指令到服务器 (即不能调用api.py中_process_serial_extra_array()); 否则导致与服务器断连
@@ -38,8 +37,8 @@ class TestWaitUpdateFunction(unittest.TestCase):
         """
         # 预设服务器端响应
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        self.mock.run(os.path.join(dir_path, "log_file\\test_func_wait_update_1.script"))
-        #测试
+        self.mock.run(os.path.join(dir_path, "log_file", "test_func_wait_update_1.script"))
+        # 测试
         api = TqApi(_ins_url=self.ins_url, _td_url=self.td_url, _md_url=self.md_url)
         TqApi.RD = random.Random(4)
         klines = api.get_kline_serial("SHFE.cu1911", 10)
