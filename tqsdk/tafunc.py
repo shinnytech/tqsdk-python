@@ -645,7 +645,7 @@ def _to_ns_timestamp(input_time):
         int : int 类型纳秒级时间戳
     """
 
-    if type(input_time) in {int, float}:  # 时间戳
+    if type(input_time) in {int, float, np.float64, np.float32, np.int64, np.int32}:  # 时间戳
         if input_time > 2 ** 32:  # 纳秒( 将 > 2*32数值归为纳秒级)
             return int(input_time)
         else:  # 秒
@@ -659,7 +659,7 @@ def _to_ns_timestamp(input_time):
         d = int(input_time.timestamp() * 1e9)
         return d
     else:
-        raise TypeError("暂不支持此值的转换，返回原时间数据")
+        raise TypeError("暂不支持此类型的转换")
 
 
 def time_to_ns_timestamp(input_time):
@@ -667,7 +667,7 @@ def time_to_ns_timestamp(input_time):
     将传入的时间转换为int类型的纳秒级时间戳
 
     Args:
-        input_time (str/ int/float/ datetime.datetime): 需要转换的时间:
+        input_time (str/ int/ float/ datetime.datetime): 需要转换的时间:
             * str: str 类型的时间，如Quote行情时间的datetime字段 (eg. 2019-10-14 14:26:01.000000)
 
             * int: int 类型的纳秒级或秒级时间戳
@@ -693,7 +693,7 @@ def time_to_s_timestamp(input_time):
     将传入的时间转换为int类型的秒级时间戳
 
     Args:
-        input_time (str/ int/float/ datetime.datetime): 需要转换的时间:
+        input_time (str/ int/ float/ datetime.datetime): 需要转换的时间:
             * str: str 类型的时间，如Quote行情时间的datetime字段 (eg. 2019-10-14 14:26:01.000000)
 
             * int: int 类型的纳秒级或秒级时间戳

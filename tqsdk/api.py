@@ -335,15 +335,15 @@ class TqApi(object):
 
         Example2::
 
-            # 将K线的纳秒时间转换为 datetime.datetime 类型
-            from datetime import datetime
+            # 使用tqsdk自带的时间转换函数, 将最后一根K线的纳秒时间转换为 datetime.datetime 类型
+            from tqsdk import tafunc
             ...
 
             klines = api.get_kline_serial("DCE.jd2001", 10)
-            kline_time = datetime.fromtimestamp(klines.iloc[-1]["datetime"] / 1e9)  # datetime.datetime 类型值
+            kline_time = tafunc.time_to_datetime(klines.iloc[-1]["datetime"])  # datetime.datetime 类型值
             print(type(kline_time), kline_time)
             print(kline_time.year, kline_time.month, kline_time.day, kline_time.hour, kline_time.minute, kline_time.second)
-
+            ...
         """
         if symbol not in self._data.get("quotes", {}):
             raise Exception("代码 %s 不存在, 请检查合约代码是否填写正确" % (symbol))
