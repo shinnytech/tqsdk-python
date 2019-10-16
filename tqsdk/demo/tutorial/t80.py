@@ -11,11 +11,11 @@ from tqsdk import TqApi, TargetPosTask
 '''
 api = TqApi()
 quote_near = api.get_quote("SHFE.rb2001")
-quote_deferred = api.get_quote("SHFE.rb2001")
+quote_deferred = api.get_quote("SHFE.rb2005")
 # 创建 rb2001 的目标持仓 task，该 task 负责调整 rb2001 的仓位到指定的目标仓位
 target_pos_near = TargetPosTask(api, "SHFE.rb2001")
-# 创建 rb2001 的目标持仓 task，该 task 负责调整 rb2001 的仓位到指定的目标仓位
-target_pos_deferred = TargetPosTask(api, "SHFE.rb2001")
+# 创建 rb2005 的目标持仓 task，该 task 负责调整 rb2005 的仓位到指定的目标仓位
+target_pos_deferred = TargetPosTask(api, "SHFE.rb2005")
 
 while True:
     api.wait_update()

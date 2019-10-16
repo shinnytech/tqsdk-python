@@ -78,7 +78,7 @@ class Quote(Entity):
         self.pre_settlement = float("nan")
         #: 昨收盘价
         self.pre_close = float("nan")
-        #: 合约价格单位
+        #: 合约价格变动单位
         self.price_tick = float("nan")
         #: 合约价格小数位数
         self.price_decs = 0

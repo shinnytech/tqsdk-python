@@ -105,11 +105,17 @@ async def account_watcher(api, dt_func, tq_send_chan):
 
 
 class TqMonitorThread(threading.Thread):
+    """
+    监控天勤进程存活情况
+    """
     def __init__(self, tq_pid):
         threading.Thread.__init__(self, daemon=True)
         self.tq_pid = tq_pid
 
     def run(self):
+        # TODO: 如果发布 mac / linux 天勤客户端，未来还需要在 mac / linux 上实现同样的功能。
+        if not sys.platform.startswith("win"):
+            return
         import _winapi
         try:
             p = _winapi.OpenProcess(_winapi.PROCESS_ALL_ACCESS, False, self.tq_pid)

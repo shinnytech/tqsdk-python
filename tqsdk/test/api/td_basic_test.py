@@ -9,11 +9,12 @@ from tqsdk import TqApi
 
 class TestTdBasic(unittest.TestCase):
     """
-    交易部分基本功能测试.
+    测试TqApi交易相关函数基本功能, 以及TqApi与交易服务器交互是否符合设计预期
 
-    测试TqApi交易相关函数, 以及TqApi与交易服务器交互是否符合设计预期
-
-    注: 在本地运行测试用例前需设置IDE中运行环境变量(Environment variables): PYTHONHASHSEED=32
+    注：
+    1: 在本地运行测试用例前需设置运行环境变量(Environment variables), 保证api中dict及set等类型的数据序列在每次运行时元素顺序一致: PYTHONHASHSEED=32
+    2：若测试用例中调用了会使用uuid的功能函数时（如insert_order()会使用uuid生成order_id）,
+        则：在生成script文件时及测试用例中都需设置 TqApi.RD = random.Random(x), 以保证两次生成的uuid一致, x取值范围为0-2^32
     """
 
     def setUp(self):
@@ -25,7 +26,6 @@ class TestTdBasic(unittest.TestCase):
         self.td_url = "ws://127.0.0.1:5200/"
 
     def tearDown(self):
-
         self.ins.close()
         self.mock.close()
 
@@ -38,7 +38,7 @@ class TestTdBasic(unittest.TestCase):
         """
         # 预设服务器端响应
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        self.mock.run(os.path.join(dir_path, "test_td_basic_insert_order_simulate.script"))
+        self.mock.run(os.path.join(dir_path, "log_file", "test_td_basic_insert_order_simulate.script"))
         # 测试: 模拟账户下单
         TqApi.RD = random.Random(2)
         api = TqApi(_ins_url=self.ins_url, _td_url=self.td_url, _md_url=self.md_url)
@@ -80,14 +80,13 @@ class TestTdBasic(unittest.TestCase):
 
         api.close()
 
-    # @unittest.skip("无条件跳过")
     def test_cancel_order(self):
         """
         撤单
         """
         # 预设服务器端响应
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        self.mock.run(os.path.join(dir_path, "test_td_basic_cancel_order_simulate.script"))
+        self.mock.run(os.path.join(dir_path, "log_file", "test_td_basic_cancel_order_simulate.script"))
         # 测试: 模拟账户
         TqApi.RD = random.Random(2)
         api = TqApi(_ins_url=self.ins_url, _td_url=self.td_url, _md_url=self.md_url)
@@ -108,14 +107,13 @@ class TestTdBasic(unittest.TestCase):
 
         api.close()
 
-    # @unittest.skip("无条件跳过")
     def test_get_account(self):
         """
         获取账户资金信息
         """
         # 预设服务器端响应
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        self.mock.run(os.path.join(dir_path, "test_td_basic_get_account_simulate.script"))
+        self.mock.run(os.path.join(dir_path, "log_file", "test_td_basic_get_account_simulate.script"))
         # 测试: 获取数据
         api = TqApi(_ins_url=self.ins_url, _td_url=self.td_url, _md_url=self.md_url)
         TqApi.RD = random.Random(4)
@@ -134,14 +132,13 @@ class TestTdBasic(unittest.TestCase):
         self.assertEqual(-20.0, account.position_profit)
         api.close()
 
-    # @unittest.skip("无条件跳过")
     def test_get_position(self):
         """
         获取持仓
         """
         # 预设服务器端响应
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        self.mock.run(os.path.join(dir_path, "test_td_basic_get_position_simulate.script"))
+        self.mock.run(os.path.join(dir_path, "log_file", "test_td_basic_get_position_simulate.script"))
         # 测试: 获取数据
         api = TqApi(_ins_url=self.ins_url, _td_url=self.td_url, _md_url=self.md_url)
         order1 = api.insert_order("DCE.jd2001", "BUY", "OPEN", 1, limit_price=4592)
@@ -204,14 +201,13 @@ class TestTdBasic(unittest.TestCase):
 
         api.close()
 
-    # @unittest.skip("无条件跳过")
     def test_get_trade(self):
         """
         获取成交记录
         """
         # 预设服务器端响应
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        self.mock.run(os.path.join(dir_path, "test_td_basic_get_trade_simulate.script"))
+        self.mock.run(os.path.join(dir_path, "log_file", "test_td_basic_get_trade_simulate.script"))
         # 测试: 模拟账户
         TqApi.RD = random.Random(4)
         api = TqApi(_ins_url=self.ins_url, _td_url=self.td_url, _md_url=self.md_url)
@@ -243,14 +239,13 @@ class TestTdBasic(unittest.TestCase):
 
         api.close()
 
-    # @unittest.skip("无条件跳过")
     def test_get_order(self):
         """
         获取委托单信息
         """
         # 预设服务器端响应
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        self.mock.run(os.path.join(dir_path, "test_td_basic_get_order_simulate.script"))
+        self.mock.run(os.path.join(dir_path, "log_file", "test_td_basic_get_order_simulate.script"))
         # 测试: 模拟账户下单
         TqApi.RD = random.Random(4)
         api = TqApi(_ins_url=self.ins_url, _td_url=self.td_url, _md_url=self.md_url)
