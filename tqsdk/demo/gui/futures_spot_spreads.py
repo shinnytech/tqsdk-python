@@ -27,6 +27,28 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolb
 
 from tqsdk import TqApi
 
+DataLength = 40 # 显示最近10日价差
+IndexList = np.arange(DataLength)
+
+# ------------------------------- TqSdk Helper Code -------------------------------
+links = {
+     "_LINK_":  "https://www.shinnytech.com/blog/futures-spot-spreads/",
+     "_TITLE_": "https://www.shinnytech.com/tianqin/#utm_source=pc-customer&utm_medium=banner&utm_campaign=little-instrument"
+}
+
+def open_link (url = 'https://www.shinnytech.com/tianqin/'):
+    webbrowser.open_new(url)
+
+def get_product_name (product_id):
+    return product_id.split(' - ')[1]
+
+def get_quote_sn (symbol):
+    return symbol.split('.')[1]
+
+# ------------------------------- Tqsdk 业务代码 -------------------------------
+loop = asyncio.get_event_loop()
+api = TqApi(loop=loop)
+
 # 现货、期货合约对应列表
 SymbolDict = {
     "al - 铝": ["SSWE.ALH", "KQ.m@SHFE.al", "orange"],
@@ -37,32 +59,17 @@ SymbolDict = {
     "sn - 锡": ["SSWE.SNH", "KQ.m@SHFE.sn", "burlywood"],
     "zn - 锌": ["SSWE.ZNH", "KQ.m@SHFE.zn", "deeppink"]
 }
+for i in SymbolDict:
+    symbol = api.get_quote(SymbolDict[i][1]).underlying_symbol
+    SymbolDict[i].append(symbol)
+    SymbolDict[i].append(get_quote_sn(symbol))
 ProductList = list(SymbolDict.keys())
-DataLength = 40 # 显示最近10日价差
-IndexList = np.arange(DataLength)
-
-# ------------------------------- TqSdk Helper Code -------------------------------
-links = {
-     "_LINK_":  "https://www.shinnytech.com/support-tianqin/",
-     "_TITLE_": "https://www.shinnytech.com/tianqin/"
-}
-
-def open_link (url = 'https://www.shinnytech.com/tianqin/'):
-    webbrowser.open_new(url)
-
-def get_product_name (product_id):
-    return product_id.split(' - ')[1]
-
-# ------------------------------- Tqsdk 业务代码 -------------------------------
-loop = asyncio.get_event_loop()
-api = TqApi(loop=loop)
-
 SelectedProductId = ProductList[0] # 默认选择的品种
 
-klines_series = [[api.get_kline_serial(SymbolDict[i][0], 86400, DataLength), api.get_kline_serial(SymbolDict[i][1], 86400, DataLength)] for i in SymbolDict]
+klines_series = [[api.get_kline_serial(SymbolDict[i][0], 86400, DataLength), api.get_kline_serial(SymbolDict[i][3], 86400, DataLength)] for i in SymbolDict]
 def prepare_data (product_id) :
     ind = ProductList.index(product_id)
-    return pd.to_datetime(klines_series[ind][1]["datetime"] / 1e9, unit='s', origin=pd.Timestamp('1970-01-01')), klines_series[ind][0]["close"] - klines_series[ind][1]["close"]
+    return pd.to_datetime(klines_series[ind][1]["datetime"] / 1e9, unit='s', origin=pd.Timestamp('1970-01-01')), klines_series[ind][1]["close"] - klines_series[ind][0]["close"]
 dt_series, spread_series = prepare_data(SelectedProductId)
 
 # ------------------------------- Matplotlib Code -------------------------------
@@ -90,7 +97,8 @@ def prepare_plot():
         ann = sel.annotation
         ann.get_bbox_patch().set(fc="#DBEDAC", alpha=.5)
         date_text = ann.get_text().replace('x=', 'date: ').split('\n')[0]
-        ann.set_text("{}\n spread: {}".format(date_text, math.floor(sel.target[1])))
+        i = math.floor(sel.target[0])
+        ann.set_text("{}\n spread: {}".format(date_text, math.floor(spread_series[i])))
     ax.grid(True)
     fig.autofmt_xdate()
 
@@ -115,42 +123,55 @@ fig_canvas_agg = None
 # ------------------------------- PySimpleGui Task Code  -----------------------
 async def gui_task():
     global SelectedProductId, dt_series, spread_series, fig_canvas_agg
-    product_list = list(SymbolDict.keys())
+    # 获取合约引用
+    quote_spot = api.get_quote(SymbolDict[SelectedProductId][0])
+    quote_future = api.get_quote(SymbolDict[SelectedProductId][3])
     # 界面布局
-    fontStyle = 'Any 14'
-    layout = [[sg.Text('现货期货价差 - 天勤量化', enable_events='true', font='Any 18', key='_TITLE_'),
-               sg.Text('点击了解【天勤量化】和如何实现这个小工具', enable_events='true', font='Any 14', text_color='blue', key='_LINK_',
-                       size=(80, 1), justification="right")],
+    fontStyle = 'Any 12'
+    layout = [
               [
                   sg.Frame(
                   title='',
                   font='Any 12',
                   border_width=0,
-                  size=(20, 12),
-                  pad=(0, 2),
+                  size=(40, 12),
                   layout=[
-                      [sg.Listbox(values=product_list, default_values=[product_list[0]], enable_events=True, select_mode=sg.LISTBOX_SELECT_MODE_SINGLE, size=(20, 7), pad=(0, 20), font='Any 14', key="_PRODUCT_")],
-                      # [sg.Text(' ' * 60)], [sg.Text(' ' * 60)],
-                      [sg.Text("行情最后更新时间", size=(20, 1), font=fontStyle), sg.Text("-------", size=(20, 1), font=fontStyle, key="datetime")],
-                      [sg.Text(get_product_name(SelectedProductId) + " 现货最新价", size=(20, 1), font=fontStyle, key="spot.name"), sg.Text("仓单报价", font=fontStyle, key="spot.last")],
-                      [sg.Text(get_product_name(SelectedProductId) + " 期货主连最新价", size=(20, 1), font=fontStyle, key="future.name"), sg.Text("期货报价", font=fontStyle, key="future.last"), sg.Text("期货涨跌幅", font=fontStyle, key="future.change")],
-                      [sg.Text("期货现货价差", size=(20, 1), font=fontStyle), sg.Text("差价", size=(20, 1), font=fontStyle, key="spread")],
+                      [sg.Listbox(values=ProductList, default_values=[ProductList[0]], enable_events=True, select_mode=sg.LISTBOX_SELECT_MODE_SINGLE, size=(20, 7), pad=((80, 0), (0, 20)), font='Any 12', key="_PRODUCT_")],
+                      [
+                          sg.Text("行情最后更新时间", size=(20, 1), font=fontStyle, justification="right"),
+                          sg.Text("-------", size=(20, 1), font=fontStyle, key="datetime")
+                      ],
+                      [
+                          sg.Text(get_product_name(SelectedProductId) + SymbolDict[SelectedProductId][4] + "最新价", size=(20, 1), font=fontStyle, justification="right", key="future.name"),
+                          sg.Text("期货报价", font=fontStyle, key="future.last"),
+                          sg.Text("期货涨跌幅", font=fontStyle, key="future.change")
+                      ],
+                      [
+                          sg.Text(get_product_name(SelectedProductId) + "现货最新价", size=(20, 1), font=fontStyle, justification="right", key="spot.name"),
+                          sg.Text("仓单报价", font=fontStyle, key="spot.last")
+                      ],
+                      [
+                          sg.Text("期货-现货价差", size=(20, 1), font=fontStyle, justification="right"),
+                          sg.Text("差价", size=(20, 1), font=fontStyle, key="spread")],
                       [sg.Text('_' * 60, text_color="grey")],
-                      [sg.Text("价格信息来自【天勤量化】，仅供参考", font='Any 10', size=(50, 1), text_color="grey", justification="right")]
+                      [
+                          sg.Text("点击了解", font='Any 10', text_color="grey", size=(18, 1), pad=(0,0), justification="right"),
+                          sg.Text("【天勤量化】", font='Any 10', text_color="blue", auto_size_text=True, pad=(0,0), key='_TITLE_', enable_events=True),
+                          sg.Text("如何实现", font='Any 10', text_color="grey",  auto_size_text=True, pad=(0,0)),
+                          sg.Text("【期货现货价差小工具】", font='Any 10', text_color="blue",  auto_size_text=True, pad=(0,0), key='_LINK_', enable_events=True)
+                       ]
                   ],
                   relief=sg.RELIEF_SUNKEN,
                   tooltip='Use these to set flags'),
                   sg.Canvas(size=(figure_w, figure_h), key='canvas')
               ]
             ]
-    window = sg.Window('现货期货价差 - 天勤量化', layout, finalize=True)
+    window = sg.Window('期货现货价差 - 天勤量化', layout, finalize=True)
     # 在 canvas 处绘制图表
     prepare_plot()
     fig_canvas_agg = draw_figure(window['canvas'].TKCanvas, fig)
     # toolbar_canvas_agg = draw_toolbar(fig_canvas_agg, window.TKroot)
-    # 获取合约引用
-    quote_spot = api.get_quote(SymbolDict[SelectedProductId][0])
-    quote_future = api.get_quote(SymbolDict[SelectedProductId][1])
+
 
     while True:
         event, values = window.Read(timeout=0)
@@ -161,12 +182,12 @@ async def gui_task():
                 if len(ax.lines) > 0: ax.lines.pop()
                 prepare_plot()
                 fig_canvas_agg.draw()
-                window.Element('spot.name').Update(get_product_name(SelectedProductId) + " 现货最新价")
-                window.Element('future.name').Update(get_product_name(SelectedProductId) + " 期货主连最新价")
+                window.Element('spot.name').Update(get_product_name(SelectedProductId) + "现货最新价")
+                window.Element('future.name').Update(get_product_name(SelectedProductId) + SymbolDict[SelectedProductId][4] + "最新价")
                 window.Element('future.change').Update("()")
                 # 更新合约引用
                 quote_spot = api.get_quote(SymbolDict[SelectedProductId][0])
-                quote_future = api.get_quote(SymbolDict[SelectedProductId][1])
+                quote_future = api.get_quote(SymbolDict[SelectedProductId][3])
         elif event == "_LINK_" or event == "_TITLE_":
             open_link(links[event])
         if event is None or event == 'Exit':
@@ -184,7 +205,7 @@ async def gui_task():
             window.Element('future.change').Update(
                 "({}%)".format(round(future_change, 2)), text_color="red" if future_change >= 0 else "green")
 
-        spread = quote_spot.last_price - quote_future.last_price
+        spread = quote_future.last_price - quote_spot.last_price
         window.Element('spread').Update('nan' if  math.isnan(spread) else int(spread))
         await asyncio.sleep(0.001)  # 注意, 这里必须使用 asyncio.sleep, 不能用time.sleep
 
