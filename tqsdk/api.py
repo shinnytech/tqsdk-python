@@ -187,7 +187,8 @@ class TqApi(object):
         except:
             self.close()
             raise
-        self._diffs = []  # 截面数据不算做更新数据
+        # 使用非空list,使得wait_update()能正确发送peek_message; 使用空dict, 使得is_changing()返回false, 因为截面数据不算做更新数据.
+        self._diffs = [{}]
 
     # ----------------------------------------------------------------------
     def copy(self) -> 'TqApi':
@@ -764,7 +765,7 @@ class TqApi(object):
         if self._to_tq:
             for _, serial in self._serials.items():
                 self._process_serial_extra_array(serial)
-        if not self._is_slave:
+        if not self._is_slave and self._diffs:
             self._send_chan.send_nowait({
                 "aid": "peek_message"
             })
@@ -1011,6 +1012,11 @@ class TqApi(object):
             from tqsdk.tqhelper import Forwarding
             self.create_task(Forwarding(self, self._send_chan, self._recv_chan, upstream_send_chan, upstream_recv_chan,
                                         tq_send_chan, tq_recv_chan)._forward())
+
+        #发送第一个peek_message,因为只有当收到上游数据包时wait_update()才会发送peek_message
+        self._send_chan.send_nowait({
+            "aid": "peek_message"
+        })
 
     def _fetch_symbol_info(self, url):
         """获取合约信息"""
