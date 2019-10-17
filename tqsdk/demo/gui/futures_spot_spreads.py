@@ -32,7 +32,7 @@ IndexList = np.arange(DataLength)
 
 # ------------------------------- TqSdk Helper Code -------------------------------
 links = {
-     "_LINK_":  "https://www.shinnytech.com/blog/futures-spot-spreads/",
+     "_LINK_":  "https://www.shinnytech.com/blog/futures-spot-spreads/#utm_source=pc-customer&utm_medium=banner&utm_campaign=little-instrument",
      "_TITLE_": "https://www.shinnytech.com/tianqin/#utm_source=pc-customer&utm_medium=banner&utm_campaign=little-instrument"
 }
 
