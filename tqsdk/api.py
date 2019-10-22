@@ -45,7 +45,7 @@ class TqApi(object):
 
     该类中所有参数只针对天勤外部IDE编写使用, 在天勤内使用 api = TqApi() 即可指定为当前天勤终端登录用户
 
-    通常情况下, 一个线程中应该只有一个TqApi的实例, 它负责维护网络连接, 接收行情及账户数据, 并在内存中维护业务数据截面
+    通常情况下, 一个线程中 **应该只有一个** TqApi的实例, 它负责维护网络连接, 接收行情及账户数据, 并在内存中维护业务数据截面
     """
 
     RD = random.Random()  # 初始化随机数引擎
@@ -472,7 +472,7 @@ class TqApi(object):
 
             volume (int): 需要下单的手数
 
-            limit_price (float): [可选]下单价格, 默认市价单 (上期所和原油不支持市价单, 需填写此参数值)
+            limit_price (float): [可选]下单价格, 默认市价单 (上期所、原油和中金所不支持市价单, 需填写此参数值)
 
             order_id (str): [可选]指定下单单号, 默认由 api 自动生成
 
@@ -794,7 +794,10 @@ class TqApi(object):
         """
         判定obj最近是否有更新
 
-        当业务数据更新导致 wait_update 返回后可以使用该函数判断本次业务数据更新是否包含特定obj或其中某个字段
+        当业务数据更新导致 wait_update 返回后可以使用该函数判断 **本次业务数据更新是否包含特定obj或其中某个字段** 。
+
+        关于判断K线更新的说明：
+        当生成新K线时，其所有字段都算作有更新，若此时执行 api.is_changing(klines.iloc[-1]) 则一定返回True。
 
         Args:
             obj (any): 任意业务对象, 包括 get_quote 返回的 quote, get_kline_serial 返回的 k_serial, get_account 返回的 account 等
@@ -1013,7 +1016,7 @@ class TqApi(object):
             self.create_task(Forwarding(self, self._send_chan, self._recv_chan, upstream_send_chan, upstream_recv_chan,
                                         tq_send_chan, tq_recv_chan)._forward())
 
-        #发送第一个peek_message,因为只有当收到上游数据包时wait_update()才会发送peek_message
+        # 发送第一个peek_message,因为只有当收到上游数据包时wait_update()才会发送peek_message
         self._send_chan.send_nowait({
             "aid": "peek_message"
         })
