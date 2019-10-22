@@ -283,6 +283,7 @@ def link_tq(api):
     # action==backtest时需要这几个
     parser.add_argument('--_start_dt', type=str, required=False)
     parser.add_argument('--_end_dt', type=str, required=False)
+    parser.add_argument('--_init_balance', type=str, required=False)
     # action==mdreplay时需要这几个
     parser.add_argument('--_ins_url', type=str, required=False)
     parser.add_argument('--_md_url', type=str, required=False)
@@ -329,7 +330,12 @@ def link_tq(api):
         })
     elif args._action == "backtest":
         instance = SingleInstance("%s-%s" % (args._start_dt, args._end_dt))
-        if not isinstance(api._account, TqSim):
+        if args._init_balance:
+            try:
+                api._account = TqSim(float(args._init_balance))
+            except ValueError:
+                raise Exception("backtest 参数错误, _init_balance = " + args._init_balance + " 不是数字")
+        elif isinstance(api._account, TqSim):
             api._account = TqSim()
         from tqsdk.backtest import TqBacktest
         start_date = datetime.datetime.strptime(args._start_dt, '%Y%m%d')
