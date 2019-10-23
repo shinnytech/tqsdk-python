@@ -6,6 +6,7 @@ __author__ = 'limin'
 tqsdk.tafunc 模块包含了一批用于技术指标计算的函数
 """
 
+import datetime
 import pandas as pd
 import numpy as np
 
@@ -624,3 +625,149 @@ def avedev(series, n):
 
     avedev_data = series.rolling(window=n).apply(mad, raw=True)
     return avedev_data
+
+
+def _to_ns_timestamp(input_time):
+    """
+    辅助函数: 将传入的时间转换为int类型的纳秒级时间戳
+
+    Args:
+    input_time (str/ int/ float/ datetime.datetime): 需要转换的时间:
+        * str: str 类型的时间，如Quote行情时间的datetime字段 (eg. 2019-10-14 14:26:01.000000)
+
+        * int: int 类型纳秒级或秒级时间戳
+
+        * float: float 类型纳秒级或秒级时间戳，如K线或tick的datetime字段 (eg. 1.57103449e+18)
+
+        * datetime.datetime: datetime 模块中 datetime 类型
+
+    Returns:
+        int : int 类型纳秒级时间戳
+    """
+
+    if type(input_time) in {int, float, np.float64, np.float32, np.int64, np.int32}:  # 时间戳
+        if input_time > 2 ** 32:  # 纳秒( 将 > 2*32数值归为纳秒级)
+            return int(input_time)
+        else:  # 秒
+            return int(input_time * 1e9)
+
+    elif isinstance(input_time, str):  # str 类型时间
+        d = datetime.datetime.strptime(input_time, "%Y-%m-%d %H:%M:%S.%f")
+        d = int(d.timestamp() * 1e9)
+        return d
+    elif isinstance(input_time, datetime.datetime):  # datetime 类型时间
+        d = int(input_time.timestamp() * 1e9)
+        return d
+    else:
+        raise TypeError("暂不支持此类型的转换")
+
+
+def time_to_ns_timestamp(input_time):
+    """
+    将传入的时间转换为int类型的纳秒级时间戳
+
+    Args:
+        input_time (str/ int/ float/ datetime.datetime): 需要转换的时间:
+            * str: str 类型的时间，如Quote行情时间的datetime字段 (eg. 2019-10-14 14:26:01.000000)
+
+            * int: int 类型的纳秒级或秒级时间戳
+
+            * float: float 类型的纳秒级或秒级时间戳，如K线或tick的datetime字段 (eg. 1.57103449e+18)
+
+            * datetime.datetime: datetime 模块中的 datetime 类型时间
+
+    Returns:
+        int : int 类型的纳秒级时间戳
+
+    Example::
+
+        print(time_to_ns_timestamp("2019-10-14 14:26:01.000000"))  # 将%Y-%m-%d %H:%M:%S.%f 格式的str类型转为纳秒时间戳
+        print(time_to_ns_timestamp(1571103122))  # 将秒级转为纳秒时间戳
+        print(time_to_ns_timestamp(datetime.datetime(2019, 10, 14, 14, 26, 1)))  # 将datetime.datetime时间转为纳秒时间戳
+    """
+    return _to_ns_timestamp(input_time)
+
+
+def time_to_s_timestamp(input_time):
+    """
+    将传入的时间转换为int类型的秒级时间戳
+
+    Args:
+        input_time (str/ int/ float/ datetime.datetime): 需要转换的时间:
+            * str: str 类型的时间，如Quote行情时间的datetime字段 (eg. 2019-10-14 14:26:01.000000)
+
+            * int: int 类型的纳秒级或秒级时间戳
+
+            * float: float 类型的纳秒级或秒级时间戳，如K线或tick的datetime字段 (eg. 1.57103449e+18)
+
+            * datetime.datetime: datetime 模块中的 datetime 类型时间
+
+    Returns:
+        int : int类型的秒级时间戳
+
+    Example::
+
+        print(time_to_s_timestamp(1.57103449e+18))  # 将纳秒级时间戳转为秒级时间戳
+        print(time_to_s_timestamp("2019-10-14 14:26:01.000000"))  # 将%Y-%m-%d %H:%M:%S.%f 格式的str类型时间转为秒级时间戳
+        print(time_to_s_timestamp(datetime.datetime(2019, 10, 14, 14, 26, 1)))  # 将datetime.datetime时间转为秒时间戳
+    """
+    return int(_to_ns_timestamp(input_time) / 1e9)
+
+
+def time_to_str(input_time):
+    """
+    将传入的时间转换为 %Y-%m-%d %H:%M:%S.%f 格式的 str 类型
+
+    Args:
+        input_time (int/ float/ datetime.datetime): 需要转换的时间:
+
+            * int: int 类型的纳秒级或秒级时间戳
+
+            * float: float 类型的纳秒级或秒级时间戳，如K线或tick的datetime字段 (eg. 1.57103449e+18)
+
+            * datetime.datetime: datetime 模块中的 datetime 类型时间
+
+    Returns:
+        str : %Y-%m-%d %H:%M:%S.%f 格式的 str 类型时间
+
+    Example::
+
+        print(time_to_str(1.57103449e+18))  # 将纳秒级时间戳转为%Y-%m-%d %H:%M:%S.%f 格式的str类型时间
+        print(time_to_str(1571103122))  # 将秒级时间戳转为%Y-%m-%d %H:%M:%S.%f 格式的str类型时间
+        print(time_to_str(datetime.datetime(2019, 10, 14, 14, 26, 1)))  # 将datetime.datetime时间转为%Y-%m-%d %H:%M:%S.%f 格式的str类型时间
+    """
+    # 转为秒级时间戳
+    ts = _to_ns_timestamp(input_time) / 1e9
+    # 转为 %Y-%m-%d %H:%M:%S.%f 格式的 str 类型时间
+    dt = datetime.datetime.fromtimestamp(ts)
+    dt = dt.strftime('%Y-%m-%d %H:%M:%S.%f')
+    return dt
+
+
+def time_to_datetime(input_time):
+    """
+    将传入的时间转换为 datetime.datetime 类型
+
+    Args:
+        input_time (int/ float/ str): 需要转换的时间:
+
+            * int: int 类型的纳秒级或秒级时间戳
+
+            * float: float 类型的纳秒级或秒级时间戳，如K线或tick的datetime字段 (eg. 1.57103449e+18)
+
+            * str: str 类型的时间，如Quote行情时间的 datetime 字段 (eg. 2019-10-14 14:26:01.000000)
+
+    Returns:
+        datetime.datetime : datetime 模块中的 datetime 类型时间
+
+    Example::
+
+        print(time_to_datetime(1.57103449e+18))  # 将纳秒级时间戳转为datetime.datetime时间
+        print(time_to_datetime(1571103122))  # 将秒级时间戳转为datetime.datetime时间
+        print(time_to_datetime("2019-10-14 14:26:01.000000"))  # 将%Y-%m-%d %H:%M:%S.%f 格式的str类型时间转为datetime.datetime时间
+    """
+    # 转为秒级时间戳
+    ts = _to_ns_timestamp(input_time) / 1e9
+    # 转为datetime.datetime类型
+    dt = datetime.datetime.fromtimestamp(ts)
+    return dt

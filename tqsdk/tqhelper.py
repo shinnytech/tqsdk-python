@@ -105,11 +105,17 @@ async def account_watcher(api, dt_func, tq_send_chan):
 
 
 class TqMonitorThread(threading.Thread):
+    """
+    监控天勤进程存活情况
+    """
     def __init__(self, tq_pid):
         threading.Thread.__init__(self, daemon=True)
         self.tq_pid = tq_pid
 
     def run(self):
+        # TODO: 如果发布 mac / linux 天勤客户端，未来还需要在 mac / linux 上实现同样的功能。
+        if not sys.platform.startswith("win"):
+            return
         import _winapi
         try:
             p = _winapi.OpenProcess(_winapi.PROCESS_ALL_ACCESS, False, self.tq_pid)
@@ -305,6 +311,8 @@ def link_tq(api):
 
     # 根据运行模式分别执行不同的初始化任务
     if args._action == "run":
+        if isinstance(api._account, TqAccount) and (api._account.broker_id != args._broker_id or api._account.account_id != args._account_id):
+            raise Exception("策略代码与设置中的账户参数冲突。可尝试删去代码中的账户参数 TqAccount，以终端或者插件设置的账户参数运行。")
         instance = SingleInstance(args._account_id)
         api._account = TqAccount(args._broker_id, args._account_id, args._password)
         api._backtest = None

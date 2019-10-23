@@ -215,7 +215,7 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 
 模拟交易和论坛
 -------------------------------------------------
-请点击 `注册论坛账号 <https://www.shinnytech.com/registration>`_ ，填写以下对应信息之后，并点击激活邮件后即可进入 `用户论坛 <https://www.shinnytech.com/qa>`_ .
+请点击 `注册论坛账号 <https://www.shinnytech.com/register-intro/>`_ ，填写以下对应信息之后，并点击激活邮件后即可进入 `用户论坛 <https://www.shinnytech.com/qa>`_ .
 
 .. figure:: images/tq_register.png
 

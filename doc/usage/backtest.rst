@@ -5,14 +5,18 @@
 
 执行策略回测
 -------------------------------------------------
-使用 TqSdk 编写的策略程序，不需要修改策略代码，只需要在创建 api 实例时传入 :py:class:`~tqsdk.backtest.TqBacktest` , 策略就会进入历史回测模式::
+使用 TqSdk 编写的策略程序，不需要修改策略代码，只需要在创建 api 实例时给backtest参数传入 :py:class:`~tqsdk.backtest.TqBacktest` , 策略就会进入历史回测模式::
 
   from datetime import date
   from tqsdk import TqApi, TqSim, TqBacktest
 
   api = TqApi(TqSim(), backtest=TqBacktest(start_dt=date(2018, 5, 1), end_dt=date(2018, 10, 1)))
 
-回测结束后会输出交易记录和每日收盘时的账户资金情况，以及最大回撤、夏普比率等指标，这些数据可以导入到 excel 中或使用其他分析工具进一步处理。
+在 **天勤外部IDE** 使用tqsdk，回测结束后会输出交易记录和每日收盘时的账户资金情况，以及最大回撤、夏普比率等指标，这些数据可以导入到 excel 中或使用其他分析工具进一步处理。
+
+若想在 **天勤vscode插件** 或 **天勤终端** 中回测取得上诉信息，则参考下文 “在回测结束时获取回测详细信息” 部分内容。
+
+回测示例程序：:ref:`tutorial_backtest`
 
 
 在回测结束时获取回测详细信息
@@ -32,7 +36,7 @@
     # 回测结束时会执行这里的代码
     print(acc.trade_log)
 
-回测的详细信息保存在回测所用的模拟账户中, 可以直接访问它的成员变量获取, 常用的有:
+回测的详细信息保存在回测所用的模拟账户 TqSim 中, 可以直接访问它的成员变量获取, 常用的有:
 
 * trade_log, 格式为 日期->交易记录及收盘时的权益及持仓
 * account, 资金账户最终状态

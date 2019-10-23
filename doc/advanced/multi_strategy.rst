@@ -173,4 +173,4 @@ TqSdk 内核支持以异步方式实现多任务. 如果用户策略代码实现
 * 用户需熟练掌握 asyncio 异步编程, 学习成本高
 
 
-example 中的 gridtrading_async.py 就是一个完全按异步框架实现的网格交易策略. 有意学习的同学可以与 gridtrading.py 对比一下
+example 中的 `gridtrading_async.py <https://github.com/shinnytech/tqsdk-python/blob/master/tqsdk/demo/example/gridtrading_async.py>`_ 就是一个完全按异步框架实现的网格交易策略. 有意学习的同学可以与 gridtrading.py 对比一下

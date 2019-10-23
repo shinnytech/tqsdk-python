@@ -24,14 +24,31 @@ class MockInsServer():
     async def handle(self, request):
         data = {
             "SHFE.cu1901": {
-                "class": "FUTURE", "instrument_id": "SHFE.cu1901", "exchange_id": "SHFE",
-                "ins_id": "cu1901", "ins_name": "\u6caa\u94dc1901", "volume_multiple": 5, "price_tick": 10,
-                "price_decs": 0, "sort_key": 20, "expired": True, "py": "ht,hutong,yinjitong",
-                "product_id": "cu", "product_short_name": "\u6caa\u94dc", "delivery_year": 2019,
-                "delivery_month": 1, "expire_datetime": 1547535600.0, "last_price": 46940.0,
-                "pre_volume": 0, "open_interest": 0, "settlement_price": 46880.0,
-                "max_market_order_volume": 0, "max_limit_order_volume": 500, "margin": 16247.0,
-                "commission": 11.605, "mmsa": 1,
+                "class": "FUTURE",
+                "instrument_id": "SHFE.cu1901",
+                "exchange_id": "SHFE",
+                "ins_id": "cu1901",
+                "ins_name": "\u6caa\u94dc1901",
+                "volume_multiple": 5,
+                "price_tick": 10,
+                "price_decs": 0,
+                "sort_key": 20,
+                "expired": True,
+                "py": "ht,hutong,yinjitong",
+                "product_id": "cu",
+                "product_short_name": "\u6caa\u94dc",
+                "delivery_year": 2019,
+                "delivery_month": 1,
+                "expire_datetime": 1547535600.0,
+                "last_price": 46940.0,
+                "pre_volume": 0,
+                "open_interest": 0,
+                "settlement_price": 46880.0,
+                "max_market_order_volume": 0,
+                "max_limit_order_volume": 500,
+                "margin": 16247.0,
+                "commission": 11.605,
+                "mmsa": 1,
                 "trading_time": {
                     "day": [["09:00:00", "10:15:00"], ["10:30:00", "11:30:00"], ["13:30:00", "15:00:00"]],
                     "night": [["21:00:00", "25:00:00"]]
@@ -97,7 +114,7 @@ class MockServer():
                 await self.stop_signal
 
     def _run(self):
-        self.script_file = open(self.script_file_name, "rt")
+        self.script_file = open(self.script_file_name, "rt", encoding="gbk")
         asyncio.set_event_loop(self.loop)
         self.loop.run_until_complete(self._server())
 
@@ -142,4 +159,3 @@ class MockServer():
         assert self._expecting["source"] == source
         assert self._expecting["content"] == pack
         await self._process_script()
-

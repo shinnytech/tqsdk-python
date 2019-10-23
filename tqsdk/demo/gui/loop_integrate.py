@@ -3,7 +3,6 @@ import sys
 import PySimpleGUI as sg
 from tqsdk import TqApi
 
-
 loop = asyncio.get_event_loop()
 api = TqApi(loop=loop)
 quote_a = api.get_quote("SHFE.rb1910")
@@ -25,10 +24,10 @@ async def gui_task():
         window.Element('rb1910.last').Update(quote_a.last_price)
         window.Element('rb2001.last').Update(quote_b.last_price)
         window.Element('spread').Update(quote_b.last_price - quote_a.last_price)
-        await asyncio.sleep(1) #注意, 这里必须使用 asyncio.sleep, 不能用time.sleep
+        await asyncio.sleep(1)  # 注意, 这里必须使用 asyncio.sleep, 不能用time.sleep
 
 
-loop.create_task(gui_task())
+api.create_task(gui_task())
 
 while True:
     api.wait_update()

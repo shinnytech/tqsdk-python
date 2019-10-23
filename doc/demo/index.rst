@@ -16,6 +16,7 @@
     tutorial/t70.rst
     tutorial/t71.rst
     tutorial/t80.rst
+    tutorial/backtest.rst
 
 
 交易策略
@@ -28,3 +29,7 @@
     example/turtle.rst
     example/dualthrust.rst
     example/vwap.rst
+    example/escalator.rst
+    example/aberration.rst
+    example/momentum.rst
+    example/fairy_four_price.rst

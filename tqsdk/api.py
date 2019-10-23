@@ -10,8 +10,8 @@
 
 
 * PYTHON SDK使用文档: https://doc.shinnytech.com/pysdk/latest/
-* 天勤行情终端下载: https://www.shinnytech.com/tianqin
-* 天勤使用文档: https://doc.shinnytech.com/tq/latest/
+* 天勤vscode插件使用文档: https://doc.shinnytech.com/pysdk/latest/devtools/vscode.html
+* 天勤用户论坛: https://www.shinnytech.com/qa/
 """
 __author__ = 'chengzhi'
 
@@ -45,10 +45,10 @@ class TqApi(object):
 
     该类中所有参数只针对天勤外部IDE编写使用, 在天勤内使用 api = TqApi() 即可指定为当前天勤终端登录用户
 
-    通常情况下, 一个线程中应该只有一个TqApi的实例, 它负责维护网络连接, 接收行情及账户数据, 并在内存中维护业务数据截面
+    通常情况下, 一个线程中 **应该只有一个** TqApi的实例, 它负责维护网络连接, 接收行情及账户数据, 并在内存中维护业务数据截面
     """
 
-    RD = random.Random()
+    RD = random.Random()  # 初始化随机数引擎
     DEFAULT_INS_URL = "https://openmd.shinnytech.com/t/md/symbols/latest.json"
 
     def __init__(self, account=None, url=None, backtest=None, debug=None, loop=None, _ins_url=None, _md_url=None,
@@ -123,11 +123,15 @@ class TqApi(object):
         if not self._logger.handlers:
             sh = logging.StreamHandler()
             sh.setLevel(logging.INFO)
-            sh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+            if backtest:  # 如果回测, 则去除将第一个本地时间
+                log_format = logging.Formatter('%(levelname)s - %(message)s')
+            else:
+                log_format = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+            sh.setFormatter(log_format)
             self._logger.addHandler(sh)
             if debug:
                 fh = logging.FileHandler(filename=debug)
-                fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+                fh.setFormatter(log_format)
                 self._logger.addHandler(fh)
 
         # 初始化loop
@@ -153,6 +157,7 @@ class TqApi(object):
         self._pending_diffs = []  # 从网络上收到的待处理的 diffs, 只在 wait_update 函数执行过程中才可能为非空
         self._prototype = self._gen_prototype()  # 各业务数据的原型, 用于决定默认值及将收到的数据转为特定的类型
         self._wait_timeout = False  # wait_update 是否触发超时
+        self._to_tq = False  # flag: 是否连接了天勤
 
         # slave模式的api不需要完整初始化流程
         self._is_slave = isinstance(account, TqApi)
@@ -161,12 +166,10 @@ class TqApi(object):
             self._master = account
             if self._master._is_slave:
                 raise Exception("不可以为slave再创建slave")
-            self._master._add_slave(self)
+            self._master._slaves.append(self)
             self._account = self._master._account
-            return
-
-        # 与天勤配合
-        self._tq_send_chan, self._tq_recv_chan = tqhelper.link_tq(self)
+            self._to_tq = self._master._to_tq
+            return  # 注: 如果是slave,则初始化到这里结束并返回,以下代码不执行
 
         # 初始化
         if sys.platform.startswith("win"):
@@ -184,7 +187,8 @@ class TqApi(object):
         except:
             self.close()
             raise
-        self._diffs = []  # 截面数据不算做更新数据
+        # 使用非空list,使得wait_update()能正确发送peek_message; 使用空dict, 使得is_changing()返回false, 因为截面数据不算做更新数据.
+        self._diffs = [{}]
 
     # ----------------------------------------------------------------------
     def copy(self) -> 'TqApi':
@@ -219,9 +223,10 @@ class TqApi(object):
         elif asyncio._get_running_loop():
             raise Exception(
                 "TqSdk 使用了 python3 的原生协程和异步通讯库 asyncio，您所使用的 IDE 不支持 asyncio, 请使用 pycharm 或其它支持 asyncio 的 IDE")
-        # 检查是否需要发送多余的序列
-        for _, serial in self._serials.items():
-            self._process_serial_extra_array(serial)
+        # 如果连接了天勤，则: 检查是否需要发送多余的序列
+        if self._to_tq:
+            for _, serial in self._serials.items():
+                self._process_serial_extra_array(serial)
         self._run_until_idle()  # 由于有的处于 ready 状态 task 可能需要报撤单, 因此一直运行到没有 ready 状态的 task
         for task in self._tasks:
             task.cancel()
@@ -331,15 +336,15 @@ class TqApi(object):
 
         Example2::
 
-            # 将K线的纳秒时间转换为 datetime.datetime 类型
-            from datetime import datetime
+            # 使用tqsdk自带的时间转换函数, 将最后一根K线的纳秒时间转换为 datetime.datetime 类型
+            from tqsdk import tafunc
             ...
 
             klines = api.get_kline_serial("DCE.jd2001", 10)
-            kline_time = datetime.fromtimestamp(klines.iloc[-1]["datetime"] / 1e9)  # datetime.datetime 类型值
+            kline_time = tafunc.time_to_datetime(klines.iloc[-1]["datetime"])  # datetime.datetime 类型值
             print(type(kline_time), kline_time)
             print(kline_time.year, kline_time.month, kline_time.day, kline_time.hour, kline_time.minute, kline_time.second)
-
+            ...
         """
         if symbol not in self._data.get("quotes", {}):
             raise Exception("代码 %s 不存在, 请检查合约代码是否填写正确" % (symbol))
@@ -467,7 +472,7 @@ class TqApi(object):
 
             volume (int): 需要下单的手数
 
-            limit_price (float): [可选]下单价格, 默认市价单 (上期所和原油不支持市价单, 需填写此参数值)
+            limit_price (float): [可选]下单价格, 默认市价单 (上期所、原油和中金所不支持市价单, 需填写此参数值)
 
             order_id (str): [可选]指定下单单号, 默认由 api 自动生成
 
@@ -629,7 +634,7 @@ class TqApi(object):
             不填 symbol 参数调用本函数, 将返回包含用户所有持仓的一个tqsdk.objs.Entity对象引用, 使用方法与dict一致, \
             其中每个元素的key为合约代码, value为 :py:class:`~tqsdk.objs.Position`。
 
-            为保留一些可供用户查询的历史信息, 如 volume_long_yd(本交易日开盘前的多头持仓手数) 等字段, 因此服务器会返回当天已平仓合约( pos_long 和 pos_short 等字段为0)的持仓信息
+            注意: 为保留一些可供用户查询的历史信息, 如 volume_long_yd(本交易日开盘前的多头持仓手数) 等字段, 因此服务器会返回当天已平仓合约( pos_long 和 pos_short 等字段为0)的持仓信息
 
         Example::
 
@@ -756,10 +761,11 @@ class TqApi(object):
         self._wait_timeout = False
         # 先尝试执行各个task,再请求下个业务数据
         self._run_until_idle()
-        # 检查是否需要发送多余的序列
-        for _, serial in self._serials.items():
-            self._process_serial_extra_array(serial)
-        if not self._is_slave:
+        # 如果连接了天勤，则: 检查是否需要发送多余的序列
+        if self._to_tq:
+            for _, serial in self._serials.items():
+                self._process_serial_extra_array(serial)
+        if not self._is_slave and self._diffs:
             self._send_chan.send_nowait({
                 "aid": "peek_message"
             })
@@ -788,7 +794,10 @@ class TqApi(object):
         """
         判定obj最近是否有更新
 
-        当业务数据更新导致 wait_update 返回后可以使用该函数判断本次业务数据更新是否包含特定obj或其中某个字段
+        当业务数据更新导致 wait_update 返回后可以使用该函数判断 **本次业务数据更新是否包含特定obj或其中某个字段** 。
+
+        关于判断K线更新的说明：
+        当生成新K线时，其所有字段都算作有更新，若此时执行 api.is_changing(klines.iloc[-1]) 则一定返回True。
 
         Args:
             obj (any): 任意业务对象, 包括 get_quote 返回的 quote, get_kline_serial 返回的 k_serial, get_account 返回的 account 等
@@ -967,6 +976,10 @@ class TqApi(object):
 
     def _setup_connection(self):
         """初始化"""
+
+        # 与天勤配合
+        tq_send_chan, tq_recv_chan = tqhelper.link_tq(self)
+
         # 连接合约和行情服务器
         ws_md_send_chan, ws_md_recv_chan = TqChan(self), TqChan(self)
         ws_md_recv_chan.send_nowait({
@@ -995,12 +1008,18 @@ class TqApi(object):
                                    ws_td_send_chan, ws_td_recv_chan))
 
         # 抄送部分数据包到天勤
-        if self._tq_send_chan and self._tq_recv_chan:
+        if tq_send_chan and tq_recv_chan:
+            self._to_tq = True
             upstream_send_chan, upstream_recv_chan = self._send_chan, self._recv_chan  # 连接上游的channel
             self._send_chan, self._recv_chan = TqChan(self), TqChan(self)  # 连接到下游的channel
             from tqsdk.tqhelper import Forwarding
             self.create_task(Forwarding(self, self._send_chan, self._recv_chan, upstream_send_chan, upstream_recv_chan,
-                                        self._tq_send_chan, self._tq_recv_chan)._forward())
+                                        tq_send_chan, tq_recv_chan)._forward())
+
+        # 发送第一个peek_message,因为只有当收到上游数据包时wait_update()才会发送peek_message
+        self._send_chan.send_nowait({
+            "aid": "peek_message"
+        })
 
     def _fetch_symbol_info(self, url):
         """获取合约信息"""
@@ -1548,15 +1567,6 @@ class TqApi(object):
             else:
                 dest[key] = value
 
-    def _add_slave(self, slave_api):
-        self._slaves.append(slave_api)
-        dst = {}
-        TqApi._deep_copy_dict(self._data, dst)
-        slave_api._slave_recv_pack({
-            "aid": "rtn_data",
-            "data": [dst]
-        })
-
     def _slave_send_pack(self, pack):
         if pack.get("aid", None) == "subscribe_quote":
             self._loop.call_soon_threadsafe(lambda: self._send_subscribe_quote(pack))
@@ -1608,6 +1618,8 @@ class TqApi(object):
             value = klines.low.min()
             api.draw_text(klines, "测试413423", x=indic, y=value, color=0xFF00FF00)
         """
+        if not self._to_tq:  # 如果未连接天勤，不做操作
+            return
         if id is None:
             id = uuid.UUID(int=TqApi.RD.getrandbits(128)).hex
         if y is None:
@@ -1648,6 +1660,8 @@ class TqApi(object):
 
             width (int): 线宽度, 可选, 缺省为 1
         """
+        if not self._to_tq:  # 如果未连接天勤，不做操作
+            return
         if id is None:
             id = uuid.UUID(int=TqApi.RD.getrandbits(128)).hex
         serial = {
@@ -1695,6 +1709,8 @@ class TqApi(object):
             api.draw_box(klines, x1=-5, y1=klines.iloc[-5].close, x2=-1, \
             y2=klines.iloc[-1].close, width=1, color=0xFF0000FF, bg_color=0x8000FF00)
         """
+        if not self._to_tq:  # 如果未连接天勤，不做操作
+            return
         if id is None:
             id = uuid.UUID(int=TqApi.RD.getrandbits(128)).hex
         serial = {
