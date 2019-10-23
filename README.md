@@ -8,7 +8,7 @@
     <img src ="https://img.shields.io/github/license/shinnytech/tqsdk-python.svg?color=orange"/>
 </p>
 
-TqSdk 量化交易策略程序开发包
+TqSdk 天勤量化交易策略程序开发包
 ====================================
 TqSdk 是一个由[信易科技](https://www.shinnytech.com)发起并贡献主要代码的开源 python 库. 
 依托[快期多年积累成熟的交易及行情服务器体系](https://www.shinnytech.com/diff), TqSdk 支持用户使用极少的代码量构建各种类型的量化交易策略程序, 
@@ -80,7 +80,8 @@ Documentation
 
 在线问答社区: https://www.shinnytech.com/qa
 
-用户交流QQ群: 619870862
+用户交流QQ群: 619870862 (只允许给我们点过STAR的同学加入, 加群时请提供github用户名)
+
 	
 Gui
 -------------------------------------------------
