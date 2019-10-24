@@ -335,7 +335,7 @@ def link_tq(api):
                 api._account = TqSim(float(args._init_balance))
             except ValueError:
                 raise Exception("backtest 参数错误, _init_balance = " + args._init_balance + " 不是数字")
-        elif isinstance(api._account, TqSim):
+        elif not isinstance(api._account, TqSim):
             api._account = TqSim()
         from tqsdk.backtest import TqBacktest
         start_date = datetime.datetime.strptime(args._start_dt, '%Y%m%d')
