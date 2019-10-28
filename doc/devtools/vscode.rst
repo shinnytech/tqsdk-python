@@ -10,7 +10,7 @@
 
 安装天勤 Vs Code插件
 ----------------------------------------------------
-在  Vs Code extension 中输入 "天勤量化"或“tqsdk”, 点击【install】按钮
+在  Vs Code extension 中输入 "天勤量化"或“tqsdk”, 点击【install】按钮，同时第一次使用Vs Code 还需配置安装 “Pyhton” 插件
 
 .. figure:: ../images/vscode_install.png
 
@@ -68,7 +68,11 @@ Vs Code插件回测策略
 
 .. figure:: ../images/vscode_backtest_setting_finished.png
 
-回测策略程序时，策略交易记录和日志同样会在天勤面板中输出
+回测策略程序时，策略交易记录和日志同样会在天勤面板中输出，同时策略报告图会在右侧显示
+
+.. figure:: ../images/vscode_backtest_report.png
+
+.. figure:: ../images/vscode_backtest_report_detail.png
 
 
 Vs Code插件复盘行情
