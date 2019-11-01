@@ -33,7 +33,7 @@ class DataDownloader:
 
         Example::
 
-            from datetime import datetime
+            from datetime import datetime, date
             from contextlib import closing
             from tqsdk import TqApi, TqSim
             from tqsdk.tools import DataDownloader
