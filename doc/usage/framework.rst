@@ -34,7 +34,7 @@ TqApi 的其它构建参数请见 :py:class:`tqsdk.api.TqApi`
 * 实际发出网络数据包. 例如, 策略程序用 insert_order 函数下单, 实际的报单指令是在 insert_order 后调用 :py:meth:`~tqsdk.api.TqApi.wait_update` 时发出的
 * 让正在运行中的后台任务获得动作机会．例如, 策略程序中创建了一个后台调仓任务, 这个任务只会在 :py:meth:`~tqsdk.api.TqApi.wait_update` 时发出交易指令
 * 尝试从服务器接收一个数据包, 并用收到的数据包更新内存中的业务数据截面.
-* 如果没有收到数据包，则挂起等待
+* 如果没有收到数据包，则挂起等待，如果要避免长时间挂起，可通过设置 :py:meth:`~tqsdk.api.TqApi.wait_update` 中的deadline参数，设置等待截止时间
 
 .. figure:: ../images/wait_update.png
 
