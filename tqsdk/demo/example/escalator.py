@@ -17,7 +17,6 @@ SYMBOL = "SHFE.au1912"
 MA_SLOW, MA_FAST = 8, 40
 
 api = TqApi()
-quote = api.get_quote(SYMBOL)
 klines = api.get_kline_serial(SYMBOL, 60 * 60 * 24)
 quote = api.get_quote(SYMBOL)
 position = api.get_position(SYMBOL)
