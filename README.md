@@ -80,6 +80,8 @@ Documentation
 
 在线问答社区: https://www.shinnytech.com/qa
 
+知乎账户【天勤量化】：https://www.zhihu.com/org/tian-qin-liang-hua/activities
+
 用户交流QQ群: **619870862** (目前只允许给我们点过STAR的同学加入, 加群时请提供github用户名)
 
 	
