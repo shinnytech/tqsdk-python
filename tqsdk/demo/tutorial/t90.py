@@ -12,10 +12,14 @@ from tqsdk.ta import MA
 '''
 
 api = TqApi()
-klines = api.get_kline_serial("SHFE.au1912", 24 * 60 * 60)
+klines = api.get_kline_serial("SHFE.au2006", 5)
+
 ma = MA(klines, 30)  # 使用tqsdk自带指标函数计算均线
-
-# 在主图中画一根默认颜色（红色）的ma指标线
 klines["ma_MAIN"] = ma.ma
+# 在主图中画一根默认颜色（红色）的ma指标线
 
-api.close()  # 需要调用此函数将画图指令发送给天勤并关闭api
+while True:
+    api.wait_update()
+    if api.is_changing(klines):
+        ma = MA(klines, 30)  # 使用tqsdk自带指标函数计算均线
+        klines["ma_MAIN"] = ma.ma

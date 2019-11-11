@@ -38,7 +38,7 @@ from tqsdk.sim import TqSim
 from tqsdk.objs import Entity, Quote, Kline, Tick, Account, Position, Order, Trade
 from tqsdk.backtest import TqBacktest
 from tqsdk import tqhelper
-
+from tqsdk.tqwebhelper import TqWebHelper
 
 class TqApi(object):
     """
@@ -117,6 +117,7 @@ class TqApi(object):
         if _td_url:
             self._td_url = _td_url
         self._loop = asyncio.SelectorEventLoop() if loop is None else loop  # 创建一个新的 ioloop, 避免和其他框架/环境产生干扰
+        self._tq_web_helper = TqWebHelper()
 
         # 初始化 logger
 
@@ -227,10 +228,10 @@ class TqApi(object):
         elif asyncio._get_running_loop():
             raise Exception(
                 "TqSdk 使用了 python3 的原生协程和异步通讯库 asyncio，您所使用的 IDE 不支持 asyncio, 请使用 pycharm 或其它支持 asyncio 的 IDE")
-        # 如果连接了天勤，则: 检查是否需要发送多余的序列
-        if self._to_tq:
-            for _, serial in self._serials.items():
-                self._process_serial_extra_array(serial)
+
+        # 总会发送 serial_extra_array 数据，由 TqWebHelper 处理
+        for _, serial in self._serials.items():
+            self._process_serial_extra_array(serial)
         self._run_until_idle()  # 由于有的处于 ready 状态 task 可能需要报撤单, 因此一直运行到没有 ready 状态的 task
         for task in self._tasks:
             task.cancel()
@@ -813,10 +814,12 @@ class TqApi(object):
         self._wait_timeout = False
         # 先尝试执行各个task,再请求下个业务数据
         self._run_until_idle()
-        # 如果连接了天勤，则: 检查是否需要发送多余的序列
-        if self._to_tq:
-            for _, serial in self._serials.items():
-                self._process_serial_extra_array(serial)
+
+        # 总会发送 serial_extra_array 数据，由 TqWebHelper 处理
+        for _, serial in self._serials.items():
+            self._process_serial_extra_array(serial)
+        # 先尝试执行各个task,再请求下个业务数据
+        self._run_until_idle()
         if not self._is_slave and self._diffs:
             self._send_chan.send_nowait({
                 "aid": "peek_message"
@@ -1117,6 +1120,12 @@ class TqApi(object):
                 self._account._run(self, self._send_chan, self._recv_chan, ws_md_send_chan, ws_md_recv_chan,
                                    ws_td_send_chan, ws_td_recv_chan))
 
+        # 与web配合, 行情和交易都要 对接到 backtest 上
+        if self._tq_web_helper:
+            web_send_chan, web_recv_chan = TqChan(self), TqChan(self)
+            self.create_task(self._tq_web_helper._run(self, web_send_chan, web_recv_chan, self._send_chan, self._recv_chan))
+            self._send_chan, self._recv_chan = web_send_chan, web_recv_chan
+
         # 抄送部分数据包到天勤
         if tq_send_chan and tq_recv_chan:
             self._to_tq = True
@@ -1362,6 +1371,8 @@ class TqApi(object):
             data = {c[len(col):]: serial["extra_array"][c][serial["update_row"]:] for c in group}
             self._process_chart_data(serial, symbol, duration, col, serial["width"] - serial["update_row"],
                                      int(serial["array"][-1, 1]) + 1, data)
+            self._process_chart_data_for_web(serial, symbol, duration, col, serial["width"] - serial["update_row"],
+                                     int(serial["array"][-1, 1]) + 1, data)
         serial["update_row"] = serial["width"]
 
     def _process_chart_data(self, serial, symbol, duration, col, count, right, data):
@@ -1398,6 +1409,56 @@ class TqApi(object):
                 "low": data[".low"].tolist(),
                 "close": data[".close"].tolist(),
                 "board": data.get(".board", ["MAIN"])[-1],
+            })
+
+    def _process_chart_data_for_web(self, serial, symbol, duration, col, count, right, data):
+        # 与 _process_chart_data 函数功能类似，但是处理成符合 diff 协议的序列，在 js 端就不需要特殊处理了
+        if not data:
+            return
+        if ".open" in data:
+            data_type = "KSERIAL"
+        elif ".type" in data:
+            data_type = data[".type"]
+            rows = np.where(np.not_equal(data_type, None))[0]
+            if len(rows) == 0:
+                return
+            data_type = data_type[rows[0]]
+        else:
+            data_type = "LINE"
+        if data_type in {"LINE", "DOT", "DASH", "BAR"}:
+            send_data = {}
+            range_left = right - count
+            for i in range(count):
+                send_data[i + range_left] = {
+                    # 数据结构与 KSERIAL 保持一致，只有一列的时候，默认 key 值取 "value"
+                    "value": data[""][i]
+                }
+            self._send_series_data(symbol, duration, col, {
+                "type": "SERIAL",
+                "data": send_data,
+                "style": data_type,
+                "range_left": right - count,
+                "range_right": right - 1,
+                "color": int(data.get(".color", [0xFFFF0000])[-1]),
+                "width": int(data.get(".width", [1])[-1]),
+                "board": data.get(".board", ["MAIN"])[-1]
+            })
+        elif data_type == "KSERIAL":
+            send_data = {}
+            range_left = right - count
+            for i in range(count):
+                send_data[i + range_left] = {
+                    "open": data[".open"][i],
+                    "high": data[".high"][i],
+                    "low": data[".low"][i],
+                    "close": data[".close"][i]
+                }
+            self._send_series_data(symbol, duration, col, {
+                "type": "KSERIAL",
+                "data": send_data,
+                "range_left": right - count,
+                "range_right": right - 1,
+                "board": data.get(".board", ["MAIN"])[-1]
             })
 
     def _send_series_data(self, symbol, duration, serial_id, serial_data):
@@ -1860,8 +1921,6 @@ class TqApi(object):
             value = klines.low.min()
             api.draw_text(klines, "测试413423", x=indic, y=value, color=0xFF00FF00)
         """
-        if not self._to_tq:  # 如果未连接天勤，不做操作
-            return
         if id is None:
             id = uuid.UUID(int=TqApi.RD.getrandbits(128)).hex
         if y is None:
@@ -1903,8 +1962,6 @@ class TqApi(object):
 
             width (int): 线宽度, 可选, 缺省为 1
         """
-        if not self._to_tq:  # 如果未连接天勤，不做操作
-            return
         if id is None:
             id = uuid.UUID(int=TqApi.RD.getrandbits(128)).hex
         serial = {
@@ -1952,8 +2009,6 @@ class TqApi(object):
             api.draw_box(klines, x1=-5, y1=klines.iloc[-5].close, x2=-1, \
             y2=klines.iloc[-1].close, width=1, color=0xFF0000FF, bg_color=0x8000FF00)
         """
-        if not self._to_tq:  # 如果未连接天勤，不做操作
-            return
         if id is None:
             id = uuid.UUID(int=TqApi.RD.getrandbits(128)).hex
         serial = {
