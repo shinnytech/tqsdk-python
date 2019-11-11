@@ -226,16 +226,16 @@ class Forwarding(object):
         """转发给上游"""
         async for pack in api_send_chan:
             if pack["aid"] == "set_chart_data":
-                await tq_send_chan.send(pack)
+                if (pack["type"] != "KSERIAL" and pack["type"] != "SERIAL") or (isinstance(pack["data"], list)):
+                    # 过滤出新版 tqwebhelper 中符合 diff 协议的数据，为了不影响旧版 tqhelper 的使用，这里其他不做修改
+                    await tq_send_chan.send(pack)
             elif pack["aid"] == "insert_order":
                 self.order_symbols.add(pack["exchange_id"] + "." + pack["instrument_id"])
                 await self._send_subscribed_to_tq()
-                await upstream_send_chan.send(pack)
             elif pack["aid"] == "set_chart" or pack["aid"] == "subscribe_quote":
                 await self._send_subscribed_to_tq()
-                await upstream_send_chan.send(pack)
-            else:
-                await upstream_send_chan.send(pack)
+            # 所有数据都需要向上游（新版tqwebhelper）转发，由上游判断是否继续转发
+            await upstream_send_chan.send(pack)
 
     async def _send_subscribed_to_tq(self):
         d = []
