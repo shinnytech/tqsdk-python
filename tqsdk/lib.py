@@ -226,11 +226,11 @@ class InsertOrderUntilAllTradedTask(object):
         if self.price == "PASSIVE":
             price_list.reverse()
         limit_price = price_list[0]
-        if limit_price != limit_price:
+        if limit_price != self.limit_price:
             limit_price = price_list[1]
-        if limit_price != limit_price:
+        if limit_price != self.limit_price:
             limit_price = self.quote.last_price
-        if limit_price != limit_price:
+        if limit_price != self.limit_price:
             limit_price = self.quote.pre_close
         return limit_price
 
