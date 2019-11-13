@@ -102,7 +102,7 @@ class DataDownloader:
         """下载数据, 多合约横向按时间对齐"""
         chart_info = {
             "aid": "set_chart",
-            "chart_id": self.api._generate_chart_id("downloader", self.symbol_list, self.dur_nano),
+            "chart_id": self.api._generate_chart_id("downloader"),
             "ins_list": ",".join(self.symbol_list),
             "duration": self.dur_nano,
             "view_width": 2000,
