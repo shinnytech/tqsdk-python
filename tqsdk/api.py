@@ -1466,8 +1466,9 @@ class TqApi(object):
                                                            '{"aid": "peek_message"}')
                                         continue  # 如果当前请求还没收齐回应, 不应继续处理
                                     # 在接收并处理完成指令后, 此时发送给客户端的数据包中的 left_id或right_id 至少有一个不是-1 , 并且 mdhis_more_data是False；否则客户端需要继续等待数据完全发送
-                                    if not all([(self._get_obj(t_data, ["charts", k]).get("left_id",-1) != -1 or self._get_obj(
-                                        t_data, ["charts", k]).get("right_id", -1) != -1) and not t_data.get(
+                                    if not all([(self._get_obj(t_data, ["charts", k]).get("left_id",
+                                                                                          -1) != -1 or self._get_obj(
+                                            t_data, ["charts", k]).get("right_id", -1) != -1) and not t_data.get(
                                         "mdhis_more_data", True) for k in set_chart_packs.keys()]):
                                         await client.send(json.dumps({
                                             "aid": "peek_message"

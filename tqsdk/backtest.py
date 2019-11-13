@@ -100,7 +100,7 @@ class TqBacktest(object):
                                     # 两个id设置为0：保证api在回测中判断此值时不是-1，即直接通过对数据接收完全的验证
                                     "left_id": 0,
                                     "right_id": 0,
-                                    "more_data":False,  # 直接发送False给api，表明数据发送完全，使api中通过数据接收完全的验证
+                                    "more_data": False,  # 直接发送False给api，表明数据发送完全，使api中通过数据接收完全的验证
                                     "state": pack
                                 }
                             }
@@ -177,7 +177,7 @@ class TqBacktest(object):
             if not self.diffs:
                 while self.serials:
                     min_serial = min(self.serials.keys(), key=lambda serial: self.serials[serial]["timestamp"])
-                    timestamp = self.serials[min_serial]["timestamp"]# 所有已订阅数据中的最小行情时间
+                    timestamp = self.serials[min_serial]["timestamp"]  # 所有已订阅数据中的最小行情时间
                     quotes_diff = self.serials[min_serial]["quotes"]
                     # 推进时间，一次只会推进最多一个(补数据时有可能是0个)行情时间，并确保<=该行情时间的行情都被发出
                     # 如果行情时间大于当前回测时间 则 判断是否diff中已有数据；否则表明此行情时间的数据未全部保存在diff中，则继续append

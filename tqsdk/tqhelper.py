@@ -108,6 +108,7 @@ class TqMonitorThread(threading.Thread):
     """
     监控天勤进程存活情况
     """
+
     def __init__(self, tq_pid):
         threading.Thread.__init__(self, daemon=True)
         self.tq_pid = tq_pid
@@ -191,7 +192,9 @@ class Forwarding(object):
     作为数据转发的中间模块, 创建与天勤的新连接, 并过滤TqApi向上游发送的数据.
     对于这个新连接: 发送所有的 set_chart_data 类型数据包,以及抄送所有的 subscribe_quote, set_chart类型数据包
     """
-    def __init__(self, api, api_send_chan, api_recv_chan, upstream_send_chan, upstream_recv_chan, tq_send_chan, tq_recv_chan):
+
+    def __init__(self, api, api_send_chan, api_recv_chan, upstream_send_chan, upstream_recv_chan, tq_send_chan,
+                 tq_recv_chan):
         self.api = api
         self.api_send_chan = api_send_chan
         self.api_recv_chan = api_recv_chan
@@ -203,8 +206,10 @@ class Forwarding(object):
         self.order_symbols = set()
 
     async def _forward(self):
-        to_downstream_task = self.api.create_task(self._forward_to_downstream(self.api_recv_chan, self.upstream_recv_chan))  # 转发给下游
-        to_upstream_task = self.api.create_task(self._forward_to_upstream(self.api_send_chan, self.upstream_send_chan, self.tq_send_chan))  # 转发给上游
+        to_downstream_task = self.api.create_task(
+            self._forward_to_downstream(self.api_recv_chan, self.upstream_recv_chan))  # 转发给下游
+        to_upstream_task = self.api.create_task(
+            self._forward_to_upstream(self.api_send_chan, self.upstream_send_chan, self.tq_send_chan))  # 转发给上游
         try:
             async for pack in self.tq_recv_chan:
                 pass
@@ -236,13 +241,23 @@ class Forwarding(object):
         d = []
         for item in self.api._requests["klines"].keys():
             for symbol in item[0]:  # 如果同时订阅多个合约，分别发送给tq
-                d.append({"symbol": symbol, "dur_nano": item[1] * 1000000000})
+                d.append({
+                    "symbol": symbol,
+                    "dur_nano": item[1] * 1000000000
+                })
         for item in self.api._requests["ticks"].keys():
-            d.append({"symbol": item[0], "dur_nano": 0})
+            d.append({
+                "symbol": item[0],
+                "dur_nano": 0
+            })
         for symbol in self.api._requests["quotes"]:
-            d.append({"symbol": symbol})
+            d.append({
+                "symbol": symbol
+            })
         for symbol in self.order_symbols:
-            d.append({"symbol": symbol})
+            d.append({
+                "symbol": symbol
+            })
         if d != self.subscribed:
             self.subscribed = d
             await self.tq_send_chan.send({
@@ -313,7 +328,8 @@ def link_tq(api):
 
     # 根据运行模式分别执行不同的初始化任务
     if args._action == "run":
-        if isinstance(api._account, TqAccount) and (api._account.broker_id != args._broker_id or api._account.account_id != args._account_id):
+        if isinstance(api._account, TqAccount) and (
+                api._account.broker_id != args._broker_id or api._account.account_id != args._account_id):
             raise Exception("策略代码与设置中的账户参数冲突。可尝试删去代码中的账户参数 TqAccount，以终端或者插件设置的账户参数运行。")
         instance = SingleInstance(args._account_id)
         api._account = TqAccount(args._broker_id, args._account_id, args._password)
@@ -375,7 +391,7 @@ def link_tq(api):
     logger.setLevel(logging.INFO)
     logger.addHandler(LogHandlerChan(tq_send_chan, dt_func=dt_func))  # log输出到天勤接口
     sys.stdout = PrintWriterToLog(logger)  # print信息转向log输出
-    sys.excepthook = partial(exception_handler, api, sys.excepthook) # exception信息转向log输出
+    sys.excepthook = partial(exception_handler, api, sys.excepthook)  # exception信息转向log输出
 
     # 向api注入监控任务, 将账户交易信息主动推送到天勤
     api.create_task(account_watcher(api, dt_func, tq_send_chan))
