@@ -96,7 +96,7 @@ class DataDownloader:
             float: 下载进度,100表示下载完成
         """
         return 100.0 if self.task.done() else (self.current_dt_nano - self.start_dt_nano) / (
-                    self.end_dt_nano - self.start_dt_nano) * 100
+                self.end_dt_nano - self.start_dt_nano) * 100
 
     async def _download_data(self):
         """下载数据, 多合约横向按时间对齐"""
