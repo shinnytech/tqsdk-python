@@ -235,7 +235,8 @@ class Forwarding(object):
     async def _send_subscribed_to_tq(self):
         d = []
         for item in self.api._requests["klines"].keys():
-            d.append({"symbol": item[0], "dur_nano": item[1] * 1000000000})
+            for symbol in item[0]:  # 如果同时订阅多个合约，分别发送给tq
+                d.append({"symbol": symbol, "dur_nano": item[1] * 1000000000})
         for item in self.api._requests["ticks"].keys():
             d.append({"symbol": item[0], "dur_nano": 0})
         for symbol in self.api._requests["quotes"]:

@@ -93,9 +93,14 @@ class TqBacktest(object):
                     await self._send_diff()
                 elif pack["aid"] == "set_chart":
                     if pack["ins_list"]:
+                        # 回测模块中已保证每次将一个行情时间的数据全部发送给api，因此更新行情时 保持与初始化时一样的charts信息（即不作修改）
                         self.diffs.append({
                             "charts": {
                                 pack["chart_id"]: {
+                                    # 两个id设置为0：保证api在回测中判断此值时不是-1，即直接通过对数据接收完全的验证
+                                    "left_id": 0,
+                                    "right_id": 0,
+                                    "more_data":False,  # 直接发送False给api，表明数据发送完全，使api中通过数据接收完全的验证
                                     "state": pack
                                 }
                             }
@@ -172,14 +177,15 @@ class TqBacktest(object):
             if not self.diffs:
                 while self.serials:
                     min_serial = min(self.serials.keys(), key=lambda serial: self.serials[serial]["timestamp"])
-                    timestamp = self.serials[min_serial]["timestamp"]
+                    timestamp = self.serials[min_serial]["timestamp"]# 所有已订阅数据中的最小行情时间
                     quotes_diff = self.serials[min_serial]["quotes"]
                     # 推进时间，一次只会推进最多一个(补数据时有可能是0个)行情时间，并确保<=该行情时间的行情都被发出
+                    # 如果行情时间大于当前回测时间 则 判断是否diff中已有数据；否则表明此行情时间的数据未全部保存在diff中，则继续append
                     if timestamp > self.current_dt:
-                        if self.diffs:
+                        if self.diffs:  # 如果diffs中已有数据：退出循环并发送数据给下游api
                             break
                         else:
-                            self.current_dt = timestamp
+                            self.current_dt = timestamp  # 否则将回测时间更新至最新行情时间
                     self.diffs.append(self.serials[min_serial]["diff"])
                     quote_info = self.quotes[min_serial[0]]
                     if quotes_diff and (quote_info["min_duration"] != 0 or min_serial[1] == 0):
@@ -232,7 +238,7 @@ class TqBacktest(object):
         # 因此将 view_width 和 focus_position 设置成一样，这样 focus_datetime 所对应的 k线刚好位于屏幕外
         chart_info = {
             "aid": "set_chart",
-            "chart_id": TqApi._generate_chart_id("backtest", ins, dur // 1000000000),
+            "chart_id": TqApi._generate_chart_id("backtest"),
             "ins_list": ins,
             "duration": dur,
             "view_width": 8964,
