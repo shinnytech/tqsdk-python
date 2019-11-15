@@ -376,7 +376,7 @@ class TqApi(object):
                 "chart_id": chart_id,
                 "ins_list": ",".join(symbol),
                 "duration": dur_id,
-                "view_width": data_length if len(symbol) == 1 else 10000,
+                "view_width": data_length if len(symbol) == 1 else 8964,
                 # 如果同时订阅了两个以上合约K线，初始化数据时默认获取 1w 根K线(初始化完成后修改指令为设定长度)
             })
         if serial is None:
@@ -388,7 +388,7 @@ class TqApi(object):
                 "chart_id": chart_id,
                 "ins_list": ",".join(symbol),
                 "duration": dur_id,
-                "view_width": data_length if len(symbol) == 1 else 10000,
+                "view_width": data_length if len(symbol) == 1 else 8964,
             })
             self._requests["klines"][request] = serial
             self._serials[id(serial["df"])] = serial
