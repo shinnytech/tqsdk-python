@@ -1292,9 +1292,10 @@ class TqApi(object):
         for col in set(serial["df"].columns.values) - serial["all_attr"]:
             serial["update_row"] = 0
             serial["extra_array"][col] = serial["df"][col].to_numpy()
+        # 如果策略中删除了之前添加到 df 中的序列，则 extra_array 中也将其删除
         for col in serial["all_attr"] - set(serial["df"].columns.values):
             del serial["extra_array"][col]
-            serial["all_attr"] = set(serial["df"].columns.values)
+        serial["all_attr"] = set(serial["df"].columns.values)
         if serial["update_row"] == serial["width"]:
             return
         symbol = serial["root"][0]["_path"][1]  # 主K线的symbol，标志绘图的主K线
@@ -1308,7 +1309,7 @@ class TqApi(object):
             cols = [c for c in cols if c not in group]
             data = {c[len(col):]: serial["extra_array"][c][serial["update_row"]:] for c in group}
             self._process_chart_data(serial, symbol, duration, col, serial["width"] - serial["update_row"],
-                                     int(serial["array"][-1, 0]) + 1, data)
+                                     int(serial["array"][-1, 1]) + 1, data)
         serial["update_row"] = serial["width"]
 
     def _process_chart_data(self, serial, symbol, duration, col, count, right, data):
@@ -1468,7 +1469,7 @@ class TqApi(object):
                                     # 在接收并处理完成指令后, 此时发送给客户端的数据包中的 left_id或right_id 至少有一个不是-1 , 并且 mdhis_more_data是False；否则客户端需要继续等待数据完全发送
                                     if not all([(self._get_obj(t_data, ["charts", k]).get("left_id",
                                                                                           -1) != -1 or self._get_obj(
-                                            t_data, ["charts", k]).get("right_id", -1) != -1) and not t_data.get(
+                                        t_data, ["charts", k]).get("right_id", -1) != -1) and not t_data.get(
                                         "mdhis_more_data", True) for k in set_chart_packs.keys()]):
                                         await client.send(json.dumps({
                                             "aid": "peek_message"
