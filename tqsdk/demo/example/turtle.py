@@ -121,7 +121,7 @@ class Turtle:
             self.try_close()
 
 
-turtle = Turtle("SHFE.au1912")
+turtle = Turtle("SHFE.au2006")
 print("策略开始运行")
 try:
     turtle.state = json.load(open("turtle_state.json", "r"))  # 读取数据: 本策略目标净持仓数,上一次开仓价

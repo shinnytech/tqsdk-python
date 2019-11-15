@@ -5,7 +5,7 @@
 
 TqApi
 ----------------------------------------------------
-:py:class:`tqsdk.api.TqApi` 是 TqSdk 的核心类. 通常情况下, 每个使用了 TqSdk 的程序都应该包括一个 TqApi 实例::
+:py:class:`tqsdk.api.TqApi` 是 TqSdk 的核心类. 通常情况下, 每个使用了 TqSdk 的程序都应该包括 **一个** TqApi 实例::
 
     api = TqApi()
 
@@ -38,12 +38,14 @@ TqApi 的其它构建参数请见 :py:class:`tqsdk.api.TqApi`
 
 .. figure:: ../images/wait_update.png
 
-因此, TqSdk 要求策略程序必须反复调用 :py:meth:`~tqsdk.api.TqApi.wait_update`, 才能保证整个程序正常运行. 一般会将 :py:meth:`~tqsdk.api.TqApi.wait_update` 放在一个循环中反复调用::
+因此, TqSdk 要求策略程序必须反复调用 :py:meth:`~tqsdk.api.TqApi.wait_update`, 才能保证整个程序正常运行. 一般会将 :py:meth:`~tqsdk.api.TqApi.wait_update` 放在一个循环中反复调用
+（注: 若跳出循环，程序结束前需调用 api.close() 释放资源)::
 
     while True:             #一个循环
         api.wait_update()   #总是调用 wait_update, 当数据有更新时 wait_update 函数返回, 执行下一句
         do_some_thing()     #每当数据有变更时, 执行自己的代码, 然后循环回去再做下一次 wait_update
 
+    #注：若跳出循环并运行到程序末尾，在结束运行前需调用 api.close() 函数以关闭天勤接口实例并释放相应资源，请见下文 “一个典型程序的结构”
 
 内存数据及数据更新
 ----------------------------------------------------
@@ -87,5 +89,6 @@ TqApi 实例内存中保存了一份完整业务数据截面, 包括行情/K线�
             target_pos.set_target_volume(0)                     ##如果触发了，则通过 target_pos 将 SHFE.rb1901 的目标持仓设置为0手(即空仓)
             break
 
+    api.close()                                                 #注意：程序结束运行前需调用此函数以关闭天勤接口实例并释放相应资源
     #至此就完成一次完整的开平仓流程，如果平仓后还需再判断开仓条件可以把开仓循环和平仓循环再套到一个大循环中。
 

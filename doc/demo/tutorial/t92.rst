@@ -1,0 +1,7 @@
+.. _tutorial_t92:
+
+t92 - 主图中画信号线及文字标注
+====================================================
+
+.. literalinclude:: ../../../tqsdk/demo/tutorial/t92.py
+  :language: python

@@ -681,6 +681,7 @@ def time_to_ns_timestamp(input_time):
 
     Example::
 
+        from tqsdk.tafunc import time_to_ns_timestamp
         print(time_to_ns_timestamp("2019-10-14 14:26:01.000000"))  # 将%Y-%m-%d %H:%M:%S.%f 格式的str类型转为纳秒时间戳
         print(time_to_ns_timestamp(1571103122))  # 将秒级转为纳秒时间戳
         print(time_to_ns_timestamp(datetime.datetime(2019, 10, 14, 14, 26, 1)))  # 将datetime.datetime时间转为纳秒时间戳
@@ -707,6 +708,7 @@ def time_to_s_timestamp(input_time):
 
     Example::
 
+        from tqsdk.tafunc import time_to_s_timestamp
         print(time_to_s_timestamp(1.57103449e+18))  # 将纳秒级时间戳转为秒级时间戳
         print(time_to_s_timestamp("2019-10-14 14:26:01.000000"))  # 将%Y-%m-%d %H:%M:%S.%f 格式的str类型时间转为秒级时间戳
         print(time_to_s_timestamp(datetime.datetime(2019, 10, 14, 14, 26, 1)))  # 将datetime.datetime时间转为秒时间戳
@@ -732,6 +734,7 @@ def time_to_str(input_time):
 
     Example::
 
+        from tqsdk.tafunc import time_to_str
         print(time_to_str(1.57103449e+18))  # 将纳秒级时间戳转为%Y-%m-%d %H:%M:%S.%f 格式的str类型时间
         print(time_to_str(1571103122))  # 将秒级时间戳转为%Y-%m-%d %H:%M:%S.%f 格式的str类型时间
         print(time_to_str(datetime.datetime(2019, 10, 14, 14, 26, 1)))  # 将datetime.datetime时间转为%Y-%m-%d %H:%M:%S.%f 格式的str类型时间
@@ -762,6 +765,7 @@ def time_to_datetime(input_time):
 
     Example::
 
+        from tqsdk.tafunc import time_to_datetime
         print(time_to_datetime(1.57103449e+18))  # 将纳秒级时间戳转为datetime.datetime时间
         print(time_to_datetime(1571103122))  # 将秒级时间戳转为datetime.datetime时间
         print(time_to_datetime("2019-10-14 14:26:01.000000"))  # 将%Y-%m-%d %H:%M:%S.%f 格式的str类型时间转为datetime.datetime时间

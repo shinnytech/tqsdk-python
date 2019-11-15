@@ -202,7 +202,7 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 
 实盘交易
 -------------------------------------------------
-要让策略程序在实盘账号运行, 请在创建TqApi时传入一个 :py:class:`~tqsdk.api.TqAccount` , 填入 期货公司, 账号, 密码::
+要让策略程序在实盘账号运行, 请在创建TqApi时传入一个 :py:class:`~tqsdk.api.TqAccount` , 填入 期货公司, 账号, 密码 (使用前请先 import TqAccount)::
 
   api = TqApi(TqAccount("H海通期货", "412432343", "123456"))
 
@@ -219,11 +219,13 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 
 .. figure:: images/tq_register.png
 
-如果您需要使用模拟交易, 注册好的论坛【邮箱地址】和【密码】可作为模拟账号, 通过TqAccount进行登录::
+如果您需要使用 能保存账户资金及持仓信息的 模拟交易功能，可将注册好的论坛【邮箱地址】和【密码】作为模拟账号，通过 TqAccount 进行登录::
 
   api = TqApi(TqAccount("快期模拟", "test111@qq.com", "123456"))
 
-特别的，如果创建TqApi实例时没有提供任何TqAcccount，则每次会自动创建一个临时模拟账号，当程序运行结束时，临时账号内的记录将全部丢失::
+(注：若使用 simnow 模拟账号，则 TqAccount 第一个参数填写 "simnow" )
+
+特别的，如果创建TqApi实例时没有提供任何 TqAcccount 账户，则每次会自动创建一个临时模拟账号，当程序运行结束时，临时账号内的记录将全部丢失::
 
   api = TqApi()
 

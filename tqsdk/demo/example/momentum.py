@@ -8,33 +8,31 @@ __author__ = "Ringo"
 注: 该示例策略仅用于功能示范, 实盘时请根据自己的策略/经验进行修改
 '''
 
-from tqsdk import TqAccount, TqApi, TargetPosTask
+from tqsdk import TqApi, TargetPosTask
 
 # 设置指定合约,获取N条K线计算价格动量
-SYMBOL = "SHFE.au1912"
+SYMBOL = "SHFE.au2006"
 N = 15
 
 api = TqApi()
-klines = api.get_kline_serial(SYMBOL, 60*60*24, N)
+klines = api.get_kline_serial(SYMBOL, 60 * 60 * 24, N)
 quote = api.get_quote(SYMBOL)
 target_pos = TargetPosTask(api, SYMBOL)
 position = api.get_position(SYMBOL)
 
-# 编写价格动量函数AR，以前N-1日K线计算价格动量ar
-
 
 def AR(kline1):
+    """价格动量函数AR，以前N-1日K线计算价格动量ar"""
     spread_ho = sum(kline1.high[:-1] - kline1.open[:-1])
     spread_oc = sum(kline1.open[:-1] - kline1.low[:-1])
     # spread_oc 为0时，设置为最小价格跳动值
     if spread_oc == 0:
         spread_oc = quote.price_tick
-    ar = (spread_ho/spread_oc)*100
+    ar = (spread_ho / spread_oc) * 100
     return ar
 
 
 ar = AR(klines)
-
 print("策略开始启动")
 
 while True:

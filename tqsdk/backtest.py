@@ -13,28 +13,31 @@ class TqBacktest(object):
     """
     天勤回测类
 
-     该类只针对天勤外部IDE编写使用, 在天勤内编写完策略后选择该策略直接点击回测即可
+    该类只针对天勤外部IDE编写使用, 在天勤内编写完策略后选择该策略直接点击回测即可。
 
-    将该类传入 TqApi 的构造函数, 则策略就会进入回测模式
+    将该类传入 TqApi 的构造函数, 则策略就会进入回测模式。
 
-    回测模式下 k线会在刚创建出来时和结束时分别更新一次, 在这之间 k线是不会更新的
+    回测模式下 k线会在刚创建出来时和结束时分别更新一次, 在这之间 k线是不会更新的。
 
     回测模式下 quote 的更新频率由所订阅的 tick 和 k线周期确定:
-        * 只要订阅了 tick, 则对应合约的 quote 就会使用 tick 生成, 更新频率也和 tick 一致, 但只有下字段:
-              datetime/ask&bid_price1/ask&bid_volume1/last_price/highest/lowest/average/volume/amount/open_interest/
-              price_tick/price_decs/volume_multiple/max&min_limit&market_order_volume/underlying_symbol/strike_price
+        * 只要订阅了 tick, 则对应合约的 quote 就会使用 tick 生成, 更新频率也和 tick 一致, 但 **只有下字段** :
+          datetime/ask&bid_price1/ask&bid_volume1/last_price/highest/lowest/average/volume/amount/open_interest/
+          price_tick/price_decs/volume_multiple/max&min_limit&market_order_volume/underlying_symbol/strike_price
 
         * 如果没有订阅 tick, 但是订阅了 k线, 则对应合约的 quote 会使用 k线生成, 更新频率和 k线的周期一致， 如果订阅了某个合约的多个周期的 k线,
           则任一个周期的 k线有更新时, quote 都会更新. 使用 k线生成的 quote 的盘口由收盘价分别加/减一个最小变动单位, 并且 highest/lowest/average/amount
           始终为 nan, volume 始终为0
 
-        * 如果即没有订阅 tick, 也没有订阅 k线或订阅的 k线周期大于分钟线, 则 TqBacktest 会自动订阅分钟线来生成 quote
+        * 如果即没有订阅 tick, 也没有订阅k线或 订阅的k线周期大于分钟线, 则 TqBacktest 会 **自动订阅分钟线** 来生成 quote
+    **注意** ：如果未订阅 quote，模拟交易在下单时会自动为此合约订阅 quote ，根据回测时 quote 的更新规则，如果此合约没有订阅K线或K线周期大于分钟线 **则会自动订阅一个分钟线** 。
 
-    模拟交易要求报单价格大于等于对手盘价格才会成交, 例如下买单, 要求价格大于等于卖一价才会成交, 如果不能立即成交则会等到下次行情更新再重新判断
+    模拟交易要求报单价格大于等于对手盘价格才会成交, 例如下买单, 要求价格大于等于卖一价才会成交, 如果不能立即成交则会等到下次行情更新再重新判断。
 
-    回测模式下 wait_update 每次最多推进一个行情时间
+    回测模式下 wait_update 每次最多推进一个行情时间。
 
-    回测结束后会抛出 BacktestFinished 例外
+    回测结束后会抛出 BacktestFinished 例外。
+
+    对 **组合合约** 进行回测时需注意：只能通过订阅 tick 数据来回测，不能订阅K线，因为K线是由最新价合成的，而交易所发回的组合合约数据中无最新价。
     """
 
     def __init__(self, start_dt, end_dt):

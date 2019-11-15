@@ -281,6 +281,12 @@ class Position(Entity):
         净持仓手数
 
         :return: int, ==0表示无持仓或多空持仓手数相等. <0表示空头持仓大于多头持仓, >0表示多头持仓大于空头持仓
+
+        注: 本字段是由 pos_long 等字段计算出来的，而非服务器发回的原始数据中的字段，则：
+            1. is_changing() 是判断服务器发回的数据字段，因此不能用于 is_changing() 判断。
+            2. 在直接 print(position) 时不会显示出此字段。
+            3. 只能用 position.pos 方式取值，不能用 position["pos"] 方式。
+            4. pos_long, pos_short, orders这三个字段同理。
         """
         return self.pos_long - self.pos_short
 
@@ -358,6 +364,12 @@ class Order(Entity):
         判定这个委托单是否确定已死亡（以后一定不会再产生成交）
 
         :return: 确定委托单已死时，返回 True, 否则返回 False. 注意，返回 False 不代表委托单还存活，有可能交易所回来的信息还在路上或者丢掉了
+
+        注: 本字段是由 status 等字段计算出来的，而非服务器发回的原始数据中的字段，则：
+            1. is_changing() 是判断服务器发回的数据字段，因此不能用于 is_changing() 判断。
+            2. 在直接 print(order) 时不会显示出此字段。
+            3. 只能用 order.is_dead 方式取值，不能用 order["is_dead"] 方式。
+            4. is_online, is_error, trade_price, trade_records 这四个字段同理。
         """
         return self.status == "FINISHED"
 

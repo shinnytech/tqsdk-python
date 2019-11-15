@@ -5,14 +5,14 @@ __author__ = 'chengzhi'
 from tqsdk import TqApi, TargetPosTask
 
 '''
-如果当前价格大于10秒K线的MA15则开多仓
+如果当前价格大于10秒K线的MA15则开多仓 (使用 TargetPosTask 调仓工具)
 如果小于则平仓
 '''
 api = TqApi()
-# 获得 m2001 10秒K线的引用
-klines = api.get_kline_serial("DCE.m2001", 10)
-# 创建 m2001 的目标持仓 task，该 task 负责调整 m2001 的仓位到指定的目标仓位
-target_pos = TargetPosTask(api, "DCE.m2001")
+# 获得 m2005 10秒K线的引用
+klines = api.get_kline_serial("DCE.m2005", 10)
+# 创建 m2005 的目标持仓 task，该 task 负责调整 m2005 的仓位到指定的目标仓位
+target_pos = TargetPosTask(api, "DCE.m2005")
 
 while True:
     api.wait_update()

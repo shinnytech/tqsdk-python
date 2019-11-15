@@ -16,6 +16,12 @@
     tutorial/t70.rst
     tutorial/t71.rst
     tutorial/t80.rst
+    tutorial/t90.rst
+    tutorial/t91.rst
+    tutorial/t92.rst
+    tutorial/t93.rst
+    tutorial/t94.rst
+    tutorial/t95.rst
     tutorial/backtest.rst
 
 

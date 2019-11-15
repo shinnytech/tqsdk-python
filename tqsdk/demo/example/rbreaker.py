@@ -10,7 +10,7 @@ R-Breaker策略(隔夜留仓) (难度：初级)
 
 from tqsdk import TqApi, TargetPosTask
 
-SYMBOL = "SHFE.au1912"  # 合约代码
+SYMBOL = "SHFE.au2006"  # 合约代码
 STOP_LOSS_PRICE = 10  # 止损点(价格)
 
 

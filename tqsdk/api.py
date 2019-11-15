@@ -89,7 +89,7 @@ class TqApi(object):
 
             # 使用模拟帐号直连行情服务器
             from tqsdk import TqApi, TqSim
-            api = TqApi(TqSim())
+            api = TqApi(TqSim())  # 不填写参数则默认为 TqSim() 模拟账号
 
             # 进行策略回测
             from datetime import date
@@ -212,10 +212,10 @@ class TqApi(object):
         Example::
 
             # m1901开多3手
-            from tqsdk import TqApi, TqSim
+            from tqsdk import TqApi
             from contextlib import closing
 
-            with closing(TqApi(TqSim())) as api:
+            with closing(TqApi()) as api:
                 api.insert_order(symbol="DCE.m1901", direction="BUY", offset="OPEN", volume=3)
         """
         if self._loop.is_running():
@@ -256,15 +256,15 @@ class TqApi(object):
         Example::
 
             # 获取 SHFE.cu1812 合约的报价
-            from tqsdk import TqApi, TqSim
+            from tqsdk import TqApi
 
-            api = TqApi(TqSim())
+            api = TqApi()
             quote = api.get_quote("SHFE.cu1812")
             print(quote.last_price)
             while api.wait_update():
                 print(quote.last_price)
 
-            #以上代码将输出
+            # 预计的输出是这样的:
             nan
             24575.0
             24575.0
@@ -320,10 +320,11 @@ class TqApi(object):
         Example1::
 
             # 获取 SHFE.cu1812 的1分钟线
-            from tqsdk import TqApi, TqSim
+            from tqsdk import TqApi
 
-            api = TqApi(TqSim())
+            api = TqApi()
             klines = api.get_kline_serial("SHFE.cu1812", 60)
+            print(klines.iloc[-1].close)
             while True:
                 api.wait_update()
                 print(klines.iloc[-1].close)
@@ -414,9 +415,9 @@ class TqApi(object):
         Example::
 
             # 获取 SHFE.cu1812 的Tick序列
-            from tqsdk import TqApi, TqSim
+            from tqsdk import TqApi
 
-            api = TqApi(TqSim())
+            api = TqApi()
             serial = api.get_tick_serial("SHFE.cu1812")
             while True:
                 api.wait_update()
@@ -482,9 +483,9 @@ class TqApi(object):
         Example::
 
             # 市价开3手 DCE.m1809 多仓
-            from tqsdk import TqApi, TqSim
+            from tqsdk import TqApi
 
-            api = TqApi(TqSim())
+            api = TqApi()
             order = api.insert_order(symbol="DCE.m1809", direction="BUY", offset="OPEN", volume=3)
             while True:
                 api.wait_update()
@@ -553,9 +554,9 @@ class TqApi(object):
         Example::
 
             # 挂价开3手 DCE.m1809 多仓, 如果价格变化则撤单重下，直到全部成交
-            from tqsdk import TqApi, TqSim
+            from tqsdk import TqApi
 
-            api = TqApi(TqSim())
+            api = TqApi()
             quote = api.get_quote("DCE.m1809")
             order = {}
 
@@ -604,9 +605,9 @@ class TqApi(object):
         Example::
 
             # 获取当前浮动盈亏
-            from tqsdk import TqApi, TqSim
+            from tqsdk import TqApi
 
-            api = TqApi(TqSim())
+            api = TqApi()
             account = api.get_account()
             print(account.float_profit)
 
@@ -639,9 +640,9 @@ class TqApi(object):
         Example::
 
             # 获取 DCE.m1809 当前浮动盈亏
-            from tqsdk import TqApi, TqSim
+            from tqsdk import TqApi
 
-            api = TqApi(TqSim())
+            api = TqApi()
             position = api.get_position("DCE.m1809")
             print(position.float_profit_long + position.float_profit_short)
             while api.wait_update():
@@ -679,9 +680,9 @@ class TqApi(object):
         Example::
 
             # 获取当前总挂单手数
-            from tqsdk import TqApi, TqSim
+            from tqsdk import TqApi
 
-            api = TqApi(TqSim())
+            api = TqApi()
             orders = api.get_order()
             while True:
                 api.wait_update()
@@ -744,9 +745,9 @@ class TqApi(object):
             * 天勤终端里策略日志窗口输出的内容由每次调用wait_update()时发出.
             * 由于存在网络延迟, 因此有数据更新不代表之前发出的所有请求都被处理了, 例如::
 
-                from tqsdk import TqApi, TqSim
+                from tqsdk import TqApi
 
-                api = TqApi(TqSim())
+                api = TqApi()
                 quote = api.get_quote("SHFE.cu1812")
                 api.wait_update()
                 print(quote.datetime)
@@ -813,9 +814,9 @@ class TqApi(object):
         Example::
 
             # 追踪 SHFE.cu1812 的最新价更新
-            from tqsdk import TqApi, TqSim
+            from tqsdk import TqApi
 
-            api = TqApi(TqSim())
+            api = TqApi()
             quote = api.get_quote("SHFE.cu1812")
             print(quote.last_price)
             while True:
@@ -868,9 +869,9 @@ class TqApi(object):
         Example::
 
             # 判断是否已经从服务器收到了最后 3000 根 SHFE.cu1812 的分钟线数据
-            from tqsdk import TqApi, TqSim
+            from tqsdk import TqApi
 
-            api = TqApi(TqSim())
+            api = TqApi()
             klines = api.get_kline_serial("SHFE.cu1812", 60, data_length=3000)
             while True:
                 api.wait_update()
@@ -899,13 +900,13 @@ class TqApi(object):
 
             # 一个简单的task
             import asyncio
-            from tqsdk import TqApi, TqSim
+            from tqsdk import TqApi
 
             async def hello():
                 await asyncio.sleep(3)
                 print("hello world")
 
-            api = TqApi(TqSim())
+            api = TqApi()
             api.create_task(hello())
             while True:
                 api.wait_update()
@@ -939,7 +940,7 @@ class TqApi(object):
         Example::
 
             # 获取 SHFE.cu1812 合约的报价
-            from tqsdk import TqApi, TqSim
+            from tqsdk import TqApi
 
             async def demo():
                 quote = api.get_quote("SHFE.cu1812")
@@ -947,7 +948,7 @@ class TqApi(object):
                     async for _ in update_chan:
                         print(quote.last_price)
 
-            api = TqApi(TqSim())
+            api = TqApi()
             api.create_task(demo())
             while True:
                 api.wait_update()
