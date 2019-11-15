@@ -12,7 +12,7 @@ from tqsdk.ta import MA
 '''
 
 api = TqApi()
-klines = api.get_kline_serial("SHFE.au1912", 24 * 60 * 60)
+klines = api.get_kline_serial("SHFE.au1910", 24 * 60 * 60)
 ma = MA(klines, 30)  # 使用tqsdk自带指标函数计算均线
 
 # 示例: 在附图中画一根绿色的ma指标线

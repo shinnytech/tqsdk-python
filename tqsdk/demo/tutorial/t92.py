@@ -11,7 +11,7 @@ from tqsdk import TqApi
 '''
 
 api = TqApi()
-klines = api.get_kline_serial("SHFE.au1912", 86400)
+klines = api.get_kline_serial("SHFE.cu1912", 86400)
 
 # 在主图中最后一根K线上画射线以标注需要的信号
 api.draw_line(klines, -1, klines.iloc[-1].close, -1, klines.iloc[-1].high, line_type="RAY", color=0xFFFF9900, width=3)
