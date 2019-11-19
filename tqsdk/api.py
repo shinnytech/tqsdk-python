@@ -15,6 +15,7 @@
 """
 __author__ = 'chengzhi'
 
+import re
 import json
 import uuid
 import sys
@@ -150,7 +151,8 @@ class TqApi(object):
             "ticks": {},
         }  # 记录已发出的请求
         self._serials = {}  # 记录所有数据序列
-        # 记录每个K线serial最后一次更新时 新K线 的生成条数. key:(主合约,(所有副合约),duration), value:更新条数。用于is_changing()中新K线生成的判定
+        # 记录所有(若有多个serial 则仅data_length不同, right_id相同)合约、周期相同的多合约K线中最大的更新数据范围
+        # key:(主合约,(所有副合约),duration), value:(K线的新数据中主合约最小的id, 主合约的right_id)。用于is_changing()中新K线生成的判定
         self._klines_update_length = {}
         self._data = Entity()  # 数据存储
         self._data["_path"] = []
@@ -298,9 +300,9 @@ class TqApi(object):
         Args:
             symbol (str/list of str): 指定合约代码或合约代码列表.
                                     * str: 一个合约代码
-                                    * list of str: 合约代码列表 (一次提取多个合约的K线并根据K线时间向第一个合约（主合约）对齐；
+                                    * list of str: 合约代码列表 (一次提取多个合约的K线并根据相同时间向第一个合约（主合约）对齐；
                                     本函数返回的序列中每一条K线都包含了订阅的所有主、副K线数据，
-                                    即：如果某条主K线存在不能对齐的副K线，则这一条K线被跳过，现象表现为主K线的数据不连续)
+                                    即：如果任意一个合约（无论主、副）在某个时刻没有数据，则该时刻的K线被跳过（即使其他合约在此时有K线），现象表现为主K线的数据不连续)
 
             duration_seconds (int): K线数据周期, 以秒为单位。例如: 1分钟线为60,1小时线为3600,日线为86400。\
             注意: 周期在日线以内时此参数可以任意填写, 在日线以上时只能是日线(86400)的整数倍
@@ -370,26 +372,21 @@ class TqApi(object):
         request = (tuple(symbol), duration_seconds, data_length, chart_id)  # request 中 symbols 为 tuple 序列
         serial = self._requests["klines"].get(request, None)
         chart_id = chart_id if chart_id is not None else self._generate_chart_id("realtime")
+        pack = {
+            "aid": "set_chart",
+            "chart_id": chart_id,
+            "ins_list": ",".join(symbol),
+            "duration": dur_id,
+            "view_width": data_length if len(symbol) == 1 else 8964,
+            # 如果同时订阅了两个以上合约K线，初始化数据时默认获取 1w 根K线(初始化完成后修改指令为设定长度)
+        }
         if serial is None or chart_id is not None:
-            self._send_pack({
-                "aid": "set_chart",
-                "chart_id": chart_id,
-                "ins_list": ",".join(symbol),
-                "duration": dur_id,
-                "view_width": data_length if len(symbol) == 1 else 8964,
-                # 如果同时订阅了两个以上合约K线，初始化数据时默认获取 1w 根K线(初始化完成后修改指令为设定长度)
-            })
+            self._send_pack(pack.copy())  # 注意：将数据权转移给TqChan时其所有权也随之转移，因pack还需要被用到，所以传入副本
         if serial is None:
             serial = self._init_serial([self._get_obj(self._data, ["klines", s, str(dur_id)]) for s in symbol],
                                        data_length, self._prototype["klines"]["*"]["*"]["data"]["@"])
             serial["chart"] = self._get_obj(self._data, ["charts", chart_id])  # 保存chart信息
-            serial["chart"].update({
-                "aid": "set_chart",
-                "chart_id": chart_id,
-                "ins_list": ",".join(symbol),
-                "duration": dur_id,
-                "view_width": data_length if len(symbol) == 1 else 8964,
-            })
+            serial["chart"].update(pack)
             self._requests["klines"][request] = serial
             self._serials[id(serial["df"])] = serial
         deadline = time.time() + 30
@@ -457,25 +454,20 @@ class TqApi(object):
         request = (symbol, data_length, chart_id)
         serial = self._requests["ticks"].get(request, None)
         chart_id = chart_id if chart_id is not None else self._generate_chart_id("realtime")
+        pack = {
+            "aid": "set_chart",
+            "chart_id": chart_id,
+            "ins_list": symbol,
+            "duration": 0,
+            "view_width": data_length,
+        }
         if serial is None or chart_id is not None:
-            self._send_pack({
-                "aid": "set_chart",
-                "chart_id": chart_id,
-                "ins_list": symbol,
-                "duration": 0,
-                "view_width": data_length,
-            })
+            self._send_pack(pack.copy())  # pack 的副本数据和所有权转移给TqChan
         if serial is None:
             serial = self._init_serial([self._get_obj(self._data, ["ticks", symbol])], data_length,
                                        self._prototype["ticks"]["*"]["data"]["@"])
             serial["chart"] = self._get_obj(self._data, ["charts", chart_id])
-            serial["chart"].update({
-                "aid": "set_chart",
-                "chart_id": chart_id,
-                "ins_list": symbol,
-                "duration": 0,
-                "view_width": data_length,
-            })
+            serial["chart"].update(pack)
             self._requests["ticks"][request] = serial
             self._serials[id(serial["df"])] = serial
         deadline = time.time() + 30
@@ -808,10 +800,14 @@ class TqApi(object):
         finally:
             self._diffs = self._pending_diffs
             self._pending_diffs = []
+            # 清空K线更新范围，避免在 wait_update 未更新K线时仍通过 is_changing 的判断
+            self._klines_update_length = {}
             for d in self._diffs:
                 self._merge_diff(self._data, d, self._prototype, False)
             for _, serial in self._serials.items():
-                if self.is_changing(serial["df"]):  # 检测到K线任何数据发生改变则更新serial的数据
+                # K线df的更新与原始数据、left_id、right_id、more_data、last_id相关，其中任何一个发生改变都应重新计算df
+                # 检测到K线或chart的任何数据发生改变则更新serial的数据
+                if self.is_changing(serial["df"]) or self.is_changing(serial["chart"]):
                     if len(serial["root"]) == 1:  # 订阅单个合约
                         self._update_serial_single(serial)
                     else:  # 订阅多个合约
@@ -874,18 +870,20 @@ class TqApi(object):
                     return False
                 else:  # 处理传入的为一个 copy 出的 DataFrame (与原 DataFrame 数据相同的另一个object)
                     duration = int(obj["duration"].iloc[0]) * 1000000000
-                    paths = [["klines", obj["symbol" + k[-1] if k[-1].isdigit() else "symbol"].iloc[0],
-                              str(duration)] if duration != 0 else ["ticks", obj["symbol"].iloc[0]] for k in obj.keys()
-                             if k.startswith("symbol")]
+                    paths = [
+                        ["klines", obj[k].iloc[0], str(duration)] if duration != 0 else ["ticks", obj["symbol"].iloc[0]]
+                        for k in obj.keys() if k.startswith("symbol")]
             elif isinstance(obj, pd.Series):
-                ins_list = [symbol for key, symbol in obj.items() if key.startswith("symbol")]
+                ins_list = [v for k, v in obj.items() if k.startswith("symbol")]
                 if len(ins_list) > 1:  # 如果是K线的Series
-                    # 处理情况：一根新K线数据在多个数据包中时diff中只有最后一个包的数据，则is_changing无法根据前面数据包中的字段来判断K线有更新，因此使用_klines_update_length记录/判定更新
-                    if key is None and self._klines_update_length[
-                        (ins_list[0], tuple(ins_list[1:]), obj["duration"] * 1000000000)] > 0:
+                    # 处理：一根新K线的数据被拆分到多个数据包中时 diff 中只有最后一个包的数据，
+                    # 则 is_changing 无法根据前面数据包中的字段来判断K线有更新(仅在生成多合约新K线时产生此问题),因此：用_klines_update_length记录/判定更新
+                    new_kline_range = self._klines_update_length.get(
+                        (ins_list[0], tuple(ins_list[1:]), obj["duration"] * 1000000000), (0, -1))
+                    if obj["id"] >= new_kline_range[0] and obj["id"] <= new_kline_range[0]:
                         return True
                 duration = int(obj["duration"]) * 1000000000
-                paths = [["klines", obj["symbol" + k[-1] if k[-1].isdigit() else "symbol"], str(duration), "data",
+                paths = [["klines", obj[k], str(duration), "data",
                           str(int(obj["id" + k[-1] if k[-1].isdigit() else "id"]))] if duration != 0 else ["ticks", obj[
                     "symbol"], "data", str(int(obj["id"]))] for k in obj.keys() if k.startswith("symbol")]
             else:
@@ -903,12 +901,14 @@ class TqApi(object):
                     for k in key:
                         if k not in obj.index:
                             continue
-                        if not k[-1].isdigit():
+                        m = re.match(r'.*?(\d+)$', k)  # 匹配key中的数字
+                        if m is None:  # 无数字
                             k_dict["0"] = k_dict.get("0", [])
                             k_dict["0"].append(k)
-                        else:
-                            k_dict[k[-1]] = k_dict.get(k[-1], [])
-                            k_dict[k[-1]].append(k[:-1])
+                        elif int(m.group(1)) < len(paths):
+                            m_k = m.group(1)
+                            k_dict[m_k] = k_dict.get(m_k, [])
+                            k_dict[m_k].append(k[:len(k) - len(m_k)])
                     for k_id, v in k_dict.items():
                         if self._is_key_exist(diff, paths[int(k_id)], v):
                             return True
@@ -1124,22 +1124,21 @@ class TqApi(object):
                        default if k != "datetime"] for i in range(last_id + 1 - width, last_id + 1)]))
 
         default_keys = ["id"] + [k for k in default.keys() if k != "datetime"]
-        columns = ["datetime", "symbol"] + default_keys
+        columns = ["datetime"] + default_keys
         for i in range(1, len(root_list)):
-            columns += [k + str(i) for k in default_keys] + ["symbol" + str(i)]
+            columns += [k + str(i) for k in default_keys]
         serial = {
             "root": root_list,
             "width": width,
             "default": default,
-            "array": np.array(
-                array, order="F"),
+            "array": np.array(array, order="F"),
 
             "init": False,  # 是否初始化完成. 完成状态: 订阅K线后已获取所有主、副K线的数据并填满df序列.
             "update_row": 0,  # 起始更新数据行
-            "all_attr": set(columns) | {"duration"},
+            "all_attr": set(columns) | {"symbol" + str(i) for i in range(1, len(root_list))} | {"symbol", "duration"},
             "extra_array": {},
         }
-        serial["df"] = pd.DataFrame(serial["array"], columns=[c for c in columns if not c.startswith("symbol")])
+        serial["df"] = pd.DataFrame(serial["array"], columns=columns)
         serial["df"]["symbol"] = root_list[0]["_path"][1]
         for i in range(1, len(root_list)):
             serial["df"]["symbol" + str(i)] = root_list[i]["_path"][1]
@@ -1148,9 +1147,6 @@ class TqApi(object):
             root_list[0]["_path"][-1]) // 1000000000
 
         ins_list = [root["_path"][1] for root in root_list]  # 合约列表
-        if root_list[0]["_path"][0] == ["klines"]:  # 如果初始化的是K线
-            # 初始截面数据不算做更新, 因此_klines_update_length（更新行数）初始化为0
-            self._klines_update_length[(ins_list[0], tuple(ins_list[1:]), int(root_list[0]["_path"][-1]))] = 0
         return serial
 
     def _update_serial_single(self, serial):
@@ -1205,7 +1201,6 @@ class TqApi(object):
         if not serial["init"]:  # 未初始化完成则进行初始化处理. init完成状态: 订阅K线后获取所有数据并填满df序列.
             update_row = serial["width"] - 1  # 起始更新数据行,局部变量
             current_id = right_id  # 当前数据指针
-            data_updated = False  # 数据是否有更新标志, 避免出现主合约与某副合约交易时间完全无重合的情况报错
             while current_id >= left_id and current_id >= 0 and update_row >= 0:  # 如果当前id >= left_id 且 数据尚未填满width长度
                 master_item = serial["root"][0]["data"].get(str(current_id), {})  # 主K线中 current_id 对应的数据
                 # array更新的一行数据: 填入主K线
@@ -1228,9 +1223,9 @@ class TqApi(object):
                     # 数据更新
                     array[update_row] = row_data
                     update_row -= 1
-                    data_updated = True
                 current_id -= 1
-            if data_updated:
+            # 当主合约与某副合约的交易时间完全无重合时不会更新数据。当 update_row 发生了改变，表示数据有更新，则将序列就绪标志转为 True
+            if update_row != serial["width"] - 1:
                 serial["init"] = True
                 serial["update_row"] = 0  # 若需发送数据给天勤，则发送所有数据
 
@@ -1245,12 +1240,14 @@ class TqApi(object):
             })
         else:  # 正常行情更新处理
             serial["update_row"] = serial["width"] - 1
-            # 每次行情更新初始化更新范围为0
-            self._klines_update_length[(ins_list[0], tuple(ins_list[1:]), serial["df"]["duration"][0] * 1000000000)] = 0
-            # 从已有数据的最后一个 last_id 到服务器发回的最新数据的 last_id: 每次循环更新一行
-            for i in range(int(array[-1, 1]), serial["root"][0].get("last_id", -1) + 1):
+            new_kline_range = None
+            # 从 left_id 或 已有数据的最后一个 last_id 到服务器发回的最新数据的 last_id: 每次循环更新一行。max: 避免数据更新过多时产生大量多余循环判断
+            for i in range(max(serial["chart"].get("left_id", -1), int(array[-1, 1])),
+                           serial["root"][0].get("last_id", -1) + 1):
                 # 如果某条主K线和某条副K线之间的 binding 映射数据存在: 则对应副K线数据也存在; 遍历与所有副K线的binding信息, 如果都存在, 则将此K线填入array保存.
                 master_item = serial["root"][0]["data"].get(str(i), {})  # 主K线数据
+                if len(master_item) == 0:  # 如果主合约K线数据还没有收到
+                    continue
                 # array更新的一行数据: 初始化填入主K线数据
                 row_data = [master_item["datetime"]] + [i] + [master_item[col] for col in serial["default"].keys() if
                                                               col != "datetime"]
@@ -1267,8 +1264,8 @@ class TqApi(object):
                     row_data += [tid] + [other_item[col] for col in serial["default"].keys() if col != "datetime"]
                 # 如果有新增K线, 则向上移动一行；循环的第一条数据为原序列最后一条数据, 只更新不shift
                 if tid != -1:
-                    if i < serial["root"][0].get("last_id", -1) + 1 and i != array[-1, 1]:
-                        array[0:serial["width"] - 1] = array[1:serial["width"]]
+                    if i != array[-1, 1]:  # 如果不是已有数据的最后一行，表示生成新K线，则向上移动一行
+                        array[0:serial["width"] - 1] = array[1:serial["width"]]  # shift 1
                         for ext in serial["extra_array"].values():
                             ext[0:serial["width"] - 1] = ext[1:serial["width"]]
                             if ext.dtype == np.float:
@@ -1282,11 +1279,17 @@ class TqApi(object):
                             else:
                                 ext[serial["width"] - 1:] = np.nan
                         # 修改 serial["update_row"] 以保证发送正确数序列给天勤
-                        serial["update_row"] = serial["update_row"] - 1 if serial["update_row"] >= 0 else 0
-                        self._klines_update_length[
-                            (ins_list[0], tuple(ins_list[1:]), serial["df"]["duration"][0] * 1000000000)] += 1
+                        serial["update_row"] = serial["update_row"] - 1 if serial["update_row"] > 0 else 0
+                        if new_kline_range is None:  # 记录第一条新K线的id
+                            new_kline_range = i
                     # 数据更新
                     array[serial["width"] - 1] = row_data
+            if new_kline_range is not None:
+                k = (ins_list[0], tuple(ins_list[1:]), serial["df"]["duration"][0] * 1000000000)
+                # 注: i 从 left_id 开始，shift最大长度为width，则必有：new_kline_range >= array[0,1]
+                self._klines_update_length[k] = (
+                    new_kline_range if not self._klines_update_length.get(k) else min(self._klines_update_length[k][0],
+                                                                                      new_kline_range), array[-1, 1])
 
     def _process_serial_extra_array(self, serial):
         for col in set(serial["df"].columns.values) - serial["all_attr"]:
