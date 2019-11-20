@@ -299,10 +299,22 @@ class TqApi(object):
 
         Args:
             symbol (str/list of str): 指定合约代码或合约代码列表.
-                                    * str: 一个合约代码
-                                    * list of str: 合约代码列表 (一次提取多个合约的K线并根据相同时间向第一个合约（主合约）对齐；
-                                    本函数返回的序列中每一条K线都包含了订阅的所有主、副K线数据，
-                                    即：如果任意一个合约（无论主、副）在某个时刻没有数据，则该时刻的K线被跳过（即使其他合约在此时有K线），现象表现为主K线的数据不连续)
+                * str: 一个合约代码
+                * list of str: 合约代码列表 （一次提取多个合约的K线并根据相同的时间向第一个合约（主合约）对齐)
+
+            关于获取多合约K线的说明：
+                1 主合约的字段名为原始K线数据字段，从第一个副合约开始，字段名在原始字段后加数字，如第一个副合约的开盘价为 "open1" , 第二个副合约的收盘价为 "close2"。
+
+                2 每条K线都包含了订阅的所有合约数据，即：如果任意一个合约（无论主、副）在某个时刻没有数据（即使其他合约在此时有数据）,\
+                    则不能对齐，此多合约K线在该时刻那条数据被跳过，现象表现为K线不连续（如主合约有夜盘，而副合约无夜盘，则生成的多合约K线无夜盘时间的数据）。
+
+                3 若设置了较大的序列长度参数，而所有可对齐的数据并没有这么多，则序列前面部分数据为NaN（这与获取单合约K线且数据不足序列长度时情况相似）。
+
+                4 若主合约与副合约的交易时间在所有合约数据中最晚一根K线时间开始往回的 8964*周期 时间段内完全不重合，则无法生成多合约K线，程序会报出获取数据超时异常。
+
+                5 **回测暂不支持** 获取多合约K线, 若在回测时获取多合约K线，程序会报出获取数据超时异常。
+
+                6 datetime、duration是所有合约公用的字段，则未单独为每个副合约增加一份副本，这两个字段使用原始字段名（即没有数字后缀）。
 
             duration_seconds (int): K线数据周期, 以秒为单位。例如: 1分钟线为60,1小时线为3600,日线为86400。\
             注意: 周期在日线以内时此参数可以任意填写, 在日线以上时只能是日线(86400)的整数倍
@@ -344,6 +356,21 @@ class TqApi(object):
             ...
 
         Example2::
+
+            # 获取按时间对齐的多合约K线
+            from tqsdk import TqApi
+
+            api = TqApi()
+            # 获取 CFFEX.IF1912 按照K线时间向 SHFE.au2006 对齐的K线
+            klines = api.get_kline_serial(["SHFE.au2006", "CFFEX.IF1912"], 5, data_length=10)
+            print("多合约K线：", klines.iloc[-1])
+            while True:
+                api.wait_update()
+                if api.is_changing(klines.iloc[-1], ["close1", "close"]):  # 判断任何一个收盘价是否有更新
+                    dif = klines.close1 - klines.close  # 使用对齐的K线直接计算价差等数据
+                    print("价差序列：", dif)
+
+        Example3::
 
             # 使用tqsdk自带的时间转换函数, 将最后一根K线的纳秒时间转换为 datetime.datetime 类型
             from tqsdk import tafunc
@@ -1113,7 +1140,7 @@ class TqApi(object):
 
     def _init_serial(self, root_list, width, default):
         last_id_list = [root.get("last_id", -1) for root in root_list]
-        # 主K线的array字段
+        # 主合约的array字段
         array = [[default["datetime"]] + [i] + [
             default[k] if i < 0 else TqApi._get_obj(root_list[0], ["data", str(i)], default)[k] for k in default if
             k != "datetime"] for i in range(last_id_list[0] + 1 - width, last_id_list[0] + 1)]
@@ -1133,7 +1160,7 @@ class TqApi(object):
             "default": default,
             "array": np.array(array, order="F"),
 
-            "init": False,  # 是否初始化完成. 完成状态: 订阅K线后已获取所有主、副K线的数据并填满df序列.
+            "init": False,  # 是否初始化完成. 完成状态: 订阅K线后已获取所有主、副合约的数据并填满df序列.
             "update_row": 0,  # 起始更新数据行
             "all_attr": set(columns) | {"symbol" + str(i) for i in range(1, len(root_list))} | {"symbol", "duration"},
             "extra_array": {},
@@ -1187,8 +1214,8 @@ class TqApi(object):
     def _update_serial_multi(self, serial):
         """处理订阅多个合约时K线的数据更新"""
         # 判断初始化数据是否接收完全, 否: 则返回
-        left_id = serial["chart"].get("left_id", -1)  # 主K线的left_id
-        right_id = serial["chart"].get("right_id", -1)  # 主K线的right_id
+        left_id = serial["chart"].get("left_id", -1)  # 主合约的left_id
+        right_id = serial["chart"].get("right_id", -1)  # 主合约的right_id
         if (left_id == -1 and right_id == -1) or serial["chart"].get("more_data", True):
             return
         for root in serial["root"]:
@@ -1202,8 +1229,8 @@ class TqApi(object):
             update_row = serial["width"] - 1  # 起始更新数据行,局部变量
             current_id = right_id  # 当前数据指针
             while current_id >= left_id and current_id >= 0 and update_row >= 0:  # 如果当前id >= left_id 且 数据尚未填满width长度
-                master_item = serial["root"][0]["data"].get(str(current_id), {})  # 主K线中 current_id 对应的数据
-                # array更新的一行数据: 填入主K线
+                master_item = serial["root"][0]["data"].get(str(current_id), {})  # 主合约中 current_id 对应的数据
+                # 此次更新的一行array初始化填入主合约数据
                 row_data = [master_item["datetime"]] + [current_id] + [master_item[col] for col in
                                                                        serial["default"].keys() if col != "datetime"]
                 tid = -1
@@ -1212,10 +1239,10 @@ class TqApi(object):
                     tid = serial["root"][0].get("binding", {}).get(symbol, {}).get(str(current_id), -1)
                     if tid == -1:
                         break
-                    other_item = serial["root"][ins_list.index(symbol)]["data"].get(str(tid))  # 取出tid对应的副K线数据
+                    other_item = serial["root"][ins_list.index(symbol)]["data"].get(str(tid))  # 取出tid对应的副合约数据
                     if other_item is None:
                         # 1 避免初始化时主合约和binding都收到但副合约数据尚未收到报错
-                        # 2 使用break而非return: 避免夜盘时有binding数据但其对应的副K线需到白盘才有数据（即等待时间过长导致报超时错误）
+                        # 2 使用break而非return: 避免夜盘时有binding数据但其对应的副合约需到白盘才有数据（即等待时间过长导致报超时错误）
                         tid = -1
                         break
                     row_data += [tid] + [other_item[col] for col in serial["default"].keys() if col != "datetime"]
@@ -1244,11 +1271,11 @@ class TqApi(object):
             # 从 left_id 或 已有数据的最后一个 last_id 到服务器发回的最新数据的 last_id: 每次循环更新一行。max: 避免数据更新过多时产生大量多余循环判断
             for i in range(max(serial["chart"].get("left_id", -1), int(array[-1, 1])),
                            serial["root"][0].get("last_id", -1) + 1):
-                # 如果某条主K线和某条副K线之间的 binding 映射数据存在: 则对应副K线数据也存在; 遍历与所有副K线的binding信息, 如果都存在, 则将此K线填入array保存.
-                master_item = serial["root"][0]["data"].get(str(i), {})  # 主K线数据
+                # 如果某条主K线和某条副K线之间的 binding 映射数据存在: 则对应副合约数据也存在; 遍历主合约与所有副合约的binding信息, 如果都存在, 则将此K线填入array保存.
+                master_item = serial["root"][0]["data"].get(str(i), {})  # 主合约数据
                 if len(master_item) == 0:  # 如果主合约K线数据还没有收到
                     continue
-                # array更新的一行数据: 初始化填入主K线数据
+                # array更新的一行数据: 初始化填入主合约数据
                 row_data = [master_item["datetime"]] + [i] + [master_item[col] for col in serial["default"].keys() if
                                                               col != "datetime"]
                 tid = -1
@@ -1257,7 +1284,7 @@ class TqApi(object):
                     tid = (serial["root"][0].get("binding", {}).get(symbol, {}).get(str(i), -1))
                     if tid == -1:
                         break
-                    # 取出tid对应的副K线数据
+                    # 取出tid对应的副合约数据
                     other_item = serial["root"][ins_list.index(symbol)]["data"].get(str(tid))
                     if other_item is None:
                         return
@@ -1301,7 +1328,7 @@ class TqApi(object):
         serial["all_attr"] = set(serial["df"].columns.values)
         if serial["update_row"] == serial["width"]:
             return
-        symbol = serial["root"][0]["_path"][1]  # 主K线的symbol，标志绘图的主K线
+        symbol = serial["root"][0]["_path"][1]  # 主合约的symbol，标志绘图的主合约
         duration = 0 if serial["root"][0]["_path"][0] == "ticks" else int(serial["root"][0]["_path"][-1])
         cols = list(serial["extra_array"].keys())
         # 归并数据序列
