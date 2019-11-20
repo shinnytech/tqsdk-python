@@ -119,6 +119,12 @@ K线数据
 
     klines = api.get_kline_serial("SHFE.cu1812", 10)  # 获取SHFE.cu1812合约的10秒K线
 
+获取按照时间对齐的多合约K线::
+
+    klines = api.get_kline_serial(["SHFE.au1912", "SHFE.au2006"], 5)  # 获取SHFE.au2006向SHFE.au1912对齐的K线
+
+详细使用方法及说明请见 :py:meth:`~tqsdk.api.TqApi.get_kline_serial` 函数使用说明。
+
 :py:meth:`~tqsdk.api.TqApi.get_kline_serial` 的返回值是一个 pandas.DataFrame, 包含以下列::
 
     id: int, 1234 (k线序列号)

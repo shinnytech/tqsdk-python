@@ -96,6 +96,12 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 
 这部分的完整示例程序请见 :ref:`tutorial_t30` .
 
+我们也可以通过传入一个合约列表作为参数，来获取包含多个合约数据的K线::
+
+    klines = api.get_kline_serial(["SHFE.au1912", "SHFE.au2006"], 5)  # 获取SHFE.au2006向SHFE.au1912对齐的K线
+
+详细使用方法及说明请见 :py:meth:`~tqsdk.api.TqApi.get_kline_serial` 函数说明。
+
 到这里为止, 你已经知道了如何获取实时行情和K线数据, 下面一段将介绍如何访问你的交易账户并发送交易指令
 
 
