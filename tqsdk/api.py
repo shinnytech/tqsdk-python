@@ -978,6 +978,11 @@ class TqApi(object):
     def _setup_connection(self):
         """初始化"""
 
+        # 如果处于回测模式则将帐号转为模拟帐号，并直接连接 openmd
+        if self._backtest:
+            if not isinstance(self._account, TqSim):
+                self._account = TqSim()
+
         # 与天勤配合
         tq_send_chan, tq_recv_chan = tqhelper.link_tq(self)
 
