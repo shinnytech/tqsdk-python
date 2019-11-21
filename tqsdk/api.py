@@ -153,7 +153,7 @@ class TqApi(object):
         self._serials = {}  # 记录所有数据序列
         # 记录所有(若有多个serial 则仅data_length不同, right_id相同)合约、周期相同的多合约K线中最大的更新数据范围
         # key:(主合约,(所有副合约),duration), value:(K线的新数据中主合约最小的id, 主合约的right_id)。用于is_changing()中新K线生成的判定
-        self._klines_update_length = {}
+        self._klines_update_range = {}
         self._data = Entity()  # 数据存储
         self._data["_path"] = []
         self._data["_listener"] = weakref.WeakSet()
@@ -828,12 +828,13 @@ class TqApi(object):
             self._diffs = self._pending_diffs
             self._pending_diffs = []
             # 清空K线更新范围，避免在 wait_update 未更新K线时仍通过 is_changing 的判断
-            self._klines_update_length = {}
+            self._klines_update_range = {}
             for d in self._diffs:
                 self._merge_diff(self._data, d, self._prototype, False)
             for _, serial in self._serials.items():
                 # K线df的更新与原始数据、left_id、right_id、more_data、last_id相关，其中任何一个发生改变都应重新计算df
-                # 检测到K线或chart的任何数据发生改变则更新serial的数据
+                # 注：订阅某K线后再订阅合约代码、周期相同但长度更短的K线时, 服务器不会再发送已有数据到客户端，即chart发生改变但内存中原始数据未改变。
+                # 检测到K线数据或chart的任何字段发生改变则更新serial的数据
                 if self.is_changing(serial["df"]) or self.is_changing(serial["chart"]):
                     if len(serial["root"]) == 1:  # 订阅单个合约
                         self._update_serial_single(serial)
@@ -904,15 +905,18 @@ class TqApi(object):
                 ins_list = [v for k, v in obj.items() if k.startswith("symbol")]
                 if len(ins_list) > 1:  # 如果是K线的Series
                     # 处理：一根新K线的数据被拆分到多个数据包中时 diff 中只有最后一个包的数据，
-                    # 则 is_changing 无法根据前面数据包中的字段来判断K线有更新(仅在生成多合约新K线时产生此问题),因此：用_klines_update_length记录/判定更新
-                    new_kline_range = self._klines_update_length.get(
-                        (ins_list[0], tuple(ins_list[1:]), obj["duration"] * 1000000000), (0, -1))
-                    if obj["id"] >= new_kline_range[0] and obj["id"] <= new_kline_range[0]:
+                    # 则 is_changing 无法根据前面数据包中的字段来判断K线有更新(仅在生成多合约新K线时产生此问题),因此：用_klines_update_range记录/判定更新
+                    new_kline_range = self._klines_update_range.get(
+                        (ins_list[0], tuple(ins_list[1:]), obj["duration"] * 1000000000), (0, 0))
+                    if obj["id"] >= new_kline_range[0] and obj["id"] < new_kline_range[1]:  # 保持左闭右开规范
                         return True
                 duration = int(obj["duration"]) * 1000000000
-                paths = [["klines", obj[k], str(duration), "data",
-                          str(int(obj["id" + k[-1] if k[-1].isdigit() else "id"]))] if duration != 0 else ["ticks", obj[
-                    "symbol"], "data", str(int(obj["id"]))] for k in obj.keys() if k.startswith("symbol")]
+                paths = []
+                for i in range(0, len(ins_list)):
+                    # pandas的key值序列会保持固定顺序, 则ins_list[i]对应的是"id"+str(i)，否则不成立。 todo:增加测试用例以保证其顺序一致，若不再顺序一致则修改此处用法
+                    paths.append(["klines", ins_list[i], str(duration), "data",
+                                  str(int(obj["id" + str(i) if i != 0 else "id"]))] if duration != 0 else ["ticks", obj[
+                        "symbol"], "data", str(int(obj["id"]))])
             else:
                 paths = obj["_path"]
         except (KeyError, IndexError):
@@ -930,12 +934,12 @@ class TqApi(object):
                             continue
                         m = re.match(r'.*?(\d+)$', k)  # 匹配key中的数字
                         if m is None:  # 无数字
-                            k_dict["0"] = k_dict.get("0", [])
-                            k_dict["0"].append(k)
+                            k_dict.setdefault(0, [])
+                            k_dict[0].append(k)
                         elif int(m.group(1)) < len(paths):
-                            m_k = m.group(1)
+                            m_k = int(m.group(1))
                             k_dict[m_k] = k_dict.get(m_k, [])
-                            k_dict[m_k].append(k[:len(k) - len(m_k)])
+                            k_dict[m_k].append(k.rstrip(str(m_k)))
                     for k_id, v in k_dict.items():
                         if self._is_key_exist(diff, paths[int(k_id)], v):
                             return True
@@ -1146,14 +1150,12 @@ class TqApi(object):
     def _init_serial(self, root_list, width, default):
         last_id_list = [root.get("last_id", -1) for root in root_list]
         # 主合约的array字段
-        array = [[default["datetime"]] + [i] + [
-            default[k] if i < 0 else TqApi._get_obj(root_list[0], ["data", str(i)], default)[k] for k in default if
-            k != "datetime"] for i in range(last_id_list[0] + 1 - width, last_id_list[0] + 1)]
+        array = [[default["datetime"]] + [i] + [default[k] for k in default if k != "datetime"] for i in
+                 range(last_id_list[0] + 1 - width, last_id_list[0] + 1)]
         for last_id in last_id_list[1:]:
             # 将多个列横向合并
-            array = np.hstack((array, [
-                [i] + [default[k] if i < 0 else TqApi._get_obj(root_list[0], ["data", str(i)], default)[k] for k in
-                       default if k != "datetime"] for i in range(last_id + 1 - width, last_id + 1)]))
+            array = np.hstack((array, [[i] + [default[k] for k in default if k != "datetime"] for i in
+                                       range(last_id + 1 - width, last_id + 1)]))
 
         default_keys = ["id"] + [k for k in default.keys() if k != "datetime"]
         columns = ["datetime"] + default_keys
@@ -1164,7 +1166,6 @@ class TqApi(object):
             "width": width,
             "default": default,
             "array": np.array(array, order="F"),
-
             "init": False,  # 是否初始化完成. 完成状态: 订阅K线后已获取所有主、副合约的数据并填满df序列.
             "update_row": 0,  # 起始更新数据行
             "all_attr": set(columns) | {"symbol" + str(i) for i in range(1, len(root_list))} | {"symbol", "duration"},
@@ -1177,8 +1178,6 @@ class TqApi(object):
 
         serial["df"]["duration"] = 0 if root_list[0]["_path"][0] == "ticks" else int(
             root_list[0]["_path"][-1]) // 1000000000
-
-        ins_list = [root["_path"][1] for root in root_list]  # 合约列表
         return serial
 
     def _update_serial_single(self, serial):
@@ -1234,7 +1233,7 @@ class TqApi(object):
             update_row = serial["width"] - 1  # 起始更新数据行,局部变量
             current_id = right_id  # 当前数据指针
             while current_id >= left_id and current_id >= 0 and update_row >= 0:  # 如果当前id >= left_id 且 数据尚未填满width长度
-                master_item = serial["root"][0]["data"].get(str(current_id), {})  # 主合约中 current_id 对应的数据
+                master_item = serial["root"][0]["data"][str(current_id)]  # 主合约中 current_id 对应的数据
                 # 此次更新的一行array初始化填入主合约数据
                 row_data = [master_item["datetime"]] + [current_id] + [master_item[col] for col in
                                                                        serial["default"].keys() if col != "datetime"]
@@ -1273,13 +1272,12 @@ class TqApi(object):
         else:  # 正常行情更新处理
             serial["update_row"] = serial["width"] - 1
             new_kline_range = None
+            new_data_index = serial["width"] - 1  # 记录更新数据位置
             # 从 left_id 或 已有数据的最后一个 last_id 到服务器发回的最新数据的 last_id: 每次循环更新一行。max: 避免数据更新过多时产生大量多余循环判断
             for i in range(max(serial["chart"].get("left_id", -1), int(array[-1, 1])),
                            serial["root"][0].get("last_id", -1) + 1):
                 # 如果某条主K线和某条副K线之间的 binding 映射数据存在: 则对应副合约数据也存在; 遍历主合约与所有副合约的binding信息, 如果都存在, 则将此K线填入array保存.
-                master_item = serial["root"][0]["data"].get(str(i), {})  # 主合约数据
-                if len(master_item) == 0:  # 如果主合约K线数据还没有收到
-                    continue
+                master_item = serial["root"][0]["data"][str(i)]  # 主合约数据
                 # array更新的一行数据: 初始化填入主合约数据
                 row_data = [master_item["datetime"]] + [i] + [master_item[col] for col in serial["default"].keys() if
                                                               col != "datetime"]
@@ -1297,31 +1295,36 @@ class TqApi(object):
                 # 如果有新增K线, 则向上移动一行；循环的第一条数据为原序列最后一条数据, 只更新不shift
                 if tid != -1:
                     if i != array[-1, 1]:  # 如果不是已有数据的最后一行，表示生成新K线，则向上移动一行
-                        array[0:serial["width"] - 1] = array[1:serial["width"]]  # shift 1
-                        for ext in serial["extra_array"].values():
-                            ext[0:serial["width"] - 1] = ext[1:serial["width"]]
-                            if ext.dtype == np.float:
-                                ext[serial["width"] - 1:] = np.nan
-                            elif ext.dtype == np.object:
-                                ext[serial["width"] - 1:] = None
-                            elif ext.dtype == np.int:
-                                ext[serial["width"] - 1:] = 0
-                            elif ext.dtype == np.bool:
-                                ext[serial["width"] - 1:] = False
-                            else:
-                                ext[serial["width"] - 1:] = np.nan
+                        new_data_index = new_data_index + 1
                         # 修改 serial["update_row"] 以保证发送正确数序列给天勤
                         serial["update_row"] = serial["update_row"] - 1 if serial["update_row"] > 0 else 0
                         if new_kline_range is None:  # 记录第一条新K线的id
                             new_kline_range = i
                     # 数据更新
-                    array[serial["width"] - 1] = row_data
-            if new_kline_range is not None:
+                    array[new_data_index % serial["width"]] = row_data
+            if new_kline_range is not None:  # 有新K线生成
+                array[:] = np.roll(array, serial["width"] - (new_data_index % serial["width"]) - 1, axis=0)[:]
+
+                remain = max(2 * serial["width"] - 1 - new_data_index, 0)
+                for ext in serial["extra_array"].values():
+                    ext[:remain] = ext[serial["width"] - remain:]
+                    if ext.dtype == np.float:
+                        ext[remain:] = np.nan
+                    elif ext.dtype == np.object:
+                        ext[remain:] = None
+                    elif ext.dtype == np.int:
+                        ext[remain:] = 0
+                    elif ext.dtype == np.bool:
+                        ext[remain:] = False
+                    else:
+                        ext[remain:] = np.nan
+
                 k = (ins_list[0], tuple(ins_list[1:]), serial["df"]["duration"][0] * 1000000000)
                 # 注: i 从 left_id 开始，shift最大长度为width，则必有：new_kline_range >= array[0,1]
-                self._klines_update_length[k] = (
-                    new_kline_range if not self._klines_update_length.get(k) else min(self._klines_update_length[k][0],
-                                                                                      new_kline_range), array[-1, 1])
+                self._klines_update_range[k] = (
+                    new_kline_range if not self._klines_update_range.get(k) else min(self._klines_update_range[k][0],
+                                                                                     new_kline_range),
+                    array[-1, 1] + 1)  # array[-1, 1] + 1： 保持左闭右开规范
 
     def _process_serial_extra_array(self, serial):
         for col in set(serial["df"].columns.values) - serial["all_attr"]:
