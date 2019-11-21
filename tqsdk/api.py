@@ -929,7 +929,7 @@ class TqApi(object):
             return False
         for diff in self._diffs:
             # 如果传入key：生成一个dict（key:序号，value: 字段）, 遍历这个dict并在_is_key_exist()判断key是否存在
-            if isinstance(obj, pd.DataFrame) or isinstance(obj, pd.Series) and len(key) != 0:
+            if (isinstance(obj, pd.DataFrame) or isinstance(obj, pd.Series)) and len(key) != 0:
                 k_dict = {}
                 for k in key:
                     if k not in obj.index:
