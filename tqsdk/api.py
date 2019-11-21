@@ -912,11 +912,17 @@ class TqApi(object):
                         return True
                 duration = int(obj["duration"]) * 1000000000
                 paths = []
-                for i in range(0, len(ins_list)):
-                    # pandas的key值序列会保持固定顺序, 则ins_list[i]对应的是"id"+str(i)，否则不成立。 todo:增加测试用例以保证其顺序一致，若不再顺序一致则修改此处用法
-                    paths.append(["klines", ins_list[i], str(duration), "data",
-                                  str(int(obj["id" + str(i) if i != 0 else "id"]))] if duration != 0 else ["ticks", obj[
-                        "symbol"], "data", str(int(obj["id"]))])
+                if duration != 0:
+                    for i in range(0, len(ins_list)):
+                        # pandas的key值序列会保持固定顺序, 则ins_list[i]对应的是"id"+str(i)，否则不成立。 todo:增加测试用例以保证其顺序一致，若不再顺序一致则修改此处用法
+                        id = "id" + str(i) if i != 0 else "id"
+                        if id in obj.keys():
+                            paths.append(["klines", ins_list[i], str(duration), "data", str(int(obj[id]))])
+                        else:
+                            paths.append(["klines", ins_list[i], str(duration), "data", str(-1)])
+                else:
+                    paths.append(["ticks", obj["symbol"], "data", str(int(obj["id"]))])
+
             else:
                 paths = obj["_path"]
         except (KeyError, IndexError):
@@ -932,16 +938,14 @@ class TqApi(object):
                     for k in key:
                         if k not in obj.index:
                             continue
-                        m = re.match(r'.*?(\d+)$', k)  # 匹配key中的数字
+                        m = re.match(r'(.*?)(\d+)$', k)  # 匹配key中的数字
                         if m is None:  # 无数字
-                            k_dict.setdefault(0, [])
-                            k_dict[0].append(k)
-                        elif int(m.group(1)) < len(paths):
-                            m_k = int(m.group(1))
-                            k_dict[m_k] = k_dict.get(m_k, [])
-                            k_dict[m_k].append(k.rstrip(str(m_k)))
+                            k_dict.setdefault(0, []).append(k)
+                        elif int(m.group(2)) < len(paths):
+                            m_k = int(m.group(2))
+                            k_dict.setdefault(m_k, []).append(m.group(1))
                     for k_id, v in k_dict.items():
-                        if self._is_key_exist(diff, paths[int(k_id)], v):
+                        if self._is_key_exist(diff, paths[k_id], v):
                             return True
             else:
                 if self._is_key_exist(diff, paths, key):
