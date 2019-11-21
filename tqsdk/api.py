@@ -915,9 +915,9 @@ class TqApi(object):
                 if duration != 0:
                     for i in range(0, len(ins_list)):
                         # pandas的key值序列会保持固定顺序, 则ins_list[i]对应的是"id"+str(i)，否则不成立。 todo:增加测试用例以保证其顺序一致，若不再顺序一致则修改此处用法
-                        id = "id" + str(i) if i != 0 else "id"
-                        if id in obj.keys():
-                            paths.append(["klines", ins_list[i], str(duration), "data", str(int(obj[id]))])
+                        key_id = "id" + str(i) if i != 0 else "id"
+                        if key_id in obj.keys():
+                            paths.append(["klines", ins_list[i], str(duration), "data", str(int(obj[key_id]))])
                         else:
                             paths.append(["klines", ins_list[i], str(duration), "data", str(-1)])
                 else:
