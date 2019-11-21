@@ -924,32 +924,29 @@ class TqApi(object):
                     paths.append(["ticks", obj["symbol"], "data", str(int(obj["id"]))])
 
             else:
-                paths = obj["_path"]
+                paths = [obj["_path"]]
         except (KeyError, IndexError):
             return False
         for diff in self._diffs:
-            if isinstance(obj, pd.DataFrame) or isinstance(obj, pd.Series):
-                if len(key) == 0:  # 如果没有传入key：遍历所有path
-                    for path in paths:
-                        if self._is_key_exist(diff, path, key):
-                            return True
-                else:  # 如果传入key：生成一个dict（key:序号，value: 字段）, 循环这个dict来填写 _is_key_exist()
-                    k_dict = {}
-                    for k in key:
-                        if k not in obj.index:
-                            continue
-                        m = re.match(r'(.*?)(\d+)$', k)  # 匹配key中的数字
-                        if m is None:  # 无数字
-                            k_dict.setdefault(0, []).append(k)
-                        elif int(m.group(2)) < len(paths):
-                            m_k = int(m.group(2))
-                            k_dict.setdefault(m_k, []).append(m.group(1))
-                    for k_id, v in k_dict.items():
-                        if self._is_key_exist(diff, paths[k_id], v):
-                            return True
-            else:
-                if self._is_key_exist(diff, paths, key):
-                    return True
+            # 如果传入key：生成一个dict（key:序号，value: 字段）, 遍历这个dict并在_is_key_exist()判断key是否存在
+            if isinstance(obj, pd.DataFrame) or isinstance(obj, pd.Series) and len(key) != 0:
+                k_dict = {}
+                for k in key:
+                    if k not in obj.index:
+                        continue
+                    m = re.match(r'(.*?)(\d+)$', k)  # 匹配key中的数字
+                    if m is None:  # 无数字
+                        k_dict.setdefault(0, []).append(k)
+                    elif int(m.group(2)) < len(paths):
+                        m_k = int(m.group(2))
+                        k_dict.setdefault(m_k, []).append(m.group(1))
+                for k_id, v in k_dict.items():
+                    if self._is_key_exist(diff, paths[k_id], v):
+                        return True
+            else:  # 如果没有传入key：遍历所有path
+                for path in paths:
+                    if self._is_key_exist(diff, path, key):
+                        return True
         return False
 
     # ----------------------------------------------------------------------
