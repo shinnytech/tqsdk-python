@@ -6,7 +6,7 @@ python:
 
 install:
   - pip install -r requirements.txt
-  - pip install autodocsumm sphinx_rtd_theme
+  - pip install autodocsumm sphinx_rtd_theme jieba
 
 script:
   - PYTHONHASHSEED=32 TZ=Asia/Shanghai pytest
