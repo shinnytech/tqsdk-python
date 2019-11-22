@@ -1146,6 +1146,10 @@ class TqApi(object):
                 "change": None,
                 "change_percent": None,
                 "expired": v["expired"],
+                "trading_time": v.get("trading_time"),
+                "expire_datetime": v.get("expire_datetime"),
+                "delivery_month": v.get("delivery_month"),
+                "delivery_year": v.get("delivery_year"),
             } for k, v in rsp.json().items()
         }
 
