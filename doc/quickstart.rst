@@ -30,6 +30,10 @@
 
     pip install tqsdk
 
+但是由于 `pip` 使用的是国外的服务器，普通用户往往下载速度过慢或不稳定，对于使用 `pip` 命令下载速度较慢的用户，我们推荐采用切换国内源的方式安装::
+
+    pip install tqsdk -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host=mirrors.aliyun.com
+
 同时我们也提供了天勤终端和 Vs Code 插件版，方便有需求的用户配合可视化界面使用，详情请参考 :ref:`tq_quickstart` , :ref:`vscode` 
 
 
