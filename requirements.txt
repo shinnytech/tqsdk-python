@@ -6,3 +6,4 @@ aiohttp
 pysimplegui
 matplotlib
 mplcursors
+simplejson
