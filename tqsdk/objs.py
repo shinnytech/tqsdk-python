@@ -2,11 +2,16 @@
 #:  -*- coding: utf-8 -*-
 __author__ = 'chengzhi'
 
+import weakref
 from collections.abc import MutableMapping
 import copy
 
 
 class Entity(MutableMapping):
+    def _instance_entity(self, path):
+        self._path = path
+        self._listener = weakref.WeakSet()
+
     def __setitem__(self, key, value):
         return self.__dict__.__setitem__(key, value)
 
@@ -102,6 +107,35 @@ class Quote(Entity):
         self.change_percent = float("nan")
         #: 合约是否已下市
         self.expired = False
+        #: 交易时间段
+        self.trading_time = TradingTime(self._api)
+        #: 到期具体日
+        self.expire_datetime = float("nan")
+        #: 到期月
+        self.delivery_month = 0
+        #: 到期年
+        self.delivery_year = 0
+
+    def _instance_entity(self, path):
+        super(Quote, self)._instance_entity(path)
+        self.trading_time = copy.copy(self.trading_time)
+        self.trading_time._instance_entity(path + ["trading_time"])
+
+
+class TradingTime(Entity):
+    """ TradingTime 是一个交易时间对象
+
+        (每个连续的交易时间段是一个列表，包含两个字符串元素，分别为这个时间段的起止点)"""
+
+    def __init__(self, api):
+        self._api = api
+        #: 白盘
+        self.day = []
+        #: 夜盘（注意：本字段中过了 24：00 的时间则在其基础往上加，如凌晨1点为 '25:00:00' ）
+        self.night = []
+
+    def _instance_entity(self, path):
+        super(TradingTime, self)._instance_entity(path)
 
 
 class Kline(Entity):

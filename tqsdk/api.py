@@ -1687,14 +1687,15 @@ class TqApi(object):
     @staticmethod
     def _get_obj(root, path, default=None):
         """获取业务数据"""
-        # todo: support nested dict for default value
         d = root
         for i in range(len(path)):
             if path[i] not in d:
-                dv = Entity() if i != len(path) - 1 or default is None else copy.copy(default)
-                if isinstance(dv, Entity):
-                    dv["_path"] = d["_path"] + [path[i]]
-                    dv["_listener"] = weakref.WeakSet()
+                if i != len(path) - 1 or default is None:
+                    dv = Entity()
+                else:
+                    dv = copy.copy(default)
+                dv._instance_entity(d["_path"] + [path[i]])
+
                 d[path[i]] = dv
             d = d[path[i]]
         return d
