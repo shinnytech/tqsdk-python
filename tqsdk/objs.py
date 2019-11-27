@@ -134,9 +134,6 @@ class TradingTime(Entity):
         #: 夜盘（注意：本字段中过了 24：00 的时间则在其基础往上加，如凌晨1点为 '25:00:00' ）
         self.night = []
 
-    def _instance_entity(self, path):
-        super(TradingTime, self)._instance_entity(path)
-
 
 class Kline(Entity):
     """ Kline 是一个K线对象 """

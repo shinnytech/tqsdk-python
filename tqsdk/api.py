@@ -155,8 +155,7 @@ class TqApi(object):
         # key:(主合约,(所有副合约),duration), value:(K线的新数据中主合约最小的id, 主合约的right_id)。用于is_changing()中新K线生成的判定
         self._klines_update_range = {}
         self._data = Entity()  # 数据存储
-        self._data["_path"] = []
-        self._data["_listener"] = weakref.WeakSet()
+        self._data._instance_entity([])
         self._diffs = []  # 自上次wait_update返回后收到更新数据的数组
         self._pending_diffs = []  # 从网络上收到的待处理的 diffs, 只在 wait_update 函数执行过程中才可能为非空
         self._prototype = self._gen_prototype()  # 各业务数据的原型, 用于决定默认值及将收到的数据转为特定的类型
@@ -1476,8 +1475,7 @@ class TqApi(object):
                         un_processed = True  # 重连后数据未处理完
                         t_pending_diffs = []
                         t_data = Entity()
-                        t_data["_path"] = []
-                        t_data["_listener"] = weakref.WeakSet()
+                        t_data._instance_entity([])
 
                         if url == self._md_url:  # 获取重连时需发送的所有 set_chart 指令包
                             set_chart_packs = {k: v for k, v in resend_request.items() if v.get("aid") == "set_chart"}

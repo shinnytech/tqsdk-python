@@ -74,8 +74,7 @@ class TqBacktest(object):
         self.md_recv_chan = md_recv_chan
         self.pending_peek = False
         self.data = Entity()  # 数据存储
-        self.data["_path"] = []
-        self.data["_listener"] = weakref.WeakSet()
+        self.data._instance_entity([])
         self.serials = {}  # 所有原始数据序列
         self.quotes = {}
         self.diffs = []
