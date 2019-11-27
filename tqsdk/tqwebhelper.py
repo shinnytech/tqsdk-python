@@ -167,7 +167,7 @@ class TqWebHelper(object):
 
     async def link_wsserver(self):
         async def lambda_connection_handler(conn, path): await self.connection_handler(conn)
-        async with websockets.serve(lambda_connection_handler, host='0.0.0.0', port=0) as server:
+        async with websockets.serve(lambda_connection_handler, host='127.0.0.1', port=0) as server:
             port = server.server.sockets[0].getsockname()[1]
             await self.web_port_chan.send({'port': port})
             await asyncio.sleep(100000000000)
@@ -198,7 +198,7 @@ class TqWebHelper(object):
         # init http server handlers
         ins_url = self.api._ins_url
         md_url = self.api._md_url
-        ws_url = 'ws://0.0.0.0:' + str(ws_port['port'])
+        ws_url = 'ws://127.0.0.1:' + str(ws_port['port'])
         app = web.Application()
         app.router.add_get(path='/url',
                            handler=lambda request: TqWebHelper.httpserver_url_handler(ins_url, md_url, ws_url))
@@ -207,7 +207,7 @@ class TqWebHelper(object):
         runner = web.AppRunner(app)
         await runner.setup()
         server_socket = socket.socket()
-        server_socket.bind(('0.0.0.0', 0))
+        server_socket.bind(('127.0.0.1', 0))
         address = server_socket.getsockname()
         site = web.SockSite(runner, server_socket)
         await site.start()
