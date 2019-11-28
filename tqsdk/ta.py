@@ -8,7 +8,7 @@ tqsdk.ta 模块包含了一批常用的技术指标计算函数
 
 import numpy as np
 import pandas as pd
-import numba
+# import numba
 from tqsdk import tafunc
 
 
@@ -262,7 +262,7 @@ def MACD(df, short, long, m):
     return new_df
 
 
-@numba.njit
+# @numba.njit
 def _sar(open, high, low, close, range_high, range_low, n, step, maximum):
     n = max(np.sum(np.isnan(range_high)), np.sum(np.isnan(range_low))) + 2
     sar = np.empty_like(close)

@@ -46,7 +46,8 @@ setuptools.setup(
     packages=setuptools.find_packages(exclude=["tqsdk.test", "tqsdk.tq", "tqsdk.tq.*", "tqsdk.demo.tq", "tqsdk.demo.tq.*"]),
     zip_safe=False,
     python_requires='>=3.6',
-    install_requires=["websockets>=6.0", "requests", "numpy", "pandas>=0.24.0", "numba"],
+    # install_requires=["websockets>=6.0", "requests", "numpy", "pandas>=0.24.0", "numba"],
+    install_requires=["websockets>=6.0", "requests", "numpy", "pandas>=0.24.0"],
     cmdclass={'bdist_wheel': bdist_wheel},
     classifiers=[
         "Programming Language :: Python :: 3",
