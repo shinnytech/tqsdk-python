@@ -10,7 +10,7 @@ position = api.get_position("DCE.m2005")
 # 获得资金账户引用，当账户有变化时 account 中的字段会对应更新
 account = api.get_account()
 # 下单并返回委托单的引用，当该委托单有变化时 order 中的字段会对应更新
-order = api.insert_order(symbol="DCE.m2005", direction="BUY", offset="OPEN", volume=5)
+order = api.insert_order(symbol="DCE.m2005", direction="BUY", offset="OPEN", volume=5, limit_price=2750)
 
 while True:
     api.wait_update()
