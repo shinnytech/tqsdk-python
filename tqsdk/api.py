@@ -586,6 +586,10 @@ class TqApi(object):
             "volume_left": volume,
             "status": "ALIVE",
             "_this_session": True,
+            "limit_price": limit_price if limit_price is not None else float("nan"),
+            "price_type": "ANY" if limit_price is None else "LIMIT",
+            "volume_condition": "ANY",
+            "time_condition": "IOC" if limit_price is None else "GFD",
         })
         return order
 
