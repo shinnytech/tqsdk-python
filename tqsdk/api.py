@@ -1542,12 +1542,18 @@ class TqApi(object):
                 }) as client:
                     # 发送网络连接建立的通知，code = 2019112901
                     notify_id = uuid.UUID(int=TqApi.RD.getrandbits(128)).hex
-                    notify_level = "INFO"
-                    notify_content = "与 %s 的网络连接已建立" % url
+                    notify = {}
+                    notify[notify_id] = {
+                        "type": "MESSAGE",
+                        "level": "INFO",
+                        "code": 2019112901,
+                        "content": "与 %s 的网络连接已建立" % url,
+                        "url": url
+                    }
 
                     if not first_connect:  # 如果不是第一次连接, 即为重连
-                        notify_level = "WARNING"
-                        notify_content = "与 %s 的网络连接已恢复" % url
+                        notify["level"] = "WARNING"
+                        notify["content"] = "与 %s 的网络连接已恢复" % url
                         un_processed = True  # 重连后数据未处理完
                         t_pending_diffs = []
                         t_data = Entity()
@@ -1558,17 +1564,7 @@ class TqApi(object):
                     # 发送网络连接建立的通知，code = 2019112901，这里区分了第一次连接和重连
                     await recv_chan.send({
                         "aid": "rtn_data",
-                        "data": [{
-                            "notify": {
-                                [notify_id]: {
-                                    "type": "MESSAGE",
-                                    "level": notify_level,
-                                    "code": 2019112901,
-                                    "content": notify_content,
-                                    "url": url
-                                }
-                            }
-                        }]
+                        "data": [{"notify": notify}]
                     })
                     send_task = self.create_task(
                         self._send_handler(client, url, resend_request, send_chan, first_connect))
@@ -1679,19 +1675,17 @@ class TqApi(object):
             except (websockets.exceptions.ConnectionClosed, OSError):
                 # 发送网络连接断开的通知，code = 2019112902
                 notify_id = uuid.UUID(int=TqApi.RD.getrandbits(128)).hex
+                notify = {}
+                notify[notify_id] = {
+                    "type": "MESSAGE",
+                    "level": "WARNING",
+                    "code": 2019112902,
+                    "content": "与 %s 的网络连接断开，请检查客户端及网络是否正常" % url,
+                    "url": url
+                }
                 await recv_chan.send({
                     "aid": "rtn_data",
-                    "data": [{
-                        "notify": {
-                            [notify_id]: {
-                                "type": "MESSAGE",
-                                "level": "WARNING",
-                                "code": 2019112902,
-                                "content": "与 %s 的网络连接断开，请检查客户端及网络是否正常" % url,
-                                "url": url
-                            }
-                        }
-                    }]
+                    "data": [{"notify": notify}]
                 })
             finally:
                 if first_connect:
