@@ -23,6 +23,8 @@ class TqWebHelper(object):
         self._data = {
             "action": {
                 "mode": "run",
+                "md_url_status": '-',
+                "td_url_status": '-',
             },
             "full_path": file_path[0].upper() + file_path[1:],
             "trade": {},
@@ -105,17 +107,23 @@ class TqWebHelper(object):
                 for d in pack['data']:
                     ## 把 d 处理成需要的数据
                     trade = d.get("trade")
-                    if trade is None:
-                        continue
-                    TqWebHelper.merge_diff(self._data["trade"], trade)
-                    web_diffs.append({"trade": trade})
-                    # 账户是否有变化
-                    static_balance_changed = d.get("trade", {}).get(self.api._account.account_id, {}).\
-                        get("accounts", {}).get("CNY", {}).get('static_balance')
-                    trades_changed = d.get("trade", {}).get(self.api._account.account_id, {}).get("trades", {})
-                    orders_changed = d.get("trade", {}).get(self.api._account.account_id, {}).get("orders", {})
-                    if static_balance_changed is not None or trades_changed != {} or orders_changed != {}:
-                        account_changed = True
+                    if trade is not None:
+                        TqWebHelper.merge_diff(self._data["trade"], trade)
+                        web_diffs.append({"trade": trade})
+                        # 账户是否有变化
+                        static_balance_changed = d.get("trade", {}).get(self.api._account.account_id, {}).\
+                            get("accounts", {}).get("CNY", {}).get('static_balance')
+                        trades_changed = d.get("trade", {}).get(self.api._account.account_id, {}).get("trades", {})
+                        orders_changed = d.get("trade", {}).get(self.api._account.account_id, {}).get("orders", {})
+                        if static_balance_changed is not None or trades_changed != {} or orders_changed != {}:
+                            account_changed = True
+                    # 处理通知，行情和交易连接的状态
+                    notifies = d.get("notify")
+                    if notifies is not None:
+                        notify_diffs = self._notify_handler(notifies)
+                        if len(notify_diffs) > 0:
+                            TqWebHelper.merge_diff(self._data, notify_diffs[0])
+                            web_diffs.extend(notify_diffs)
                 if account_changed:
                     dt, snapshot = self.get_snapshot()
                     _snapshots = {"snapshots": {}}
@@ -126,6 +134,44 @@ class TqWebHelper(object):
                     self.send_to_conn_chan(chan, web_diffs)
             # 接收的数据转发给下游 api
             await api_recv_chan.send(pack)
+
+    def _notify_handler(self, notifies):
+        """将连接状态的通知转成 diff 协议"""
+        diffs = []
+        for _, notify in notifies.items():
+            if notify["code"] == 2019112901:
+                # 连接建立的通知
+                if notify["url"] == self.api._md_url:
+                    diffs.append({
+                        "action": {
+                            "md_url_status": True,
+                            "td_url_status": True if isinstance(self.api._account, tqsdk.sim.TqSim) \
+                                else self._data["action"]["td_url_status"]
+                        }
+                    })
+                elif notify["url"] == self.api._td_url:
+                    diffs.append({
+                        "action": {
+                            "td_url_status": True
+                        }
+                    })
+            elif notify["code"] == 2019112902:
+                # 连接断开的通知
+                if notify["url"] == self.api._md_url:
+                    diffs.append({
+                        "action": {
+                            "md_url_status": False,
+                            "td_url_status": True if isinstance(self.api._account, tqsdk.sim.TqSim) \
+                                else self._data["action"]["td_url_status"]
+                        }
+                    })
+                elif notify["url"] == self.api._td_url:
+                    diffs.append({
+                        "action": {
+                            "td_url_status": False
+                        }
+                    })
+        return diffs
 
     def send_to_conn_chan(self, chan, diffs):
         last_diff = chan.recv_latest({})
