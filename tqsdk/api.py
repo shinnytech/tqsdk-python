@@ -1540,15 +1540,36 @@ class TqApi(object):
                 async with websockets.connect(url, max_size=None, extra_headers={
                     "User-Agent": "tqsdk-python %s" % __version__
                 }) as client:
+                    # 发送网络连接建立的通知，code = 2019112901
+                    notify_id = uuid.UUID(int=TqApi.RD.getrandbits(128)).hex
+                    notify_level = "INFO"
+                    notify_content = "与 %s 的网络连接已建立" % url
+
                     if not first_connect:  # 如果不是第一次连接, 即为重连
-                        self._logger.warning("与 %s 的网络连接已恢复", url)
+                        notify_level = "WARNING"
+                        notify_content = "与 %s 的网络连接已恢复" % url
                         un_processed = True  # 重连后数据未处理完
                         t_pending_diffs = []
                         t_data = Entity()
                         t_data._instance_entity([])
-
                         if url == self._md_url:  # 获取重连时需发送的所有 set_chart 指令包
                             set_chart_packs = {k: v for k, v in resend_request.items() if v.get("aid") == "set_chart"}
+
+                    # 发送网络连接建立的通知，code = 2019112901，这里区分了第一次连接和重连
+                    await recv_chan.send({
+                        "aid": "rtn_data",
+                        "data": [{
+                            "notify": {
+                                [notify_id]: {
+                                    "type": "MESSAGE",
+                                    "level": notify_level,
+                                    "code": 2019112901,
+                                    "content": notify_content,
+                                    "url": url
+                                }
+                            }
+                        }]
+                    })
                     send_task = self.create_task(
                         self._send_handler(client, url, resend_request, send_chan, first_connect))
                     try:
@@ -1656,7 +1677,22 @@ class TqApi(object):
             # 希望做到的效果是遇到网络问题可以断线重连, 但是可能抛出的例外太多了(TimeoutError,socket.gaierror等), 又没有文档或工具可以理出 try 代码中所有可能遇到的例外
             # 而这里的 except 又需要处理所有子函数及子函数的子函数等等可能抛出的例外, 因此这里只能遇到问题之后再补, 并且无法避免 false positive 和 false negative
             except (websockets.exceptions.ConnectionClosed, OSError):
-                self._logger.warning("与 %s 的网络连接断开，请检查客户端及网络是否正常", url)
+                # 发送网络连接断开的通知，code = 2019112902
+                notify_id = uuid.UUID(int=TqApi.RD.getrandbits(128)).hex
+                await recv_chan.send({
+                    "aid": "rtn_data",
+                    "data": [{
+                        "notify": {
+                            [notify_id]: {
+                                "type": "MESSAGE",
+                                "level": "WARNING",
+                                "code": 2019112902,
+                                "content": "与 %s 的网络连接断开，请检查客户端及网络是否正常" % url,
+                                "url": url
+                            }
+                        }
+                    }]
+                })
             finally:
                 if first_connect:
                     first_connect = False
