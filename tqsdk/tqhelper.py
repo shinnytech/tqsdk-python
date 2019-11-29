@@ -292,6 +292,7 @@ def link_tq(api):
     parser.add_argument('--_action', type=str, required=False)
     parser.add_argument('--_tq_pid', type=int, required=False)
     parser.add_argument('--_tq_url', type=str, required=False)
+    parser.add_argument('--_http_server_port', type=int, required=False)
     # action==run时需要这几个
     parser.add_argument('--_broker_id', type=str, required=False)
     parser.add_argument('--_account_id', type=str, required=False)
@@ -318,6 +319,10 @@ def link_tq(api):
         raise Exception("backtest 必要参数缺失")
     if args._action == "mdreplay" and (not args._ins_url or not args._md_url):
         raise Exception("mdreplay 必要参数缺失")
+
+    # 可选参数，tqwebhelper 中 http server 的 port
+    if args._http_server_port is not None:
+        api._http_server_port = args._http_server_port
 
     # 监控天勤进程存活情况
     TqMonitorThread(args._tq_pid).start()

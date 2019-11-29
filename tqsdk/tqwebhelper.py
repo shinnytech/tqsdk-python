@@ -266,7 +266,7 @@ class TqWebHelper(object):
         runner = web.AppRunner(app)
         await runner.setup()
         server_socket = socket.socket()
-        server_socket.bind(('127.0.0.1', 0))
+        server_socket.bind(('127.0.0.1', 0 if self._http_server_port is None else self._http_server_port))
         address = server_socket.getsockname()
         site = web.SockSite(runner, server_socket)
         await site.start()
