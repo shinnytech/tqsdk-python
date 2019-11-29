@@ -7,6 +7,7 @@
 @description: 
 """
 import os
+import sys
 import simplejson
 import asyncio
 import datetime
@@ -18,8 +19,12 @@ import tqsdk
 class TqWebHelper(object):
     def __init__(self):
         self.web_dir = os.path.join(os.path.dirname(__file__), 'web')
+        file_path = os.path.abspath(sys.argv[0])
         self._data = {
-            "action": "run",
+            "action": {
+                "mode": "run",
+            },
+            "full_path": file_path[0].upper() + file_path[1:],
             "trade": {},
             "subscribed": [],
             "draw_chart_datas": {},
@@ -32,8 +37,16 @@ class TqWebHelper(object):
     async def _run(self, api, api_send_chan, api_recv_chan, web_send_chan, web_recv_chan):
         self.api = api
         self.logger = api._logger.getChild("TqWebHelper")
+        # 发送给 web 账户信息，用作显示
+        self._data["action"]["account_id"] = self.api._account.account_id
+        self._data["action"]["broker_id"] = self.api._account.broker_id if isinstance(self.api._account,
+                                                                                      tqsdk.api.TqAccount) else 'TQSIM'
         if self.api._backtest:
-            self._data["action"] = "backtest"
+            # 回测模式下，发送 start_dt, end_dt
+            self._data["action"]["mode"] = "backtest"
+            self._data["action"]["start_dt"] = self.api._backtest.current_dt
+            self._data["action"]["end_dt"] = self.api._backtest.end_dt
+
         self.web_port_chan = tqsdk.api.TqChan(self.api)  # 记录到 ws port 的channel
         self.dt_func = lambda: int(datetime.datetime.now().timestamp() * 1e9)
         if isinstance(api._backtest, tqsdk.backtest.TqBacktest):
