@@ -2013,6 +2013,8 @@ class TqAccount(object):
         self.front_url = front_url
         self.app_id = "SHINNY_TQ_1.0"
         self.system_info = ""
+        self.orders_pending = {}  # 记录所有被撤销委托单的pending信息，key：order_id，value：pending
+
         try:
             l = ctypes.c_int(344)
             buf = ctypes.create_string_buffer(l.value)
@@ -2056,6 +2058,12 @@ class TqAccount(object):
             async for pack in api_send_chan:
                 if pack["aid"] == "subscribe_quote" or pack["aid"] == "set_chart":
                     await md_send_chan.send(pack)
+                elif pack["aid"] == "cancel_order":
+                    # 第一次撤单或距上一次撤单已超过30s：发送撤单指令并记录当前发送撤单指令的时间，否则不再发送
+                    if (pack["order_id"] not in self.orders_pending) or (
+                            time.time() - self.orders_pending[pack["order_id"]] > 30):
+                        self.orders_pending[pack["order_id"]] = time.time()
+                        await td_send_chan.send(pack)
                 elif pack["aid"] != "peek_message":
                     await td_send_chan.send(pack)
         finally:
