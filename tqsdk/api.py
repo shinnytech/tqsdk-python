@@ -54,7 +54,7 @@ class TqApi(object):
 
     def __init__(self, account: Union['TqAccount', TqSim, 'TqApi', None] = None, url: Optional[str] = None,
                  backtest: Optional[TqBacktest] = None, debug: Optional[str] = None,
-                 loop: Optional[asyncio.AbstractEventLoop] = None, _ins_url=None, _md_url=None, _td_url=None) -> None:
+                 loop: Optional[asyncio.AbstractEventLoop] = None, _ins_url=None, _md_url=None, _td_url=None, _http_server_port=None) -> None:
         """
         创建天勤接口实例
 
