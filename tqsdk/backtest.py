@@ -89,7 +89,7 @@ class TqBacktest(object):
                     })
                     for ins in pack["ins_list"].split(","):
                         await self._ensure_quote(ins)
-                    await self._send_diff()
+                    await self._send_diff()  # 处理上一次未处理的 peek_message
                 elif pack["aid"] == "set_chart":
                     if pack["ins_list"]:
                         # 回测模块中已保证每次将一个行情时间的数据全部发送给api，因此更新行情时 保持与初始化时一样的charts信息（即不作修改）
@@ -111,7 +111,7 @@ class TqBacktest(object):
                                 pack["chart_id"]: None
                             }
                         })
-                    await self._send_diff()
+                    await self._send_diff()  # 处理上一次未处理的 peek_message
                 elif pack["aid"] == "peek_message":
                     self.pending_peek = True
                     await self._send_diff()
@@ -131,7 +131,7 @@ class TqBacktest(object):
 
     async def _send_snapshot(self):
         """发送初始合约信息"""
-        async with TqChan(self.api, last_only=True) as update_chan:
+        async with TqChan(self.api, last_only=True) as update_chan:  # 等待与行情服务器连接成功
             self.data["_listener"].add(update_chan)
             while self.data.get("mdhis_more_data", True):
                 await update_chan.recv()
@@ -140,7 +140,7 @@ class TqBacktest(object):
         for ins, quote in self.data["quotes"].items():
             if not ins.startswith("_"):
                 quotes[ins] = {
-                    "open": None,
+                    "open": None,  # 填写None: 删除api中的这个字段
                     "close": None,
                     "settlement": None,
                     "lower_limit": None,
@@ -160,6 +160,7 @@ class TqBacktest(object):
                     "underlying_symbol": quote["underlying_symbol"],
                     "strike_price": quote["strike_price"],
                     "change": None,
+                    # todo: 回测添加合约文件字段，trading_time等
                     "change_percent": None,
                     "expired": None,
                 }
@@ -190,6 +191,9 @@ class TqBacktest(object):
                     if quotes_diff and (quote_info["min_duration"] != 0 or min_serial[1] == 0):
                         quotes[min_serial[0]] = quotes_diff
                     await self._fetch_serial(min_serial)
+                if not self.serials:
+                    self.logger.warning("回测结束")
+                    raise BacktestFinished() from None
             for ins, diff in quotes.items():
                 for d in diff:
                     self.diffs.append({
@@ -209,7 +213,7 @@ class TqBacktest(object):
 
     async def _ensure_serial(self, ins, dur):
         if (ins, dur) not in self.serials:
-            quote = self.quotes.setdefault(ins, {
+            quote = self.quotes.setdefault(ins, {  # 在此处设置 min_duration: 每次生成K线的时候会自动生成quote, 记录某一合约的最小duration
                 "min_duration": dur
             })
             quote["min_duration"] = min(quote["min_duration"], dur)
@@ -227,9 +231,7 @@ class TqBacktest(object):
         try:
             s["timestamp"], s["diff"], s["quotes"] = await s["generator"].__anext__()
         except StopAsyncIteration:
-            del self.serials[serial]
-            if not self.serials:
-                raise BacktestFinished() from None
+            del self.serials[serial]  # 删除一个行情时间超过结束时间的serial
 
     async def _gen_serial(self, ins, dur):
         """k线/tick 序列的 async generator, yield 出来的行情数据带有时间戳, 因此 _send_diff 可以据此归并"""
@@ -279,6 +281,8 @@ class TqBacktest(object):
                             chart_info.pop("focus_datetime", None)
                             chart_info.pop("focus_position", None)
                             await self.md_send_chan.send(chart_info.copy())
+                        # 将订阅的8964长度的窗口中的数据都遍历完后，退出循环，然后再次进入并处理下一窗口数据
+                        # （因为在处理过5000条数据的同时向服务器订阅从当前id开始的新一窗口的数据，在当前窗口剩下的3000条数据处理完后，下一窗口数据也已经收到）
                         if current_id > right_id:
                             break
                         item = {k: v for k, v in serial["data"].get(str(current_id), {}).items()}
@@ -324,7 +328,7 @@ class TqBacktest(object):
                                 item["datetime"])
                             if timestamp > self.end_dt:  # 超过结束时间
                                 return
-                            yield timestamp, diff, None
+                            yield timestamp, diff, None  # K线刚生成时的数据都为开盘价
                             diff = {
                                 "klines": {
                                     ins: {
@@ -342,7 +346,7 @@ class TqBacktest(object):
                             if timestamp > self.end_dt:  # 超过结束时间
                                 return
                             yield timestamp, diff, self._get_quotes_from_kline(self.data["quotes"][ins], timestamp,
-                                                                               item)
+                                                                               item)  # K线结束时生成quote数据
                         current_id += 1
             finally:
                 # 释放chart资源
