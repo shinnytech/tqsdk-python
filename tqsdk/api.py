@@ -398,21 +398,20 @@ class TqApi(object):
         dur_id = duration_seconds * 1000000000
         request = (tuple(symbol), duration_seconds, data_length, chart_id)  # request 中 symbols 为 tuple 序列
         serial = self._requests["klines"].get(request, None)
-        chart_id = chart_id if chart_id is not None else self._generate_chart_id("realtime")
         pack = {
             "aid": "set_chart",
-            "chart_id": chart_id,
+            "chart_id": chart_id if chart_id is not None else self._generate_chart_id("realtime"),
             "ins_list": ",".join(symbol),
             "duration": dur_id,
             "view_width": data_length if len(symbol) == 1 else 8964,
             # 如果同时订阅了两个以上合约K线，初始化数据时默认获取 1w 根K线(初始化完成后修改指令为设定长度)
         }
-        if serial is None or chart_id is not None:
+        if serial is None or chart_id is not None:  # 判断用户是否指定了 chart_id（参数）, 如果指定了，则一定会发送新的请求。
             self._send_pack(pack.copy())  # 注意：将数据权转移给TqChan时其所有权也随之转移，因pack还需要被用到，所以传入副本
         if serial is None:
             serial = self._init_serial([self._get_obj(self._data, ["klines", s, str(dur_id)]) for s in symbol],
                                        data_length, self._prototype["klines"]["*"]["*"]["data"]["@"])
-            serial["chart"] = self._get_obj(self._data, ["charts", chart_id])  # 保存chart信息
+            serial["chart"] = self._get_obj(self._data, ["charts", pack["chart_id"]])  # 保存chart信息
             serial["chart"].update(pack)
             self._requests["klines"][request] = serial
             self._serials[id(serial["df"])] = serial
@@ -480,20 +479,19 @@ class TqApi(object):
             data_length = 8964
         request = (symbol, data_length, chart_id)
         serial = self._requests["ticks"].get(request, None)
-        chart_id = chart_id if chart_id is not None else self._generate_chart_id("realtime")
         pack = {
             "aid": "set_chart",
-            "chart_id": chart_id,
+            "chart_id": chart_id if chart_id is not None else self._generate_chart_id("realtime"),
             "ins_list": symbol,
             "duration": 0,
             "view_width": data_length,
         }
-        if serial is None or chart_id is not None:
+        if serial is None or chart_id is not None:  # 判断用户是否指定了 chart_id（参数）, 如果指定了，则一定会发送新的请求。
             self._send_pack(pack.copy())  # pack 的副本数据和所有权转移给TqChan
         if serial is None:
             serial = self._init_serial([self._get_obj(self._data, ["ticks", symbol])], data_length,
                                        self._prototype["ticks"]["*"]["data"]["@"])
-            serial["chart"] = self._get_obj(self._data, ["charts", chart_id])
+            serial["chart"] = self._get_obj(self._data, ["charts", pack["chart_id"]])
             serial["chart"].update(pack)
             self._requests["ticks"][request] = serial
             self._serials[id(serial["df"])] = serial
