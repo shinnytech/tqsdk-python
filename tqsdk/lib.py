@@ -99,8 +99,8 @@ class TargetPosTask(object):
             else:
                 frozen_volume = pending_frozen + sum([order.volume_left for order in self.pos.orders.values() if
                                                       not order.is_dead and order.offset != "OPEN" and order.direction == order_dir])
-                if (
-                self.pos.pos_short_today if vol > 0 else self.pos.pos_long_today) - frozen_volume > 0:  # 判断是否有未冻结的今仓手数: 若有则不平昨仓
+                # 判断是否有未冻结的今仓手数: 若有则不平昨仓
+                if (self.pos.pos_short_today if vol > 0 else self.pos.pos_long_today) - frozen_volume > 0:
                     pos_all = frozen_volume
             order_volume = min(abs(vol), max(0, pos_all - frozen_volume))
         elif offset == "今":
@@ -212,7 +212,7 @@ class InsertOrderUntilAllTradedTask(object):
                     self.volume = order.volume_left
                     if self.volume != 0 and not check_task.done():
                         raise Exception("遇到错单: %s %s %s %d手 %f %s" % (
-                        self.symbol, self.direction, self.offset, self.volume, limit_price, order.last_msg))
+                            self.symbol, self.direction, self.offset, self.volume, limit_price, order.last_msg))
                 finally:
                     await check_chan.close()
                     await check_task
@@ -288,10 +288,10 @@ class InsertOrderTask(object):
     async def _run(self):
         """负责下单的task"""
         order = self.api.insert_order(self.symbol, self.direction, self.offset, self.volume, self.limit_price)
-        last_order = order.copy()
+        last_order = order.copy()  # 保存当前 order 的状态
         last_left = self.volume
         async with self.api.register_update_notify() as update_chan:
-            await self.order_chan.send(last_order)
+            await self.order_chan.send(last_order.copy())  # 将副本的数据及所有权转移
             while order.status != "FINISHED" or (order.volume_orign - order.volume_left) != sum(
                     [trade.volume for trade in order.trade_records.values()]):
                 await update_chan.recv()
@@ -301,4 +301,4 @@ class InsertOrderTask(object):
                     await self.trade_chan.send(vol if order.direction == "BUY" else -vol)
                 if order != last_order:
                     last_order = order.copy()
-                    await self.order_chan.send(last_order)
+                    await self.order_chan.send(last_order.copy())
