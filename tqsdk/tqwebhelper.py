@@ -10,7 +10,7 @@ import os
 import sys
 import simplejson
 import asyncio
-import datetime
+from datetime import date, datetime
 from aiohttp import web
 import socket
 import websockets
@@ -45,17 +45,7 @@ class TqWebHelper(object):
         self._data["action"]["account_id"] = self.api._account.account_id
         self._data["action"]["broker_id"] = self.api._account.broker_id if isinstance(self.api._account,
                                                                                       tqsdk.api.TqAccount) else 'TQSIM'
-        if self.api._backtest:
-            # 回测模式下，发送 start_dt, end_dt
-            self._data["action"]["mode"] = "backtest"
-            self._data["action"]["start_dt"] = self.api._backtest.current_dt
-            self._data["action"]["end_dt"] = self.api._backtest.end_dt
-
         self.web_port_chan = tqsdk.api.TqChan(self.api)  # 记录到 ws port 的channel
-        self.dt_func = lambda: int(datetime.datetime.now().timestamp() * 1e9)
-        if isinstance(api._backtest, tqsdk.backtest.TqBacktest):
-            self.dt_func = lambda: api._account._get_current_timestamp()
-
         _data_task = self.api.create_task(self._data_handler(api_recv_chan, web_recv_chan))
         _wsserver_task = self.api.create_task(self.link_wsserver())
         _httpserver_task = self.api.create_task(self.link_httpserver())
@@ -107,7 +97,8 @@ class TqWebHelper(object):
                 web_diffs = []
                 account_changed = False
                 for d in pack['data']:
-                    ## 把 d 处理成需要的数据
+                    # 把 d 处理成需要的数据
+                    # 处理 trade
                     trade = d.get("trade")
                     if trade is not None:
                         TqWebHelper.merge_diff(self._data["trade"], trade)
@@ -119,6 +110,11 @@ class TqWebHelper(object):
                         orders_changed = d.get("trade", {}).get(self.api._account.account_id, {}).get("orders", {})
                         if static_balance_changed is not None or trades_changed != {} or orders_changed != {}:
                             account_changed = True
+                    # 处理 backtest
+                    backtest = d.get("backtest")
+                    if backtest is not None:
+                        TqWebHelper.merge_diff(self._data, d)
+                        web_diffs.append(d)
                     # 处理通知，行情和交易连接的状态
                     notifies = d.get("notify")
                     if notifies is not None:
@@ -181,6 +177,12 @@ class TqWebHelper(object):
             TqWebHelper.merge_diff(last_diff, d, reduce_diff = False)
         if last_diff != {}:
             chan.send_nowait(last_diff)
+
+    def dt_func (self):
+        if 'backtest' in self._data:
+            return self._data['backtest']['current_dt']
+        else:
+            return int(datetime.now().timestamp() * 1e9)
 
     def get_snapshot(self):
         account = self._data.get("trade", {}).get(self.api._account.account_id, {}).get("accounts", {}).get("CNY", {})
