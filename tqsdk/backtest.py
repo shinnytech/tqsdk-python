@@ -51,9 +51,9 @@ class TqBacktest(object):
             end_dt (date/datetime): 回测结束时间, 如果类型为 date 则指的是交易日, 如果为 datetime 则指的是具体时间点
         """
         if isinstance(start_dt, datetime):
-            self._current_dt = int(start_dt.timestamp() * 1e9)
+            self._start_dt = int(start_dt.timestamp() * 1e9)
         elif isinstance(start_dt, date):
-            self._current_dt = tqsdk.api.TqApi._get_trading_day_start_time(
+            self._start_dt = tqsdk.api.TqApi._get_trading_day_start_time(
                 int(datetime(start_dt.year, start_dt.month, start_dt.day).timestamp()) * 1000000000)
         else:
             raise Exception("回测起始时间(start_dt)类型 %s 错误, 请检查 start_dt 数据类型是否填写正确" % (type(start_dt)))
@@ -64,6 +64,7 @@ class TqBacktest(object):
                 int(datetime(end_dt.year, end_dt.month, end_dt.day).timestamp()) * 1000000000)
         else:
             raise Exception("回测结束时间(end_dt)类型 %s 错误, 请检查 end_dt 数据类型是否填写正确" % (type(end_dt)))
+        self._current_dt = self._start_dt
 
     async def _run(self, api, sim_send_chan, sim_recv_chan, md_send_chan, md_recv_chan):
         """回测task"""
@@ -79,6 +80,7 @@ class TqBacktest(object):
         self._serials = {}  # 所有原始数据序列
         self._quotes = {}
         self._diffs = []
+        self._is_first_send = True
         md_task = self._api.create_task(self._md_handler())
         try:
             await self._send_snapshot()
@@ -205,7 +207,23 @@ class TqBacktest(object):
                             ins: d
                         }
                     })
-            if self._diffs:
+            if self.diffs:
+                # 发送数据集中添加 backtest 字段，开始时间、结束时间、当前时间，表示当前行情推进是由 backtest 推进
+                if self._is_first_send:
+                    self._diffs.append({
+                        "backtest": {
+                            "start_dt": self._start_dt,
+                            "current_dt": self._current_dt,
+                            "end_dt": self._end_dt
+                        }
+                    })
+                    self._is_first_send = False
+                else:
+                    self._diffs.append({
+                        "backtest": {
+                            "current_dt": self._current_dt
+                        }
+                    })
                 rtn_data = {
                     "aid": "rtn_data",
                     "data": self._diffs,
