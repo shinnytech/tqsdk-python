@@ -20,13 +20,15 @@ class TqWebHelper(object):
     def __init__(self):
         self.web_dir = os.path.join(os.path.dirname(__file__), 'web')
         file_path = os.path.abspath(sys.argv[0])
+        file_name = os.path.basename(file_path)
         self._data = {
             "action": {
                 "mode": "run",
                 "md_url_status": '-',
                 "td_url_status": '-',
+                "file_path": file_path[0].upper() + file_path[1:],
+                "file_name": file_name
             },
-            "full_path": file_path[0].upper() + file_path[1:],
             "trade": {},
             "subscribed": [],
             "draw_chart_datas": {},
