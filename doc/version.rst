@@ -2,6 +2,18 @@
 
 版本变更
 =============================
+1.2.1(2019/12/04)
+
+* 增加对 python 3.8 的支持
+* 完善 insert_order() 函数返回的 order 的初始化字段：增加 limit_price、price_type、volume_condition、time_condition 字段
+* 增加 quote 行情数据中的 trading_time、expire_datetime、delivery_month、delivery_year、ins_class 字段
+* 删除 quote 行情数据中的 change、change_percent 字段
+* 修复重复发送K线订阅指令给服务器的bug
+* 修复未订阅行情时回测不能立即结束的bug
+* 完善测试用例
+* 完善文档内容
+
+
 1.2.0(2019/11/21)
 
 * 支持同时获取对齐的多合约 K 线 (详见 :py:meth:`~tqsdk.api.TqApi.get_kline_serial` )
