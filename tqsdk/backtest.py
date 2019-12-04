@@ -199,6 +199,18 @@ class TqBacktest(object):
                     await self._fetch_serial(min_serial)
                 if not self._serials:  # 当无可发送数据时则抛出BacktestFinished例外,包括未订阅任何行情 或 所有已订阅行情的最后一笔行情获取完成
                     self._logger.warning("回测结束")
+                    if self._current_dt < self._end_dt:
+                        self._current_dt = 150000000000000000000 # 一个远大于 end_dt 的日期
+                    await self._sim_recv_chan.send({
+                        "aid": "rtn_data",
+                        "data": [{
+                            "_tqsdk_backtest": {
+                                "start_dt": self._start_dt,
+                                "current_dt": self._current_dt,
+                                "end_dt": self._end_dt
+                            }
+                        }]
+                    })
                     raise BacktestFinished(self._api) from None
             for ins, diff in quotes.items():
                 for d in diff:
@@ -207,11 +219,11 @@ class TqBacktest(object):
                             ins: d
                         }
                     })
-            if self.diffs:
+            if self._diffs:
                 # 发送数据集中添加 backtest 字段，开始时间、结束时间、当前时间，表示当前行情推进是由 backtest 推进
                 if self._is_first_send:
                     self._diffs.append({
-                        "backtest": {
+                        "_tqsdk_backtest": {
                             "start_dt": self._start_dt,
                             "current_dt": self._current_dt,
                             "end_dt": self._end_dt
@@ -220,7 +232,7 @@ class TqBacktest(object):
                     self._is_first_send = False
                 else:
                     self._diffs.append({
-                        "backtest": {
+                        "_tqsdk_backtest": {
                             "current_dt": self._current_dt
                         }
                     })
