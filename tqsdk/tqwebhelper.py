@@ -111,10 +111,13 @@ class TqWebHelper(object):
                         if static_balance_changed is not None or trades_changed != {} or orders_changed != {}:
                             account_changed = True
                     # 处理 backtest
-                    backtest = d.get("backtest")
-                    if backtest is not None:
+                    tqsdk_backtest = d.get("_tqsdk_backtest")
+                    if tqsdk_backtest is not None:
                         TqWebHelper.merge_diff(self._data, d)
                         web_diffs.append(d)
+                        if self._data["action"]["mode"] != "backtest":
+                            TqWebHelper.merge_diff(self._data, {"action": {"mode": "backtest"}})
+                            web_diffs.append({"action": {"mode": "backtest"}})
                     # 处理通知，行情和交易连接的状态
                     notifies = d.get("notify")
                     if notifies is not None:
@@ -179,8 +182,8 @@ class TqWebHelper(object):
             chan.send_nowait(last_diff)
 
     def dt_func (self):
-        if 'backtest' in self._data:
-            return self._data['backtest']['current_dt']
+        if '_tqsdk_backtest' in self._data:
+            return self._data['_tqsdk_backtest']['current_dt']
         else:
             return int(datetime.now().timestamp() * 1e9)
 
