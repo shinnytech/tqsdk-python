@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 #  -*- coding: utf-8 -*-
+import json
 import os
 import random
 import unittest
+from datetime import datetime
 from tqsdk.test.api.helper import MockInsServer, MockServer
-from tqsdk import TqApi
+from tqsdk import TqApi, TqBacktest
 
 
 class TestMdBasic(unittest.TestCase):
@@ -72,9 +74,8 @@ class TestMdBasic(unittest.TestCase):
         self.assertEqual(q.min_market_order_volume, 0)
         self.assertEqual(q.underlying_symbol, "")
         self.assertTrue(q.strike_price != q.strike_price)  # 判定nan
-        self.assertTrue(q.change != q.change)
-        self.assertTrue(q.change_percent != q.change_percent)
         self.assertEqual(q.expired, False)
+        self.assertEqual(q.ins_class, "FUTURE")
         self.assertEqual(q.margin, 16233.000000000002)
         self.assertEqual(q.commission, 11.594999999999999)
         self.assertEqual(repr(q.trading_time.day),
@@ -181,3 +182,28 @@ class TestMdBasic(unittest.TestCase):
         self.assertRaises(KeyError, ticks.iloc[-1].__getitem__, "dur")
 
         api.close()
+
+
+def test_get_quote_normal_backtest():
+    """
+    回测获取行情报价
+
+    """
+    # 获取行情
+    api = TqApi(backtest=TqBacktest(datetime(2019, 10, 15), datetime(2019, 10, 16)),
+                _ins_url="https://openmd.shinnytech.com/t/md/symbols/2019-07-03.json")
+    quote = api.get_quote("SHFE.cu2001")
+    quote_data = {k: v for k, v in quote.items()}
+    quote_data["trading_time"] = {k: v for k, v in quote_data["trading_time"].items()}
+
+    assert json.dumps(quote_data, sort_keys=True) == \
+           '{"amount": NaN, "ask_price1": 47070.0, "ask_volume1": 1, "average": NaN, "bid_price1": 47050.0, "bid_volume1": 1, "close": NaN, "commission": 11.594999999999999, "datetime": "2019-10-14 23:59:59.999999", "delivery_month": 1, "delivery_year": 2020, "expire_datetime": 1579071600.0, "expired": false, "highest": NaN, "ins_class": "FUTURE", "last_price": 47060.0, "lower_limit": NaN, "lowest": NaN, "margin": 16233.000000000002, "max_limit_order_volume": 500, "max_market_order_volume": 0, "min_limit_order_volume": 0, "min_market_order_volume": 0, "open": NaN, "open_interest": 90714, "pre_close": NaN, "pre_open_interest": 0, "pre_settlement": NaN, "price_decs": 0, "price_tick": 10, "settlement": NaN, "strike_price": NaN, "trading_time": {"day": [["09:00:00", "10:15:00"], ["10:30:00", "11:30:00"], ["13:30:00", "15:00:00"]], "night": [["21:00:00", "25:00:00"]]}, "underlying_symbol": "", "upper_limit": NaN, "volume": 0, "volume_multiple": 5}'
+
+    # 其他取值方式
+    assert quote["pre_close"] != quote.pre_close
+    assert quote.get("pre_settlement") != quote.pre_settlement
+    assert quote.get("highest") != quote.highest
+    assert quote.get("lowest") != quote.lowest
+    assert quote["open"] != quote.open
+    assert quote["close"] != quote.close
+    api.close()
