@@ -101,10 +101,8 @@ class Quote(Entity):
         self.underlying_symbol = ""
         #: 行权价
         self.strike_price = float("nan")
-        #: 涨跌
-        self.change = float("nan")
-        #: 涨跌幅
-        self.change_percent = float("nan")
+        #: 合约类型
+        self.ins_class = ""
         #: 合约是否已下市
         self.expired = False
         #: 交易时间段

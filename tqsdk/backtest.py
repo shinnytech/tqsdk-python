@@ -149,8 +149,9 @@ class TqBacktest(object):
                     "pre_open_interest": None,
                     "pre_settlement": None,
                     "pre_close": None,
-                    "margin": quote.get("margin"),
-                    "commission": quote.get("commission"),
+                    "ins_class": quote.get("ins_class", ""),
+                    "margin": quote.get("margin"),  # 用于内部实现模拟交易, 不作为api对外可用数据（即 Quote 类中无此字段）
+                    "commission": quote.get("commission"),  # 用于内部实现模拟交易, 不作为api对外可用数据（即 Quote 类中无此字段）
                     "price_tick": quote["price_tick"],
                     "price_decs": quote["price_decs"],
                     "volume_multiple": quote["volume_multiple"],
@@ -160,10 +161,11 @@ class TqBacktest(object):
                     "min_market_order_volume": quote["min_market_order_volume"],
                     "underlying_symbol": quote["underlying_symbol"],
                     "strike_price": quote["strike_price"],
-                    "change": None,
-                    # todo: 回测添加合约文件字段，trading_time等
-                    "change_percent": None,
                     "expired": None,
+                    "trading_time": quote.get("trading_time"),
+                    "expire_datetime": quote.get("expire_datetime"),
+                    "delivery_month": quote.get("delivery_month"),
+                    "delivery_year": quote.get("delivery_year"),
                 }
         self.diffs.append({
             "quotes": quotes,
@@ -192,7 +194,7 @@ class TqBacktest(object):
                     if quotes_diff and (quote_info["min_duration"] != 0 or min_serial[1] == 0):
                         quotes[min_serial[0]] = quotes_diff
                     await self._fetch_serial(min_serial)
-                if not self.serials:
+                if not self.serials:  # 当无可发送数据时则抛出BacktestFinished例外,包括未订阅任何行情 或 所有已订阅行情的最后一笔行情获取完成
                     self.logger.warning("回测结束")
                     raise BacktestFinished() from None
             for ins, diff in quotes.items():
@@ -243,7 +245,7 @@ class TqBacktest(object):
             "chart_id": TqApi._generate_chart_id("backtest"),
             "ins_list": ins,
             "duration": dur,
-            "view_width": 8964,
+            "view_width": 8964,  # 设为8964原因：可满足用户所有的订阅长度，并在backtest中将所有的 相同合约及周期 的K线用同一个serial存储
             "focus_datetime": int(self.current_dt),
             "focus_position": 8964,
         }

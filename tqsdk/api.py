@@ -124,7 +124,7 @@ class TqApi(object):
         if not self._logger.handlers:
             sh = logging.StreamHandler()
             sh.setLevel(logging.INFO)
-            if backtest:  # 如果回测, 则去除将第一个本地时间
+            if backtest:  # 如果回测, 则去除第一个本地时间
                 log_format = logging.Formatter('%(levelname)s - %(message)s')
             else:
                 log_format = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
@@ -1133,8 +1133,9 @@ class TqApi(object):
         rsp.raise_for_status()
         return {
             k: {
-                "margin": v.get("margin"),
-                "commission": v.get("commission"),
+                "ins_class": v.get("class", ""),
+                "margin": v.get("margin"),  # 用于内部实现模拟交易, 不作为 api 对外可用数据（即 Quote 类中无此字段）
+                "commission": v.get("commission"),  # 用于内部实现模拟交易, 不作为 api 对外可用数据（即 Quote 类中无此字段）
                 "price_tick": v["price_tick"],
                 "price_decs": v["price_decs"],
                 "volume_multiple": v["volume_multiple"],
@@ -1144,8 +1145,6 @@ class TqApi(object):
                 "min_market_order_volume": v.get("min_market_order_volume", 0),
                 "underlying_symbol": v.get("underlying_symbol", ""),
                 "strike_price": v.get("strike_price", float("nan")),
-                "change": None,
-                "change_percent": None,
                 "expired": v["expired"],
                 "trading_time": v.get("trading_time"),
                 "expire_datetime": v.get("expire_datetime"),
