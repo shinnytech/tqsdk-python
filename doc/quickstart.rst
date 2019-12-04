@@ -126,7 +126,7 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
     print("可用资金: %.2f" % (account.available))
     print("今多头: %d 手" % (position.volume_long_today))
 
-要在交易账户中发出一个限价委托单, 使用 api.insert_order() 函数::
+要在交易账户中发出一个委托单, 使用 api.insert_order() 函数::
 
     order = api.insert_order(symbol="DCE.m1901", direction="BUY", offset="OPEN", volume=5, limit_price=3000)
 

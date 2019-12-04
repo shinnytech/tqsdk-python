@@ -297,7 +297,7 @@ class TqSim(object):
         trade_log = self._ensure_trade_log()
         # 撤销所有委托单
         for order in list(self.orders.values()):
-            self._del_order(order, "交易日结束撤单")
+            self._del_order(order, "交易日结束，自动撤销当日有效的委托单（GFD）")
         # 记录账户截面
         trade_log["account"] = self.account.copy()
         trade_log["positions"] = {k: v.copy() for k, v in self.positions.items()}

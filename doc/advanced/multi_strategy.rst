@@ -38,7 +38,7 @@ TqSdk 为这类需求提供三种解决方案, 您可任意选择一种.
 
 如果觉得代码复制N份会导致修改不方便, 可以简单的剥离一个函数文件, 每个策略实例文件引用它::
 
-    # mylib.py
+    在函数文件 mylib.py 中:
 
     def ma(SYMBOL, SHORT, LONG):
         api = TqApi(TqSim())
@@ -58,11 +58,15 @@ TqSdk 为这类需求提供三种解决方案, 您可任意选择一种.
                     target_pos.set_target_volume(3)
                     print("均线上穿，做多")
 
-    # ma-股指.py
+    --------------------------------------------------
+    在策略文件 ma-股指.py 中:
+
     from mylib import ma
     ma("CFFEX.IF1906", 30, 60)
 
-    # ma-玉米.py
+    --------------------------------------------------
+    在策略文件 ma-玉米.py 中:
+
     from mylib import ma
     ma("DCE.c1906", 10, 20)
 
