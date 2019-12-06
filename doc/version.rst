@@ -4,7 +4,6 @@
 =============================
 1.2.1(2019/12/04)
 
-* 增加对 python 3.8 的支持
 * 完善 insert_order() 函数返回的 order 的初始化字段：增加 limit_price、price_type、volume_condition、time_condition 字段
 * 增加 quote 行情数据中的 trading_time、expire_datetime、delivery_month、delivery_year、ins_class 字段
 * 删除 quote 行情数据中的 change、change_percent 字段
