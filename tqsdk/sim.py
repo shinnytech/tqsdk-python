@@ -70,7 +70,8 @@ class TqSim(object):
         self._trade_log = {}  # 日期->交易记录及收盘时的权益及持仓
         self._client_subscribe = set()  # 客户端订阅的合约集合
         self._all_subscribe = set()  # 客户端+模拟交易模块订阅的合约集合
-        self._send_account()  # 发送初始账户信息
+        # 是否已经发送初始账户信息
+        self._has_send_init_account = False
         self._diffs.append({
             "trade": {
                 self._account_id: {
@@ -162,6 +163,10 @@ class TqSim(object):
                     self._tqsdk_backtest = tqsdk_backtest
                 else:
                     self._tqsdk_backtest["current_dt"] = tqsdk_backtest["current_dt"]
+            # 在第一次收到数据包的时候，发送账户初始截面信息，这样回测模式下，往后的模块才有正确的时间顺序
+            if self._has_send_init_account is False:
+                self._has_send_init_account = True
+                self._send_account()
             for symbol, quote_diff in d.get("quotes", {}).items():
                 if quote_diff is None:
                     continue
