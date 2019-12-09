@@ -115,7 +115,7 @@ class TqApi(object):
             self._md_url = _md_url
         if _td_url:
             self._td_url = _td_url
-        self._loop = asyncio.new_event_loop() if loop is None else loop  # 创建一个新的 ioloop, 避免和其他框架/环境产生干扰
+        self._loop = asyncio.SelectorEventLoop() if loop is None else loop  # 创建一个新的 ioloop, 避免和其他框架/环境产生干扰
 
         # 初始化 logger
 
