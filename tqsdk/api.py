@@ -1128,6 +1128,7 @@ class TqApi(object):
     def _fetch_symbol_info(self, url):
         """获取合约信息"""
         rsp = requests.get(url, headers={
+            "User-Agent": "tqsdk-python %s" % __version__,
             "Accept": "application/json"
         }, timeout=30)
         rsp.raise_for_status()
