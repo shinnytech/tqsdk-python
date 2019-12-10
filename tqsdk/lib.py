@@ -6,7 +6,22 @@ from tqsdk.api import TqChan
 from asyncio import gather
 
 
-class TargetPosTask(object):
+class TargetPosTaskSingleton(type):
+    _instances = {}
+    def __call__(cls, api, symbol, price="ACTIVE", offset_priority="今昨,开", trade_chan=None, *args, **kwargs):
+        k = str(api) + symbol
+        if k not in TargetPosTaskSingleton._instances:
+            TargetPosTaskSingleton._instances[k] = super(TargetPosTaskSingleton, cls).__call__(api, symbol, price, offset_priority, trade_chan, *args, **kwargs)
+        else:
+            instance = TargetPosTaskSingleton._instances[k]
+            if instance.offset_priority != offset_priority:
+                raise Exception("您试图用不同的 offset_priority 参数创建两个 %s 调仓任务, offset_priority参数原为 %s, 现为 %s" % (symbol, instance.offset_priority, offset_priority))
+            if instance.price != price:
+                raise Exception("您试图用不同的 price 参数创建两个 %s 调仓任务, price参数原为 %s, 现为 %s" % (symbol, instance.price, price))
+        return TargetPosTaskSingleton._instances[k]
+
+
+class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
     """目标持仓 task, 该 task 可以将指定合约调整到目标头寸"""
 
     def __init__(self, api, symbol, price="ACTIVE", offset_priority="今昨,开", trade_chan=None):
