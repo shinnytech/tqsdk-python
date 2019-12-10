@@ -49,7 +49,7 @@ while True:
                 target_pos.set_target_volume(20)
             # 如果最新价小于轨，K线下穿下轨，开空仓
             elif quote.last_price < bottomline:
-                print("最新价大于上轨，K线上穿上轨，开多仓")
+                print("最新价小于轨，K线下穿下轨，开空仓")
                 target_pos.set_target_volume(-20)
             else:
                 print("当前最新价%.2f,未穿上轨或下轨，不开仓" % quote.last_price)
