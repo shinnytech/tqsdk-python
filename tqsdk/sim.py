@@ -157,16 +157,16 @@ class TqSim(object):
         for d in pack["data"]:
             d.pop("trade", None)
             self._diffs.append(d)
+            # 在第一次收到 mdhis_more_data 为 False 的时候，发送账户初始截面信息，这样回测模式下，往后的模块才有正确的时间顺序
+            if self._has_send_init_account is False and d.get("mdhis_more_data") is False:
+                self._send_account()
+                self._has_send_init_account = True
             tqsdk_backtest = d.get("_tqsdk_backtest")
             if tqsdk_backtest is not None:
                 if self._tqsdk_backtest is None:
                     self._tqsdk_backtest = tqsdk_backtest
                 else:
                     self._tqsdk_backtest["current_dt"] = tqsdk_backtest["current_dt"]
-            # 在第一次收到数据包的时候，发送账户初始截面信息，这样回测模式下，往后的模块才有正确的时间顺序
-            if self._has_send_init_account is False:
-                self._has_send_init_account = True
-                self._send_account()
             for symbol, quote_diff in d.get("quotes", {}).items():
                 if quote_diff is None:
                     continue
