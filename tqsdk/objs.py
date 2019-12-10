@@ -171,14 +171,46 @@ class Tick(Entity):
         self.highest = float("nan")
         #: 当日最低价
         self.lowest = float("nan")
-        #: 卖一价
+        #: 卖1价
         self.ask_price1 = float("nan")
-        #: 卖一量
+        #: 卖1量
         self.ask_volume1 = 0
-        #: 买一价
+        #: 买1价
         self.bid_price1 = float("nan")
-        #:买一量
+        #: 买1量
         self.bid_volume1 = 0
+        #: 卖2价
+        self.ask_price2 = float("nan")
+        #: 卖2量
+        self.ask_volume2 = 0
+        #: 买2价
+        self.bid_price2 = float("nan")
+        #: 买2量
+        self.bid_volume2 = 0
+        #: 卖3价
+        self.ask_price3 = float("nan")
+        #: 卖3量
+        self.ask_volume3 = 0
+        #: 买3价
+        self.bid_price3 = float("nan")
+        #: 买3量
+        self.bid_volume3 = 0
+        #: 卖4价
+        self.ask_price4 = float("nan")
+        #: 卖4量
+        self.ask_volume4 = 0
+        #: 买4价
+        self.bid_price4 = float("nan")
+        #: 买4量
+        self.bid_volume4 = 0
+        #: 卖5价
+        self.ask_price5 = float("nan")
+        #: 卖5量
+        self.ask_volume5 = 0
+        #: 买5价
+        self.bid_price5 = float("nan")
+        #: 买5量
+        self.bid_volume5 = 0
         #: 当日成交量
         self.volume = 0
         #: 成交额
