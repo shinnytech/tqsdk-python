@@ -72,15 +72,6 @@ class TqSim(object):
         self._all_subscribe = set()  # 客户端+模拟交易模块订阅的合约集合
         # 是否已经发送初始账户信息
         self._has_send_init_account = False
-        self._diffs.append({
-            "trade": {
-                self._account_id: {
-                    "orders": {},
-                    "positions": {},
-                    "trade_more_data": False
-                }
-            }
-        })
         md_task = self._api.create_task(self._md_handler())  # 将所有 md_recv_chan 上收到的包投递到 api_send_chan 上
         try:
             async for pack in self._api_send_chan:
@@ -160,6 +151,15 @@ class TqSim(object):
             # 在第一次收到 mdhis_more_data 为 False 的时候，发送账户初始截面信息，这样回测模式下，往后的模块才有正确的时间顺序
             if self._has_send_init_account is False and d.get("mdhis_more_data") is False:
                 self._send_account()
+                self._diffs.append({
+                    "trade": {
+                        self._account_id: {
+                            "orders": {},
+                            "positions": {},
+                            "trade_more_data": False
+                        }
+                    }
+                })
                 self._has_send_init_account = True
             tqsdk_backtest = d.get("_tqsdk_backtest")
             if tqsdk_backtest is not None:
