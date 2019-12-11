@@ -7,6 +7,7 @@
 .. toctree::
     :maxdepth: 2
 
+    order.rst
     backtest.rst
     multi_strategy.rst
     gui.rst
