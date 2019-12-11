@@ -1,7 +1,27 @@
 下单, 撤单和委托单管理
 =================================================
-This part of the documentation covers the installation of Requests. The first step to using any software package is getting it properly installed.
+
+委托单状态
+-------------------------------------------------
+@todo
 
 
+委托单号
+-------------------------------------------------
+@todo
 
-组合下单
+
+高级委托指令
+-------------------------------------------------
+在实盘交易中, 除常见的限价委托指令外, 各交易所还提供了一些特殊的高级指令. 您可以在调用 :py:meth:`~tqsdk.api.TqApi.insert_order` 函数时通过 price_type/time_condition/volume_condition/contingent_condition 参数来指定, 详见下表
+
+.. csv-table:: 高级委托单参数表
+   :file: order_fields_table.csv
+   :widths: 10, 20, 90, 90, 90, 90, 90, 90, 90, 90
+   :header-rows: 1
+
+
+委托单管理工具
+-------------------------------------------------
+@todo
+

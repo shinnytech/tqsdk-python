@@ -569,6 +569,7 @@ class TqApi(object):
 
     # ----------------------------------------------------------------------
     def insert_order(self, symbol: str, direction: str, offset: str, volume: int, limit_price: Optional[float] = None,
+                     price_type=None, time_condition=None, volume_condition=None, contingent_condition=None,
                      order_id: Optional[str] = None) -> Order:
         """
         发送下单指令. **注意: 指令将在下次调用** :py:meth:`~tqsdk.api.TqApi.wait_update` **时发出**
@@ -586,6 +587,14 @@ class TqApi(object):
             limit_price (float): [可选]下单价格, 默认市价单 (上期所、原油和中金所不支持市价单, 需填写此参数值)
 
             order_id (str): [可选]指定下单单号, 默认由 api 自动生成
+
+            price_type (str): [可选] "LIMIT", "ANY", "BEST", 或 "FIVELEVEL".  指定报单价格条件, 默认由 api 自动生成
+
+            time_condition (str): [可选] "IOC", "GFS", "GFD", "GTD", "GTC" 或 "GFA".  指定有效期类型, 默认由 api 自动生成
+
+            volume_condition (str): [可选] "ANY", "MIN" 或 "ALL".  指定成交量类型, 默认由 api 自动生成
+
+            contingent_condition (str): [可选] "IMMEDIATELY", "TOUCH", 或 "TOUCHPROFIT".  指定触发条件, 默认由 api 自动生成
 
         Returns:
             :py:class:`~tqsdk.objs.Order`: 返回一个委托单对象引用. 其内容将在 :py:meth:`~tqsdk.api.TqApi.wait_update` 时更新.
@@ -630,6 +639,7 @@ class TqApi(object):
             "offset": offset,
             "volume": volume,
             "volume_condition": "ANY",
+            "contingent_condition": "IMMEDIATELY",
         }
         if limit_price is None:
             msg["price_type"] = "ANY"
@@ -638,6 +648,14 @@ class TqApi(object):
             msg["price_type"] = "LIMIT"
             msg["time_condition"] = "GFD"
             msg["limit_price"] = limit_price
+        if price_type is not None:
+            msg["price_type"] = price_type
+        if time_condition is not None:
+            msg["time_condition"] = time_condition
+        if volume_condition is not None:
+            msg["volume_condition"] = volume_condition
+        if contingent_condition is not None:
+            msg["contingent_condition"] = contingent_condition
         self._send_pack(msg)
         order = self.get_order(order_id)
         order.update({
@@ -651,9 +669,10 @@ class TqApi(object):
             "status": "ALIVE",
             "_this_session": True,
             "limit_price": limit_price if limit_price is not None else float("nan"),
-            "price_type": "ANY" if limit_price is None else "LIMIT",
-            "volume_condition": "ANY",
-            "time_condition": "IOC" if limit_price is None else "GFD",
+            "price_type": msg["price_type"],
+            "volume_condition": msg["volume_condition"],
+            "time_condition": msg["time_condition"],
+            "contingent_condition": msg["contingent_condition"],
         })
         return order
 
