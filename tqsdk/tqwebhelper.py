@@ -17,80 +17,99 @@ import websockets
 import tqsdk
 
 class TqWebHelper(object):
-    def __init__(self, _http_server_port = None):
-        self.web_dir = os.path.join(os.path.dirname(__file__), 'web')
-        self._http_server_port = 0 if _http_server_port is None else _http_server_port
-        file_path = os.path.abspath(sys.argv[0])
-        file_name = os.path.basename(file_path)
-        self._data = {
-            "action": {
-                "mode": "run",
-                "md_url_status": '-',
-                "td_url_status": '-',
-                "file_path": file_path[0].upper() + file_path[1:],
-                "file_name": file_name
-            },
-            "trade": {},
-            "subscribed": [],
-            "draw_chart_datas": {},
-            "snapshots": {}
-        }
-        self.order_symbols = set()
-        self._diffs = []
-        self.conn_diff_chans = set()
+    def __init__(self, _http_server_port = None, enabled_web_gui = False):
+        self.enabled_web_gui = bool(enabled_web_gui) # enabled_web_gui 转成 bool 类型
+        if self.enabled_web_gui is True:
+            self.web_dir = os.path.join(os.path.dirname(__file__), 'web')
+            self._http_server_port = 0 if _http_server_port is None else _http_server_port
+            file_path = os.path.abspath(sys.argv[0])
+            file_name = os.path.basename(file_path)
+            self._data = {
+                "action": {
+                    "mode": "run",
+                    "md_url_status": '-',
+                    "td_url_status": '-',
+                    "file_path": file_path[0].upper() + file_path[1:],
+                    "file_name": file_name
+                },
+                "trade": {},
+                "subscribed": [],
+                "draw_chart_datas": {},
+                "snapshots": {}
+            }
+            self.order_symbols = set()
+            self._diffs = []
+            self.conn_diff_chans = set()
 
     async def _run(self, api, api_send_chan, api_recv_chan, web_send_chan, web_recv_chan):
         self.api = api
-        self.logger = api._logger.getChild("TqWebHelper")
-        # 发送给 web 账户信息，用作显示
-        self._data["action"]["account_id"] = self.api._account.account_id
-        self._data["action"]["broker_id"] = self.api._account.broker_id if isinstance(self.api._account,
-                                                                                      tqsdk.api.TqAccount) else 'TQSIM'
-        self.web_port_chan = tqsdk.api.TqChan(self.api)  # 记录到 ws port 的channel
-        _data_task = self.api.create_task(self._data_handler(api_recv_chan, web_recv_chan))
-        _wsserver_task = self.api.create_task(self.link_wsserver())
-        _httpserver_task = self.api.create_task(self.link_httpserver())
+        if self.enabled_web_gui is False:
+            # 没有开启 web_gui 功能
+            _data_handler_without_web_task = self.api.create_task(
+                self._data_handler_without_web(api_recv_chan, web_recv_chan))
+            try:
+                async for pack in api_send_chan:
+                    # api 发送的包，过滤出 set_chart_data , 其余的原样转发
+                    if pack['aid'] != 'set_chart_data':
+                        await web_send_chan.send(pack)
+            finally:
+                _data_handler_without_web_task.cancel()
+        else:
+            self.logger = api._logger.getChild("TqWebHelper")
+            # 发送给 web 账户信息，用作显示
+            self._data["action"]["account_id"] = self.api._account.account_id
+            self._data["action"]["broker_id"] = self.api._account.broker_id if isinstance(self.api._account,
+                                                                                          tqsdk.api.TqAccount) else 'TQSIM'
+            self.web_port_chan = tqsdk.api.TqChan(self.api)  # 记录到 ws port 的channel
+            _data_task = self.api.create_task(self._data_handler(api_recv_chan, web_recv_chan))
+            _wsserver_task = self.api.create_task(self.link_wsserver())
+            _httpserver_task = self.api.create_task(self.link_httpserver())
 
-        try:
-            # api 发送的包，过滤出需要的包记录在 self._data
-            async for pack in api_send_chan:
-                if pack['aid'] == 'set_chart_data':
-                    diff_data = {} # 存储 pack 中的 diff 数据的对象
-                    for series_id, series in pack['datas'].items():
-                        if (series["type"] != "KSERIAL" and series["type"] != "SERIAL") \
-                                or ("data" in series and isinstance(series["data"], dict)):
-                            # 过滤出不符合 diff 协议的数据，旧版 tqhelper 中 KSERIAL/SERIAL 中的 data 对象是 list，不符合 diff 协议
-                            diff_data[series_id] = series
-                    if diff_data != {}:
-                        web_diff = {'draw_chart_datas': {}}
-                        web_diff['draw_chart_datas'][pack['symbol']] = {}
-                        web_diff['draw_chart_datas'][pack['symbol']][pack['dur_nano']] = diff_data
-                        TqWebHelper.merge_diff(self._data, web_diff)
-                        for chan in self.conn_diff_chans:
-                            self.send_to_conn_chan(chan, [web_diff])
-                else:
-                    if pack["aid"] == "insert_order":
-                        self.order_symbols.add(pack["exchange_id"] + "." + pack["instrument_id"])
-                    if pack['aid'] == 'subscribe_quote' or pack["aid"] == "set_chart" or pack["aid"] == 'insert_order':
-                        web_diff = {'subscribed': []}
-                        for item in self.api._requests["klines"].keys():
-                            web_diff['subscribed'].append({"symbol": item[0], "dur_nano": item[1] * 1000000000})
-                        for item in self.api._requests["ticks"].keys():
-                            web_diff['subscribed'].append({"symbol": item[0], "dur_nano": 0})
-                        for symbol in self.api._requests["quotes"]:
-                            web_diff['subscribed'].append({"symbol": symbol})
-                        for symbol in self.order_symbols:
-                            web_diff['subscribed'].append({"symbol": symbol})
-                        if web_diff['subscribed'] != self._data['subscribed']:
-                            self._data['subscribed'] = web_diff['subscribed']
-                        for chan in self.conn_diff_chans:
-                            self.send_to_conn_chan(chan, [web_diff])
-                    # 发送的转发给上游
-                    await web_send_chan.send(pack)
-        finally:
-            _data_task.cancel()
-            _wsserver_task.cancel()
-            _httpserver_task.cancel()
+            try:
+                # api 发送的包，过滤出需要的包记录在 self._data
+                async for pack in api_send_chan:
+                    if pack['aid'] == 'set_chart_data':
+                        diff_data = {}  # 存储 pack 中的 diff 数据的对象
+                        for series_id, series in pack['datas'].items():
+                            if (series["type"] != "KSERIAL" and series["type"] != "SERIAL") \
+                                    or ("data" in series and isinstance(series["data"], dict)):
+                                # 过滤出不符合 diff 协议的数据，旧版 tqhelper 中 KSERIAL/SERIAL 中的 data 对象是 list，不符合 diff 协议
+                                diff_data[series_id] = series
+                        if diff_data != {}:
+                            web_diff = {'draw_chart_datas': {}}
+                            web_diff['draw_chart_datas'][pack['symbol']] = {}
+                            web_diff['draw_chart_datas'][pack['symbol']][pack['dur_nano']] = diff_data
+                            TqWebHelper.merge_diff(self._data, web_diff)
+                            for chan in self.conn_diff_chans:
+                                self.send_to_conn_chan(chan, [web_diff])
+                    else:
+                        if pack["aid"] == "insert_order":
+                            self.order_symbols.add(pack["exchange_id"] + "." + pack["instrument_id"])
+                        if pack['aid'] == 'subscribe_quote' or pack["aid"] == "set_chart" or pack["aid"] == 'insert_order':
+                            web_diff = {'subscribed': []}
+                            for item in self.api._requests["klines"].keys():
+                                web_diff['subscribed'].append({"symbol": item[0], "dur_nano": item[1] * 1000000000})
+                            for item in self.api._requests["ticks"].keys():
+                                web_diff['subscribed'].append({"symbol": item[0], "dur_nano": 0})
+                            for symbol in self.api._requests["quotes"]:
+                                web_diff['subscribed'].append({"symbol": symbol})
+                            for symbol in self.order_symbols:
+                                web_diff['subscribed'].append({"symbol": symbol})
+                            if web_diff['subscribed'] != self._data['subscribed']:
+                                self._data['subscribed'] = web_diff['subscribed']
+                            for chan in self.conn_diff_chans:
+                                self.send_to_conn_chan(chan, [web_diff])
+                        # 发送的转发给上游
+                        await web_send_chan.send(pack)
+            finally:
+                _data_task.cancel()
+                _wsserver_task.cancel()
+                _httpserver_task.cancel()
+
+    async def _data_handler_without_web(self, api_recv_chan, web_recv_chan):
+        # 没有 web_gui, 接受全部数据转发给下游 api_recv_chan
+        async for pack in web_recv_chan:
+            await api_recv_chan.send(pack)
 
     async def _data_handler(self, api_recv_chan, web_recv_chan):
         async for pack in web_recv_chan:
