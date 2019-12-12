@@ -53,6 +53,38 @@ class Quote(Entity):
         self.bid_price1 = float("nan")
         #: 买一量
         self.bid_volume1 = 0
+        #: 卖二价
+        self.ask_price2 = float("nan")
+        #: 卖二量
+        self.ask_volume2 = 0
+        #: 买二价
+        self.bid_price2 = float("nan")
+        #: 买二量
+        self.bid_volume2 = 0
+        #: 卖三价
+        self.ask_price3 = float("nan")
+        #: 卖三量
+        self.ask_volume3 = 0
+        #: 买三价
+        self.bid_price3 = float("nan")
+        #: 买三量
+        self.bid_volume3 = 0
+        #: 卖四价
+        self.ask_price4 = float("nan")
+        #: 卖四量
+        self.ask_volume4 = 0
+        #: 买四价
+        self.bid_price4 = float("nan")
+        #: 买四量
+        self.bid_volume4 = 0
+        #: 卖五价
+        self.ask_price5 = float("nan")
+        #: 卖五量
+        self.ask_volume5 = 0
+        #: 买五价
+        self.bid_price5 = float("nan")
+        #: 买五量
+        self.bid_volume5 = 0
         #: 最新价
         self.last_price = float("nan")
         #: 当日最高价
@@ -103,6 +135,8 @@ class Quote(Entity):
         self.strike_price = float("nan")
         #: 合约类型
         self.ins_class = ""
+        #: 交易所内的合约代码
+        self.instrument_id = ""
         #: 合约是否已下市
         self.expired = False
         #: 交易时间段

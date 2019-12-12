@@ -92,7 +92,7 @@ class TestMdBasic(unittest.TestCase):
         self.assertEqual(q.ask_volume3, 5)
         self.assertEqual(q.ask_price4, 49250.0)
         self.assertEqual(q.ask_volume4, 50)
-        self.assertEqual(q.ask_price5, "-")
+        self.assertEqual(q.ask_price5 != q.ask_price5, True)  # 判断nan
         self.assertEqual(q.ask_volume5, 0)
         self.assertEqual(q.bid_price2, 46560.0)
         self.assertEqual(q.bid_volume2, 100)
@@ -100,7 +100,7 @@ class TestMdBasic(unittest.TestCase):
         self.assertEqual(q.bid_volume3, 270)
         self.assertEqual(q.bid_price4, 44920.0)
         self.assertEqual(q.bid_volume4, 5)
-        self.assertEqual(q.bid_price5, "-")
+        self.assertEqual(q.bid_price5 != q.bid_price5, True)
         self.assertEqual(q.bid_volume5, 0)
 
         # 其他取值方式
