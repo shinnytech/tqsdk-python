@@ -11,11 +11,11 @@ from tqsdk.ta import MA
      2 画图示例中用到的数据不含有实际意义，请根据自己的实际策略情况进行修改
 '''
 
-api = TqApi()
+api = TqApi(web_gui=True)
 
 
-klines = api.get_kline_serial("CFFEX.T1912", 10)
-klines2 = api.get_kline_serial("CFFEX.T2003", 10)
+klines = api.get_kline_serial("CFFEX.T2003", 10)
+klines2 = api.get_kline_serial("CFFEX.T2006", 10)
 
 while True:
 

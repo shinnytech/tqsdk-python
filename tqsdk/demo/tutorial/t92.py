@@ -10,7 +10,7 @@ from tqsdk import TqApi
      2 画图示例中用到的数据不含有实际意义，请根据自己的实际策略情况进行修改
 '''
 
-api = TqApi()
+api = TqApi(web_gui=True)
 klines = api.get_kline_serial("SHFE.au2002", 60)
 
 while True:
