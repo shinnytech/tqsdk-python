@@ -51,41 +51,41 @@ class TqBacktest(object):
             end_dt (date/datetime): 回测结束时间, 如果类型为 date 则指的是交易日, 如果为 datetime 则指的是具体时间点
         """
         if isinstance(start_dt, datetime):
-            self.current_dt = int(start_dt.timestamp() * 1e9)
+            self._current_dt = int(start_dt.timestamp() * 1e9)
         elif isinstance(start_dt, date):
-            self.current_dt = tqsdk.api.TqApi._get_trading_day_start_time(
+            self._current_dt = tqsdk.api.TqApi._get_trading_day_start_time(
                 int(datetime(start_dt.year, start_dt.month, start_dt.day).timestamp()) * 1000000000)
         else:
             raise Exception("回测起始时间(start_dt)类型 %s 错误, 请检查 start_dt 数据类型是否填写正确" % (type(start_dt)))
         if isinstance(end_dt, datetime):
-            self.end_dt = int(end_dt.timestamp() * 1e9)
+            self._end_dt = int(end_dt.timestamp() * 1e9)
         elif isinstance(end_dt, date):
-            self.end_dt = tqsdk.api.TqApi._get_trading_day_end_time(
+            self._end_dt = tqsdk.api.TqApi._get_trading_day_end_time(
                 int(datetime(end_dt.year, end_dt.month, end_dt.day).timestamp()) * 1000000000)
         else:
             raise Exception("回测结束时间(end_dt)类型 %s 错误, 请检查 end_dt 数据类型是否填写正确" % (type(end_dt)))
 
     async def _run(self, api, sim_send_chan, sim_recv_chan, md_send_chan, md_recv_chan):
         """回测task"""
-        self.api = api
-        self.logger = api._logger.getChild("TqBacktest")  # 调试信息输出
-        self.sim_send_chan = sim_send_chan
-        self.sim_recv_chan = sim_recv_chan
-        self.md_send_chan = md_send_chan
-        self.md_recv_chan = md_recv_chan
-        self.pending_peek = False
-        self.data = Entity()  # 数据存储
-        self.data._instance_entity([])
-        self.serials = {}  # 所有原始数据序列
-        self.quotes = {}
-        self.diffs = []
-        md_task = self.api.create_task(self._md_handler())
+        self._api = api
+        self._logger = api._logger.getChild("TqBacktest")  # 调试信息输出
+        self._sim_send_chan = sim_send_chan
+        self._sim_recv_chan = sim_recv_chan
+        self._md_send_chan = md_send_chan
+        self._md_recv_chan = md_recv_chan
+        self._pending_peek = False
+        self._data = Entity()  # 数据存储
+        self._data._instance_entity([])
+        self._serials = {}  # 所有原始数据序列
+        self._quotes = {}
+        self._diffs = []
+        md_task = self._api.create_task(self._md_handler())
         try:
             await self._send_snapshot()
-            async for pack in self.sim_send_chan:
-                self.logger.debug("TqBacktest message received: %s", pack)
+            async for pack in self._sim_send_chan:
+                self._logger.debug("TqBacktest message received: %s", pack)
                 if pack["aid"] == "subscribe_quote":
-                    self.diffs.append({
+                    self._diffs.append({
                         "ins_list": pack["ins_list"]
                     })
                     for ins in pack["ins_list"].split(","):
@@ -94,7 +94,7 @@ class TqBacktest(object):
                 elif pack["aid"] == "set_chart":
                     if pack["ins_list"]:
                         # 回测模块中已保证每次将一个行情时间的数据全部发送给api，因此更新行情时 保持与初始化时一样的charts信息（即不作修改）
-                        self.diffs.append({
+                        self._diffs.append({
                             "charts": {
                                 pack["chart_id"]: {
                                     # 两个id设置为0：保证api在回测中判断此值时不是-1，即直接通过对数据接收完全的验证
@@ -107,38 +107,38 @@ class TqBacktest(object):
                         })
                         await self._ensure_serial(pack["ins_list"], pack["duration"])
                     else:
-                        self.diffs.append({
+                        self._diffs.append({
                             "charts": {
                                 pack["chart_id"]: None
                             }
                         })
                     await self._send_diff()  # 处理上一次未处理的 peek_message
                 elif pack["aid"] == "peek_message":
-                    self.pending_peek = True
+                    self._pending_peek = True
                     await self._send_diff()
         finally:
             # 关闭所有serials
-            for s in self.serials.values():
+            for s in self._serials.values():
                 await s["generator"].aclose()
             md_task.cancel()
 
     async def _md_handler(self):
-        async for pack in self.md_recv_chan:
-            await self.md_send_chan.send({
+        async for pack in self._md_recv_chan:
+            await self._md_send_chan.send({
                 "aid": "peek_message"
             })
             for d in pack.get("data", []):
-                tqsdk.api.TqApi._merge_diff(self.data, d, self.api._prototype, False)
+                tqsdk.api.TqApi._merge_diff(self._data, d, self._api._prototype, False)
 
     async def _send_snapshot(self):
         """发送初始合约信息"""
-        async with tqsdk.api.TqChan(self.api, last_only=True) as update_chan:  # 等待与行情服务器连接成功
-            self.data["_listener"].add(update_chan)
-            while self.data.get("mdhis_more_data", True):
+        async with tqsdk.api.TqChan(self._api, last_only=True) as update_chan:  # 等待与行情服务器连接成功
+            self._data["_listener"].add(update_chan)
+            while self._data.get("mdhis_more_data", True):
                 await update_chan.recv()
         # 发送合约信息截面
         quotes = {}
-        for ins, quote in self.data["quotes"].items():
+        for ins, quote in self._data["quotes"].items():
             if not ins.startswith("_"):
                 quotes[ins] = {
                     "open": None,  # 填写None: 删除api中的这个字段
@@ -167,74 +167,74 @@ class TqBacktest(object):
                     "delivery_month": quote.get("delivery_month"),
                     "delivery_year": quote.get("delivery_year"),
                 }
-        self.diffs.append({
+        self._diffs.append({
             "quotes": quotes,
             "ins_list": "",
             "mdhis_more_data": False,
         })
 
     async def _send_diff(self):
-        """发送数据到 api, 如果 self.diffs 不为空则发送 self.diffs, 不推进行情时间, 否则将时间推进一格, 并发送对应的行情"""
-        if self.pending_peek:
+        """发送数据到 api, 如果 self._diffs 不为空则发送 self._diffs, 不推进行情时间, 否则将时间推进一格, 并发送对应的行情"""
+        if self._pending_peek:
             quotes = {}
-            if not self.diffs:
-                while self.serials:
-                    min_serial = min(self.serials.keys(), key=lambda serial: self.serials[serial]["timestamp"])
-                    timestamp = self.serials[min_serial]["timestamp"]  # 所有已订阅数据中的最小行情时间
-                    quotes_diff = self.serials[min_serial]["quotes"]
+            if not self._diffs:
+                while self._serials:
+                    min_serial = min(self._serials.keys(), key=lambda serial: self._serials[serial]["timestamp"])
+                    timestamp = self._serials[min_serial]["timestamp"]  # 所有已订阅数据中的最小行情时间
+                    quotes_diff = self._serials[min_serial]["quotes"]
                     # 推进时间，一次只会推进最多一个(补数据时有可能是0个)行情时间，并确保<=该行情时间的行情都被发出
                     # 如果行情时间大于当前回测时间 则 判断是否diff中已有数据；否则表明此行情时间的数据未全部保存在diff中，则继续append
-                    if timestamp > self.current_dt:
-                        if self.diffs:  # 如果diffs中已有数据：退出循环并发送数据给下游api
+                    if timestamp > self._current_dt:
+                        if self._diffs:  # 如果diffs中已有数据：退出循环并发送数据给下游api
                             break
                         else:
-                            self.current_dt = timestamp  # 否则将回测时间更新至最新行情时间
-                    self.diffs.append(self.serials[min_serial]["diff"])
-                    quote_info = self.quotes[min_serial[0]]
+                            self._current_dt = timestamp  # 否则将回测时间更新至最新行情时间
+                    self._diffs.append(self._serials[min_serial]["diff"])
+                    quote_info = self._quotes[min_serial[0]]
                     if quotes_diff and (quote_info["min_duration"] != 0 or min_serial[1] == 0):
                         quotes[min_serial[0]] = quotes_diff
                     await self._fetch_serial(min_serial)
-                if not self.serials:  # 当无可发送数据时则抛出BacktestFinished例外,包括未订阅任何行情 或 所有已订阅行情的最后一笔行情获取完成
-                    self.logger.warning("回测结束")
+                if not self._serials:  # 当无可发送数据时则抛出BacktestFinished例外,包括未订阅任何行情 或 所有已订阅行情的最后一笔行情获取完成
+                    self._logger.warning("回测结束")
                     raise BacktestFinished() from None
             for ins, diff in quotes.items():
                 for d in diff:
-                    self.diffs.append({
+                    self._diffs.append({
                         "quotes": {
                             ins: d
                         }
                     })
-            if self.diffs:
+            if self._diffs:
                 rtn_data = {
                     "aid": "rtn_data",
-                    "data": self.diffs,
+                    "data": self._diffs,
                 }
-                self.diffs = []
-                self.pending_peek = False
-                self.logger.debug("backtest message send: %s", rtn_data)
-                await self.sim_recv_chan.send(rtn_data)
+                self._diffs = []
+                self._pending_peek = False
+                self._logger.debug("backtest message send: %s", rtn_data)
+                await self._sim_recv_chan.send(rtn_data)
 
     async def _ensure_serial(self, ins, dur):
-        if (ins, dur) not in self.serials:
-            quote = self.quotes.setdefault(ins, {  # 在此处设置 min_duration: 每次生成K线的时候会自动生成quote, 记录某一合约的最小duration
+        if (ins, dur) not in self._serials:
+            quote = self._quotes.setdefault(ins, {  # 在此处设置 min_duration: 每次生成K线的时候会自动生成quote, 记录某一合约的最小duration
                 "min_duration": dur
             })
             quote["min_duration"] = min(quote["min_duration"], dur)
-            self.serials[(ins, dur)] = {
+            self._serials[(ins, dur)] = {
                 "generator": self._gen_serial(ins, dur),
             }
             await self._fetch_serial((ins, dur))
 
     async def _ensure_quote(self, ins):
-        if ins not in self.quotes or self.quotes[ins]["min_duration"] > 60000000000:
+        if ins not in self._quotes or self._quotes[ins]["min_duration"] > 60000000000:
             await self._ensure_serial(ins, 60000000000)
 
     async def _fetch_serial(self, serial):
-        s = self.serials[serial]
+        s = self._serials[serial]
         try:
             s["timestamp"], s["diff"], s["quotes"] = await s["generator"].__anext__()
         except StopAsyncIteration:
-            del self.serials[serial]  # 删除一个行情时间超过结束时间的serial
+            del self._serials[serial]  # 删除一个行情时间超过结束时间的serial
 
     async def _gen_serial(self, ins, dur):
         """k线/tick 序列的 async generator, yield 出来的行情数据带有时间戳, 因此 _send_diff 可以据此归并"""
@@ -246,16 +246,16 @@ class TqBacktest(object):
             "ins_list": ins,
             "duration": dur,
             "view_width": 8964,  # 设为8964原因：可满足用户所有的订阅长度，并在backtest中将所有的 相同合约及周期 的K线用同一个serial存储
-            "focus_datetime": int(self.current_dt),
+            "focus_datetime": int(self._current_dt),
             "focus_position": 8964,
         }
-        chart = tqsdk.api.TqApi._get_obj(self.data, ["charts", chart_info["chart_id"]])
+        chart = tqsdk.api.TqApi._get_obj(self._data, ["charts", chart_info["chart_id"]])
         current_id = None  # 当前数据指针
-        serial = tqsdk.api.TqApi._get_obj(self.data, ["klines", ins, str(dur)] if dur != 0 else ["ticks", ins])
-        async with tqsdk.api.TqChan(self.api, last_only=True) as update_chan:
+        serial = tqsdk.api.TqApi._get_obj(self._data, ["klines", ins, str(dur)] if dur != 0 else ["ticks", ins])
+        async with tqsdk.api.TqChan(self._api, last_only=True) as update_chan:
             serial["_listener"].add(update_chan)
             chart["_listener"].add(update_chan)
-            await self.md_send_chan.send(chart_info.copy())
+            await self._md_send_chan.send(chart_info.copy())
             try:
                 async for _ in update_chan:
                     if not (chart_info.items() <= tqsdk.api.TqApi._get_obj(chart, ["state"]).items()):
@@ -267,11 +267,11 @@ class TqBacktest(object):
                     if (left_id == -1 and right_id == -1) or last_id == -1:
                         # 定位信息还没收到, 或数据序列还没收到
                         continue
-                    if self.data.get("mdhis_more_data", True):
-                        self.data["_listener"].add(update_chan)
+                    if self._data.get("mdhis_more_data", True):
+                        self._data["_listener"].add(update_chan)
                         continue
                     else:
-                        self.data["_listener"].discard(update_chan)
+                        self._data["_listener"].discard(update_chan)
                     if current_id is None:
                         current_id = max(left_id, 0)
                     while True:
@@ -283,7 +283,7 @@ class TqBacktest(object):
                             chart_info["left_kline_id"] = current_id
                             chart_info.pop("focus_datetime", None)
                             chart_info.pop("focus_position", None)
-                            await self.md_send_chan.send(chart_info.copy())
+                            await self._md_send_chan.send(chart_info.copy())
                         # 将订阅的8964长度的窗口中的数据都遍历完后，退出循环，然后再次进入并处理下一窗口数据
                         # （因为在处理过5000条数据的同时向服务器订阅从当前id开始的新一窗口的数据，在当前窗口剩下的3000条数据处理完后，下一窗口数据也已经收到）
                         if current_id > right_id:
@@ -301,7 +301,7 @@ class TqBacktest(object):
                                     }
                                 }
                             }
-                            if item["datetime"] > self.end_dt:  # 超过结束时间
+                            if item["datetime"] > self._end_dt:  # 超过结束时间
                                 return
                             yield item["datetime"], diff, self._get_quotes_from_tick(item)
                         else:
@@ -330,7 +330,7 @@ class TqBacktest(object):
                             timestamp = item[
                                 "datetime"] if dur < 86400000000000 else tqsdk.api.TqApi._get_trading_day_start_time(
                                 item["datetime"])
-                            if timestamp > self.end_dt:  # 超过结束时间
+                            if timestamp > self._end_dt:  # 超过结束时间
                                 return
                             yield timestamp, diff, None  # K线刚生成时的数据都为开盘价
                             diff = {
@@ -347,15 +347,15 @@ class TqBacktest(object):
                             timestamp = item[
                                             "datetime"] + dur - 1000 if dur < 86400000000000 else tqsdk.api.TqApi._get_trading_day_end_time(
                                 item["datetime"])
-                            if timestamp > self.end_dt:  # 超过结束时间
+                            if timestamp > self._end_dt:  # 超过结束时间
                                 return
-                            yield timestamp, diff, self._get_quotes_from_kline(self.data["quotes"][ins], timestamp,
+                            yield timestamp, diff, self._get_quotes_from_kline(self._data["quotes"][ins], timestamp,
                                                                                item)  # K线结束时生成quote数据
                         current_id += 1
             finally:
                 # 释放chart资源
                 chart_info["ins_list"] = ""
-                await self.md_send_chan.send(chart_info.copy())
+                await self._md_send_chan.send(chart_info.copy())
 
     @staticmethod
     def _get_quotes_from_tick(tick):
