@@ -185,7 +185,7 @@ class TqApi(object):
         deadline = time.time() + 60
         try:
             while self._data.get("mdhis_more_data", True) \
-                    or self._data.get("trade", {}).get(self._account.account_id, {}).get("trade_more_data", True):
+                    or self._data.get("trade", {}).get(self._account._account_id, {}).get("trade_more_data", True):
                 if not self.wait_update(deadline=deadline):  # 等待连接成功并收取截面数据
                     raise Exception("接收数据超时，请检查客户端及网络是否正常")
         except:
@@ -559,7 +559,7 @@ class TqApi(object):
         (exchange_id, instrument_id) = symbol.split(".", 1)
         msg = {
             "aid": "insert_order",
-            "user_id": self._account.account_id,
+            "user_id": self._account._account_id,
             "order_id": order_id,
             "exchange_id": exchange_id,
             "instrument_id": instrument_id,
@@ -640,7 +640,7 @@ class TqApi(object):
             order_id = order_or_order_id
         msg = {
             "aid": "cancel_order",
-            "user_id": self._account.account_id,
+            "user_id": self._account._account_id,
             "order_id": order_id,
         }
         self._send_pack(msg)
@@ -668,7 +668,7 @@ class TqApi(object):
             2080.0
             ...
         """
-        return self._get_obj(self._data, ["trade", self._account.account_id, "accounts", "CNY"],
+        return self._get_obj(self._data, ["trade", self._account._account_id, "accounts", "CNY"],
                              self._prototype["trade"]["*"]["accounts"]["@"])
 
     # ----------------------------------------------------------------------
@@ -707,9 +707,9 @@ class TqApi(object):
         if symbol:
             if symbol not in self._data.get("quotes", {}):
                 raise Exception("代码 %s 不存在, 请检查合约代码是否填写正确" % (symbol))
-            return self._get_obj(self._data, ["trade", self._account.account_id, "positions", symbol],
+            return self._get_obj(self._data, ["trade", self._account._account_id, "positions", symbol],
                                  self._prototype["trade"]["*"]["positions"]["@"])
-        return self._get_obj(self._data, ["trade", self._account.account_id, "positions"])
+        return self._get_obj(self._data, ["trade", self._account._account_id, "positions"])
 
     # ----------------------------------------------------------------------
     def get_order(self, order_id: Optional[str] = None) -> Union[Order, Entity]:
@@ -746,9 +746,9 @@ class TqApi(object):
             ...
         """
         if order_id:
-            return self._get_obj(self._data, ["trade", self._account.account_id, "orders", order_id],
+            return self._get_obj(self._data, ["trade", self._account._account_id, "orders", order_id],
                                  self._prototype["trade"]["*"]["orders"]["@"])
-        return self._get_obj(self._data, ["trade", self._account.account_id, "orders"])
+        return self._get_obj(self._data, ["trade", self._account._account_id, "orders"])
 
     # ----------------------------------------------------------------------
     def get_trade(self, trade_id: Optional[str] = None) -> Union[Trade, Entity]:
@@ -769,9 +769,9 @@ class TqApi(object):
 
         """
         if trade_id:
-            return self._get_obj(self._data, ["trade", self._account.account_id, "trades", trade_id],
+            return self._get_obj(self._data, ["trade", self._account._account_id, "trades", trade_id],
                                  self._prototype["trade"]["*"]["trades"]["@"])
-        return self._get_obj(self._data, ["trade", self._account.account_id, "trades"])
+        return self._get_obj(self._data, ["trade", self._account._account_id, "trades"])
 
     # ----------------------------------------------------------------------
     def wait_update(self, deadline: Optional[float] = None) -> None:
@@ -2013,13 +2013,13 @@ class TqAccount(object):
         """
         if bool(front_broker) != bool(front_url):
             raise Exception("front_broker 和 front_url 参数需同时填写")
-        self.broker_id = broker_id
-        self.account_id = account_id
-        self.password = password
-        self.front_broker = front_broker
-        self.front_url = front_url
-        self.app_id = "SHINNY_TQ_1.0"
-        self.system_info = ""
+        self._broker_id = broker_id
+        self._account_id = account_id
+        self._password = password
+        self._front_broker = front_broker
+        self._front_url = front_url
+        self._app_id = "SHINNY_TQ_1.0"
+        self._system_info = ""
         try:
             l = ctypes.c_int(344)
             buf = ctypes.create_string_buffer(l.value)
@@ -2037,7 +2037,7 @@ class TqAccount(object):
             else:
                 raise Exception("不支持该平台")
             if ret == 0:
-                self.system_info = base64.b64encode(buf.raw[:l.value]).decode("utf-8")
+                self._system_info = base64.b64encode(buf.raw[:l.value]).decode("utf-8")
             else:
                 raise Exception("错误码: %d" % ret)
         except Exception as e:
@@ -2046,16 +2046,16 @@ class TqAccount(object):
     async def _run(self, api, api_send_chan, api_recv_chan, md_send_chan, md_recv_chan, td_send_chan, td_recv_chan):
         req = {
             "aid": "req_login",
-            "bid": self.broker_id,
-            "user_name": self.account_id,
-            "password": self.password,
+            "bid": self._broker_id,
+            "user_name": self._account_id,
+            "password": self._password,
         }
-        if self.system_info:
-            req["client_app_id"] = self.app_id
-            req["client_system_info"] = self.system_info
-        if self.front_broker:
-            req["broker_id"] = self.front_broker
-            req["front"] = self.front_url
+        if self._system_info:
+            req["client_app_id"] = self._app_id
+            req["client_system_info"] = self._system_info
+        if self._front_broker:
+            req["broker_id"] = self._front_broker
+            req["front"] = self._front_url
         await td_send_chan.send(req)
         md_task = api.create_task(self._md_handler(api_recv_chan, md_send_chan, md_recv_chan))
         td_task = api.create_task(self._td_handler(api_recv_chan, td_send_chan, td_recv_chan))
@@ -2095,9 +2095,9 @@ class TqChan(asyncio.Queue):
             last_only (bool): 为True时只存储最后一个发送到channel的对象
         """
         asyncio.Queue.__init__(self, loop=api._loop)
-        self.api = api
-        self.last_only = last_only
-        self.closed = False
+        self._api = api
+        self._last_only = last_only
+        self._closed = False
 
     async def close(self) -> None:
         """
@@ -2105,8 +2105,8 @@ class TqChan(asyncio.Queue):
 
         关闭后send将不起作用,recv在收完剩余数据后会立即返回None
         """
-        if not self.closed:
-            self.closed = True
+        if not self._closed:
+            self._closed = True
             await asyncio.Queue.put(self, None)
 
     async def send(self, item: Any) -> None:
@@ -2116,8 +2116,8 @@ class TqChan(asyncio.Queue):
         Args:
             item (any): 待发送的对象
         """
-        if not self.closed:
-            if self.last_only:
+        if not self._closed:
+            if self._last_only:
                 while not self.empty():
                     asyncio.Queue.get_nowait(self)
             await asyncio.Queue.put(self, item)
@@ -2132,8 +2132,8 @@ class TqChan(asyncio.Queue):
         Raises:
             asyncio.QueueFull: 如果channel已满则会抛出 asyncio.QueueFull
         """
-        if not self.closed:
-            if self.last_only:
+        if not self._closed:
+            if self._last_only:
                 while not self.empty():
                     asyncio.Queue.get_nowait(self)
             asyncio.Queue.put_nowait(self, item)
@@ -2145,7 +2145,7 @@ class TqChan(asyncio.Queue):
         Returns:
             any: 收到的数据，如果channel已被关闭则会立即收到None
         """
-        if self.closed and self.empty():
+        if self._closed and self.empty():
             return None
         return await asyncio.Queue.get(self)
 
@@ -2159,7 +2159,7 @@ class TqChan(asyncio.Queue):
         Raises:
             asyncio.QueueFull: 如果channel中没有数据则会抛出 asyncio.QueueEmpty
         """
-        if self.closed and self.empty():
+        if self._closed and self.empty():
             return None
         return asyncio.Queue.get_nowait(self)
 
@@ -2173,7 +2173,7 @@ class TqChan(asyncio.Queue):
         Returns:
             any: channel中的最后一个数据
         """
-        while (self.closed and self.qsize() > 1) or (not self.closed and not self.empty()):
+        while (self._closed and self.qsize() > 1) or (not self._closed and not self.empty()):
             latest = asyncio.Queue.get_nowait(self)
         return latest
 
@@ -2182,7 +2182,7 @@ class TqChan(asyncio.Queue):
 
     async def __anext__(self):
         value = await asyncio.Queue.get(self)
-        if self.closed and self.empty():
+        if self._closed and self.empty():
             raise StopAsyncIteration
         return value
 
