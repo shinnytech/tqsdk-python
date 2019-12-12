@@ -2,11 +2,11 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'chengzhi'
 
-import weakref
+from typing import Union
 from datetime import date, datetime
-from tqsdk.api import TqApi, TqChan
 from tqsdk.exceptions import BacktestFinished
 from tqsdk.objs import Entity
+import tqsdk.api
 
 
 class TqBacktest(object):
@@ -41,7 +41,7 @@ class TqBacktest(object):
     对 **组合合约** 进行回测时需注意：只能通过订阅 tick 数据来回测，不能订阅K线，因为K线是由最新价合成的，而交易所发回的组合合约数据中无最新价。
     """
 
-    def __init__(self, start_dt, end_dt):
+    def __init__(self, start_dt: Union[date, datetime], end_dt: Union[date, datetime]) -> None:
         """
         创建天勤回测类
 
@@ -53,14 +53,14 @@ class TqBacktest(object):
         if isinstance(start_dt, datetime):
             self.current_dt = int(start_dt.timestamp() * 1e9)
         elif isinstance(start_dt, date):
-            self.current_dt = TqApi._get_trading_day_start_time(
+            self.current_dt = tqsdk.api.TqApi._get_trading_day_start_time(
                 int(datetime(start_dt.year, start_dt.month, start_dt.day).timestamp()) * 1000000000)
         else:
             raise Exception("回测起始时间(start_dt)类型 %s 错误, 请检查 start_dt 数据类型是否填写正确" % (type(start_dt)))
         if isinstance(end_dt, datetime):
             self.end_dt = int(end_dt.timestamp() * 1e9)
         elif isinstance(end_dt, date):
-            self.end_dt = TqApi._get_trading_day_end_time(
+            self.end_dt = tqsdk.api.TqApi._get_trading_day_end_time(
                 int(datetime(end_dt.year, end_dt.month, end_dt.day).timestamp()) * 1000000000)
         else:
             raise Exception("回测结束时间(end_dt)类型 %s 错误, 请检查 end_dt 数据类型是否填写正确" % (type(end_dt)))
@@ -128,11 +128,11 @@ class TqBacktest(object):
                 "aid": "peek_message"
             })
             for d in pack.get("data", []):
-                TqApi._merge_diff(self.data, d, self.api._prototype, False)
+                tqsdk.api.TqApi._merge_diff(self.data, d, self.api._prototype, False)
 
     async def _send_snapshot(self):
         """发送初始合约信息"""
-        async with TqChan(self.api, last_only=True) as update_chan:  # 等待与行情服务器连接成功
+        async with tqsdk.api.TqChan(self.api, last_only=True) as update_chan:  # 等待与行情服务器连接成功
             self.data["_listener"].add(update_chan)
             while self.data.get("mdhis_more_data", True):
                 await update_chan.recv()
@@ -242,23 +242,23 @@ class TqBacktest(object):
         # 因此将 view_width 和 focus_position 设置成一样，这样 focus_datetime 所对应的 k线刚好位于屏幕外
         chart_info = {
             "aid": "set_chart",
-            "chart_id": TqApi._generate_chart_id("backtest"),
+            "chart_id": tqsdk.api.TqApi._generate_chart_id("backtest"),
             "ins_list": ins,
             "duration": dur,
             "view_width": 8964,  # 设为8964原因：可满足用户所有的订阅长度，并在backtest中将所有的 相同合约及周期 的K线用同一个serial存储
             "focus_datetime": int(self.current_dt),
             "focus_position": 8964,
         }
-        chart = TqApi._get_obj(self.data, ["charts", chart_info["chart_id"]])
+        chart = tqsdk.api.TqApi._get_obj(self.data, ["charts", chart_info["chart_id"]])
         current_id = None  # 当前数据指针
-        serial = TqApi._get_obj(self.data, ["klines", ins, str(dur)] if dur != 0 else ["ticks", ins])
-        async with TqChan(self.api, last_only=True) as update_chan:
+        serial = tqsdk.api.TqApi._get_obj(self.data, ["klines", ins, str(dur)] if dur != 0 else ["ticks", ins])
+        async with tqsdk.api.TqChan(self.api, last_only=True) as update_chan:
             serial["_listener"].add(update_chan)
             chart["_listener"].add(update_chan)
             await self.md_send_chan.send(chart_info.copy())
             try:
                 async for _ in update_chan:
-                    if not (chart_info.items() <= TqApi._get_obj(chart, ["state"]).items()):
+                    if not (chart_info.items() <= tqsdk.api.TqApi._get_obj(chart, ["state"]).items()):
                         # 当前请求还没收齐回应, 不应继续处理
                         continue
                     left_id = chart.get("left_id", -1)
@@ -327,7 +327,8 @@ class TqBacktest(object):
                                     }
                                 }
                             }
-                            timestamp = item["datetime"] if dur < 86400000000000 else TqApi._get_trading_day_start_time(
+                            timestamp = item[
+                                "datetime"] if dur < 86400000000000 else tqsdk.api.TqApi._get_trading_day_start_time(
                                 item["datetime"])
                             if timestamp > self.end_dt:  # 超过结束时间
                                 return
@@ -344,7 +345,7 @@ class TqBacktest(object):
                                 }
                             }
                             timestamp = item[
-                                            "datetime"] + dur - 1000 if dur < 86400000000000 else TqApi._get_trading_day_end_time(
+                                            "datetime"] + dur - 1000 if dur < 86400000000000 else tqsdk.api.TqApi._get_trading_day_end_time(
                                 item["datetime"])
                             if timestamp > self.end_dt:  # 超过结束时间
                                 return

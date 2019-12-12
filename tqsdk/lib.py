@@ -2,8 +2,9 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'chengzhi'
 
-from tqsdk.api import TqChan
+from tqsdk.api import TqChan, TqApi
 from asyncio import gather
+from typing import Optional
 
 
 class TargetPosTaskSingleton(type):
@@ -24,7 +25,8 @@ class TargetPosTaskSingleton(type):
 class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
     """目标持仓 task, 该 task 可以将指定合约调整到目标头寸"""
 
-    def __init__(self, api, symbol, price="ACTIVE", offset_priority="今昨,开", trade_chan=None):
+    def __init__(self, api: TqApi, symbol: str, price: str = "ACTIVE", offset_priority: str = "今昨,开",
+                 trade_chan: Optional[TqChan] = None) -> None:
         """
         创建目标持仓task实例，负责调整归属于该task的持仓 **(默认为整个账户的该合约净持仓)**.
 
@@ -68,7 +70,7 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
         self.trade_chan = trade_chan if trade_chan is not None else TqChan(self.api)
         self.task = self.api.create_task(self._target_pos_task())
 
-    def set_target_volume(self, volume):
+    def set_target_volume(self, volume: int) -> None:
         """
         设置目标持仓手数
 
