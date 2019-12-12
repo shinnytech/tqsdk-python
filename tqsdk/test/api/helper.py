@@ -84,7 +84,7 @@ class MockServer():
         self.stop_signal = self.loop.create_future()
 
     def close(self):
-        assert not self._expecting
+        assert (not self._expecting) or self._expecting["content"] == {"aid":"peek_message"}
         self.loop.call_soon_threadsafe(lambda: self.stop_signal.set_result(0))
         self.thread.join()
 
