@@ -106,7 +106,7 @@ class TqApi(object):
         self._ins_url = TqApi.DEFAULT_INS_URL
         self._md_url = "wss://openmd.shinnytech.com/t/md/front/mobile"
         self._td_url = "wss://opentd.shinnytech.com/trade/user0"
-        self._http_server_port = None
+        self._http_server_port = _http_server_port
         if url and isinstance(self._account, TqSim):
             self._md_url = url
         if url and isinstance(self._account, TqAccount):

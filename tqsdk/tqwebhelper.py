@@ -17,8 +17,9 @@ import websockets
 import tqsdk
 
 class TqWebHelper(object):
-    def __init__(self):
+    def __init__(self, _http_server_port = None):
         self.web_dir = os.path.join(os.path.dirname(__file__), 'web')
+        self._http_server_port = 0 if _http_server_port is None else _http_server_port
         file_path = os.path.abspath(sys.argv[0])
         file_name = os.path.basename(file_path)
         self._data = {
@@ -273,7 +274,7 @@ class TqWebHelper(object):
         runner = web.AppRunner(app)
         await runner.setup()
         server_socket = socket.socket()
-        server_socket.bind(('127.0.0.1', 0 if self.api._http_server_port is None else self.api._http_server_port))
+        server_socket.bind(('127.0.0.1', self._http_server_port))
         address = server_socket.getsockname()
         site = web.SockSite(runner, server_socket)
         await site.start()
