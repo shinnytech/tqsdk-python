@@ -62,7 +62,7 @@ class TestTdBasic(unittest.TestCase):
         self.assertEqual(order1.status, "FINISHED")
         for k, v in order1.trade_records.items():  # 模拟交易为一次性全部成交
             self.assertEqual(str(v),
-                             "{'order_id': '5c6e433715ba2bdd177219d30e7a269f', 'trade_id': '5c6e433715ba2bdd177219d30e7a269f|1', 'exchange_trade_id': '5c6e433715ba2bdd177219d30e7a269f|1', 'exchange_id': 'DCE', 'instrument_id': 'jd2001', 'direction': 'BUY', 'offset': 'OPEN', 'price': 4061.0, 'volume': 1, 'trade_date_time': 1576114609893000000, 'symbol': 'DCE.jd2001', 'user_id': 'TQSIM', 'commission': 6.122999999999999}")
+                             "{'order_id': '5c6e433715ba2bdd177219d30e7a269f', 'trade_id': '5c6e433715ba2bdd177219d30e7a269f|1', 'exchange_trade_id': '5c6e433715ba2bdd177219d30e7a269f|1', 'exchange_id': 'DCE', 'instrument_id': 'jd2001', 'direction': 'BUY', 'offset': 'OPEN', 'price': 4087.0, 'volume': 1, 'trade_date_time': 1576121399900001000, 'symbol': 'DCE.jd2001', 'user_id': 'TQSIM', 'commission': 6.122999999999999}")
 
         self.assertEqual(order2.order_id, "cf1822ffbc6887782b491044d5e34124")
         self.assertEqual(order2.direction, "BUY")
@@ -77,7 +77,7 @@ class TestTdBasic(unittest.TestCase):
         self.assertEqual(order2.status, "FINISHED")
         for k, v in order2.trade_records.items():  # 模拟交易为一次性全部成交
             self.assertEqual(str(v),
-                             "{'order_id': 'cf1822ffbc6887782b491044d5e34124', 'trade_id': 'cf1822ffbc6887782b491044d5e34124|2', 'exchange_trade_id': 'cf1822ffbc6887782b491044d5e34124|2', 'exchange_id': 'SHFE', 'instrument_id': 'cu2001', 'direction': 'BUY', 'offset': 'OPEN', 'price': 49200.0, 'volume': 2, 'trade_date_time': 1576114609893000000, 'symbol': 'SHFE.cu2001', 'user_id': 'TQSIM', 'commission': 23.189999999999998}")
+                             "{'order_id': 'cf1822ffbc6887782b491044d5e34124', 'trade_id': 'cf1822ffbc6887782b491044d5e34124|2', 'exchange_trade_id': 'cf1822ffbc6887782b491044d5e34124|2', 'exchange_id': 'SHFE', 'instrument_id': 'cu2001', 'direction': 'BUY', 'offset': 'OPEN', 'price': 49200.0, 'volume': 2, 'trade_date_time': 1576121399900001000, 'symbol': 'SHFE.cu2001', 'user_id': 'TQSIM', 'commission': 23.189999999999998}")
 
         api.close()
 
@@ -239,7 +239,6 @@ class TestTdBasic(unittest.TestCase):
         self.assertEqual(trade2.volume, 2)
         self.assertEqual(trade2.trade_date_time, 1576114916000000000)
         self.assertEqual(trade2.commission, 23.189999999999998)
-        # api.wait_update(0)
         api.close()
 
     def test_get_order(self):
