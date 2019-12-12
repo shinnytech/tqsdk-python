@@ -54,7 +54,7 @@ class TqApi(object):
 
     def __init__(self, account: Union['TqAccount', TqSim, 'TqApi', None] = None, url: Optional[str] = None,
                  backtest: Optional[TqBacktest] = None, debug: Optional[str] = None,
-                 loop: Optional[asyncio.AbstractEventLoop] = None, _ins_url=None, _md_url=None, _td_url=None, _http_server_port=None) -> None:
+                 loop: Optional[asyncio.AbstractEventLoop] = None, _ins_url=None, _md_url=None, _td_url=None, web_gui=False, _http_server_port=None) -> None:
         """
         创建天勤接口实例
 
@@ -83,6 +83,8 @@ class TqApi(object):
 
             loop(asyncio.AbstractEventLoop): [可选]使用指定的 IOLoop, 默认创建一个新的.
 
+            web_gui(bool): [可选]是否启用 web_gui 功能, 默认不启用.
+
         Example::
 
             # 使用实盘帐号直连行情和交易服务器
@@ -106,7 +108,7 @@ class TqApi(object):
         self._ins_url = TqApi.DEFAULT_INS_URL
         self._md_url = "wss://openmd.shinnytech.com/t/md/front/mobile"
         self._td_url = "wss://opentd.shinnytech.com/trade/user0"
-        self._http_server_port = _http_server_port
+
         if url and isinstance(self._account, TqSim):
             self._md_url = url
         if url and isinstance(self._account, TqAccount):
@@ -118,7 +120,7 @@ class TqApi(object):
         if _td_url:
             self._td_url = _td_url
         self._loop = asyncio.SelectorEventLoop() if loop is None else loop  # 创建一个新的 ioloop, 避免和其他框架/环境产生干扰
-        self._tq_web_helper = TqWebHelper()
+        self._tq_web_helper = TqWebHelper(_http_server_port=_http_server_port, enabled_web_gui=web_gui)
 
         # 初始化 logger
 
