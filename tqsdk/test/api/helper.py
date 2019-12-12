@@ -62,7 +62,7 @@ class MockInsServer():
         app.add_routes([web.get('/{tail:.*}', self.handle)])
         runner = web.AppRunner(app)
         await runner.setup()
-        site = web.TCPSite(runner, 'localhost', self.port)
+        site = web.TCPSite(runner, '127.0.0.1', self.port)
         await site.start()
         await self.stop_signal
         await runner.cleanup()
@@ -109,12 +109,12 @@ class MockServer():
         self.thread.start()
 
     async def _server(self):
-        async with websockets.serve(self._handler_md, "localhost", self.md_port) as self.server_md:
-            async with websockets.serve(self._handler_td, "localhost", self.td_port) as self.server_td:
+        async with websockets.serve(self._handler_md, "127.0.0.1", self.md_port) as self.server_md:
+            async with websockets.serve(self._handler_td, "127.0.0.1", self.td_port) as self.server_td:
                 await self.stop_signal
 
     def _run(self):
-        self.script_file = open(self.script_file_name, "rt", encoding="gbk")
+        self.script_file = open(self.script_file_name, "rt", encoding="utf-8")
         asyncio.set_event_loop(self.loop)
         self.loop.run_until_complete(self._server())
 
