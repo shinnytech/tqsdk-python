@@ -19,7 +19,7 @@ class TqSim(object):
     模拟交易不会有部分成交的情况, 要成交就是全部成交
     """
 
-    def __init__(self, init_balance=10000000.0, account_id="TQSIM"):
+    def __init__(self, init_balance: float = 10000000.0, account_id: str = "TQSIM") -> None:
         """
         Args:
             init_balance (float): [可选]初始资金, 默认为一千万

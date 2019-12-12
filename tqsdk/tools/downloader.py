@@ -3,6 +3,7 @@
 __author__ = 'yangyang'
 
 import csv
+from typing import Union, List
 from datetime import date, datetime
 from tqsdk.api import TqApi
 
@@ -14,7 +15,8 @@ class DataDownloader:
     多合约按时间横向对齐
     """
 
-    def __init__(self, api, symbol_list, dur_sec, start_dt, end_dt, csv_file_name):
+    def __init__(self, api: TqApi, symbol_list: Union[str, List[str]], dur_sec: int, start_dt: Union[date, datetime],
+                 end_dt: Union[date, datetime], csv_file_name: str) -> None:
         """
         创建历史数据下载器实例
 
@@ -79,7 +81,7 @@ class DataDownloader:
         self.csv_file_name = csv_file_name
         self.task = self.api.create_task(self._download_data())
 
-    def is_finished(self):
+    def is_finished(self) -> bool:
         """
         判断是否下载完成
 
@@ -88,7 +90,7 @@ class DataDownloader:
         """
         return self.task.done()
 
-    def get_progress(self):
+    def get_progress(self) -> float:
         """
         获得下载进度百分比
 
