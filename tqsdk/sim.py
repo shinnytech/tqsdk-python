@@ -148,8 +148,9 @@ class TqSim(object):
         for d in pack["data"]:
             d.pop("trade", None)
             self._diffs.append(d)
+
             # 在第一次收到 mdhis_more_data 为 False 的时候，发送账户初始截面信息，这样回测模式下，往后的模块才有正确的时间顺序
-            if self._has_send_init_account is False and d.get("mdhis_more_data") is False:
+            if not self._has_send_init_account and not d.get("mdhis_more_data", True):
                 self._send_account()
                 self._diffs.append({
                     "trade": {
