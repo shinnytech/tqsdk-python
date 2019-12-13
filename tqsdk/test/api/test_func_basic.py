@@ -18,7 +18,7 @@ class TestFuncBasic(unittest.TestCase):
     """
 
     def setUp(self):
-        self.ins = MockInsServer(5000)
+        # self.ins = MockInsServer(5000)
         self.mock = MockServer()
         # self.tq = WebsocketServer(5300)
         self.ins_url = "https://openmd.shinnytech.com/t/md/symbols/2019-07-03.json"
@@ -26,7 +26,7 @@ class TestFuncBasic(unittest.TestCase):
         self.td_url = "ws://127.0.0.1:5200/"
 
     def tearDown(self):
-        self.ins.close()
+        # self.ins.close()
         self.mock.close()
 
     def test_is_changing(self):
