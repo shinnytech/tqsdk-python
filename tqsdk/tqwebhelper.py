@@ -18,9 +18,9 @@ import tqsdk
 
 class TqWebHelper(object):
     def __init__(self, _http_server_port = None, enabled_web_gui = False):
-        self.enabled_web_gui = bool(enabled_web_gui) # enabled_web_gui 转成 bool 类型
-        if self.enabled_web_gui is True:
-            self.web_dir = os.path.join(os.path.dirname(__file__), 'web')
+        self._enabled_web_gui = bool(enabled_web_gui) # enabled_web_gui 转成 bool 类型
+        if self._enabled_web_gui is True:
+            self._web_dir = os.path.join(os.path.dirname(__file__), 'web')
             self._http_server_port = 0 if _http_server_port is None else _http_server_port
             file_path = os.path.abspath(sys.argv[0])
             file_name = os.path.basename(file_path)
@@ -37,15 +37,15 @@ class TqWebHelper(object):
                 "draw_chart_datas": {},
                 "snapshots": {}
             }
-            self.order_symbols = set()
+            self._order_symbols = set()
             self._diffs = []
-            self.conn_diff_chans = set()
+            self._conn_diff_chans = set()
 
     async def _run(self, api, api_send_chan, api_recv_chan, web_send_chan, web_recv_chan):
-        self.api = api
-        if self.enabled_web_gui is False:
+        self._api = api
+        if self._enabled_web_gui is False:
             # 没有开启 web_gui 功能
-            _data_handler_without_web_task = self.api.create_task(
+            _data_handler_without_web_task = self._api.create_task(
                 self._data_handler_without_web(api_recv_chan, web_recv_chan))
             try:
                 async for pack in api_send_chan:
@@ -55,15 +55,16 @@ class TqWebHelper(object):
             finally:
                 _data_handler_without_web_task.cancel()
         else:
-            self.logger = api._logger.getChild("TqWebHelper")
+            self._logger = api._logger.getChild("TqWebHelper")  # 调试信息输出
             # 发送给 web 账户信息，用作显示
-            self._data["action"]["account_id"] = self.api._account.account_id
-            self._data["action"]["broker_id"] = self.api._account.broker_id if isinstance(self.api._account,
+            self._data["action"]["account_id"] = self._api._account._account_id
+            self._data["action"]["broker_id"] = self._api._account._broker_id if isinstance(self._api._account,
                                                                                           tqsdk.api.TqAccount) else 'TQSIM'
-            self.web_port_chan = tqsdk.api.TqChan(self.api)  # 记录到 ws port 的channel
-            _data_task = self.api.create_task(self._data_handler(api_recv_chan, web_recv_chan))
-            _wsserver_task = self.api.create_task(self.link_wsserver())
-            _httpserver_task = self.api.create_task(self.link_httpserver())
+
+            self.web_port_chan = tqsdk.api.TqChan(self._api)  # 记录到 ws port 的channel
+            _data_task = self._api.create_task(self._data_handler(api_recv_chan, web_recv_chan))
+            _wsserver_task = self._api.create_task(self.link_wsserver())
+            _httpserver_task = self._api.create_task(self.link_httpserver())
 
             try:
                 # api 发送的包，过滤出需要的包记录在 self._data
@@ -80,24 +81,24 @@ class TqWebHelper(object):
                             web_diff['draw_chart_datas'][pack['symbol']] = {}
                             web_diff['draw_chart_datas'][pack['symbol']][pack['dur_nano']] = diff_data
                             TqWebHelper.merge_diff(self._data, web_diff)
-                            for chan in self.conn_diff_chans:
+                            for chan in self._conn_diff_chans:
                                 self.send_to_conn_chan(chan, [web_diff])
                     else:
                         if pack["aid"] == "insert_order":
-                            self.order_symbols.add(pack["exchange_id"] + "." + pack["instrument_id"])
+                            self._order_symbols.add(pack["exchange_id"] + "." + pack["instrument_id"])
                         if pack['aid'] == 'subscribe_quote' or pack["aid"] == "set_chart" or pack["aid"] == 'insert_order':
                             web_diff = {'subscribed': []}
-                            for item in self.api._requests["klines"].keys():
+                            for item in self._api._requests["klines"].keys():
                                 web_diff['subscribed'].append({"symbol": item[0], "dur_nano": item[1] * 1000000000})
-                            for item in self.api._requests["ticks"].keys():
+                            for item in self._api._requests["ticks"].keys():
                                 web_diff['subscribed'].append({"symbol": item[0], "dur_nano": 0})
-                            for symbol in self.api._requests["quotes"]:
+                            for symbol in self._api._requests["quotes"]:
                                 web_diff['subscribed'].append({"symbol": symbol})
-                            for symbol in self.order_symbols:
+                            for symbol in self._order_symbols:
                                 web_diff['subscribed'].append({"symbol": symbol})
                             if web_diff['subscribed'] != self._data['subscribed']:
                                 self._data['subscribed'] = web_diff['subscribed']
-                            for chan in self.conn_diff_chans:
+                            for chan in self._conn_diff_chans:
                                 self.send_to_conn_chan(chan, [web_diff])
                         # 发送的转发给上游
                         await web_send_chan.send(pack)
@@ -124,10 +125,10 @@ class TqWebHelper(object):
                         TqWebHelper.merge_diff(self._data["trade"], trade)
                         web_diffs.append({"trade": trade})
                         # 账户是否有变化
-                        static_balance_changed = d.get("trade", {}).get(self.api._account.account_id, {}).\
+                        static_balance_changed = d.get("trade", {}).get(self._api._account._account_id, {}).\
                             get("accounts", {}).get("CNY", {}).get('static_balance')
-                        trades_changed = d.get("trade", {}).get(self.api._account.account_id, {}).get("trades", {})
-                        orders_changed = d.get("trade", {}).get(self.api._account.account_id, {}).get("orders", {})
+                        trades_changed = d.get("trade", {}).get(self._api._account._account_id, {}).get("trades", {})
+                        orders_changed = d.get("trade", {}).get(self._api._account._account_id, {}).get("orders", {})
                         if static_balance_changed is not None or trades_changed != {} or orders_changed != {}:
                             account_changed = True
                     # 处理 backtest
@@ -151,7 +152,7 @@ class TqWebHelper(object):
                     _snapshots["snapshots"][dt] = snapshot
                     web_diffs.append(_snapshots)
                     TqWebHelper.merge_diff(self._data, _snapshots)
-                for chan in self.conn_diff_chans:
+                for chan in self._conn_diff_chans:
                     self.send_to_conn_chan(chan, web_diffs)
             # 接收的数据转发给下游 api
             await api_recv_chan.send(pack)
@@ -162,15 +163,15 @@ class TqWebHelper(object):
         for _, notify in notifies.items():
             if notify["code"] == 2019112901:
                 # 连接建立的通知
-                if notify["url"] == self.api._md_url:
+                if notify["url"] == self._api._md_url:
                     diffs.append({
                         "action": {
                             "md_url_status": True,
-                            "td_url_status": True if isinstance(self.api._account, tqsdk.sim.TqSim) \
+                            "td_url_status": True if isinstance(self._api._account, tqsdk.sim.TqSim) \
                                 else self._data["action"]["td_url_status"]
                         }
                     })
-                elif notify["url"] == self.api._td_url:
+                elif notify["url"] == self._api._td_url:
                     diffs.append({
                         "action": {
                             "td_url_status": True
@@ -178,15 +179,15 @@ class TqWebHelper(object):
                     })
             elif notify["code"] == 2019112902:
                 # 连接断开的通知
-                if notify["url"] == self.api._md_url:
+                if notify["url"] == self._api._md_url:
                     diffs.append({
                         "action": {
                             "md_url_status": False,
-                            "td_url_status": True if isinstance(self.api._account, tqsdk.sim.TqSim) \
+                            "td_url_status": True if isinstance(self._api._account, tqsdk.sim.TqSim) \
                                 else self._data["action"]["td_url_status"]
                         }
                     })
-                elif notify["url"] == self.api._td_url:
+                elif notify["url"] == self._api._td_url:
                     diffs.append({
                         "action": {
                             "td_url_status": False
@@ -208,8 +209,8 @@ class TqWebHelper(object):
             return int(datetime.now().timestamp() * 1e9)
 
     def get_snapshot(self):
-        account = self._data.get("trade", {}).get(self.api._account.account_id, {}).get("accounts", {}).get("CNY", {})
-        positions = self._data.get("trade", {}).get(self.api._account.account_id, {}).get("positions", {})
+        account = self._data.get("trade", {}).get(self._api._account._account_id, {}).get("accounts", {}).get("CNY", {})
+        positions = self._data.get("trade", {}).get(self._api._account._account_id, {}).get("positions", {})
         dt = self.dt_func()
         return dt, {
             'accounts': {'CNY': {k: v for k, v in account.items() if not k.startswith("_")}},
@@ -267,29 +268,31 @@ class TqWebHelper(object):
     async def connection_handler(self, conn):
         send_msg = self.get_send_msg(self._data)
         await conn.send(send_msg)
-        conn_chan = tqsdk.api.TqChan(self.api, last_only=True)
-        self.conn_diff_chans.add(conn_chan)
+        conn_chan = tqsdk.api.TqChan(self._api, last_only=True)
+        self._conn_diff_chans.add(conn_chan)
         try:
             async for msg in conn:
-                if simplejson.loads(msg)["aid"] == 'peek_message':
+                pack = simplejson.loads(msg)
+                if pack["aid"] == 'peek_message':
                     last_diff = await conn_chan.recv()
                     send_msg = self.get_send_msg(last_diff)
                     await conn.send(send_msg)
         except Exception as e:
             await conn_chan.close()
-            self.conn_diff_chans.remove(conn_chan)
+            self._conn_diff_chans.remove(conn_chan)
 
     async def link_httpserver(self):
+
         ws_port = await self.web_port_chan.recv()
         # init http server handlers
-        ins_url = self.api._ins_url
-        md_url = self.api._md_url
+        ins_url = self._api._ins_url
+        md_url = self._api._md_url
         ws_url = 'ws://127.0.0.1:' + str(ws_port['port'])
         app = web.Application()
         app.router.add_get(path='/url',
                            handler=lambda request: TqWebHelper.httpserver_url_handler(ins_url, md_url, ws_url))
-        app.router.add_get(path='/', handler=lambda request: TqWebHelper.httpserver_index_handler(self.web_dir))
-        app.router.add_static('/', self.web_dir, show_index=True)
+        app.router.add_get(path='/', handler=lambda request: TqWebHelper.httpserver_index_handler(self._web_dir))
+        app.router.add_static('/', self._web_dir, show_index=True)
         runner = web.AppRunner(app)
         await runner.setup()
         server_socket = socket.socket()
@@ -297,7 +300,7 @@ class TqWebHelper(object):
         address = server_socket.getsockname()
         site = web.SockSite(runner, server_socket)
         await site.start()
-        self.logger.info("您可以访问 http://{ip}:{port} 查看策略绘制出的 K 线图形。".format(ip=address[0], port=address[1]))
+        self._logger.info("您可以访问 http://{ip}:{port} 查看策略绘制出的 K 线图形。".format(ip=address[0], port=address[1]))
         await asyncio.sleep(100000000000)
 
     @staticmethod
