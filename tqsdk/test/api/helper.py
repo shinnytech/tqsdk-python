@@ -84,7 +84,7 @@ class MockServer():
         self.stop_signal = self.loop.create_future()
 
     def close(self):
-        assert (not self._expecting) or self._expecting["content"] == {"aid":"peek_message"}
+        assert not self._expecting
         self.loop.call_soon_threadsafe(lambda: self.stop_signal.set_result(0))
         self.thread.join()
 
@@ -93,7 +93,8 @@ class MockServer():
         try:
             while True:
                 s = await self.connections["md"].recv()
-                await self.on_received("md", json.loads(s))
+                pack = json.loads(s)
+                await self.on_received("md", pack)
         except websockets.exceptions.ConnectionClosedOK as e:
             assert e.code == 1000
 
@@ -101,7 +102,10 @@ class MockServer():
         await self.on_connected("td", connection)
         while True:
             s = await self.connections["td"].recv()
-            await self.on_received("td", json.loads(s))
+            pack = json.loads(s)
+            if pack["aid"] == "peek_message":
+                continue
+            await self.on_received("td", pack)
 
     def run(self, script_file_name):
         self.script_file_name = script_file_name
@@ -124,7 +128,7 @@ class MockServer():
         for line in self.script_file:
             # 2019-09-09 16:22:40,652 - DEBUG - websocket message sent to wss://openmd.shinnytech.com/t/md/front/mobile: {"aid": "subscribe_quote",
             item = {}
-            if "websocket message sent" in line:
+            if "websocket message sent" in line and "peek_message" not in line:
                 item["type"] = "sent"
             elif "websocket message received" in line:
                 item["type"] = "received"
@@ -154,8 +158,9 @@ class MockServer():
         # assert self._expecting["action"] == "connected"
 
     async def on_received(self, source, pack):
-        if not self._expecting:
+        if not self._expecting :
             await self._process_script()
-        assert self._expecting["source"] == source
-        assert self._expecting["content"] == pack
-        await self._process_script()
+        if pack["aid"] != "peek_message":
+            assert self._expecting["source"] == source
+            assert self._expecting["content"] == pack
+            await self._process_script()
