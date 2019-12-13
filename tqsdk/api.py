@@ -99,6 +99,10 @@ class TqApi(object):
             from datetime import date
             from tqsdk import TqApi, TqSim, TqBacktest
             api = TqApi(TqSim(), backtest=TqBacktest(start_dt=date(2018, 5, 1), end_dt=date(2018, 10, 1)))
+
+            # 开启 web_gui 功能
+            from tqsdk import TqApi
+            api = TqApi(web_gui=True)
         """
         # 记录参数
         if account is None:
