@@ -197,7 +197,7 @@ class TqBacktest(object):
                     await self._fetch_serial(min_serial)
                 if not self._serials:  # 当无可发送数据时则抛出BacktestFinished例外,包括未订阅任何行情 或 所有已订阅行情的最后一笔行情获取完成
                     self._logger.warning("回测结束")
-                    raise BacktestFinished() from None
+                    raise BacktestFinished(self._api) from None
             for ins, diff in quotes.items():
                 for d in diff:
                     self._diffs.append({
