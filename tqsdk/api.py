@@ -83,7 +83,9 @@ class TqApi(object):
 
             loop(asyncio.AbstractEventLoop): [可选]使用指定的 IOLoop, 默认创建一个新的.
 
-            web_gui(bool): [可选]是否启用 web_gui 功能, 默认不启用.
+            web_gui(bool): [可选]是否启用 图形化界面 功能, 默认不启用.
+                * 为了图形化界面能够接收到程序传输的数据并且刷新，在程序中，需要循环调用 api.wait_update的形式去更新和获取数据
+                * 推荐打开图形化界面的浏览器为Google Chrome 或 Firefox
 
         Example::
 
