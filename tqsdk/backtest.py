@@ -363,7 +363,9 @@ class TqBacktest(object):
                                 item["datetime"])
                             if timestamp > self._end_dt:  # 超过结束时间
                                 return
-                            yield timestamp, diff, None  # K线刚生成时的数据都为开盘价
+                            # K线刚生成时的数据都为开盘价，若无k线跳空时，也是上一k线的收盘价
+                            yield timestamp, diff, self._get_quotes_from_kline_open(self.data["quotes"][ins], timestamp,
+                                                                                    item)
                             diff = {
                                 "klines": {
                                     ins: {
@@ -419,4 +421,23 @@ class TqBacktest(object):
                 "ask_price1": kline["close"] + info["price_tick"],
                 "bid_price1": kline["close"] - info["price_tick"],
             }
+        ]
+
+    @staticmethod
+    def _get_quotes_from_kline_open(info, timestamp, kline):
+        return [
+            {  # K线刚生成时的数据都为开盘价
+                "datetime": datetime.fromtimestamp(timestamp / 1e9).strftime("%Y-%m-%d %H:%M:%S.%f"),
+                "ask_price1": kline["open"] + info["price_tick"],
+                "ask_volume1": 1,
+                "bid_price1": kline["open"] - info["price_tick"],
+                "bid_volume1": 1,
+                "last_price": kline["open"],
+                "highest": float("nan"),
+                "lowest": float("nan"),
+                "average": float("nan"),
+                "volume": 0,
+                "amount": float("nan"),
+                "open_interest": kline["open_oi"],
+            },
         ]
