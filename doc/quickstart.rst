@@ -107,9 +107,9 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 
 .. _quickstart_2_web_gui:
 
-生成k线图形化界面
+生成图形化界面
 -------------------------------------------------
-如果想要将你订阅的K线或策略可视化显示, 只需在 :py:meth:`~tqsdk.api.TqApi` 中传入参数 web_gui = True即可::
+如果想要将你订阅的K线或策略图形化显示, 只需在 :py:meth:`~tqsdk.api.TqApi` 中传入参数 web_gui = True即可::
 
         # 引入TqSdk模块
         from tqsdk import TqApi
