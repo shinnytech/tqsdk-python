@@ -34,9 +34,6 @@
 
     pip install tqsdk -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host=mirrors.aliyun.com
 
-同时我们也提供了天勤终端和 Vs Code 插件版，方便有需求的用户配合可视化界面使用，详情请参考 :ref:`tq_quickstart` , :ref:`vscode` 
-
-
 下面让我们从一个简单的例子开始
 
 .. _quickstart_1:
@@ -86,9 +83,9 @@
 
 使用K线数据
 -------------------------------------------------
-你很可能会需要合约的K线数据. 在TqSdk中, 你可以很方便的获得K线数据. 我们来请求 cu1812 合约的10秒线::
+你很可能会需要合约的K线数据. 在TqSdk中, 你可以很方便的获得K线数据. 我们来请求 cu2002 合约的10秒线::
 
-    klines = api.get_kline_serial("SHFE.cu1812", 10)
+    klines = api.get_kline_serial("SHFE.cu2002", 10)
 
 klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline_serial() 也是返回K线序列的引用对象. K线序列数据也会跟实时行情一起同步自动更新. 你也同样需要用 api.wait_update() 等待数据刷新.
 
@@ -107,6 +104,29 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 详细使用方法及说明请见 :py:meth:`~tqsdk.api.TqApi.get_kline_serial` 函数说明。
 
 到这里为止, 你已经知道了如何获取实时行情和K线数据, 下面一段将介绍如何访问你的交易账户并发送交易指令
+
+.. _quickstart_2_web_gui:
+
+生成k线图形化界面
+-------------------------------------------------
+如果想要将你订阅的K线或策略可视化显示, 只需在 :py:meth:`~tqsdk.api.TqApi` 中传入参数 web_gui = True即可::
+
+        # 引入TqSdk模块
+        from tqsdk import TqApi
+        # 创建api实例，设置web_gui=True生成图形化界面
+        api = TqApi(web_gui=True)
+        # 订阅 cu2002 合约的10秒线
+        klines = api.get_kline_serial("SHFE.cu2002", 10)
+        while True:
+            # 通过wait_update刷新数据
+            api.wait_update()
+
+当你运行该程序后，预期会显示如下两条信息::
+
+        2019-12-13 10:45:26,468 - INFO - 您可以访问 http://127.0.0.1:62964 查看策略绘制出的 K 线图形。
+        2019-12-13 10:45:27,422 - INFO - 通知: 与 wss://openmd.shinnytech.com/t/md/front/mobile 的网络连接已建立
+
+点击生成的地址，即可访问订阅的K线图形，具体请见 :ref:`web_gui` 
 
 
 .. _quickstart_3:
@@ -141,6 +161,7 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 这部分的完整示例程序请见 :ref:`tutorial_t40` .
 
 到这里为止, 我们已经掌握了 TqSdk 中行情和交易相关功能的基本使用. 我们将在下一节中, 组合使用它们, 创建一个自动交易程序
+
 
 
 .. _quickstart_4:

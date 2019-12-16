@@ -12,3 +12,4 @@
     trade.rst
     targetpostask.rst
     backtest.rst
+    web_gui.rst
