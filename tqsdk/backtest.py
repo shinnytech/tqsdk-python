@@ -24,13 +24,11 @@ class TqBacktest(object):
           datetime/ask&bid_price1/ask&bid_volume1/last_price/highest/lowest/average/volume/amount/open_interest/
           price_tick/price_decs/volume_multiple/max&min_limit&market_order_volume/underlying_symbol/strike_price
 
-        * 如果没有订阅 tick, 但是订阅了 k线, 则对应合约的 quote 会使用 k线生成, 更新频率和 k线的周期一致， 如果订阅了某个合约的多个周期的 k线,
+        * 如果没有订阅 tick, 但是订阅了 k线, 则对应合约的 quote 会使用已订阅的 k线生成, 更新频率和 k线的更新一致， 如果订阅了某个合约的多个周期的 k线,
           则任一个周期的 k线有更新时, quote 都会更新. 使用 k线生成的 quote 的盘口由收盘价分别加/减一个最小变动单位, 并且 highest/lowest/average/amount
           始终为 nan, volume 始终为0
 
-        * 如果即没有订阅 tick, 也没有订阅k线或 订阅的k线周期大于分钟线, 则 TqBacktest 会 **自动订阅分钟线** 来生成 quote
-        
-    **注意** ：如果未订阅 quote，模拟交易在下单时会自动为此合约订阅 quote ，根据回测时 quote 的更新规则，如果此合约没有订阅K线或K线周期大于分钟线 **则会自动订阅一个分钟线** 。
+        * 如果既没有订阅 tick, 也没有订阅k线, 则 TqBacktest 会 **自动订阅分钟线** 来生成 quote.
 
     模拟交易要求报单价格大于等于对手盘价格才会成交, 例如下买单, 要求价格大于等于卖一价才会成交, 如果不能立即成交则会等到下次行情更新再重新判断。
 
@@ -195,7 +193,7 @@ class TqBacktest(object):
                     self._diffs.append(self._serials[min_serial]["diff"])
                     quote_info = self._quotes[min_serial[0]]
                     if quotes_diff and (quote_info["min_duration"] != 0 or min_serial[1] == 0):
-                        quotes[min_serial[0]] = quotes_diff
+                        quotes[min_serial[0]] = quotes_diff  # (如果某一行情时间同时更新多个k线，则它们生成的quote在同一个diff中下发)
                     await self._fetch_serial(min_serial)
                 if not self._serials:  # 当无可发送数据时则抛出BacktestFinished例外,包括未订阅任何行情 或 所有已订阅行情的最后一笔行情获取完成
                     self._logger.warning("回测结束")
@@ -257,7 +255,8 @@ class TqBacktest(object):
             await self._fetch_serial((ins, dur))
 
     async def _ensure_quote(self, ins):
-        if ins not in self._quotes or self._quotes[ins]["min_duration"] > 60000000000:
+        # 若回测中未订阅tick或k线,则自动订阅分钟线来生成quote
+        if ins not in self._quotes:
             await self._ensure_serial(ins, 60000000000)
 
     async def _fetch_serial(self, serial):
