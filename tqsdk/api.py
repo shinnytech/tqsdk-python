@@ -53,8 +53,8 @@ class TqApi(object):
     DEFAULT_INS_URL = "https://openmd.shinnytech.com/t/md/symbols/latest.json"
 
     def __init__(self, account: Union['TqAccount', TqSim, 'TqApi', None] = None, url: Optional[str] = None,
-                 backtest: Optional[TqBacktest] = None, debug: Optional[str] = None,
-                 loop: Optional[asyncio.AbstractEventLoop] = None, _ins_url=None, _md_url=None, _td_url=None, web_gui=False, _http_server_port=None) -> None:
+                 backtest: Optional[TqBacktest] = None, web_gui: bool = False, debug: Optional[str] = None,
+                 loop: Optional[asyncio.AbstractEventLoop] = None, _ins_url=None, _md_url=None, _td_url=None) -> None:
         """
         创建天勤接口实例
 
@@ -87,25 +87,33 @@ class TqApi(object):
                 * 为了图形化界面能够接收到程序传输的数据并且刷新，在程序中，需要循环调用 api.wait_update的形式去更新和获取数据
                 * 推荐打开图形化界面的浏览器为Google Chrome 或 Firefox
 
-        Example::
+        Example1::
 
             # 使用实盘帐号直连行情和交易服务器
             from tqsdk import TqApi, TqAccount
             api = TqApi(TqAccount("H海通期货", "022631", "123456"))
 
+        Example2::
+
             # 使用模拟帐号直连行情服务器
             from tqsdk import TqApi, TqSim
             api = TqApi(TqSim())  # 不填写参数则默认为 TqSim() 模拟账号
+
+        Example3::
 
             # 进行策略回测
             from datetime import date
             from tqsdk import TqApi, TqSim, TqBacktest
             api = TqApi(TqSim(), backtest=TqBacktest(start_dt=date(2018, 5, 1), end_dt=date(2018, 10, 1)))
 
+        Example4::
+
             # 开启 web_gui 功能
             from tqsdk import TqApi
             api = TqApi(web_gui=True)
+
         """
+
         # 记录参数
         if account is None:
             account = TqSim()
@@ -126,10 +134,8 @@ class TqApi(object):
         if _td_url:
             self._td_url = _td_url
         self._loop = asyncio.SelectorEventLoop() if loop is None else loop  # 创建一个新的 ioloop, 避免和其他框架/环境产生干扰
-        self._tq_web_helper = TqWebHelper(_http_server_port=_http_server_port, enabled_web_gui=web_gui)
 
         # 初始化 logger
-
         self._logger = logging.getLogger("TqApi")
         self._logger.setLevel(logging.DEBUG)
         if not self._logger.handlers:
@@ -183,8 +189,10 @@ class TqApi(object):
             self._master._slaves.append(self)
             self._account = self._master._account
             self._to_tq = self._master._to_tq
+            self._web_gui = False # 如果是slave, _web_gui 一定是 False
             return  # 注: 如果是slave,则初始化到这里结束并返回,以下代码不执行
 
+        self._web_gui = web_gui
         # 初始化
         if sys.platform.startswith("win"):
             self.create_task(self._windows_patch())  # Windows系统下asyncio不支持KeyboardInterrupt的临时补丁
@@ -1129,11 +1137,10 @@ class TqApi(object):
                 self._account._run(self, self._send_chan, self._recv_chan, ws_md_send_chan, ws_md_recv_chan,
                                    ws_td_send_chan, ws_td_recv_chan))
 
-        # 与web配合, 行情和交易都要 对接到 backtest 上
-        if self._tq_web_helper:
-            web_send_chan, web_recv_chan = TqChan(self), TqChan(self)
-            self.create_task(self._tq_web_helper._run(self, web_send_chan, web_recv_chan, self._send_chan, self._recv_chan))
-            self._send_chan, self._recv_chan = web_send_chan, web_recv_chan
+        # 与 web 配合, 在 tq_web_helper 内部中处理 web_gui 选项
+        web_send_chan, web_recv_chan = TqChan(self), TqChan(self)
+        self.create_task(TqWebHelper()._run(self, web_send_chan, web_recv_chan, self._send_chan, self._recv_chan))
+        self._send_chan, self._recv_chan = web_send_chan, web_recv_chan
 
         # 抄送部分数据包到天勤
         if tq_send_chan and tq_recv_chan:
@@ -1451,7 +1458,7 @@ class TqApi(object):
                 "color": int(data.get(".color", [0xFFFF0000])[-1]),
                 "width": int(data.get(".width", [1])[-1]),
                 "board": data.get(".board", ["MAIN"])[-1]
-            })
+            }, aid="set_web_chart_data")
         elif data_type == "KSERIAL":
             send_data = {}
             range_left = right - count
@@ -1468,11 +1475,11 @@ class TqApi(object):
                 "range_left": right - count,
                 "range_right": right - 1,
                 "board": data.get(".board", ["MAIN"])[-1]
-            })
+            }, aid="set_web_chart_data")
 
-    def _send_series_data(self, symbol, duration, serial_id, serial_data):
+    def _send_series_data(self, symbol, duration, serial_id, serial_data, aid="set_chart_data"):
         pack = {
-            "aid": "set_chart_data",
+            "aid": aid,
             "symbol": symbol,
             "dur_nano": duration,
             "datas": {
@@ -1551,8 +1558,7 @@ class TqApi(object):
                 }) as client:
                     # 发送网络连接建立的通知，code = 2019112901
                     notify_id = uuid.UUID(int=TqApi.RD.getrandbits(128)).hex
-                    notify = {}
-                    notify[notify_id] = {
+                    notify = {
                         "type": "MESSAGE",
                         "level": "INFO",
                         "code": 2019112901,
@@ -1561,6 +1567,8 @@ class TqApi(object):
                     }
 
                     if not first_connect:  # 如果不是第一次连接, 即为重连
+                        # 发送网络连接重新建立的通知，code = 2019112902
+                        notify["code"] = 2019112902
                         notify["level"] = "WARNING"
                         notify["content"] = "与 %s 的网络连接已恢复" % url
                         un_processed = True  # 重连后数据未处理完
@@ -1570,10 +1578,10 @@ class TqApi(object):
                         if url == self._md_url:  # 获取重连时需发送的所有 set_chart 指令包
                             set_chart_packs = {k: v for k, v in resend_request.items() if v.get("aid") == "set_chart"}
 
-                    # 发送网络连接建立的通知，code = 2019112901，这里区分了第一次连接和重连
+                    # 发送网络连接建立的通知，code = 2019112901 or 2019112902，这里区分了第一次连接和重连
                     await recv_chan.send({
                         "aid": "rtn_data",
-                        "data": [{"notify": notify}]
+                        "data": [{"notify": {notify_id: notify}}]
                     })
                     send_task = self.create_task(
                         self._send_handler(client, url, resend_request, send_chan, first_connect))
@@ -1682,19 +1690,18 @@ class TqApi(object):
             # 希望做到的效果是遇到网络问题可以断线重连, 但是可能抛出的例外太多了(TimeoutError,socket.gaierror等), 又没有文档或工具可以理出 try 代码中所有可能遇到的例外
             # 而这里的 except 又需要处理所有子函数及子函数的子函数等等可能抛出的例外, 因此这里只能遇到问题之后再补, 并且无法避免 false positive 和 false negative
             except (websockets.exceptions.ConnectionClosed, OSError):
-                # 发送网络连接断开的通知，code = 2019112902
+                # 发送网络连接断开的通知，code = 2019112911
                 notify_id = uuid.UUID(int=TqApi.RD.getrandbits(128)).hex
-                notify = {}
-                notify[notify_id] = {
+                notify = {
                     "type": "MESSAGE",
                     "level": "WARNING",
-                    "code": 2019112902,
+                    "code": 2019112911,
                     "content": "与 %s 的网络连接断开，请检查客户端及网络是否正常" % url,
                     "url": url
                 }
                 await recv_chan.send({
                     "aid": "rtn_data",
-                    "data": [{"notify": notify}]
+                    "data": [{"notify": {notify_id: notify}}]
                 })
             finally:
                 if first_connect:

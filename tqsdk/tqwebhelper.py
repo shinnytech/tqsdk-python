@@ -8,27 +8,53 @@
 """
 import os
 import sys
+import argparse
 import simplejson
 import asyncio
-from datetime import date, datetime
+from datetime import datetime
 from aiohttp import web
 import socket
 import websockets
 import tqsdk
 
 class TqWebHelper(object):
-    def __init__(self, _http_server_port = None, enabled_web_gui = False):
-        self._enabled_web_gui = bool(enabled_web_gui) # enabled_web_gui 转成 bool 类型
-        if self._enabled_web_gui is True:
+    async def _run(self, api, api_send_chan, api_recv_chan, web_send_chan, web_recv_chan):
+        self._api = api
+        self._logger = self._api._logger.getChild("TqWebHelper")  # 调试信息输出
+        if not self._api._web_gui:
+            # 没有开启 web_gui 功能
+            _data_handler_without_web_task = self._api.create_task(
+                self._data_handler_without_web(api_recv_chan, web_recv_chan))
+            try:
+                async for pack in api_send_chan:
+                    # api 发送的包，过滤出 set_chart_data, set_web_chart_data, 其余的原样转发
+                    if pack['aid'] != 'set_chart_data' and pack['aid'] != 'set_web_chart_data':
+                        await web_send_chan.send(pack)
+            finally:
+                _data_handler_without_web_task.cancel()
+        else:
+            # 解析命令行参数
+            parser = argparse.ArgumentParser()
+            # 天勤连接基本参数
+            parser.add_argument('--_http_server_port', type=int, required=False)
+            args, unknown = parser.parse_known_args()
+            # 可选参数，tqwebhelper 中 http server 的 port
+            if args._http_server_port is not None:
+                self._http_server_port = args._http_server_port
+            else:
+                self._http_server_port = 0
+
             self._web_dir = os.path.join(os.path.dirname(__file__), 'web')
-            self._http_server_port = 0 if _http_server_port is None else _http_server_port
             file_path = os.path.abspath(sys.argv[0])
             file_name = os.path.basename(file_path)
+            # 初始化数据截面
             self._data = {
                 "action": {
                     "mode": "run",
                     "md_url_status": '-',
-                    "td_url_status": '-',
+                    "td_url_status": True if isinstance(self._api._account, tqsdk.api.TqSim) else '-',
+                    "account_id": self._api._account._account_id,
+                    "broker_id": self._api._account._broker_id if isinstance(self._api._account, tqsdk.api.TqAccount) else 'TQSIM',
                     "file_path": file_path[0].upper() + file_path[1:],
                     "file_name": file_name
                 },
@@ -40,27 +66,6 @@ class TqWebHelper(object):
             self._order_symbols = set()
             self._diffs = []
             self._conn_diff_chans = set()
-
-    async def _run(self, api, api_send_chan, api_recv_chan, web_send_chan, web_recv_chan):
-        self._api = api
-        if self._enabled_web_gui is False:
-            # 没有开启 web_gui 功能
-            _data_handler_without_web_task = self._api.create_task(
-                self._data_handler_without_web(api_recv_chan, web_recv_chan))
-            try:
-                async for pack in api_send_chan:
-                    # api 发送的包，过滤出 set_chart_data , 其余的原样转发
-                    if pack['aid'] != 'set_chart_data':
-                        await web_send_chan.send(pack)
-            finally:
-                _data_handler_without_web_task.cancel()
-        else:
-            self._logger = api._logger.getChild("TqWebHelper")  # 调试信息输出
-            # 发送给 web 账户信息，用作显示
-            self._data["action"]["account_id"] = self._api._account._account_id
-            self._data["action"]["broker_id"] = self._api._account._broker_id if isinstance(self._api._account,
-                                                                                          tqsdk.api.TqAccount) else 'TQSIM'
-
             self.web_port_chan = tqsdk.api.TqChan(self._api)  # 记录到 ws port 的channel
             _data_task = self._api.create_task(self._data_handler(api_recv_chan, web_recv_chan))
             _wsserver_task = self._api.create_task(self.link_wsserver())
@@ -69,12 +74,14 @@ class TqWebHelper(object):
             try:
                 # api 发送的包，过滤出需要的包记录在 self._data
                 async for pack in api_send_chan:
-                    if pack['aid'] == 'set_chart_data':
+                    if pack['aid'] == 'set_chart_data' or pack['aid'] == 'set_web_chart_data':
+                        # 发送的是绘图数据
+                        # 旧版 tqhelper aid=set_chart_data，发送除 KSERIAL/SERIAL 之外的序列，因为其 KSERIAL/SERIAL 序列不符合 diff 协议
+                        # 新版 tqwebhelper aid=set_web_chart_data 中发送的 KSERIAL/SERIAL 数据
                         diff_data = {}  # 存储 pack 中的 diff 数据的对象
                         for series_id, series in pack['datas'].items():
-                            if (series["type"] != "KSERIAL" and series["type"] != "SERIAL") \
-                                    or ("data" in series and isinstance(series["data"], dict)):
-                                # 过滤出不符合 diff 协议的数据，旧版 tqhelper 中 KSERIAL/SERIAL 中的 data 对象是 list，不符合 diff 协议
+                            if (pack['aid'] == 'set_chart_data' and series["type"] != "KSERIAL" and series["type"] != "SERIAL") or\
+                                    pack['aid'] == 'set_web_chart_data' :
                                 diff_data[series_id] = series
                         if diff_data != {}:
                             web_diff = {'draw_chart_datas': {}}
@@ -140,12 +147,10 @@ class TqWebHelper(object):
                             TqWebHelper.merge_diff(self._data, {"action": {"mode": "backtest"}})
                             web_diffs.append({"action": {"mode": "backtest"}})
                     # 处理通知，行情和交易连接的状态
-                    notifies = d.get("notify")
-                    if notifies is not None:
-                        notify_diffs = self._notify_handler(notifies)
-                        if len(notify_diffs) > 0:
-                            TqWebHelper.merge_diff(self._data, notify_diffs[0])
-                            web_diffs.extend(notify_diffs)
+                    notify_diffs = self._notify_handler(d.get("notify", {}))
+                    for diff in notify_diffs:
+                        TqWebHelper.merge_diff(self._data, diff)
+                    web_diffs.extend(notify_diffs)
                 if account_changed:
                     dt, snapshot = self.get_snapshot()
                     _snapshots = {"snapshots": {}}
@@ -161,14 +166,12 @@ class TqWebHelper(object):
         """将连接状态的通知转成 diff 协议"""
         diffs = []
         for _, notify in notifies.items():
-            if notify["code"] == 2019112901:
-                # 连接建立的通知
+            if notify["code"] == 2019112901 or notify["code"] == 2019112902:
+                # 连接建立的通知 第一次建立 或者 重连建立
                 if notify["url"] == self._api._md_url:
                     diffs.append({
                         "action": {
-                            "md_url_status": True,
-                            "td_url_status": True if isinstance(self._api._account, tqsdk.sim.TqSim) \
-                                else self._data["action"]["td_url_status"]
+                            "md_url_status": True
                         }
                     })
                 elif notify["url"] == self._api._td_url:
@@ -177,14 +180,12 @@ class TqWebHelper(object):
                             "td_url_status": True
                         }
                     })
-            elif notify["code"] == 2019112902:
+            elif notify["code"] == 2019112911:
                 # 连接断开的通知
                 if notify["url"] == self._api._md_url:
                     diffs.append({
                         "action": {
-                            "md_url_status": False,
-                            "td_url_status": True if isinstance(self._api._account, tqsdk.sim.TqSim) \
-                                else self._data["action"]["td_url_status"]
+                            "md_url_status": False
                         }
                     })
                 elif notify["url"] == self._api._td_url:

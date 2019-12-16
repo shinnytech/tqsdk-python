@@ -158,7 +158,7 @@ class MockServer():
         # assert self._expecting["action"] == "connected"
 
     async def on_received(self, source, pack):
-        if not self._expecting :
+        if not self._expecting:
             await self._process_script()
         if pack["aid"] != "peek_message":
             assert self._expecting["source"] == source

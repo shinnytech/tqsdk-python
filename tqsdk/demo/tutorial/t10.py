@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 #  -*- coding: utf-8 -*-
+__author__ = 'chengzhi'
+
 from tqsdk import TqApi
 
 # 创建API实例.

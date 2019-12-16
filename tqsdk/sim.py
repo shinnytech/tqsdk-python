@@ -5,7 +5,6 @@ __author__ = 'chengzhi'
 from datetime import datetime
 import statistics
 
-
 class TqSim(object):
     """
     天勤模拟交易类
@@ -36,8 +35,8 @@ class TqSim(object):
     async def _run(self, api, api_send_chan, api_recv_chan, md_send_chan, md_recv_chan):
         """模拟交易task"""
         self._api = api
-        self._tqsdk_backtest = None  # 储存可能的回测信息
-        self._tqsdk_stat = None  # 回测结束后储存回测报告信息
+        self._tqsdk_backtest = {}  # 储存可能的回测信息
+        self._tqsdk_stat = {}  # 回测结束后储存回测报告信息
         self._logger = api._logger.getChild("TqSim")  # 调试信息输出
         self._api_send_chan = api_send_chan
         self._api_recv_chan = api_recv_chan
@@ -98,25 +97,13 @@ class TqSim(object):
                     await self._send_diff()
                 else:
                     await self._md_send_chan.send(pack)
-                if self._tqsdk_backtest is not None and self._tqsdk_backtest["current_dt"] > self._tqsdk_backtest["end_dt"] \
-                        and self._tqsdk_stat is None:
-                    self._settle()
-                    self._report()
-                    await self._api_recv_chan.send({
-                        "aid": "rtn_data",
-                        "data": [{
-                            "trade": {
-                                self._account_id: {
-                                    "accounts": {
-                                        "CNY": {
-                                            "_tqsdk_stat": self._tqsdk_stat
-                                        }
-                                    }
-                                }
-                            }
-                        }]
-                    })
+                if self._tqsdk_backtest != {} and self._tqsdk_backtest["current_dt"] > self._tqsdk_backtest["end_dt"] \
+                        and not self._tqsdk_stat:
+                    # 回测情况下，把 _send_stat_report 在循环中回测结束时执行
+                    await self._send_stat_report()
         finally:
+            if not self._tqsdk_stat:
+                await self._send_stat_report()
             md_task.cancel()
 
     async def _md_handler(self):
@@ -144,6 +131,24 @@ class TqSim(object):
             "ins_list": ",".join(self._all_subscribe)
         })
 
+    async def _send_stat_report(self):
+        self._settle()
+        self._report()
+        await self._api_recv_chan.send({
+            "aid": "rtn_data",
+            "data": [{
+                "trade": {
+                    self._account_id: {
+                        "accounts": {
+                            "CNY": {
+                                "_tqsdk_stat": self._tqsdk_stat
+                            }
+                        }
+                    }
+                }
+            }]
+        })
+
     def _md_recv(self, pack):
         for d in pack["data"]:
             d.pop("trade", None)
@@ -162,18 +167,13 @@ class TqSim(object):
                     }
                 })
                 self._has_send_init_account = True
-            tqsdk_backtest = d.get("_tqsdk_backtest")
-            if tqsdk_backtest is not None:
-                if self._tqsdk_backtest is None:
-                    self._tqsdk_backtest = tqsdk_backtest
-                else:
-                    self._tqsdk_backtest["current_dt"] = tqsdk_backtest["current_dt"]
+            self._tqsdk_backtest.update(d.get("_tqsdk_backtest", {}))
             for symbol, quote_diff in d.get("quotes", {}).items():
                 if quote_diff is None:
                     continue
                 quote = self._ensure_quote(symbol)
                 quote["datetime"] = quote_diff.get("datetime", quote["datetime"])
-                if self._tqsdk_backtest is None:
+                if self._tqsdk_backtest == {}:
                     self._current_datetime = max(quote["datetime"], self._current_datetime)
                 else:
                     self._current_datetime = datetime.fromtimestamp(self._tqsdk_backtest["current_dt"] / 1e9).strftime("%Y-%m-%d %H:%M:%S.%f")
@@ -365,8 +365,10 @@ class TqSim(object):
     def _report(self):
         if not self._trade_log:
             return
+        self._tqsdk_stat["init_balance"] = self._init_balance  # 起始资金
+        self._tqsdk_stat["balance"] = self._account["balance"]  # 结束资金
+        self._tqsdk_stat["max_drawdown"] = 0  # 最大回撤
         max_balance = 0
-        max_drawdown = 0
         daily_yield = []
         self._logger.warning("模拟交易成交记录")
         for d in sorted(self._trade_log.keys()):
@@ -374,8 +376,8 @@ class TqSim(object):
             if balance > max_balance:
                 max_balance = balance
             drawdown = (max_balance - balance) / max_balance
-            if drawdown > max_drawdown:
-                max_drawdown = drawdown
+            if drawdown > self._tqsdk_stat["max_drawdown"]:
+                self._tqsdk_stat["max_drawdown"] = drawdown
             daily_yield.append(
                 self._trade_log[d]["account"]["balance"] / self._trade_log[d]["account"]["pre_balance"] - 1)
             for t in self._trade_log[d]["trades"]:
@@ -383,12 +385,16 @@ class TqSim(object):
                                      datetime.fromtimestamp(t["trade_date_time"] / 1e9).strftime(
                                          "%Y-%m-%d %H:%M:%S.%f"), t["symbol"], t["offset"], t["direction"], t["volume"],
                                      t["price"], t["commission"])
+
         mean = statistics.mean(daily_yield)
         rf = 0.0001
         stddev = statistics.pstdev(daily_yield, mu=mean)
-        sharpe_ratio = 250 ** (1 / 2) * (mean - rf) / stddev if stddev else float("inf")
-        ror = self._account["balance"] / self._init_balance
-        annual_yield = ror ** (250 / len(self._trade_log))
+        self._tqsdk_stat["sharpe_ratio"] = 250 ** (1 / 2) * (mean - rf) / stddev if stddev else float("inf")  # 年化夏普率
+
+        _ror = self._tqsdk_stat["balance"] / self._tqsdk_stat["init_balance"]
+        self._tqsdk_stat["ror"] = _ror - 1 # 收益率
+        self._tqsdk_stat["annual_yield"] = _ror ** (250 / len(self._trade_log)) - 1 # 年化收益率
+
         self._logger.warning("模拟交易账户资金")
         for d in sorted(self._trade_log.keys()):
             account = self._trade_log[d]["account"]
@@ -398,16 +404,8 @@ class TqSim(object):
                                 account["close_profit"], account["margin"], account["commission"],
                                 account["risk_ratio"] * 100)
         self._logger.warning("收益率:%.2f%%,年化收益率:%.2f%%,最大回撤:%.2f%%,年化夏普率:%.4f",
-                            (ror - 1) * 100, (annual_yield - 1) * 100, max_drawdown * 100, sharpe_ratio)
-        # 记录下来 report
-        self._tqsdk_stat = {
-            "init_balance": self._init_balance,  # 起始资金
-            "balance": self._account["balance"],  # 结束资金
-            "ror": (ror - 1) * 100,  # 收益率
-            "annual_yield": (annual_yield - 1) * 100,  # 年化收益率
-            "max_drawdown": max_drawdown * 100,  # 最大回撤
-            "sharpe_ratio": sharpe_ratio  # 年化夏普率
-        }
+                            self._tqsdk_stat["ror"] * 100, self._tqsdk_stat["annual_yield"] * 100,
+                             self._tqsdk_stat["max_drawdown"] * 100, self._tqsdk_stat["sharpe_ratio"])
 
     def _ensure_trade_log(self):
         return self._trade_log.setdefault(self._trading_day_end[:10], {

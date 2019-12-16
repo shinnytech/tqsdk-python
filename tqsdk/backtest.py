@@ -200,7 +200,7 @@ class TqBacktest(object):
                 if not self._serials:  # 当无可发送数据时则抛出BacktestFinished例外,包括未订阅任何行情 或 所有已订阅行情的最后一笔行情获取完成
                     self._logger.warning("回测结束")
                     if self._current_dt < self._end_dt:
-                        self._current_dt = 150000000000000000000 # 一个远大于 end_dt 的日期
+                        self._current_dt = 2145888000000000000 # 一个远大于 end_dt 的日期 20380101
                     await self._sim_recv_chan.send({
                         "aid": "rtn_data",
                         "data": [{

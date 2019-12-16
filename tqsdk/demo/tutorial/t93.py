@@ -6,17 +6,21 @@ from tqsdk import TqApi
 
 '''
 画图示例: 在主图中画线和方框
-注意:1 画图功能仅在天勤终端/天勤Vscode插件中生效，请在这两个平台中运行画图相关的代码
-     2 画图示例中用到的数据不含有实际意义，请根据自己的实际策略情况进行修改
+注意: 画图示例中用到的数据不含有实际意义，请根据自己的实际策略情况进行修改
 '''
 
-api = TqApi(web_gui=True)
-klines = api.get_kline_serial("SHFE.cu1910", 86400)
+api = TqApi(web_gui=True) # web_gui=True, 开启使用 web 界面查看绘图结果的功能
+klines = api.get_kline_serial("SHFE.au2002", 60)
 
+# 由于需要在浏览器中查看绘图结果，因此程序不能退出
 while True:
-    # 在主图中画直线
-    api.draw_line(klines, -4, klines.iloc[-4].low, -3, klines.iloc[-3].high, line_type="LINE", color=0xFF0000FF)
-    # 给主图最后5根K线加一个方框
-    api.draw_box(klines, x1=-5, y1=klines.iloc[-5]["high"], x2=-1, y2=klines.iloc[-1]["low"], width=1, color=0xFF0000FF,
-                 bg_color=0x7000FF00)
-    api.wait_update()
+    api.wait_update() # 当有业务信息发生变化时执行
+    # 当最后 1 根柱子最大最小值价差大于 0.05 时，在主图绘制信号
+    high = klines.iloc[-1].high
+    low = klines.iloc[-1].low
+    if high - low > 0.05:
+        # 绘制直线, 每一个 id 对应同一条直线
+        api.draw_line(klines, -1, high, -1, low, id="box%.0f" % (klines.iloc[-1].id), color=0xaa662244, width=4)
+        # 绘制字符串
+        api.draw_text(klines, "信号1", x=-1, y=low, id="text%.0f" % (klines.iloc[-1].id), color=0xFFFF3333)
+
