@@ -77,7 +77,7 @@ async def account_watcher(api, dt_func, tq_send_chan):
             async for _ in update_chan:
                 account_changed = api.is_changing(account, "static_balance")
                 for d in api._diffs:
-                    for oid in d.get("trade", {}).get(api._account.account_id, {}).get("orders", {}).keys():
+                    for oid in d.get("trade", {}).get(api._account._account_id, {}).get("orders", {}).keys():
                         order = api.get_order(oid)
                         if order._this_session is not True:
                             continue
@@ -87,7 +87,7 @@ async def account_watcher(api, dt_func, tq_send_chan):
                             "datetime": dt_func(),
                             "order": {k: v for k, v in order.items() if not k.startswith("_")},
                         })
-                    for tid in d.get("trade", {}).get(api._account.account_id, {}).get("trades", {}).keys():
+                    for tid in d.get("trade", {}).get(api._account._account_id, {}).get("trades", {}).keys():
                         trade = api.get_trade(tid)
                         order = api.get_order(trade.order_id)
                         if order._this_session is not True:
@@ -327,7 +327,7 @@ def link_tq(api):
     # 根据运行模式分别执行不同的初始化任务
     if args._action == "run":
         if isinstance(api._account, TqAccount) and (
-                api._account.broker_id != args._broker_id or api._account.account_id != args._account_id):
+                api._account._broker_id != args._broker_id or api._account._account_id != args._account_id):
             raise Exception("策略代码与设置中的账户参数冲突。可尝试删去代码中的账户参数 TqAccount，以终端或者插件设置的账户参数运行。")
         instance = SingleInstance(args._account_id)
         api._account = TqAccount(args._broker_id, args._account_id, args._password)
