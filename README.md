@@ -86,7 +86,7 @@ Documentation
 	
 Gui
 -------------------------------------------------
-TqSdk本身不包含任何GUI组件. 免费的 [天勤软件](https://www.shinnytech.com/tianqin) 和 [VS Code插件版](https://doc.shinnytech.com/pysdk/latest/devtools/vscode.html)可以与TqSdk配合使用, 提供完整的图形界面.
+TqSdk本身自带的web_gui功能，简单一行参数即可支持调用图形化界面，详情参加[web_gui](https://doc.shinnytech.com/pysdk/latest/usage/web_gui.html) 
 
 About us
 -------------------------------------------------
