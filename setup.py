@@ -53,7 +53,5 @@ setuptools.setup(
         "License :: OSI Approved :: Apache Software License",
         "Operating System :: OS Independent",
     ],
-    package_data={
-        "tqsdk": ["web"]
-    }
+    include_package_data=True
 )
