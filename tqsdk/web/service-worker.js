@@ -14,7 +14,7 @@
 importScripts("https://storage.googleapis.com/workbox-cdn/releases/4.3.1/workbox-sw.js");
 
 importScripts(
-  "/precache-manifest.c9caece6485f997686f34f1a7a52f697.js"
+  "/precache-manifest.1a77de9f05f4d4db362e9ce157874b89.js"
 );
 
 workbox.core.setCacheNameDetails({prefix: "shinny-futures-web"});
