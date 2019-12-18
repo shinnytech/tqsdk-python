@@ -1230,13 +1230,13 @@ class TqApi(object):
                 array[0:serial["width"] - shift] = array[shift:serial["width"]]
                 for ext in serial["extra_array"].values():
                     ext[0:serial["width"] - shift] = ext[shift:serial["width"]]
-                    if ext.dtype == np.float:
+                    if np.issubdtype(ext.dtype, np.floating):
                         ext[serial["width"] - shift:] = np.nan
-                    elif ext.dtype == np.object:
+                    elif np.issubdtype(ext.dtype, np.object_):
                         ext[serial["width"] - shift:] = None
-                    elif ext.dtype == np.int:
+                    elif np.issubdtype(ext.dtype, np.integer):
                         ext[serial["width"] - shift:] = 0
-                    elif ext.dtype == np.bool:
+                    elif np.issubdtype(ext.dtype, np.bool_):
                         ext[serial["width"] - shift:] = False
                     else:
                         ext[serial["width"] - shift:] = np.nan
