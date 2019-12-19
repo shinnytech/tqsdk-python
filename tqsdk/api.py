@@ -1743,7 +1743,7 @@ class TqApi(object):
                 return
             if not self._is_slave:
                 for slave in self._slaves:
-                    slave._slave_recv_pack(pack.copy())
+                    slave._slave_recv_pack(copy.deepcopy(pack))
             self._pending_diffs.extend(pack.get("data", []))
 
     @staticmethod
