@@ -32,6 +32,8 @@ import requests
 import random
 import base64
 import os
+import argparse
+from datetime import date, datetime
 from typing import Union, List, Any, Optional
 import pandas as pd
 import numpy as np
@@ -39,7 +41,6 @@ from .__version__ import __version__
 from tqsdk.sim import TqSim
 from tqsdk.objs import Entity, Quote, Kline, Tick, Account, Position, Order, Trade
 from tqsdk.backtest import TqBacktest
-from tqsdk import tqhelper
 from tqsdk.tqwebhelper import TqWebHelper
 
 
@@ -54,6 +55,8 @@ class TqApi(object):
 
     RD = random.Random()  # 初始化随机数引擎
     DEFAULT_INS_URL = "https://openmd.shinnytech.com/t/md/symbols/latest.json"
+    DEFAULT_MD_URL = "wss://openmd.shinnytech.com/t/md/front/mobile"
+    DEFAULT_TD_URL = "wss://opentd.shinnytech.com/trade/user0"
 
     def __init__(self, account: Union['TqAccount', TqSim, None] = None, url: Optional[str] = None,
                  backtest: Optional[TqBacktest] = None, web_gui: bool = False, debug: Optional[str] = None,
@@ -69,6 +72,12 @@ class TqApi(object):
 
                 * :py:class:`~tqsdk.sim.TqSim` : 使用 TqApi 自带的内部模拟账号
 
+                * :py:class:`~tqsdk.sim.TqApi` : 对 master TqApi 创建一个 slave 副本, 以便在其它线程中使用
+
+                * :py:class:`~tqsdk.api.TqReplay` : 使用复盘模式运行
+
+                * :py:class:`~tqsdk.backtest.TqBacktest` : 使用回测模式运行
+
             url (str): [可选]指定服务器的地址
                 * 当 account 为 :py:class:`~tqsdk.api.TqAccount` 类型时, 可以通过该参数指定交易服务器地址, \
                 默认使用 wss://opentd.shinnytech.com/trade/user0, 行情始终使用 wss://openmd.shinnytech.com/t/md/front/mobile
@@ -76,7 +85,7 @@ class TqApi(object):
                 * 当 account 为 :py:class:`~tqsdk.sim.TqSim` 类型时, 可以通过该参数指定行情服务器地址,\
                 默认使用 wss://openmd.shinnytech.com/t/md/front/mobile
 
-            backtest (TqBacktest): [可选]传入 TqBacktest 对象将进入回测模式, \
+            backtest (TqBacktest): [可选] Deprecated 传入 TqBacktest 对象将进入回测模式, \
             回测模式下会强制使用 account 为 :py:class:`~tqsdk.sim.TqSim` 并只连接\
              wss://openmd.shinnytech.com/t/md/front/mobile 接收行情数据
 
@@ -105,9 +114,15 @@ class TqApi(object):
             # 进行策略回测
             from datetime import date
             from tqsdk import TqApi, TqSim, TqBacktest
-            api = TqApi(TqSim(), backtest=TqBacktest(start_dt=date(2018, 5, 1), end_dt=date(2018, 10, 1)))
+            api = TqApi(TqBacktest(start_dt=date(2018, 5, 1), end_dt=date(2018, 10, 1)))
 
         Example4::
+
+            # 进行策略复盘
+            from tqsdk import TqApi
+            api = TqApi(TqReplay(dt=date(2019, 12, 16)))
+
+        Example5::
 
             # 开启 web_gui 功能
             from tqsdk import TqApi
@@ -115,26 +130,59 @@ class TqApi(object):
 
         """
 
-        # 记录参数
-        if account is None:
-            account = TqSim()
-        self._account = account
-        self._backtest = backtest
-        self._ins_url = TqApi.DEFAULT_INS_URL
-        self._md_url = "wss://openmd.shinnytech.com/t/md/front/mobile"
-        self._td_url = "wss://opentd.shinnytech.com/trade/user0"
+        # 参数准备
+        args = self._parser_arguments()
+        if args is not None:
+            if args["_action"] == "run":
+                # 运行模式下，账户参数冲突需要抛错，提示用户
+                if isinstance(account, TqAccount) and \
+                        (account._account_id != args["_account_id"] or account._broker_id != args["_broker_id"]):
+                    raise Exception("策略代码与设置中的账户参数冲突。可尝试删去代码中的账户参数 TqAccount，以终端或者插件设置的账户参数运行。")
+                self._account = TqAccount(args["_broker_id"], args["_account_id"], args["_password"])
+                self._backtest = None
+                self._replay = None
+            elif args["_action"] == "backtest":
+                self._account = TqSim()
+                self._backtest = TqBacktest(start_dt=datetime.strptime(args["_start_dt"], '%Y%m%d'),
+                                            end_dt=datetime.strptime(args["_end_dt"], '%Y%m%d'))
+                self._replay = None
+            elif args["_action"] == "replay":
+                self._account = TqSim()
+                self._backtest = None
+                self._replay = TqReplay(args["_replay_dt"])
+            else:
+                raise Exception("不支持的类型 _action = %s, 请检查后重试。" % (args["_action"]))
+        else:
+            if isinstance(account, TqReplay):
+                self._account = TqSim()
+                self._backtest = None
+                self._replay = account
+            else:
+                self._replay = None
+                if isinstance(account, TqBacktest) or backtest:
+                    self._account = account if isinstance(account, TqSim) else TqSim()
+                    self._backtest = account if isinstance(account, TqBacktest) else backtest
+                else:
+                    self._account = account if isinstance(account, TqAccount) else TqSim()
+                    self._backtest = None
 
-        if url and isinstance(self._account, TqSim):
+        self._ins_url = TqApi.DEFAULT_INS_URL
+        self._md_url = TqApi.DEFAULT_MD_URL
+        self._td_url = TqApi.DEFAULT_TD_URL
+
+        # 在非复盘模式下 通过设置 url 设置行情/交易服务器地址
+        if not self._replay and url and isinstance(self._account, TqSim):
             self._md_url = url
-        if url and isinstance(self._account, TqAccount):
+        if not self._replay and url and isinstance(self._account, TqAccount):
             self._td_url = url
-        if _ins_url:
+
+        # 在非复盘模式下，可以用参数设置 _ins_url _md_url _td_url
+        if not self._replay and _ins_url:
             self._ins_url = _ins_url
-        if _md_url:
+        if not self._replay and _md_url:
             self._md_url = _md_url
-        if _td_url:
+        if not self._replay and _td_url:
             self._td_url = _td_url
-        self._loop = asyncio.SelectorEventLoop() if loop is None else loop  # 创建一个新的 ioloop, 避免和其他框架/环境产生干扰
 
         # 初始化 logger
         self._logger = logging.getLogger("TqApi")
@@ -152,6 +200,8 @@ class TqApi(object):
                 fh = logging.FileHandler(filename=debug)
                 fh.setFormatter(log_format)
                 self._logger.addHandler(fh)
+
+        self._loop = asyncio.SelectorEventLoop() if loop is None else loop  # 创建一个新的 ioloop, 避免和其他框架/环境产生干扰
 
         # 初始化loop
         self._send_chan, self._recv_chan = TqChan(self), TqChan(self)  # 消息收发队列
@@ -178,7 +228,6 @@ class TqApi(object):
         self._pending_diffs = []  # 从网络上收到的待处理的 diffs, 只在 wait_update 函数执行过程中才可能为非空
         self._prototype = self._gen_prototype()  # 各业务数据的原型, 用于决定默认值及将收到的数据转为特定的类型
         self._wait_timeout = False  # wait_update 是否触发超时
-        self._to_tq = False  # flag: 是否连接了天勤
 
         # slave模式的api不需要完整初始化流程
         self._is_slave = isinstance(account, TqApi)
@@ -189,8 +238,7 @@ class TqApi(object):
                 raise Exception("不可以为slave再创建slave")
             self._master._slaves.append(self)
             self._account = self._master._account
-            self._to_tq = self._master._to_tq
-            self._web_gui = False  # 如果是slave, _web_gui 一定是 False
+            self._web_gui = False # 如果是slave, _web_gui 一定是 False
             return  # 注: 如果是slave,则初始化到这里结束并返回,以下代码不执行
 
         self._web_gui = web_gui
@@ -1095,6 +1143,11 @@ class TqApi(object):
         return chan
 
     # ----------------------------------------------------------------------
+    def set_replay_speed(self, speed: float = 10) -> None:
+        if self._replay:
+            self._replay._set_server_session({"aid": "ratio", "speed": speed})
+
+    # ----------------------------------------------------------------------
     def _call_soon(self, org_call_soon, callback, *args, **kargs):
         """ioloop.call_soon的补丁, 用来追踪是否有任务完成并等待执行"""
         self._event_rev += 1
@@ -1103,13 +1156,10 @@ class TqApi(object):
     def _setup_connection(self):
         """初始化"""
 
-        # 如果处于回测模式则将帐号转为模拟帐号，并直接连接 openmd
-        if self._backtest:
-            if not isinstance(self._account, TqSim):
-                self._account = TqSim()
-
-        # 与天勤配合
-        tq_send_chan, tq_recv_chan = tqhelper.link_tq(self)
+        # 等待复盘服务器启动，并定时发送心跳包
+        if self._replay:
+            self._ins_url, self._md_url = self._replay._create_server(self)
+            self.create_task(self._replay._run())
 
         # 连接合约和行情服务器
         ws_md_send_chan, ws_md_recv_chan = TqChan(self), TqChan(self)
@@ -1142,15 +1192,6 @@ class TqApi(object):
         web_send_chan, web_recv_chan = TqChan(self), TqChan(self)
         self.create_task(TqWebHelper()._run(self, web_send_chan, web_recv_chan, self._send_chan, self._recv_chan))
         self._send_chan, self._recv_chan = web_send_chan, web_recv_chan
-
-        # 抄送部分数据包到天勤
-        if tq_send_chan and tq_recv_chan:
-            self._to_tq = True
-            upstream_send_chan, upstream_recv_chan = self._send_chan, self._recv_chan  # 连接上游的channel
-            self._send_chan, self._recv_chan = TqChan(self), TqChan(self)  # 连接到下游的channel
-            from tqsdk.tqhelper import Forwarding
-            self.create_task(Forwarding(self, self._send_chan, self._recv_chan, upstream_send_chan, upstream_recv_chan,
-                                        tq_send_chan, tq_recv_chan)._forward())
 
         # 发送第一个peek_message,因为只有当收到上游数据包时wait_update()才会发送peek_message
         self._send_chan.send_nowait({
@@ -1386,8 +1427,6 @@ class TqApi(object):
             group = [c for c in cols if c.startswith(col + ".") or c == col]
             cols = [c for c in cols if c not in group]
             data = {c[len(col):]: serial["extra_array"][c][serial["update_row"]:] for c in group}
-            self._process_chart_data(serial, symbol, duration, col, serial["width"] - serial["update_row"],
-                                     int(serial["array"][-1, 1]) + 1, data)
             self._process_chart_data_for_web(serial, symbol, duration, col, serial["width"] - serial["update_row"],
                                              int(serial["array"][-1, 1]) + 1, data)
         serial["update_row"] = serial["width"]
@@ -2111,6 +2150,57 @@ class TqApi(object):
         elif x >= 0:
             return int(base_k_dataframe["id"].iloc[0]) + x
 
+    def _parser_arguments(self):
+        """解析命令行参数"""
+        parser = argparse.ArgumentParser()
+        # 天勤连接基本参数
+        parser.add_argument('--_action', type=str, required=False)
+        # action==run
+        parser.add_argument('--_broker_id', type=str, required=False)
+        parser.add_argument('--_account_id', type=str, required=False)
+        parser.add_argument('--_password', type=str, required=False)
+        # action==backtest
+        parser.add_argument('--_start_dt', type=str, required=False)
+        parser.add_argument('--_end_dt', type=str, required=False)
+        parser.add_argument('--_init_balance', type=str, required=False)
+        # action==replay
+        parser.add_argument('--_replay_dt', type=str, required=False)
+        args, unknown = parser.parse_known_args()
+        if args._action == "run":
+            if not args._broker_id or not args._account_id or not args._password:
+                raise Exception("run 必要参数缺失")
+            else:
+                return {
+                    "_action": "run",
+                    "_broker_id": args._broker_id,
+                    "_account_id": args._account_id,
+                    "_password": args._password
+                }
+        elif args._action == "backtest":
+            if not args._start_dt or not args._end_dt:
+                raise Exception("backtest 必要参数缺失")
+            else:
+                try:
+                    init_balance = 10000000.0 if args._init_balance is None else float(args._init_balance)
+                    return {
+                        "_action": "backtest",
+                        "_start_dt": args._start_dt,
+                        "_end_dt": args._end_dt,
+                        "_init_balance": init_balance
+                    }
+                except ValueError:
+                    raise Exception("backtest 参数错误, _init_balance = " + args._init_balance + " 不是数字")
+
+        elif args._action == "replay":
+            if not args._replay_dt:
+                raise Exception("replay 必要参数缺失")
+            else:
+                return {
+                    "_action": "replay",
+                    "_replay_dt": args._replay_dt
+                }
+        else:
+            return None
 
 class TqAccount(object):
     """天勤实盘类"""
@@ -2311,3 +2401,83 @@ class TqChan(asyncio.Queue):
 
     async def __aexit__(self, exc_type, exc, tb):
         await self.close()
+
+class TqReplay(object):
+    """天勤复盘类"""
+    def __init__(self, replay_dt: date):
+        """
+        创建天勤复盘类
+
+        Args:
+            dt (date): 指定复盘交易日
+        """
+        if isinstance(replay_dt, date):
+            self._dt = replay_dt
+        else:
+            raise Exception("复盘时间(dt)类型 %s 错误, 请检查 dt 数据类型是否填写正确" % (type(replay_dt)))
+        if self._dt.weekday() >= 5:
+            # 0~6, 检查周末[5,6] 提前抛错退出
+            raise Exception("无法创建复盘服务器，请检查复盘日期后重试。")
+
+    def _create_server(self, api):
+        self._api = api
+        self._logger = api._logger.getChild("TqReplay")  # 调试信息输出
+        self._logger.warning('开始启动复盘服务器，请稍后。')
+
+        session = self._prepare_session()
+        self._session_url = "http://%s:%d/t/rmd/replay/session/%s" % (session["ip"], session["session_port"], session["session"])
+        self._ins_url = "http://%s:%d/t/rmd/replay/session/%s/symbol" % (session["ip"], session["session_port"], session["session"])
+        self._md_url = "ws://%s:%d/t/rmd/front/mobile" % (session["ip"], session["gateway_web_port"])
+        # 同步等待复盘服务建立成功
+        try_times = 10 # 最多尝试 10 次
+        while True:
+            time.sleep(2)
+            response = self._get_server_status()
+            try_times -= 1
+            if response is None:
+                if try_times == 0:
+                    raise Exception("无法创建复盘服务器，请检查复盘日期后重试。")
+                else:
+                    continue
+            elif response["status"] == "running":
+                break
+
+        self._set_server_session({"aid": "ratio", "speed": 1})
+        return self._ins_url, self._md_url
+
+    async def _run(self):
+        while True:
+            self._set_server_session({"aid": "heartbeat"})
+            await asyncio.sleep(20)
+
+    def _prepare_session(self):
+        create_session_url = "http://139.198.124.169/t/rmd/replay/create_session"
+        response = requests.post(create_session_url,
+                                 headers={ "User-Agent": "tqsdk-python %s" % __version__},
+                                 data=json.dumps({'dt': self._dt.strftime("%Y%m%d")}),
+                                 timeout=30)
+        if response.status_code == 200:
+            return json.loads(response.content)
+        else:
+            raise Exception("创建复盘服务器失败，请检查复盘日期后重试。")
+
+    def _get_server_status(self):
+        try:
+            response = requests.get(self._session_url,
+                                    headers={ "User-Agent": "tqsdk-python %s" % __version__},
+                                    timeout=30)
+            if response.status_code == 200:
+                return json.loads(response.content)
+            else:
+                print('response.status_code =', response.status_code, response.reason)
+                raise Exception("无法创建复盘服务器，请检查复盘日期后重试。")
+        except requests.exceptions.ConnectionError as e:
+            # 刚开始 _session_url 还不能访问的时候～
+            return None
+
+    def _set_server_session(self, data=None):
+        if data is not None:
+            requests.post(self._session_url,
+                          headers={"User-Agent": "tqsdk-python %s" % __version__},
+                          data=json.dumps(data),
+                          timeout=30)
