@@ -1159,7 +1159,6 @@ class TqApi(object):
         # 等待复盘服务器启动，并定时发送心跳包
         if self._replay:
             self._ins_url, self._md_url = self._replay._create_server(self)
-            self.create_task(self._replay._run())
 
         # 连接合约和行情服务器
         ws_md_send_chan, ws_md_recv_chan = TqChan(self), TqChan(self)
@@ -1170,6 +1169,10 @@ class TqApi(object):
             }]
         })  # 获取合约信息
         self.create_task(self._connect(self._md_url, ws_md_send_chan, ws_md_recv_chan))  # 启动行情websocket连接
+
+        # 复盘模式，定时发送心跳包, 并将复盘速度发在行情的 recv_chan
+        if self._replay:
+            self.create_task(self._replay._run(ws_md_recv_chan))
 
         # 如果处于回测模式，则将行情连接对接到 backtest 上
         if self._backtest:
@@ -2412,17 +2415,17 @@ class TqReplay(object):
             dt (date): 指定复盘交易日
         """
         if isinstance(replay_dt, date):
-            self._dt = replay_dt
+            self._replay_dt = replay_dt
         else:
             raise Exception("复盘时间(dt)类型 %s 错误, 请检查 dt 数据类型是否填写正确" % (type(replay_dt)))
-        if self._dt.weekday() >= 5:
+        if self._replay_dt.weekday() >= 5:
             # 0~6, 检查周末[5,6] 提前抛错退出
             raise Exception("无法创建复盘服务器，请检查复盘日期后重试。")
 
     def _create_server(self, api):
         self._api = api
         self._logger = api._logger.getChild("TqReplay")  # 调试信息输出
-        self._logger.warning('开始启动复盘服务器，请稍后。')
+        self._logger.warning('开始启动复盘服务器，请稍候。')
 
         session = self._prepare_session()
         self._session_url = "http://%s:%d/t/rmd/replay/session/%s" % (session["ip"], session["session_port"], session["session"])
@@ -2445,7 +2448,14 @@ class TqReplay(object):
         self._set_server_session({"aid": "ratio", "speed": 1})
         return self._ins_url, self._md_url
 
-    async def _run(self):
+    async def _run(self, ws_md_recv_chan):
+        self.ws_md_recv_chan = ws_md_recv_chan
+        await self.ws_md_recv_chan.send({
+            "aid": "rtn_data",
+            "data": [{
+                "_tqsdk_replay": {"replay_dt": int(datetime.combine(self._replay_dt, datetime.min.time()).timestamp() * 1e9)}
+            }]
+        })
         while True:
             self._set_server_session({"aid": "heartbeat"})
             await asyncio.sleep(20)
@@ -2454,7 +2464,7 @@ class TqReplay(object):
         create_session_url = "http://139.198.124.169/t/rmd/replay/create_session"
         response = requests.post(create_session_url,
                                  headers={ "User-Agent": "tqsdk-python %s" % __version__},
-                                 data=json.dumps({'dt': self._dt.strftime("%Y%m%d")}),
+                                 data=json.dumps({'dt': self._replay_dt.strftime("%Y%m%d")}),
                                  timeout=30)
         if response.status_code == 200:
             return json.loads(response.content)
