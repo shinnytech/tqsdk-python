@@ -97,7 +97,7 @@ class TqSim(object):
                     await self._send_diff()
                 else:
                     await self._md_send_chan.send(pack)
-                if self._tqsdk_backtest != {} and self._tqsdk_backtest["current_dt"] > self._tqsdk_backtest["end_dt"] \
+                if self._tqsdk_backtest != {} and self._tqsdk_backtest["current_dt"] >= self._tqsdk_backtest["end_dt"] \
                         and not self._tqsdk_stat:
                     # 回测情况下，把 _send_stat_report 在循环中回测结束时执行
                     await self._send_stat_report()
