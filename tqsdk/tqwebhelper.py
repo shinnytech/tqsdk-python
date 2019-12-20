@@ -290,12 +290,18 @@ class TqWebHelper(object):
 
         ws_port = await self.web_port_chan.recv()
         # init http server handlers
-        ins_url = self._api._ins_url
-        md_url = self._api._md_url
-        ws_url = 'ws://127.0.0.1:' + str(ws_port['port'])
+        url_response = {
+            "ins_url": self._api._ins_url,
+            "md_url": self._api._md_url,
+            "ws_url": 'ws://127.0.0.1:' + str(ws_port['port'])
+        }
+        # TODO：在复盘模式下发送 replay_dt 给 web 端，服务器改完后可以去掉
+        if self._api._replay:
+            url_response["replay_dt"] = int(datetime.combine(self._api._replay._replay_dt, datetime.min.time()).timestamp() * 1e9)
+
         app = web.Application()
         app.router.add_get(path='/url',
-                           handler=lambda request: TqWebHelper.httpserver_url_handler(ins_url, md_url, ws_url))
+                           handler=lambda request: TqWebHelper.httpserver_url_handler(url_response))
         app.router.add_get(path='/', handler=lambda request: TqWebHelper.httpserver_index_handler(self._web_dir))
         app.router.add_static('/', self._web_dir, show_index=True)
         runner = web.AppRunner(app)
@@ -309,12 +315,8 @@ class TqWebHelper(object):
         await asyncio.sleep(100000000000)
 
     @staticmethod
-    def httpserver_url_handler(ins_url, md_url, ws_url):
-        return web.json_response({
-                'ins_url': ins_url,
-                'md_url': md_url,
-                'ws_url': ws_url
-            })
+    def httpserver_url_handler(response):
+        return web.json_response(response)
 
     @staticmethod
     def httpserver_index_handler(web_dir):
