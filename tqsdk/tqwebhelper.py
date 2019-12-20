@@ -50,7 +50,7 @@ class TqWebHelper(object):
             # 初始化数据截面
             self._data = {
                 "action": {
-                    "mode": "run",
+                    "mode": "replay" if self._api._replay else "backtest" if self._api._backtest else "run",
                     "md_url_status": '-',
                     "td_url_status": True if isinstance(self._api._account, tqsdk.api.TqSim) else '-',
                     "account_id": self._api._account._account_id,
@@ -138,14 +138,10 @@ class TqWebHelper(object):
                         orders_changed = d.get("trade", {}).get(self._api._account._account_id, {}).get("orders", {})
                         if static_balance_changed is not None or trades_changed != {} or orders_changed != {}:
                             account_changed = True
-                    # 处理 backtest
-                    tqsdk_backtest = d.get("_tqsdk_backtest")
-                    if tqsdk_backtest is not None:
+                    # 处理 backtest replay
+                    if d.get("_tqsdk_backtest") or d.get("_tqsdk_replay"):
                         TqWebHelper.merge_diff(self._data, d)
                         web_diffs.append(d)
-                        if self._data["action"]["mode"] != "backtest":
-                            TqWebHelper.merge_diff(self._data, {"action": {"mode": "backtest"}})
-                            web_diffs.append({"action": {"mode": "backtest"}})
                     # 处理通知，行情和交易连接的状态
                     notify_diffs = self._notify_handler(d.get("notify", {}))
                     for diff in notify_diffs:
@@ -204,8 +200,16 @@ class TqWebHelper(object):
             chan.send_nowait(last_diff)
 
     def dt_func (self):
-        if '_tqsdk_backtest' in self._data:
+        # 回测和复盘模式，用 _api._account 一定是 TqSim, 使用 TqSim _get_current_timestamp() 提供的时间
+        if self._data["action"]["mode"] == "backtest":
             return self._data['_tqsdk_backtest']['current_dt']
+        elif self._data["action"]["mode"] == "replay":
+            tqsim_current_timestamp = self._api._account._get_current_timestamp()
+            if tqsim_current_timestamp == 631123200000000000:
+                # 未收到任何行情, TqSim 时间没有更新
+                return self._data['_tqsdk_replay']['replay_dt']
+            else:
+                return tqsim_current_timestamp
         else:
             return int(datetime.now().timestamp() * 1e9)
 
