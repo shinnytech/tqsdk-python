@@ -13,9 +13,6 @@ from tqsdk import TqApi, TqReplay
 api = TqApi(TqReplay(date(2019, 9, 10)))
 quote = api.get_quote("SHFE.cu1912")
 
-# 复盘服务器设置速度 0 ～ 100, 默认为 1
-api.set_replay_speed(10)
-
 while True:
     api.wait_update()
     if api.is_changing(quote):
