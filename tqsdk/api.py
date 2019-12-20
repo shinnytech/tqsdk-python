@@ -1531,6 +1531,7 @@ class TqApi(object):
 
     async def _notify_watcher(self):
         """将从服务器收到的通知打印出来"""
+        notify_logger = self._logger.getChild("Notify")
         processed_notify = set()
         notify = self._get_obj(self._data, ["notify"])
         async with self.register_update_notify(notify) as update_chan:
@@ -1543,7 +1544,7 @@ class TqApi(object):
                         level = getattr(logging, notify[n]["level"])
                     except (AttributeError, KeyError):
                         level = logging.INFO
-                    self._logger.log(level, "通知: %s", notify[n]["content"])
+                    notify_logger.log(level, "通知: %s", notify[n]["content"])
 
     async def _connect(self, url, send_chan, recv_chan):
         """启动websocket客户端"""
