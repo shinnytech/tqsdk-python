@@ -103,3 +103,4 @@ ENV/
 .idea/
 .vscode/
 .reports/
+.DS_Store
