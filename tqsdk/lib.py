@@ -15,9 +15,9 @@ class TargetPosTaskSingleton(type):
             TargetPosTaskSingleton._instances[symbol] = super(TargetPosTaskSingleton, cls).__call__(api, symbol, price, offset_priority, trade_chan, *args, **kwargs)
         else:
             instance = TargetPosTaskSingleton._instances[symbol]
-            if instance.offset_priority != offset_priority:
+            if instance._offset_priority != offset_priority:
                 raise Exception("您试图用不同的 offset_priority 参数创建两个 %s 调仓任务, offset_priority参数原为 %s, 现为 %s" % (symbol, instance.offset_priority, offset_priority))
-            if instance.price != price:
+            if instance._price != price:
                 raise Exception("您试图用不同的 price 参数创建两个 %s 调仓任务, price参数原为 %s, 现为 %s" % (symbol, instance.price, price))
         return TargetPosTaskSingleton._instances[symbol]
 
