@@ -17,6 +17,7 @@ __author__ = 'chengzhi'
 
 import re
 import json
+import ssl
 import uuid
 import sys
 import time
@@ -25,6 +26,7 @@ import copy
 import ctypes
 import asyncio
 import functools
+import certifi
 import websockets
 import requests
 import random
@@ -1552,11 +1554,19 @@ class TqApi(object):
         pos_symbols = {}  # 断线前持有的所有合约代码
         first_connect = True  # 首次连接标志
         un_processed = False  # 重连后尚未处理完标志
+        keywords = {
+            "max_size": None,
+            "extra_headers": {
+                "User-Agent": "tqsdk-python %s" % __version__
+            }
+        }
+        if url.startswith("wss://"):
+            ssl_context = ssl.create_default_context()
+            ssl_context.load_verify_locations(certifi.where())
+            keywords["ssl"] = ssl_context
         while True:
             try:
-                async with websockets.connect(url, max_size=None, extra_headers={
-                    "User-Agent": "tqsdk-python %s" % __version__
-                }) as client:
+                async with websockets.connect(url,**keywords) as client:
                     # 发送网络连接建立的通知，code = 2019112901
                     notify_id = uuid.UUID(int=TqApi.RD.getrandbits(128)).hex
                     notify = {

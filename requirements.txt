@@ -1,3 +1,4 @@
+certifi
 websockets>=8.1
 requests
 numpy
