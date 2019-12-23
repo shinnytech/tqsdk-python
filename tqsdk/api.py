@@ -149,7 +149,7 @@ class TqApi(object):
             elif args["_action"] == "replay":
                 self._account = TqSim()
                 self._backtest = None
-                self._replay = TqReplay(args["_replay_dt"])
+                self._replay = TqReplay(datetime.strptime(args["_replay_dt"], '%Y%m%d'))
             else:
                 raise Exception("不支持的类型 _action = %s, 请检查后重试。" % (args["_action"]))
         else:
