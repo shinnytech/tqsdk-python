@@ -5,6 +5,7 @@ __author__ = 'chengzhi'
 from datetime import datetime
 import statistics
 
+
 class TqSim(object):
     """
     天勤模拟交易类
@@ -176,8 +177,9 @@ class TqSim(object):
                 if self._tqsdk_backtest == {}:
                     self._current_datetime = max(quote["datetime"], self._current_datetime)
                 else:
-                    self._current_datetime = datetime.fromtimestamp(self._tqsdk_backtest["current_dt"] / 1e9).strftime("%Y-%m-%d %H:%M:%S.%f")
-                if  self._current_datetime > self._trading_day_end:  # 结算
+                    self._current_datetime = datetime.fromtimestamp(self._tqsdk_backtest["current_dt"] / 1e9).strftime(
+                        "%Y-%m-%d %H:%M:%S.%f")
+                if self._current_datetime > self._trading_day_end:  # 结算
                     self._settle()
                     trading_day = self._api._get_trading_day_from_timestamp(self._get_current_timestamp())
                     self._trading_day_end = datetime.fromtimestamp(
@@ -392,20 +394,19 @@ class TqSim(object):
         self._tqsdk_stat["sharpe_ratio"] = 250 ** (1 / 2) * (mean - rf) / stddev if stddev else float("inf")  # 年化夏普率
 
         _ror = self._tqsdk_stat["balance"] / self._tqsdk_stat["init_balance"]
-        self._tqsdk_stat["ror"] = _ror - 1 # 收益率
-        self._tqsdk_stat["annual_yield"] = _ror ** (250 / len(self._trade_log)) - 1 # 年化收益率
+        self._tqsdk_stat["ror"] = _ror - 1  # 收益率
+        self._tqsdk_stat["annual_yield"] = _ror ** (250 / len(self._trade_log)) - 1  # 年化收益率
 
         self._logger.warning("模拟交易账户资金")
         for d in sorted(self._trade_log.keys()):
             account = self._trade_log[d]["account"]
             self._logger.warning("日期:%s,账户权益:%.2f,可用资金:%.2f,浮动盈亏:%.2f,持仓盈亏:%.2f,平仓盈亏:%.2f,保证金:%.2f,手续费:%.2f,风险度:%.2f%%",
-                                d, account["balance"], account["available"], account["float_profit"],
-                                account["position_profit"],
-                                account["close_profit"], account["margin"], account["commission"],
-                                account["risk_ratio"] * 100)
-        self._logger.warning("收益率:%.2f%%,年化收益率:%.2f%%,最大回撤:%.2f%%,年化夏普率:%.4f",
-                            self._tqsdk_stat["ror"] * 100, self._tqsdk_stat["annual_yield"] * 100,
-                             self._tqsdk_stat["max_drawdown"] * 100, self._tqsdk_stat["sharpe_ratio"])
+                                 d, account["balance"], account["available"], account["float_profit"],
+                                 account["position_profit"], account["close_profit"], account["margin"],
+                                 account["commission"], account["risk_ratio"] * 100)
+        self._logger.warning("收益率:%.2f%%,年化收益率:%.2f%%,最大回撤:%.2f%%,年化夏普率:%.4f", self._tqsdk_stat["ror"] * 100,
+                             self._tqsdk_stat["annual_yield"] * 100, self._tqsdk_stat["max_drawdown"] * 100,
+                             self._tqsdk_stat["sharpe_ratio"])
 
     def _ensure_trade_log(self):
         return self._trade_log.setdefault(self._trading_day_end[:10], {

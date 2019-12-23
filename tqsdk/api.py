@@ -42,6 +42,7 @@ from tqsdk.backtest import TqBacktest
 from tqsdk import tqhelper
 from tqsdk.tqwebhelper import TqWebHelper
 
+
 class TqApi(object):
     """
     天勤接口及数据管理类
@@ -191,7 +192,7 @@ class TqApi(object):
             self._master._slaves.append(self)
             self._account = self._master._account
             self._to_tq = self._master._to_tq
-            self._web_gui = False # 如果是slave, _web_gui 一定是 False
+            self._web_gui = False  # 如果是slave, _web_gui 一定是 False
             return  # 注: 如果是slave,则初始化到这里结束并返回,以下代码不执行
 
         self._web_gui = web_gui
@@ -1390,7 +1391,7 @@ class TqApi(object):
             self._process_chart_data(serial, symbol, duration, col, serial["width"] - serial["update_row"],
                                      int(serial["array"][-1, 1]) + 1, data)
             self._process_chart_data_for_web(serial, symbol, duration, col, serial["width"] - serial["update_row"],
-                                     int(serial["array"][-1, 1]) + 1, data)
+                                             int(serial["array"][-1, 1]) + 1, data)
         serial["update_row"] = serial["width"]
 
     def _process_chart_data(self, serial, symbol, duration, col, count, right, data):
@@ -1566,7 +1567,7 @@ class TqApi(object):
             keywords["ssl"] = ssl_context
         while True:
             try:
-                async with websockets.connect(url,**keywords) as client:
+                async with websockets.connect(url, **keywords) as client:
                     # 发送网络连接建立的通知，code = 2019112901
                     notify_id = uuid.UUID(int=TqApi.RD.getrandbits(128)).hex
                     notify = {
@@ -1592,7 +1593,11 @@ class TqApi(object):
                     # 发送网络连接建立的通知，code = 2019112901 or 2019112902，这里区分了第一次连接和重连
                     await recv_chan.send({
                         "aid": "rtn_data",
-                        "data": [{"notify": {notify_id: notify}}]
+                        "data": [{
+                            "notify": {
+                                notify_id: notify
+                            }
+                        }]
                     })
                     send_task = self.create_task(
                         self._send_handler(client, url, resend_request, send_chan, first_connect))
@@ -1712,7 +1717,11 @@ class TqApi(object):
                 }
                 await recv_chan.send({
                     "aid": "rtn_data",
-                    "data": [{"notify": {notify_id: notify}}]
+                    "data": [{
+                        "notify": {
+                            notify_id: notify
+                        }
+                    }]
                 })
             finally:
                 if first_connect:
