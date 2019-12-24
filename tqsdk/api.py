@@ -2431,22 +2431,31 @@ class TqReplay(object):
         self._session_url = "http://%s:%d/t/rmd/replay/session/%s" % (session["ip"], session["session_port"], session["session"])
         self._ins_url = "http://%s:%d/t/rmd/replay/session/%s/symbol" % (session["ip"], session["session_port"], session["session"])
         self._md_url = "ws://%s:%d/t/rmd/front/mobile" % (session["ip"], session["gateway_web_port"])
-        # 同步等待复盘服务建立成功
-        try_times = 10 # 最多尝试 10 次
-        while True:
-            time.sleep(2)
+
+        self._server_status = None
+        try_times = 5 # 最多尝试 5 次
+        # 同步等待复盘服务状态 initializing / running
+        while self._server_status is None and try_times > 0:
+            time.sleep(1)
             response = self._get_server_status()
             try_times -= 1
-            if response is None:
-                if try_times == 0:
-                    raise Exception("无法创建复盘服务器，请检查复盘日期后重试。")
-                else:
-                    continue
-            elif response["status"] == "running":
-                break
+            if response and response["status"]:
+                self._server_status = response["status"]
 
-        self._set_server_session({"aid": "ratio", "speed": 1})
-        return self._ins_url, self._md_url
+        try_times = 30  # 最多尝试 30 次
+        # 同步等待复盘服务状态 running
+        while self._server_status == "initializing" and try_times > 0:
+            time.sleep(1)
+            response = self._get_server_status()
+            try_times -= 1
+            if response and response["status"]:
+                self._server_status = response["status"]
+
+        if self._server_status == "running":
+            self._set_server_session({"aid": "ratio", "speed": 1})
+            return self._ins_url, self._md_url
+        else:
+            raise Exception("无法创建复盘服务器，请检查复盘日期后重试。")
 
     async def _run(self, ws_md_recv_chan):
         self.ws_md_recv_chan = ws_md_recv_chan
@@ -2458,7 +2467,7 @@ class TqReplay(object):
         })
         while True:
             self._set_server_session({"aid": "heartbeat"})
-            await asyncio.sleep(20)
+            await asyncio.sleep(30)
 
     def _prepare_session(self):
         create_session_url = "http://139.198.124.169/t/rmd/replay/create_session"
