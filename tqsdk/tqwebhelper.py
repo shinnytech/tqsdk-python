@@ -18,9 +18,35 @@ import websockets
 import tqsdk
 
 class TqWebHelper(object):
-    async def _run(self, api, api_send_chan, api_recv_chan, web_send_chan, web_recv_chan):
+
+    def __init__(self, api):
+        """初始化，检查参数"""
         self._api = api
         self._logger = self._api._logger.getChild("TqWebHelper")  # 调试信息输出
+        self._http_server_port = 0
+        args = TqWebHelper.parser_arguments()
+        if args:
+            if args["_action"] == "run":
+                # 运行模式下，账户参数冲突需要抛错，提示用户
+                if isinstance(self._api._account, tqsdk.api.TqAccount) and \
+                        (self._api._account._account_id != args["_account_id"] or self._api._account._broker_id != args["_broker_id"]):
+                    raise Exception("策略代码与设置中的账户参数冲突。可尝试删去代码中的账户参数 TqAccount，以终端或者插件设置的账户参数运行。")
+                self._api._account = tqsdk.api.TqAccount(args["_broker_id"], args["_account_id"], args["_password"])
+                self._api._backtest = None
+                self._api._replay = None
+            elif args["_action"] == "backtest":
+                self._api._backtest = tqsdk.api.TqBacktest(start_dt=datetime.strptime(args["_start_dt"], '%Y%m%d'),
+                                            end_dt=datetime.strptime(args["_end_dt"], '%Y%m%d'))
+                self._api._replay = None
+            elif args["_action"] == "replay":
+                self._api._backtest = None
+                self._api._replay = tqsdk.api.TqReplay(datetime.strptime(args["_replay_dt"], '%Y%m%d'))
+
+            if args["_http_server_port"]:
+                self._api._web_gui = True # 命令行 _http_server_port, 一定打开 _web_gui
+                self._http_server_port = args["_http_server_port"]
+
+    async def _run(self, api_send_chan, api_recv_chan, web_send_chan, web_recv_chan):
         if not self._api._web_gui:
             # 没有开启 web_gui 功能
             _data_handler_without_web_task = self._api.create_task(
@@ -33,17 +59,6 @@ class TqWebHelper(object):
             finally:
                 _data_handler_without_web_task.cancel()
         else:
-            # 解析命令行参数
-            parser = argparse.ArgumentParser()
-            # 天勤连接基本参数
-            parser.add_argument('--_http_server_port', type=int, required=False)
-            args, unknown = parser.parse_known_args()
-            # 可选参数，tqwebhelper 中 http server 的 port
-            if args._http_server_port is not None:
-                self._http_server_port = args._http_server_port
-            else:
-                self._http_server_port = 0
-
             self._web_dir = os.path.join(os.path.dirname(__file__), 'web')
             file_path = os.path.abspath(sys.argv[0])
             file_name = os.path.basename(file_path)
@@ -321,3 +336,55 @@ class TqWebHelper(object):
     @staticmethod
     def httpserver_index_handler(web_dir):
         return web.FileResponse(path=web_dir + '/index.html')
+
+    @staticmethod
+    def parser_arguments():
+        """解析命令行参数"""
+        parser = argparse.ArgumentParser()
+        # 天勤连接基本参数
+        parser.add_argument('--_action', type=str, required=False)
+        # action==run
+        parser.add_argument('--_broker_id', type=str, required=False)
+        parser.add_argument('--_account_id', type=str, required=False)
+        parser.add_argument('--_password', type=str, required=False)
+        # action==backtest
+        parser.add_argument('--_start_dt', type=str, required=False)
+        parser.add_argument('--_end_dt', type=str, required=False)
+        parser.add_argument('--_init_balance', type=str, required=False)
+        # action==replay
+        parser.add_argument('--_replay_dt', type=str, required=False)
+        # others
+        parser.add_argument('--_http_server_port', type=int, required=False)
+        args, unknown = parser.parse_known_args()
+        if args._action is None:
+            return None
+        else:
+            action = {}
+            action["_action"] = args._action
+            if action["_action"] == "run":
+                if not args._broker_id or not args._account_id or not args._password:
+                    raise Exception("run 必要参数缺失")
+                else:
+                    action["_broker_id"] = args._broker_id
+                    action["_account_id"] = args._account_id
+                    action["_password"] = args._password
+            elif action["_action"] == "backtest":
+                if not args._start_dt or not args._end_dt:
+                    raise Exception("backtest 必要参数缺失")
+                else:
+                    try:
+                        init_balance = 10000000.0 if args._init_balance is None else float(args._init_balance)
+                        action["_start_dt"] = args._start_dt
+                        action["_end_dt"] = args._end_dt
+                        action["_init_balance"] = init_balance
+                    except ValueError:
+                        raise Exception("backtest 参数错误, _init_balance = " + args._init_balance + " 不是数字")
+            elif action["_action"] == "replay":
+                if not args._replay_dt:
+                    raise Exception("replay 必要参数缺失")
+                else:
+                    action["_replay_dt"] = args._replay_dt
+            else:
+                raise Exception("不支持的类型 _action = %s, 请检查后重试。" % (action["_action"]))
+            action["_http_server_port"] = args._http_server_port
+            return action

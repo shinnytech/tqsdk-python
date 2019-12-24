@@ -10,7 +10,7 @@ from tqsdk import TqApi, TqReplay
 复盘 2019-09-10 行情
 '''
 # 在创建 api 实例时传入 TqReplay 就会进入复盘模式
-api = TqApi(TqReplay(date(2019, 9, 10)))
+api = TqApi(replay=TqReplay(date(2019, 9, 10)))
 quote = api.get_quote("SHFE.cu1912")
 
 while True:
