@@ -12,7 +12,7 @@ from tqsdk import TqApi, TqReplay, TargetPosTask
 如果当前价格大于5分钟K线的MA15则开多仓,如果小于则平仓
 '''
 # 在创建 api 实例时传入 TqReplay 就会进入复盘模式, 同时打开 web_gui
-api = TqApi(TqReplay(date(2019, 11, 11)), web_gui=True)
+api = TqApi(replay=TqReplay(date(2019, 11, 12)), web_gui=True)
 # 获得 m1901 5分钟K线的引用
 klines = api.get_kline_serial("SHFE.cu2001", 5 * 60, data_length=15)
 # 创建 m1901 的目标持仓 task，该 task 负责调整 m1901 的仓位到指定的目标仓位
