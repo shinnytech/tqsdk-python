@@ -55,21 +55,19 @@ class TqApi(object):
     RD = random.Random()  # 初始化随机数引擎
     DEFAULT_INS_URL = "https://openmd.shinnytech.com/t/md/symbols/latest.json"
 
-    def __init__(self, account: Union['TqAccount', TqSim, 'TqApi', None] = None, url: Optional[str] = None,
+    def __init__(self, account: Union['TqAccount', TqSim, None] = None, url: Optional[str] = None,
                  backtest: Optional[TqBacktest] = None, web_gui: bool = False, debug: Optional[str] = None,
                  loop: Optional[asyncio.AbstractEventLoop] = None, _ins_url=None, _md_url=None, _td_url=None) -> None:
         """
         创建天勤接口实例
 
         Args:
-            account (None/TqAccount/TqSim/TqApi): [可选]交易账号:
+            account (None/TqAccount/TqSim): [可选]交易账号:
                 * None: 账号将根据命令行参数决定, 默认为 :py:class:`~tqsdk.sim.TqSim`
 
                 * :py:class:`~tqsdk.api.TqAccount` : 使用实盘账号, 直连行情和交易服务器(不通过天勤终端), 需提供期货公司/帐号/密码
 
                 * :py:class:`~tqsdk.sim.TqSim` : 使用 TqApi 自带的内部模拟账号
-
-                * :py:class:`~tqsdk.sim.TqApi` : 对 master TqApi 创建一个 slave 副本, 以便在其它线程中使用
 
             url (str): [可选]指定服务器的地址
                 * 当 account 为 :py:class:`~tqsdk.api.TqAccount` 类型时, 可以通过该参数指定交易服务器地址, \
