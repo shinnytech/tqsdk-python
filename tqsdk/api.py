@@ -32,7 +32,6 @@ import requests
 import random
 import base64
 import os
-import argparse
 from datetime import date, datetime
 from typing import Union, List, Any, Optional
 import pandas as pd
@@ -2325,7 +2324,7 @@ class TqReplay(object):
         创建天勤复盘类
 
         Args:
-            dt (date): 指定复盘交易日
+            replay_dt (date): 指定复盘交易日
         """
         if isinstance(replay_dt, date):
             self._replay_dt = replay_dt
