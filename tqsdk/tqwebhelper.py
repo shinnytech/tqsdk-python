@@ -33,14 +33,11 @@ class TqWebHelper(object):
                     raise Exception("策略代码与设置中的账户参数冲突。可尝试删去代码中的账户参数 TqAccount，以终端或者插件设置的账户参数运行。")
                 self._api._account = tqsdk.api.TqAccount(args["_broker_id"], args["_account_id"], args["_password"])
                 self._api._backtest = None
-                self._api._replay = None
             elif args["_action"] == "backtest":
                 self._api._backtest = tqsdk.api.TqBacktest(start_dt=datetime.strptime(args["_start_dt"], '%Y%m%d'),
                                             end_dt=datetime.strptime(args["_end_dt"], '%Y%m%d'))
-                self._api._replay = None
             elif args["_action"] == "replay":
-                self._api._backtest = None
-                self._api._replay = tqsdk.api.TqReplay(datetime.strptime(args["_replay_dt"], '%Y%m%d'))
+                self._api._backtest = tqsdk.api.TqReplay(datetime.strptime(args["_replay_dt"], '%Y%m%d'))
 
             if args["_http_server_port"]:
                 self._api._web_gui = True # 命令行 _http_server_port, 一定打开 _web_gui
@@ -65,7 +62,7 @@ class TqWebHelper(object):
             # 初始化数据截面
             self._data = {
                 "action": {
-                    "mode": "replay" if self._api._replay else "backtest" if self._api._backtest else "run",
+                    "mode": "replay" if isinstance(self._api._backtest, tqsdk.api.TqReplay) else "backtest" if isinstance(self._api._backtest, tqsdk.api.TqBacktest) else "run",
                     "md_url_status": '-',
                     "td_url_status": True if isinstance(self._api._account, tqsdk.api.TqSim) else '-',
                     "account_id": self._api._account._account_id,
@@ -311,8 +308,8 @@ class TqWebHelper(object):
             "ws_url": 'ws://127.0.0.1:' + str(ws_port['port'])
         }
         # TODO：在复盘模式下发送 replay_dt 给 web 端，服务器改完后可以去掉
-        if self._api._replay:
-            url_response["replay_dt"] = int(datetime.combine(self._api._replay._replay_dt, datetime.min.time()).timestamp() * 1e9)
+        if isinstance(self._api._backtest, tqsdk.api.TqReplay):
+            url_response["replay_dt"] = int(datetime.combine(self._api._backtest._replay_dt, datetime.min.time()).timestamp() * 1e9)
 
         app = web.Application()
         app.router.add_get(path='/url',
