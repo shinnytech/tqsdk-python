@@ -373,6 +373,10 @@ class TqSim(object):
         max_balance = 0
         daily_yield = []
         self._logger.warning("模拟交易成交记录")
+        # 胜率 盈亏额比例
+        trades_logs = {}
+        profit_logs = [] # 盈利记录
+        loss_logs = [] # 亏损记录
         for d in sorted(self._trade_log.keys()):
             balance = self._trade_log[d]["account"]["balance"]
             if balance > max_balance:
@@ -387,6 +391,36 @@ class TqSim(object):
                                      datetime.fromtimestamp(t["trade_date_time"] / 1e9).strftime(
                                          "%Y-%m-%d %H:%M:%S.%f"), t["symbol"], t["offset"], t["direction"], t["volume"],
                                      t["price"], t["commission"])
+                if t["symbol"] not in trades_logs:
+                    trades_logs[t["symbol"]] = {
+                        "BUY": [],
+                        "SELL": [],
+                    }
+                if t["offset"] == "OPEN":
+                    trades_logs[t["symbol"]][t["direction"]].append({"volume": t["volume"], "price": t["price"]})
+                else:
+                    opposite_dir = "BUY" if t["direction"] == "SELL" else "SELL"
+                    opposite_list = trades_logs[t["symbol"]][opposite_dir]
+                    cur_close_volume = t["volume"]
+                    cur_close_price = t["price"]
+                    cur_close_dir = 1 if t["direction"] == "SELL" else -1
+                    while cur_close_volume > 0 and opposite_list[0]:
+                        volume = min(cur_close_volume, opposite_list[0]["volume"])
+                        profit = (cur_close_price - opposite_list[0]["price"]) * cur_close_dir
+                        if profit >= 0:
+                            profit_logs.append({"symbol": t["symbol"], "profit": profit, "volume": volume})
+                        else:
+                            loss_logs.append(
+                                {"symbol": t["symbol"], "profit": profit, "volume": volume})
+                        cur_close_volume -= volume
+                        opposite_list[0]["volume"] -= volume
+                        if opposite_list[0]["volume"] == 0:
+                            opposite_list.pop()
+
+        self._tqsdk_stat["profit_volumes"] = sum(p["volume"] for p in profit_logs)  # 盈利手数
+        self._tqsdk_stat["loss_volumes"] = sum(l["volume"] for l in loss_logs)  # 亏损手数
+        self._tqsdk_stat["profit_value"] = sum(p["profit"] * p["volume"] * self._quotes[p["symbol"]]["volume_multiple"] for p in profit_logs)  # 盈利额
+        self._tqsdk_stat["loss_value"] = sum(l["profit"] * l["volume"] * self._quotes[l["symbol"]]["volume_multiple"] for l in loss_logs)  # 亏损额
 
         mean = statistics.mean(daily_yield)
         rf = 0.0001
@@ -394,18 +428,29 @@ class TqSim(object):
         self._tqsdk_stat["sharpe_ratio"] = 250 ** (1 / 2) * (mean - rf) / stddev if stddev else float("inf")  # 年化夏普率
 
         _ror = self._tqsdk_stat["balance"] / self._tqsdk_stat["init_balance"]
-        self._tqsdk_stat["ror"] = _ror - 1  # 收益率
-        self._tqsdk_stat["annual_yield"] = _ror ** (250 / len(self._trade_log)) - 1  # 年化收益率
+        self._tqsdk_stat["ror"] = _ror - 1 # 收益率
+        self._tqsdk_stat["annual_yield"] = _ror ** (250 / len(self._trade_log)) - 1 # 年化收益率
 
         self._logger.warning("模拟交易账户资金")
         for d in sorted(self._trade_log.keys()):
             account = self._trade_log[d]["account"]
             self._logger.warning("日期:%s,账户权益:%.2f,可用资金:%.2f,浮动盈亏:%.2f,持仓盈亏:%.2f,平仓盈亏:%.2f,保证金:%.2f,手续费:%.2f,风险度:%.2f%%",
-                                 d, account["balance"], account["available"], account["float_profit"],
-                                 account["position_profit"], account["close_profit"], account["margin"],
-                                 account["commission"], account["risk_ratio"] * 100)
-        self._logger.warning("收益率:%.2f%%,年化收益率:%.2f%%,最大回撤:%.2f%%,年化夏普率:%.4f", self._tqsdk_stat["ror"] * 100,
-                             self._tqsdk_stat["annual_yield"] * 100, self._tqsdk_stat["max_drawdown"] * 100,
+                                d, account["balance"], account["available"], account["float_profit"],
+                                account["position_profit"],
+                                account["close_profit"], account["margin"], account["commission"],
+                                account["risk_ratio"] * 100)
+
+        self._tqsdk_stat["winning_rate"] = (self._tqsdk_stat["profit_volumes"] / (self._tqsdk_stat["profit_volumes"] + self._tqsdk_stat["loss_volumes"])) \
+            if self._tqsdk_stat["profit_volumes"] + self._tqsdk_stat["loss_volumes"] else 0
+        profit_pre_volume = self._tqsdk_stat["profit_value"] / self._tqsdk_stat["profit_volumes"] if self._tqsdk_stat["profit_volumes"] else 0
+        loss_pre_volume = self._tqsdk_stat["loss_value"] / self._tqsdk_stat["loss_volumes"] if self._tqsdk_stat["loss_volumes"] else 0
+        self._tqsdk_stat["profit_loss_ratio"] = profit_pre_volume / loss_pre_volume if loss_pre_volume else float("inf")
+        self._logger.warning("胜率:%.2f,每手盈亏额比例:%.2f,收益率:%.2f%%,年化收益率:%.2f%%,最大回撤:%.2f%%,年化夏普率:%.4f",
+                             self._tqsdk_stat["winning_rate"],
+                             self._tqsdk_stat["profit_loss_ratio"],
+                             self._tqsdk_stat["ror"] * 100,
+                             self._tqsdk_stat["annual_yield"] * 100,
+                             self._tqsdk_stat["max_drawdown"] * 100,
                              self._tqsdk_stat["sharpe_ratio"])
 
     def _ensure_trade_log(self):
