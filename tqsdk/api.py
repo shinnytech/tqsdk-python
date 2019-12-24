@@ -58,7 +58,7 @@ class TqApi(object):
     DEFAULT_TD_URL = "wss://opentd.shinnytech.com/trade/user0"
 
     def __init__(self, account: Union['TqAccount', TqSim, None] = None, url: Optional[str] = None,
-                 backtest: Optional[TqBacktest] = None, replay: Optional['TqReplay'] = None, web_gui: bool = False, debug: Optional[str] = None,
+                 backtest: Union[TqBacktest, 'TqReplay'] = None, web_gui: bool = False, debug: Optional[str] = None,
                  loop: Optional[asyncio.AbstractEventLoop] = None, _ins_url=None, _md_url=None, _td_url=None) -> None:
         """
         创建天勤接口实例
@@ -78,11 +78,14 @@ class TqApi(object):
                 * 当 account 为 :py:class:`~tqsdk.sim.TqSim` 类型时, 可以通过该参数指定行情服务器地址,\
                 默认使用 wss://openmd.shinnytech.com/t/md/front/mobile
 
-            backtest (TqBacktest): [可选] 传入 TqBacktest 对象将进入回测模式, \
-            回测模式下会强制使用 account 为 :py:class:`~tqsdk.sim.TqSim` 并只连接\
-             wss://openmd.shinnytech.com/t/md/front/mobile 接收行情数据
+            backtest (TqBacktest/TqReplay): [可选] 进入时光机，此时强制要求 account 类型为 :py:class:`~tqsdk.sim.TqSim`
 
-            replay (TqReplay): [可选] 传入 TqReplay 对象将进入复盘模式
+                * :py:class:`~tqsdk.backtest.TqBacktest` : 传入 TqBacktest 对象，进入回测模式 \
+                在回测模式下, TqBacktest 连接 wss://openmd.shinnytech.com/t/md/front/mobile 接收行情数据, \
+                由 TqBacktest 内部完成回测时间段内的行情推进和 K 线、Tick 更新.
+
+                * :py:class:`~tqsdk.api.TqReplay` : 传入 TqReplay 对象, 进入复盘模式 \
+                在复盘模式下, TqReplay 会在服务器申请复盘日期的行情资源, 由服务器推送复盘日期的行情.
 
             debug(str): [可选] 指定一个日志文件名, 将调试信息输出到指定文件. 默认不输出.
 
@@ -116,7 +119,7 @@ class TqApi(object):
             # 进行策略复盘
             from datetime import date
             from tqsdk import TqApi
-            api = TqApi(replay=TqReplay(replay_dt=date(2019, 12, 16)))
+            api = TqApi(backtest=TqReplay(replay_dt=date(2019, 12, 16)))
 
         Example5::
 
@@ -129,7 +132,6 @@ class TqApi(object):
         # 记录参数
         self._account = TqSim() if account is None else account
         self._backtest = backtest
-        self._replay = replay
         self._ins_url = TqApi.DEFAULT_INS_URL
         self._md_url = TqApi.DEFAULT_MD_URL
         self._td_url = TqApi.DEFAULT_TD_URL
@@ -1104,8 +1106,8 @@ class TqApi(object):
 
     # ----------------------------------------------------------------------
     def set_replay_speed(self, speed: float = 10) -> None:
-        if self._replay:
-            self._replay._set_server_session({"aid": "ratio", "speed": speed})
+        if isinstance(self._backtest, TqReplay):
+            self._backtest._set_server_session({"aid": "ratio", "speed": speed})
 
     # ----------------------------------------------------------------------
     def _call_soon(self, org_call_soon, callback, *args, **kargs):
@@ -1118,10 +1120,9 @@ class TqApi(object):
         tq_web_helper = TqWebHelper(self)
 
         # 等待复盘服务器启动
-        if self._replay:
+        if isinstance(self._backtest, TqReplay):
             self._account = self._account if isinstance(self._account, TqSim) else TqSim()
-            self._backtest = None  # replay backtest 模式只能二选一, 默认优先选择 replay
-            self._ins_url, self._md_url = self._replay._create_server(self)
+            self._ins_url, self._md_url = self._backtest._create_server(self)
 
         # 连接合约和行情服务器
         ws_md_send_chan, ws_md_recv_chan = TqChan(self), TqChan(self)
@@ -1134,11 +1135,18 @@ class TqApi(object):
         self.create_task(self._connect(self._md_url, ws_md_send_chan, ws_md_recv_chan))  # 启动行情websocket连接
 
         # 复盘模式，定时发送心跳包, 并将复盘日期发在行情的 recv_chan
-        if self._replay:
-            self.create_task(self._replay._run(ws_md_recv_chan))
+        if isinstance(self._backtest, TqReplay):
+            ws_md_recv_chan.send_nowait({
+                "aid": "rtn_data",
+                "data": [{
+                    "_tqsdk_replay": {
+                        "replay_dt": int(datetime.combine(self._backtest._replay_dt, datetime.min.time()).timestamp() * 1e9)}
+                }]
+            })
+            self.create_task(self._backtest._run())
 
         # 如果处于回测模式，则将行情连接对接到 backtest 上
-        if self._backtest:
+        if isinstance(self._backtest, TqBacktest):
             self._account = self._account if isinstance(self._account, TqSim) else TqSim()
             bt_send_chan, bt_recv_chan = TqChan(self), TqChan(self)
             self.create_task(self._backtest._run(self, bt_send_chan, bt_recv_chan, ws_md_send_chan, ws_md_recv_chan))
@@ -2345,7 +2353,7 @@ class TqReplay(object):
         self._md_url = "ws://%s:%d/t/rmd/front/mobile" % (session["ip"], session["gateway_web_port"])
 
         self._server_status = None
-        try_times = 10 # 最多尝试 10 次
+        try_times = 6 # 最多尝试 6 次
         # 同步等待复盘服务状态 initializing / running
         while self._server_status is None and try_times > 0:
             time.sleep(1)
@@ -2369,14 +2377,7 @@ class TqReplay(object):
         else:
             raise Exception("无法创建复盘服务器，请检查复盘日期后重试。")
 
-    async def _run(self, ws_md_recv_chan):
-        self.ws_md_recv_chan = ws_md_recv_chan
-        await self.ws_md_recv_chan.send({
-            "aid": "rtn_data",
-            "data": [{
-                "_tqsdk_replay": {"replay_dt": int(datetime.combine(self._replay_dt, datetime.min.time()).timestamp() * 1e9)}
-            }]
-        })
+    async def _run(self):
         while True:
             self._set_server_session({"aid": "heartbeat"})
             await asyncio.sleep(30)
@@ -2386,7 +2387,7 @@ class TqReplay(object):
         response = requests.post(create_session_url,
                                  headers={ "User-Agent": "tqsdk-python %s" % __version__},
                                  data=json.dumps({'dt': self._replay_dt.strftime("%Y%m%d")}),
-                                 timeout=30)
+                                 timeout=5)
         if response.status_code == 200:
             return json.loads(response.content)
         else:
@@ -2396,7 +2397,7 @@ class TqReplay(object):
         try:
             response = requests.get(self._session_url,
                                     headers={ "User-Agent": "tqsdk-python %s" % __version__},
-                                    timeout=30)
+                                    timeout=5)
             if response.status_code == 200:
                 return json.loads(response.content)
             else:
