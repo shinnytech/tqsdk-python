@@ -19,6 +19,7 @@ class TqSim(object):
 
     模拟交易不会有部分成交的情况, 要成交就是全部成交
     """
+    EPOCH = "1990-01-01 00:00:00.000000"
 
     def __init__(self, init_balance: float = 10000000.0, account_id: str = "TQSIM") -> None:
         """
@@ -32,8 +33,9 @@ class TqSim(object):
         self._init_balance = float(init_balance)
         if self._init_balance <= 0:
             raise Exception("初始资金(init_balance) %s 错误, 请检查 init_balance 是否填写正确" % (init_balance))
-        self._current_datetime = "1990-01-01 00:00:00.000000"
+        self._current_datetime = TqSim.EPOCH  # 当前行情时间（最新的 quote 时间）
         self._trading_day_end = "1990-01-01 18:00:00.000000"
+        self._is_recv_quote = False  # 判断是否收到第一笔行情
 
     async def _run(self, api, api_send_chan, api_recv_chan, md_send_chan, md_recv_chan):
         """模拟交易task"""
@@ -200,6 +202,17 @@ class TqSim(object):
                 quote["volume_multiple"] = quote_diff.get("volume_multiple", quote["volume_multiple"])
                 quote["commission"] = quote_diff.get("commission", quote["commission"])
                 quote["margin"] = quote_diff.get("margin", quote["margin"])
+                # 收到第一条行情时(无论是已订阅合约中哪一个), 就将订阅合约下的所有挂单(如果订阅前就下单)的时间改为这个行情时间
+                # 此时才将 order的diff下发并将“模拟交易下单”logger信息发出（即保证了 order 的 insert_date_time 为正确的行情时间）
+                if not self._is_recv_quote and self._current_datetime != TqSim.EPOCH:
+                    self._is_recv_quote = True
+                    for q in self._quotes.values():
+                        for order in list(q["orders"].values()):
+                            order["insert_date_time"] = self._get_current_timestamp()
+                            self._send_order(order)
+                            self._logger.info("模拟交易下单 %s: 时间:%s,合约:%s,开平:%s,方向:%s,手数:%s,价格:%s", order["order_id"],
+                                              self._current_datetime, order["symbol"], order["offset"],
+                                              order["direction"], order["volume_left"], order.get("limit_price", "市价"))
                 self._match_orders(quote)
                 if symbol in self._positions:
                     self._adjust_position(symbol, price=quote["last_price"])
@@ -210,14 +223,11 @@ class TqSim(object):
         order["volume_orign"] = order["volume"]
         order["volume_left"] = order["volume"]
         order["frozen_margin"] = 0.0
-        order["insert_date_time"] = self._get_current_timestamp()
+        order["insert_date_time"] = self._get_current_timestamp()  # 未收到第一笔行情时，此时返回的是1970.1.1
         order["last_msg"] = "报单成功"
         order["status"] = "ALIVE"
         del order["aid"]
         del order["volume"]
-        self._logger.info("模拟交易下单 %s: 时间:%s,合约:%s,开平:%s,方向:%s,手数:%s,价格:%s", order["order_id"], self._current_datetime,
-                          order["symbol"], order["offset"], order["direction"], order["volume_left"],
-                          order.get("limit_price", "市价"))
         quote = self._ensure_quote(order["symbol"])
         quote["orders"][order["order_id"]] = order
         self._orders[order["order_id"]] = order
@@ -240,8 +250,12 @@ class TqSim(object):
             if not self._adjust_account(frozen_margin=order["frozen_margin"]):
                 self._del_order(order, "开仓资金不足")
                 return
-        self._send_order(order)
-        self._match_order(quote, order)
+        if self._is_recv_quote:  # 如果尚未收到第一笔行情，则不下发 order 初始信息及 logger 信息
+            self._send_order(order)
+            self._logger.info("模拟交易下单 %s: 时间:%s,合约:%s,开平:%s,方向:%s,手数:%s,价格:%s", order["order_id"],
+                              self._current_datetime, order["symbol"], order["offset"],
+                              order["direction"], order["volume_left"], order.get("limit_price", "市价"))
+            self._match_order(quote, order)
 
     def _cancel_order(self, pack):
         if pack["order_id"] in self._orders:
@@ -274,7 +288,7 @@ class TqSim(object):
     def _match_order(self, quote, order):
         ask_price = quote["ask_price1"]
         bid_price = quote["bid_price1"]
-        if quote["datetime"] == "":
+        if quote["datetime"] == "":  # 如果未收到行情，不处理
             return
         if "limit_price" not in order:
             price = ask_price if order["direction"] == "BUY" else bid_price
@@ -400,7 +414,10 @@ class TqSim(object):
                         "SELL": [],
                     }
                 if t["offset"] == "OPEN":
-                    trades_logs[t["symbol"]][t["direction"]].append({"volume": t["volume"], "price": t["price"]})
+                    trades_logs[t["symbol"]][t["direction"]].append({
+                        "volume": t["volume"],
+                        "price": t["price"]
+                    })
                 else:
                     opposite_dir = "BUY" if t["direction"] == "SELL" else "SELL"
                     opposite_list = trades_logs[t["symbol"]][opposite_dir]
@@ -411,9 +428,17 @@ class TqSim(object):
                         volume = min(cur_close_volume, opposite_list[0]["volume"])
                         profit = (cur_close_price - opposite_list[0]["price"]) * cur_close_dir
                         if profit >= 0:
-                            profit_logs.append({"symbol": t["symbol"], "profit": profit, "volume": volume})
+                            profit_logs.append({
+                                "symbol": t["symbol"],
+                                "profit": profit,
+                                "volume": volume
+                            })
                         else:
-                            loss_logs.append({"symbol": t["symbol"], "profit": profit, "volume": volume})
+                            loss_logs.append({
+                                "symbol": t["symbol"],
+                                "profit": profit,
+                                "volume": volume
+                            })
                         cur_close_volume -= volume
                         opposite_list[0]["volume"] -= volume
                         if opposite_list[0]["volume"] == 0:
@@ -421,8 +446,10 @@ class TqSim(object):
 
         self._tqsdk_stat["profit_volumes"] = sum(p["volume"] for p in profit_logs)  # 盈利手数
         self._tqsdk_stat["loss_volumes"] = sum(l["volume"] for l in loss_logs)  # 亏损手数
-        self._tqsdk_stat["profit_value"] = sum(p["profit"] * p["volume"] * self._quotes[p["symbol"]]["volume_multiple"] for p in profit_logs)  # 盈利额
-        self._tqsdk_stat["loss_value"] = sum(l["profit"] * l["volume"] * self._quotes[l["symbol"]]["volume_multiple"] for l in loss_logs)  # 亏损额
+        self._tqsdk_stat["profit_value"] = sum(
+            p["profit"] * p["volume"] * self._quotes[p["symbol"]]["volume_multiple"] for p in profit_logs)  # 盈利额
+        self._tqsdk_stat["loss_value"] = sum(
+            l["profit"] * l["volume"] * self._quotes[l["symbol"]]["volume_multiple"] for l in loss_logs)  # 亏损额
 
         mean = statistics.mean(daily_yield)
         rf = 0.0001
@@ -437,12 +464,13 @@ class TqSim(object):
         for d in sorted(self.trade_log.keys()):
             account = self.trade_log[d]["account"]
             self._logger.warning("日期:%s,账户权益:%.2f,可用资金:%.2f,浮动盈亏:%.2f,持仓盈亏:%.2f,平仓盈亏:%.2f,保证金:%.2f,手续费:%.2f,风险度:%.2f%%",
-                                d, account["balance"], account["available"], account["float_profit"],
-                                account["position_profit"],
-                                account["close_profit"], account["margin"], account["commission"],
-                                account["risk_ratio"] * 100)
+                                 d, account["balance"], account["available"], account["float_profit"],
+                                 account["position_profit"],
+                                 account["close_profit"], account["margin"], account["commission"],
+                                 account["risk_ratio"] * 100)
 
-        self._tqsdk_stat["winning_rate"] = (self._tqsdk_stat["profit_volumes"] / (self._tqsdk_stat["profit_volumes"] + self._tqsdk_stat["loss_volumes"])) \
+        self._tqsdk_stat["winning_rate"] = (self._tqsdk_stat["profit_volumes"] / (
+                self._tqsdk_stat["profit_volumes"] + self._tqsdk_stat["loss_volumes"])) \
             if self._tqsdk_stat["profit_volumes"] + self._tqsdk_stat["loss_volumes"] else 0
         profit_pre_volume = self._tqsdk_stat["profit_value"] / self._tqsdk_stat["profit_volumes"] if self._tqsdk_stat["profit_volumes"] else 0
         loss_pre_volume = self._tqsdk_stat["loss_value"] / self._tqsdk_stat["loss_volumes"] if self._tqsdk_stat["loss_volumes"] else 0
