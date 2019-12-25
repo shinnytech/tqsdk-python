@@ -213,6 +213,7 @@ class TqWebHelper(object):
 
     def dt_func (self):
         # 回测和复盘模式，用 _api._account 一定是 TqSim, 使用 TqSim _get_current_timestamp() 提供的时间
+        # todo: 使用 TqSim.EPOCH
         if self._data["action"]["mode"] == "backtest":
             return self._data['_tqsdk_backtest']['current_dt']
         elif self._data["action"]["mode"] == "replay":
