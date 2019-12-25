@@ -1165,6 +1165,7 @@ class TqApi(object):
                 self._account._run(self, self._send_chan, self._recv_chan, ws_md_send_chan, ws_md_recv_chan))
         else:
             ws_td_send_chan, ws_td_recv_chan = TqChan(self), TqChan(self)
+            self._td_url = self._account._td_url
             self.create_task(self._connect(self._td_url, ws_td_send_chan, ws_td_recv_chan))
             self.create_task(
                 self._account._run(self, self._send_chan, self._recv_chan, ws_md_send_chan, ws_md_recv_chan,
@@ -2159,6 +2160,19 @@ class TqAccount(object):
         """
         if bool(front_broker) != bool(front_url):
             raise Exception("front_broker 和 front_url 参数需同时填写")
+
+        # 支持分散部署的交易中继网关
+        response = requests.get("https://files.shinnytech.com/broker-list.json", headers={
+            "User-Agent": "tqsdk-python %s" % __version__,
+            "Accept": "application/json"
+        }, timeout=30)
+        broker_list = json.loads(response.content)
+        if broker_id not in broker_list:
+            raise Exception("不支持该期货公司-%s，请联系期货公司。" % (broker_id))
+        if "TQ" not in broker_list[broker_id]["category"]:
+            raise Exception("不支持该期货公司-%s，请联系期货公司。" % (broker_id))
+        self._td_url = broker_list[broker_id]["url"]
+
         self._broker_id = broker_id
         self._account_id = account_id
         self._password = password
