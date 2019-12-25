@@ -484,7 +484,7 @@ class TqReplay(object):
             await asyncio.sleep(30)
 
     def _prepare_session(self):
-        create_session_url = "http://139.198.124.169/t/rmd/replay/create_session"
+        create_session_url = "http://replay.api.shinnytech.com/t/rmd/replay/create_session"
         response = requests.post(create_session_url,
                                  headers={ "User-Agent": "tqsdk-python %s" % __version__},
                                  data=json.dumps({'dt': self._replay_dt.strftime("%Y%m%d")}),
