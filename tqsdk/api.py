@@ -32,14 +32,14 @@ import requests
 import random
 import base64
 import os
-from datetime import date, datetime
+from datetime import datetime
 from typing import Union, List, Any, Optional
 import pandas as pd
 import numpy as np
 from .__version__ import __version__
 from tqsdk.sim import TqSim
 from tqsdk.objs import Entity, Quote, Kline, Tick, Account, Position, Order, Trade
-from tqsdk.backtest import TqBacktest
+from tqsdk.backtest import TqBacktest, TqReplay
 from tqsdk.tqwebhelper import TqWebHelper
 
 
@@ -58,7 +58,7 @@ class TqApi(object):
     DEFAULT_TD_URL = "wss://opentd.shinnytech.com/trade/user0"
 
     def __init__(self, account: Union['TqAccount', TqSim, None] = None, url: Optional[str] = None,
-                 backtest: Union[TqBacktest, 'TqReplay'] = None, web_gui: bool = False, debug: Optional[str] = None,
+                 backtest: Union[TqBacktest, TqReplay] = None, web_gui: bool = False, debug: Optional[str] = None,
                  loop: Optional[asyncio.AbstractEventLoop] = None, _ins_url=None, _md_url=None, _td_url=None) -> None:
         """
         创建天勤接口实例
@@ -84,7 +84,7 @@ class TqApi(object):
                 在回测模式下, TqBacktest 连接 wss://openmd.shinnytech.com/t/md/front/mobile 接收行情数据, \
                 由 TqBacktest 内部完成回测时间段内的行情推进和 K 线、Tick 更新.
 
-                * :py:class:`~tqsdk.api.TqReplay` : 传入 TqReplay 对象, 进入复盘模式 \
+                * :py:class:`~tqsdk.backtest.TqReplay` : 传入 TqReplay 对象, 进入复盘模式 \
                 在复盘模式下, TqReplay 会在服务器申请复盘日期的行情资源, 由服务器推送复盘日期的行情.
 
             debug(str): [可选] 指定一个日志文件名, 将调试信息输出到指定文件. 默认不输出.
@@ -2324,92 +2324,3 @@ class TqChan(asyncio.Queue):
 
     async def __aexit__(self, exc_type, exc, tb):
         await self.close()
-
-class TqReplay(object):
-    """天勤复盘类"""
-    def __init__(self, replay_dt: date):
-        """
-        创建天勤复盘类
-
-        Args:
-            replay_dt (date): 指定复盘交易日
-        """
-        if isinstance(replay_dt, date):
-            self._replay_dt = replay_dt
-        else:
-            raise Exception("复盘时间(dt)类型 %s 错误, 请检查 dt 数据类型是否填写正确" % (type(replay_dt)))
-        if self._replay_dt.weekday() >= 5:
-            # 0~6, 检查周末[5,6] 提前抛错退出
-            raise Exception("无法创建复盘服务器，请检查复盘日期后重试。")
-
-    def _create_server(self, api):
-        self._api = api
-        self._logger = api._logger.getChild("TqReplay")  # 调试信息输出
-        self._logger.warning('开始启动复盘服务器，请稍候。')
-
-        session = self._prepare_session()
-        self._session_url = "http://%s:%d/t/rmd/replay/session/%s" % (session["ip"], session["session_port"], session["session"])
-        self._ins_url = "http://%s:%d/t/rmd/replay/session/%s/symbol" % (session["ip"], session["session_port"], session["session"])
-        self._md_url = "ws://%s:%d/t/rmd/front/mobile" % (session["ip"], session["gateway_web_port"])
-
-        self._server_status = None
-        try_times = 6 # 最多尝试 6 次
-        # 同步等待复盘服务状态 initializing / running
-        while self._server_status is None and try_times > 0:
-            time.sleep(1)
-            response = self._get_server_status()
-            try_times -= 1
-            if response and response["status"]:
-                self._server_status = response["status"]
-
-        try_times = 30  # 最多尝试 30 次
-        # 同步等待复盘服务状态 running
-        while self._server_status == "initializing" and try_times > 0:
-            time.sleep(1)
-            response = self._get_server_status()
-            try_times -= 1
-            if response and response["status"]:
-                self._server_status = response["status"]
-
-        if self._server_status == "running":
-            self._set_server_session({"aid": "ratio", "speed": 1})
-            return self._ins_url, self._md_url
-        else:
-            raise Exception("无法创建复盘服务器，请检查复盘日期后重试。")
-
-    async def _run(self):
-        while True:
-            self._set_server_session({"aid": "heartbeat"})
-            await asyncio.sleep(30)
-
-    def _prepare_session(self):
-        create_session_url = "http://139.198.124.169/t/rmd/replay/create_session"
-        response = requests.post(create_session_url,
-                                 headers={ "User-Agent": "tqsdk-python %s" % __version__},
-                                 data=json.dumps({'dt': self._replay_dt.strftime("%Y%m%d")}),
-                                 timeout=5)
-        if response.status_code == 200:
-            return json.loads(response.content)
-        else:
-            raise Exception("创建复盘服务器失败，请检查复盘日期后重试。")
-
-    def _get_server_status(self):
-        try:
-            response = requests.get(self._session_url,
-                                    headers={ "User-Agent": "tqsdk-python %s" % __version__},
-                                    timeout=5)
-            if response.status_code == 200:
-                return json.loads(response.content)
-            else:
-                print('response.status_code =', response.status_code, response.reason)
-                raise Exception("无法创建复盘服务器，请检查复盘日期后重试。")
-        except requests.exceptions.ConnectionError as e:
-            # 刚开始 _session_url 还不能访问的时候～
-            return None
-
-    def _set_server_session(self, data=None):
-        if data is not None:
-            requests.post(self._session_url,
-                          headers={"User-Agent": "tqsdk-python %s" % __version__},
-                          data=json.dumps(data),
-                          timeout=30)
