@@ -58,7 +58,7 @@ class TqApi(object):
     DEFAULT_TD_URL = "wss://opentd.shinnytech.com/trade/user0"
 
     def __init__(self, account: Union['TqAccount', TqSim, None] = None, url: Optional[str] = None,
-                 backtest: Union[TqBacktest, TqReplay] = None, web_gui: bool = False, debug: Optional[str] = None,
+                 backtest: Union[TqBacktest, TqReplay, None] = None, web_gui: bool = False, debug: Optional[str] = None,
                  loop: Optional[asyncio.AbstractEventLoop] = None, _ins_url=None, _md_url=None, _td_url=None) -> None:
         """
         创建天勤接口实例
@@ -118,7 +118,7 @@ class TqApi(object):
 
             # 进行策略复盘
             from datetime import date
-            from tqsdk import TqApi
+            from tqsdk import TqApi, TqReplay
             api = TqApi(backtest=TqReplay(replay_dt=date(2019, 12, 16)))
 
         Example5::
@@ -1105,7 +1105,14 @@ class TqApi(object):
         return chan
 
     # ----------------------------------------------------------------------
-    def set_replay_speed(self, speed: float = 10) -> None:
+    def set_replay_speed(self, speed: float = 10.0) -> None:
+        """
+        调整复盘服务器行情推进速度
+
+        Args:
+            speed (float): 复盘服务器行情推进速度, 默认为 10.0
+
+        """
         if isinstance(self._backtest, TqReplay):
             self._backtest._set_server_session({"aid": "ratio", "speed": speed})
 
@@ -2124,6 +2131,7 @@ class TqApi(object):
             return int(base_k_dataframe["id"].iloc[-1]) + 1 + x
         elif x >= 0:
             return int(base_k_dataframe["id"].iloc[0]) + x
+
 
 class TqAccount(object):
     """天勤实盘类"""

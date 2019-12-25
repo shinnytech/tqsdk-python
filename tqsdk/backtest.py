@@ -424,6 +424,7 @@ class TqBacktest(object):
             }
         ]
 
+
 class TqReplay(object):
     """天勤复盘类"""
     def __init__(self, replay_dt: date):
@@ -500,7 +501,6 @@ class TqReplay(object):
             if response.status_code == 200:
                 return json.loads(response.content)
             else:
-                print('response.status_code =', response.status_code, response.reason)
                 raise Exception("无法创建复盘服务器，请检查复盘日期后重试。")
         except requests.exceptions.ConnectionError as e:
             # 刚开始 _session_url 还不能访问的时候～

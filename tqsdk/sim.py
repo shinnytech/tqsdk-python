@@ -410,8 +410,7 @@ class TqSim(object):
                         if profit >= 0:
                             profit_logs.append({"symbol": t["symbol"], "profit": profit, "volume": volume})
                         else:
-                            loss_logs.append(
-                                {"symbol": t["symbol"], "profit": profit, "volume": volume})
+                            loss_logs.append({"symbol": t["symbol"], "profit": profit, "volume": volume})
                         cur_close_volume -= volume
                         opposite_list[0]["volume"] -= volume
                         if opposite_list[0]["volume"] == 0:
