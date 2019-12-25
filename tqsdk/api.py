@@ -1618,6 +1618,11 @@ class TqApi(object):
                             }
                         }]
                     })
+                    # 交易连接，发送确认结算单
+                    if url == self._td_url:
+                        await client.send(json.dumps({
+                            "aid": "confirm_settlement"
+                        }))
                     send_task = self.create_task(
                         self._send_handler(client, url, resend_request, send_chan, first_connect))
                     try:
