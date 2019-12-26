@@ -443,9 +443,9 @@ class TqSim(object):
             if self._tqsdk_stat["profit_volumes"] + self._tqsdk_stat["loss_volumes"] else 0
         profit_pre_volume = self._tqsdk_stat["profit_value"] / self._tqsdk_stat["profit_volumes"] if self._tqsdk_stat["profit_volumes"] else 0
         loss_pre_volume = self._tqsdk_stat["loss_value"] / self._tqsdk_stat["loss_volumes"] if self._tqsdk_stat["loss_volumes"] else 0
-        self._tqsdk_stat["profit_loss_ratio"] = profit_pre_volume / loss_pre_volume if loss_pre_volume else float("inf")
-        self._logger.warning("胜率:%.2f,每手盈亏额比例:%.2f,收益率:%.2f%%,年化收益率:%.2f%%,最大回撤:%.2f%%,年化夏普率:%.4f",
-                             self._tqsdk_stat["winning_rate"],
+        self._tqsdk_stat["profit_loss_ratio"] = abs(profit_pre_volume / loss_pre_volume) if loss_pre_volume else float("inf")
+        self._logger.warning("胜率:%.2f%%,盈亏额比例:%.2f,收益率:%.2f%%,年化收益率:%.2f%%,最大回撤:%.2f%%,年化夏普率:%.4f",
+                             self._tqsdk_stat["winning_rate"] * 100,
                              self._tqsdk_stat["profit_loss_ratio"],
                              self._tqsdk_stat["ror"] * 100,
                              self._tqsdk_stat["annual_yield"] * 100,
