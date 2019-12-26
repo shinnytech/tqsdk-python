@@ -33,7 +33,7 @@ import random
 import base64
 import os
 from datetime import datetime
-from typing import Union, List, Any, Optional
+from typing import Union, List, Any, Optional, Tuple
 import pandas as pd
 import numpy as np
 from .__version__ import __version__
@@ -57,7 +57,7 @@ class TqApi(object):
     DEFAULT_MD_URL = "wss://openmd.shinnytech.com/t/md/front/mobile"
     DEFAULT_TD_URL = "wss://opentd.shinnytech.com/trade/user0"
 
-    def __init__(self, account: Union['TqAccount', TqSim, None] = None, url: Optional[str] = None,
+    def __init__(self, account: Union['TqAccount', TqSim, None] = None, auth: Tuple[str, str] = None, url: Optional[str] = None,
                  backtest: Union[TqBacktest, TqReplay, None] = None, web_gui: bool = False, debug: Optional[str] = None,
                  loop: Optional[asyncio.AbstractEventLoop] = None, _ins_url=None, _md_url=None, _td_url=None) -> None:
         """
@@ -70,6 +70,8 @@ class TqApi(object):
                 * :py:class:`~tqsdk.api.TqAccount` : 使用实盘账号, 直连行情和交易服务器(不通过天勤终端), 需提供期货公司/帐号/密码
 
                 * :py:class:`~tqsdk.sim.TqSim` : 使用 TqApi 自带的内部模拟账号
+
+            auth (Tuple): [可选]用户权限认证对象
 
             url (str): [可选]指定服务器的地址
                 * 当 account 为 :py:class:`~tqsdk.api.TqAccount` 类型时, 可以通过该参数指定交易服务器地址, \
@@ -164,6 +166,22 @@ class TqApi(object):
                 fh = logging.FileHandler(filename=debug)
                 fh.setFormatter(log_format)
                 self._logger.addHandler(fh)
+
+        # 支持用户授权
+        self._access_token = ''
+        if auth:
+            headers = {}
+            headers.update(self._base_headers)
+            headers.update({"Content-Type": "application/x-www-form-urlencoded"})
+            response = requests.post("https://auth.shinnytech.com/auth/realms/shinnytech/protocol/openid-connect/token",
+                                     headers=headers,
+                                     data="grant_type=password&username=%s&password=%s&client_id=tqsdk&client_secret=bdf198ea-6ecb-4ba1-80fd-1a41453f16f1" % (auth[0], auth[1]),
+                                     timeout=30)
+            if response.status_code == 200:
+                self._access_token = json.loads(response.content)["access_token"]
+                self._logger.info("用户权限认证成功")
+            else:
+                self._logger.warning("用户权限认证失败 (%d,%s)" % (response.status_code, response.content))
 
         # 初始化loop
         self._send_chan, self._recv_chan = TqChan(self), TqChan(self)  # 消息收发队列
@@ -1183,10 +1201,7 @@ class TqApi(object):
 
     def _fetch_symbol_info(self, url):
         """获取合约信息"""
-        rsp = requests.get(url, headers={
-            "User-Agent": "tqsdk-python %s" % __version__,
-            "Accept": "application/json"
-        }, timeout=30)
+        rsp = requests.get(url, headers=self._base_headers, timeout=30)
         rsp.raise_for_status()
         return {
             k: {
@@ -1577,9 +1592,7 @@ class TqApi(object):
         un_processed = False  # 重连后尚未处理完标志
         keywords = {
             "max_size": None,
-            "extra_headers": {
-                "User-Agent": "tqsdk-python %s" % __version__
-            }
+            "extra_headers": self._base_headers
         }
         if url.startswith("wss://"):
             ssl_context = ssl.create_default_context()
@@ -1790,6 +1803,16 @@ class TqApi(object):
                 for slave in self._slaves:
                     slave._slave_recv_pack(copy.deepcopy(pack))
             self._pending_diffs.extend(pack.get("data", []))
+
+    @property
+    def _base_headers(self):
+        headers = {
+            "User-Agent": "tqsdk-python %s" % __version__,
+            "Accept": "application/json"
+        }
+        if self._access_token:
+            headers["Authorization"] = "Bearer %s" % self._access_token
+        return headers
 
     @staticmethod
     def _merge_diff(result, diff, prototype, persist):
