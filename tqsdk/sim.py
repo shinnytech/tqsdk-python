@@ -26,6 +26,7 @@ class TqSim(object):
 
             account_id (str): [可选]帐号, 默认为 "TQSIM"
         """
+        self.trade_log = {}  # 日期->交易记录及收盘时的权益及持仓
         self._account_id = account_id
         self._init_balance = float(init_balance)
         if self._init_balance <= 0:
@@ -67,7 +68,6 @@ class TqSim(object):
         self._positions = {}
         self._orders = {}
         self._quotes = {}  # 记下最新行情
-        self._trade_log = {}  # 日期->交易记录及收盘时的权益及持仓
         self._client_subscribe = set()  # 客户端订阅的合约集合
         self._all_subscribe = set()  # 客户端+模拟交易模块订阅的合约集合
         # 是否已经发送初始账户信息
@@ -365,7 +365,7 @@ class TqSim(object):
             self._send_position(position)
 
     def _report(self):
-        if not self._trade_log:
+        if not self.trade_log:
             return
         self._tqsdk_stat["init_balance"] = self._init_balance  # 起始资金
         self._tqsdk_stat["balance"] = self._account["balance"]  # 结束资金
@@ -375,18 +375,18 @@ class TqSim(object):
         self._logger.warning("模拟交易成交记录")
         # 胜率 盈亏额比例
         trades_logs = {}
-        profit_logs = [] # 盈利记录
-        loss_logs = [] # 亏损记录
-        for d in sorted(self._trade_log.keys()):
-            balance = self._trade_log[d]["account"]["balance"]
+        profit_logs = []  # 盈利记录
+        loss_logs = []  # 亏损记录
+        for d in sorted(self.trade_log.keys()):
+            balance = self.trade_log[d]["account"]["balance"]
             if balance > max_balance:
                 max_balance = balance
             drawdown = (max_balance - balance) / max_balance
             if drawdown > self._tqsdk_stat["max_drawdown"]:
                 self._tqsdk_stat["max_drawdown"] = drawdown
             daily_yield.append(
-                self._trade_log[d]["account"]["balance"] / self._trade_log[d]["account"]["pre_balance"] - 1)
-            for t in self._trade_log[d]["trades"]:
+                self.trade_log[d]["account"]["balance"] / self.trade_log[d]["account"]["pre_balance"] - 1)
+            for t in self.trade_log[d]["trades"]:
                 self._logger.warning("时间:%s,合约:%s,开平:%s,方向:%s,手数:%d,价格:%.3f,手续费:%.2f",
                                      datetime.fromtimestamp(t["trade_date_time"] / 1e9).strftime(
                                          "%Y-%m-%d %H:%M:%S.%f"), t["symbol"], t["offset"], t["direction"], t["volume"],
@@ -427,12 +427,12 @@ class TqSim(object):
         self._tqsdk_stat["sharpe_ratio"] = 250 ** (1 / 2) * (mean - rf) / stddev if stddev else float("inf")  # 年化夏普率
 
         _ror = self._tqsdk_stat["balance"] / self._tqsdk_stat["init_balance"]
-        self._tqsdk_stat["ror"] = _ror - 1 # 收益率
-        self._tqsdk_stat["annual_yield"] = _ror ** (250 / len(self._trade_log)) - 1 # 年化收益率
+        self._tqsdk_stat["ror"] = _ror - 1  # 收益率
+        self._tqsdk_stat["annual_yield"] = _ror ** (250 / len(self.trade_log)) - 1  # 年化收益率
 
         self._logger.warning("模拟交易账户资金")
-        for d in sorted(self._trade_log.keys()):
-            account = self._trade_log[d]["account"]
+        for d in sorted(self.trade_log.keys()):
+            account = self.trade_log[d]["account"]
             self._logger.warning("日期:%s,账户权益:%.2f,可用资金:%.2f,浮动盈亏:%.2f,持仓盈亏:%.2f,平仓盈亏:%.2f,保证金:%.2f,手续费:%.2f,风险度:%.2f%%",
                                 d, account["balance"], account["available"], account["float_profit"],
                                 account["position_profit"],
@@ -453,7 +453,7 @@ class TqSim(object):
                              self._tqsdk_stat["sharpe_ratio"])
 
     def _ensure_trade_log(self):
-        return self._trade_log.setdefault(self._trading_day_end[:10], {
+        return self.trade_log.setdefault(self._trading_day_end[:10], {
             "trades": []
         })
 
