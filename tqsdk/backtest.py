@@ -499,7 +499,7 @@ class TqReplay(object):
     def _prepare_session(self):
         create_session_url = "http://replay.api.shinnytech.com/t/rmd/replay/create_session"
         response = requests.post(create_session_url,
-                                 headers={ "User-Agent": "tqsdk-python %s" % __version__},
+                                 headers=self._api._base_headers,
                                  data=json.dumps({'dt': self._replay_dt.strftime("%Y%m%d")}),
                                  timeout=5)
         if response.status_code == 200:
@@ -510,7 +510,7 @@ class TqReplay(object):
     def _get_server_status(self):
         try:
             response = requests.get(self._session_url,
-                                    headers={ "User-Agent": "tqsdk-python %s" % __version__},
+                                    headers=self._api._base_headers,
                                     timeout=5)
             if response.status_code == 200:
                 return json.loads(response.content)
@@ -523,6 +523,6 @@ class TqReplay(object):
     def _set_server_session(self, data=None):
         if data is not None:
             requests.post(self._session_url,
-                          headers={"User-Agent": "tqsdk-python %s" % __version__},
+                          headers=self._api._base_headers,
                           data=json.dumps(data),
                           timeout=30)
