@@ -7,6 +7,7 @@
 @description: 
 """
 import os
+import re
 import sys
 import argparse
 import simplejson
@@ -23,6 +24,7 @@ class TqWebHelper(object):
         """初始化，检查参数"""
         self._api = api
         self._logger = self._api._logger.getChild("TqWebHelper")  # 调试信息输出
+        self._http_server_host = "127.0.0.1"
         self._http_server_port = 0
         args = TqWebHelper.parser_arguments()
         if args:
@@ -39,9 +41,12 @@ class TqWebHelper(object):
             elif args["_action"] == "replay":
                 self._api._backtest = tqsdk.api.TqReplay(datetime.strptime(args["_replay_dt"], '%Y%m%d'))
 
-            if args["_http_server_port"]:
-                self._api._web_gui = True # 命令行 _http_server_port, 一定打开 _web_gui
-                self._http_server_port = args["_http_server_port"]
+            if args["_http_server_address"]:
+                self._api._web_gui = True  # 命令行 _http_server_address, 一定打开 _web_gui
+                address = re.match(r"^(https?://)?([A-Za-z0-9\.]+):?(\d+)*$", args["_http_server_address"])
+                if address:
+                    self._http_server_host = address.group(2)
+                    self._http_server_port = int(address.group(3)) if address.group(3) else 0
 
     async def _run(self, api_send_chan, api_recv_chan, web_send_chan, web_recv_chan):
         if not self._api._web_gui:
@@ -320,7 +325,7 @@ class TqWebHelper(object):
         runner = web.AppRunner(app)
         await runner.setup()
         server_socket = socket.socket()
-        server_socket.bind(('127.0.0.1', self._http_server_port))
+        server_socket.bind((self._http_server_host, self._http_server_port))
         address = server_socket.getsockname()
         site = web.SockSite(runner, server_socket)
         await site.start()
@@ -352,7 +357,7 @@ class TqWebHelper(object):
         # action==replay
         parser.add_argument('--_replay_dt', type=str, required=False)
         # others
-        parser.add_argument('--_http_server_port', type=int, required=False)
+        parser.add_argument('--_http_server_address', type=str, required=False)
         args, unknown = parser.parse_known_args()
         if args._action is None:
             return None
@@ -384,5 +389,5 @@ class TqWebHelper(object):
                     action["_replay_dt"] = args._replay_dt
             else:
                 raise Exception("不支持的类型 _action = %s, 请检查后重试。" % (action["_action"]))
-            action["_http_server_port"] = args._http_server_port
+            action["_http_server_address"] = args._http_server_address
             return action
