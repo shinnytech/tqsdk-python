@@ -14,6 +14,7 @@ import simplejson
 import asyncio
 from datetime import datetime
 from aiohttp import web
+from urllib.parse import urlparse
 import socket
 import websockets
 import tqsdk
@@ -43,10 +44,10 @@ class TqWebHelper(object):
 
             if args["_http_server_address"]:
                 self._api._web_gui = True  # 命令行 _http_server_address, 一定打开 _web_gui
-                address = re.match(r"^(https?://)?([A-Za-z0-9\.]+):?(\d+)*$", args["_http_server_address"])
-                if address:
-                    self._http_server_host = address.group(2)
-                    self._http_server_port = int(address.group(3)) if address.group(3) else 0
+                address = urlparse(args["_http_server_address"])
+                host, _, port = address.netloc.partition(":")
+                self._http_server_host = host if host else "127.0.0.1"
+                self._http_server_port = int(port) if port else 0
 
     async def _run(self, api_send_chan, api_recv_chan, web_send_chan, web_recv_chan):
         if not self._api._web_gui:
