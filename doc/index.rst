@@ -16,10 +16,10 @@ TianQin Python Sdk User Guide
     intro.rst
     quickstart.rst
     usage/index.rst
-    devtools/index.rst
-    advanced/index.rst
-    reference/index.rst
     demo/index.rst
+    reference/index.rst
+    advanced/index.rst
+    devtools/index.rst
     dev/index.rst
     qa.rst
     version.rst
