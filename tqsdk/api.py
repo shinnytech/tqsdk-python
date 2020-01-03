@@ -33,7 +33,7 @@ import random
 import base64
 import os
 from datetime import datetime
-from typing import Union, List, Any, Optional, Tuple
+from typing import Union, List, Any, Optional
 import pandas as pd
 import numpy as np
 from .__version__ import __version__
@@ -57,7 +57,7 @@ class TqApi(object):
     DEFAULT_MD_URL = "wss://openmd.shinnytech.com/t/md/front/mobile"
     DEFAULT_TD_URL = "wss://opentd.shinnytech.com/trade/user0"
 
-    def __init__(self, account: Union['TqAccount', TqSim, None] = None, auth: Tuple[str, str] = None, url: Optional[str] = None,
+    def __init__(self, account: Union['TqAccount', TqSim, None] = None, auth: Optional[str] = None, url: Optional[str] = None,
                  backtest: Union[TqBacktest, TqReplay, None] = None, web_gui: bool = False, debug: Optional[str] = None,
                  loop: Optional[asyncio.AbstractEventLoop] = None, _ins_url=None, _md_url=None, _td_url=None) -> None:
         """
@@ -71,7 +71,9 @@ class TqApi(object):
 
                 * :py:class:`~tqsdk.sim.TqSim` : 使用 TqApi 自带的内部模拟账号
 
-            auth (Tuple): [可选]用户权限认证对象
+            auth (str): [可选]用户权限认证对象
+                * 用户权限认证对象为天勤用户论坛的邮箱和密码，中间以英文逗号分隔，例如： "tianqin@qq.com,123456"
+                天勤论坛注册链接 https://www.shinnytech.com/register-intro/
 
             url (str): [可选]指定服务器的地址
                 * 当 account 为 :py:class:`~tqsdk.api.TqAccount` 类型时, 可以通过该参数指定交易服务器地址, \
@@ -140,8 +142,15 @@ class TqApi(object):
 
         if url and isinstance(self._account, TqSim):
             self._md_url = url
-        if url and isinstance(self._account, TqAccount):
-            self._td_url = url
+        if isinstance(self._account, TqAccount):
+            if url:
+                self._td_url = url
+            else:
+                if self._account._broker_id not in self._account._broker_list:
+                    raise Exception("不支持该期货公司-%s，请联系期货公司。" % (self._account.broker_id))
+                if "TQ" not in self._account._broker_list[self._account._broker_id]["category"]:
+                    raise Exception("不支持该期货公司-%s，请联系期货公司。" % (self._account.broker_id))
+                self._td_url = self._account._broker_list[self._account._broker_id]["url"]
         if _ins_url:
             self._ins_url = _ins_url
         if _md_url:
@@ -170,12 +179,14 @@ class TqApi(object):
         # 支持用户授权
         self._access_token = ''
         if auth:
+            comma_index = auth.find(',')
+            email, pwd = auth[:comma_index], auth[comma_index + 1:]
             headers = {}
             headers.update(self._base_headers)
             headers.update({"Content-Type": "application/x-www-form-urlencoded"})
             response = requests.post("https://auth.shinnytech.com/auth/realms/shinnytech/protocol/openid-connect/token",
                                      headers=headers,
-                                     data="grant_type=password&username=%s&password=%s&client_id=tqsdk&client_secret=bdf198ea-6ecb-4ba1-80fd-1a41453f16f1" % (auth[0], auth[1]),
+                                     data="grant_type=password&username=%s&password=%s&client_id=tqsdk&client_secret=bdf198ea-6ecb-4ba1-80fd-1a41453f16f1" % (email, pwd),
                                      timeout=30)
             if response.status_code == 200:
                 self._access_token = json.loads(response.content)["access_token"]
@@ -1183,7 +1194,10 @@ class TqApi(object):
                 self._account._run(self, self._send_chan, self._recv_chan, ws_md_send_chan, ws_md_recv_chan))
         else:
             ws_td_send_chan, ws_td_recv_chan = TqChan(self), TqChan(self)
-            self._td_url = self._account._td_url
+            # 交易连接，发送确认结算单
+            ws_td_send_chan.send_nowait({
+                "aid": "confirm_settlement"
+            })
             self.create_task(self._connect(self._td_url, ws_td_send_chan, ws_td_recv_chan))
             self.create_task(
                 self._account._run(self, self._send_chan, self._recv_chan, ws_md_send_chan, ws_md_recv_chan,
@@ -1632,11 +1646,6 @@ class TqApi(object):
                             }
                         }]
                     })
-                    # 交易连接，发送确认结算单
-                    if url == self._td_url:
-                        await client.send(json.dumps({
-                            "aid": "confirm_settlement"
-                        }))
                     send_task = self.create_task(
                         self._send_handler(client, url, resend_request, send_chan, first_connect))
                     try:
@@ -1788,6 +1797,8 @@ class TqApi(object):
                         resend_request.pop(pack["chart_id"], None)
                 elif aid == "req_login":
                     resend_request["req_login"] = pack
+                elif aid == "confirm_settlement":
+                    resend_request["confirm_settlement"] = pack
                 msg = json.dumps(pack)
                 await client.send(msg)
                 self._logger.debug("websocket message sent to %s: %s", url, msg)
@@ -2186,12 +2197,7 @@ class TqAccount(object):
 
         # 支持分散部署的交易中继网关
         response = requests.get("https://files.shinnytech.com/broker-list.json", headers=self._base_headers, timeout=30)
-        broker_list = json.loads(response.content)
-        if broker_id not in broker_list:
-            raise Exception("不支持该期货公司-%s，请联系期货公司。" % (broker_id))
-        if "TQ" not in broker_list[broker_id]["category"]:
-            raise Exception("不支持该期货公司-%s，请联系期货公司。" % (broker_id))
-        self._td_url = broker_list[broker_id]["url"]
+        self._broker_list = json.loads(response.content)
 
         self._broker_id = broker_id
         self._account_id = account_id
