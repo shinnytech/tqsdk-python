@@ -117,34 +117,6 @@ class TqApi(object):
 
         """
 
-        # 记录参数
-        if account is None:
-            account = TqSim()
-        self._account = account
-        self._backtest = backtest
-        self._ins_url = TqApi.DEFAULT_INS_URL
-        self._md_url = "wss://openmd.shinnytech.com/t/md/front/mobile"
-        self._td_url = "wss://opentd.shinnytech.com/trade/user0"
-
-        if url and isinstance(self._account, TqSim):
-            self._md_url = url
-        if isinstance(self._account, TqAccount):
-            if url:
-                self._td_url = url
-            else:
-                if self._account._broker_id not in self._account._broker_list:
-                    raise Exception("不支持该期货公司-%s，请联系期货公司。" % (self._account.broker_id))
-                if "TQ" not in self._account._broker_list[self._account._broker_id]["category"]:
-                    raise Exception("不支持该期货公司-%s，请联系期货公司。" % (self._account.broker_id))
-                self._td_url = self._account._broker_list[self._account._broker_id]["url"]
-        if _ins_url:
-            self._ins_url = _ins_url
-        if _md_url:
-            self._md_url = _md_url
-        if _td_url:
-            self._td_url = _td_url
-        self._loop = asyncio.SelectorEventLoop() if loop is None else loop  # 创建一个新的 ioloop, 避免和其他框架/环境产生干扰
-
         # 初始化 logger
         self._logger = logging.getLogger("TqApi")
         self._logger.setLevel(logging.DEBUG)
@@ -161,6 +133,36 @@ class TqApi(object):
                 fh = logging.FileHandler(filename=debug)
                 fh.setFormatter(log_format)
                 self._logger.addHandler(fh)
+
+        # 记录参数
+        self._account = TqSim() if account is None else account
+        self._backtest = backtest
+        self._ins_url = TqApi.DEFAULT_INS_URL
+        self._md_url = TqApi.DEFAULT_MD_URL
+        self._td_url = TqApi.DEFAULT_TD_URL
+
+        if url and isinstance(self._account, TqSim):
+            self._md_url = url
+        if isinstance(self._account, TqAccount):
+            if url:
+                self._td_url = url
+            else:
+                # 支持分散部署的交易中继网关
+                response = requests.get("https://files.shinnytech.com/broker-list.json", headers=self._base_headers,
+                                        timeout=30)
+                broker_list = json.loads(response.content)
+                if self._account._broker_id not in broker_list:
+                    raise Exception("不支持该期货公司-%s，请联系期货公司。" % (self._account.broker_id))
+                if "TQ" not in broker_list[self._account._broker_id]["category"]:
+                    raise Exception("不支持该期货公司-%s，请联系期货公司。" % (self._account.broker_id))
+                self._td_url = broker_list[self._account._broker_id]["url"]
+        if _ins_url:
+            self._ins_url = _ins_url
+        if _md_url:
+            self._md_url = _md_url
+        if _td_url:
+            self._td_url = _td_url
+        self._loop = asyncio.SelectorEventLoop() if loop is None else loop  # 创建一个新的 ioloop, 避免和其他框架/环境产生干扰
 
         # 初始化loop
         self._send_chan, self._recv_chan = TqChan(self), TqChan(self)  # 消息收发队列
@@ -2127,10 +2129,6 @@ class TqAccount(object):
         """
         if bool(front_broker) != bool(front_url):
             raise Exception("front_broker 和 front_url 参数需同时填写")
-
-        # 支持分散部署的交易中继网关
-        response = requests.get("https://files.shinnytech.com/broker-list.json", headers=self._base_headers, timeout=30)
-        self._broker_list = json.loads(response.content)
 
         self._broker_id = broker_id
         self._account_id = account_id
