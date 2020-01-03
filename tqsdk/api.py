@@ -426,7 +426,7 @@ class TqApi(object):
 
             api = TqApi()
             # 获取 CFFEX.IF1912 按照K线时间向 SHFE.au2006 对齐的K线
-            klines = api.get_kline_serial(["SHFE.au2006", "CFFEX.IF1912"], 5, data_length=10)
+            klines = api.get_kline_serial(["SHFE.au2006", "CFFEX.IF2006"], 5, data_length=10)
             print("多合约K线：", klines.iloc[-1])
             while True:
                 api.wait_update()
@@ -483,7 +483,11 @@ class TqApi(object):
         while not self._loop.is_running() and not serial["init"]:
             # @todo: merge diffs
             if not self.wait_update(deadline=deadline):
-                raise Exception("获取 %s (%d) 的K线超时，请检查客户端及网络是否正常，且合约代码填写正确" % (symbol, duration_seconds))
+                if len(symbol) > 1:
+                    raise Exception("获取 %s (%d) 的K线超时，请检查客户端及网络是否正常，或任一副合约在主合约行情的最后 %d 秒内无可对齐的K线" % (
+                    symbol, duration_seconds, 8964 * duration_seconds))
+                else:
+                    raise Exception("获取 %s (%d) 的K线超时，请检查客户端及网络是否正常" % (symbol, duration_seconds))
         return serial["df"]
 
     # ----------------------------------------------------------------------
