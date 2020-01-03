@@ -1194,10 +1194,6 @@ class TqApi(object):
                 self._account._run(self, self._send_chan, self._recv_chan, ws_md_send_chan, ws_md_recv_chan))
         else:
             ws_td_send_chan, ws_td_recv_chan = TqChan(self), TqChan(self)
-            # 交易连接，发送确认结算单
-            ws_td_send_chan.send_nowait({
-                "aid": "confirm_settlement"
-            })
             self.create_task(self._connect(self._td_url, ws_td_send_chan, ws_td_recv_chan))
             self.create_task(
                 self._account._run(self, self._send_chan, self._recv_chan, ws_md_send_chan, ws_md_recv_chan,
@@ -2243,6 +2239,9 @@ class TqAccount(object):
             req["broker_id"] = self._front_broker
             req["front"] = self._front_url
         await td_send_chan.send(req)
+        await td_send_chan.send({
+            "aid": "confirm_settlement"
+        })  # 自动发送确认结算单
         md_task = api.create_task(self._md_handler(api_recv_chan, md_send_chan, md_recv_chan))
         td_task = api.create_task(self._td_handler(api_recv_chan, td_send_chan, td_recv_chan))
         try:
