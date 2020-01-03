@@ -2185,10 +2185,7 @@ class TqAccount(object):
             raise Exception("front_broker 和 front_url 参数需同时填写")
 
         # 支持分散部署的交易中继网关
-        response = requests.get("https://files.shinnytech.com/broker-list.json", headers={
-            "User-Agent": "tqsdk-python %s" % __version__,
-            "Accept": "application/json"
-        }, timeout=30)
+        response = requests.get("https://files.shinnytech.com/broker-list.json", headers=self._base_headers, timeout=30)
         broker_list = json.loads(response.content)
         if broker_id not in broker_list:
             raise Exception("不支持该期货公司-%s，请联系期货公司。" % (broker_id))
