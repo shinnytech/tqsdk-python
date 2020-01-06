@@ -148,13 +148,17 @@ class TqApi(object):
                 self._td_url = url
             else:
                 # 支持分散部署的交易中继网关
-                response = requests.get("https://files.shinnytech.com/broker-list.json", headers=self._base_headers,
+                response = requests.get("https://files.shinnytech.com/broker-list.json",
+                                        headers={
+                                            "User-Agent": "tqsdk-python %s" % __version__,
+                                            "Accept": "application/json"
+                                        },
                                         timeout=30)
                 broker_list = json.loads(response.content)
                 if self._account._broker_id not in broker_list:
-                    raise Exception("不支持该期货公司-%s，请联系期货公司。" % (self._account.broker_id))
+                    raise Exception("不支持该期货公司-%s，请联系期货公司。" % (self._account._broker_id))
                 if "TQ" not in broker_list[self._account._broker_id]["category"]:
-                    raise Exception("不支持该期货公司-%s，请联系期货公司。" % (self._account.broker_id))
+                    raise Exception("不支持该期货公司-%s，请联系期货公司。" % (self._account._broker_id))
                 self._td_url = broker_list[self._account._broker_id]["url"]
         if _ins_url:
             self._ins_url = _ins_url
