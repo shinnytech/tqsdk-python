@@ -414,7 +414,7 @@ class TqSim(object):
                         cur_close_volume -= volume
                         opposite_list[0]["volume"] -= volume
                         if opposite_list[0]["volume"] == 0:
-                            opposite_list.pop()
+                            opposite_list.pop(0)
 
         self._tqsdk_stat["profit_volumes"] = sum(p["volume"] for p in profit_logs)  # 盈利手数
         self._tqsdk_stat["loss_volumes"] = sum(l["volume"] for l in loss_logs)  # 亏损手数
