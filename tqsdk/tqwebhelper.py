@@ -37,6 +37,7 @@ class TqWebHelper(object):
                 self._api._account = tqsdk.api.TqAccount(args["_broker_id"], args["_account_id"], args["_password"])
                 self._api._backtest = None
             elif args["_action"] == "backtest":
+                self._api._account = tqsdk.api.TqSim(args["_init_balance"])
                 self._api._backtest = tqsdk.api.TqBacktest(start_dt=datetime.strptime(args["_start_dt"], '%Y%m%d'),
                                             end_dt=datetime.strptime(args["_end_dt"], '%Y%m%d'))
             elif args["_action"] == "replay":
