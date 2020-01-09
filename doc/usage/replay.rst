@@ -27,7 +27,7 @@
   from datetime import date
   from tqsdk import TqApi, TqReplay
 
-  api = TqApi(backtest = TqReplay(date(2019,12,23)
+  api = TqApi(backtest = TqReplay(date(2019,12,23)))
 
 
 此外我们认为复盘模式结合图形化界面会有更好的体验，可以参考 :ref:`web_gui` 

@@ -156,6 +156,7 @@ class Quote(Entity):
 
 class TradingTime(Entity):
     """ TradingTime 是一个交易时间对象
+        它不是一个可单独使用的类，而是用于定义 Qoute 的 trading_time 字段的类型
 
         (每个连续的交易时间段是一个列表，包含两个字符串元素，分别为这个时间段的起止点)"""
 
