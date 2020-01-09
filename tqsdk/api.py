@@ -1447,42 +1447,6 @@ class TqApi(object):
                                              int(serial["array"][-1, 1]) + 1, data)
         serial["update_row"] = serial["width"]
 
-    def _process_chart_data(self, serial, symbol, duration, col, count, right, data):
-        if not data:
-            return
-        if ".open" in data:
-            data_type = "KSERIAL"
-        elif ".type" in data:
-            data_type = data[".type"]
-            rows = np.where(np.not_equal(data_type, None))[0]
-            if len(rows) == 0:
-                return
-            data_type = data_type[rows[0]]
-        else:
-            data_type = "LINE"
-        if data_type in {"LINE", "DOT", "DASH", "BAR"}:
-            self._send_series_data(symbol, duration, col, {
-                "type": "SERIAL",
-                "range_left": right - count,
-                "range_right": right - 1,
-                "data": data[""].tolist(),
-                "style": data_type,
-                "color": int(data.get(".color", [0xFFFF0000])[-1]),
-                "width": int(data.get(".width", [1])[-1]),
-                "board": data.get(".board", ["MAIN"])[-1],
-            })
-        elif data_type == "KSERIAL":
-            self._send_series_data(symbol, duration, col, {
-                "type": "KSERIAL",
-                "range_left": right - count,
-                "range_right": right - 1,
-                "open": data[".open"].tolist(),
-                "high": data[".high"].tolist(),
-                "low": data[".low"].tolist(),
-                "close": data[".close"].tolist(),
-                "board": data.get(".board", ["MAIN"])[-1],
-            })
-
     def _process_chart_data_for_web(self, serial, symbol, duration, col, count, right, data):
         # 与 _process_chart_data 函数功能类似，但是处理成符合 diff 协议的序列，在 js 端就不需要特殊处理了
         if not data:
