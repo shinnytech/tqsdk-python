@@ -12,7 +12,7 @@ from tqsdk import TqApi, TargetPosTask
 from datetime import datetime
 import time
 
-symbol = "SHFE.cu2001"  # 合约代码
+symbol = "SHFE.cu2002"  # 合约代码
 close_hour, close_minute = 14, 50  # 平仓时间
 
 api = TqApi()  # 使用模拟帐号直连行情和交易服务器

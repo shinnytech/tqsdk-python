@@ -12,16 +12,15 @@ from tqsdk import TqApi, TargetPosTask
 from tqsdk.ta import BOLL
 
 # 设置合约代码
-SYMBOL = "DCE.i2001"
+SYMBOL = "DCE.i2005"
 api = TqApi()
 quote = api.get_quote(SYMBOL)
-klines = api.get_kline_serial(SYMBOL, 60*60*24)
+klines = api.get_kline_serial(SYMBOL, 60 * 60 * 24)
 position = api.get_position(SYMBOL)
 target_pos = TargetPosTask(api, SYMBOL)
 
+
 # 使用BOLL指标计算中轨、上轨和下轨，其中26为周期N  ，2为参数p
-
-
 def boll_line(klines):
     boll = BOLL(klines, 26, 2)
     midline = boll["mid"].iloc[-1]

@@ -11,7 +11,7 @@ from tqsdk.tafunc import ma
 
 SHORT = 30  # 短周期
 LONG = 60  # 长周期
-SYMBOL = "SHFE.bu1912"  # 合约代码
+SYMBOL = "SHFE.bu2006"  # 合约代码
 
 api = TqApi()
 print("策略开始运行")

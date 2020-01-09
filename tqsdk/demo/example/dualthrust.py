@@ -10,7 +10,7 @@ Dual Thrust策略 (难度：中级)
 
 from tqsdk import TqApi, TargetPosTask
 
-SYMBOL = "DCE.jd2001"  # 合约代码
+SYMBOL = "DCE.jd2005"  # 合约代码
 NDAY = 5  # 天数
 K1 = 0.2  # 上轨K值
 K2 = 0.2  # 下轨K值

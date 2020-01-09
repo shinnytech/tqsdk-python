@@ -11,10 +11,10 @@ from tqsdk import TqApi, TargetPosTask
 api = TqApi()
 # 设定连续多少根阳线/阴线
 length = 3
-# 获得 rb2001 10秒K线的引用, 长度为 length+1
-klines = api.get_kline_serial("SHFE.rb2001", 10, data_length=length + 1)
-# 创建 rb2001 的目标持仓 task，该 task 负责调整 rb2001 的仓位到指定的目标仓位, offset_priority的用法详见文档
-target_pos = TargetPosTask(api, "SHFE.rb2001", offset_priority="今昨开")
+# 获得 rb2005 10秒K线的引用, 长度为 length+1
+klines = api.get_kline_serial("SHFE.rb2005", 10, data_length=length + 1)
+# 创建 rb2005 的目标持仓 task，该 task 负责调整 rb2005 的仓位到指定的目标仓位, offset_priority的用法详见文档
+target_pos = TargetPosTask(api, "SHFE.rb2005", offset_priority="今昨开")
 
 while True:
     api.wait_update()
