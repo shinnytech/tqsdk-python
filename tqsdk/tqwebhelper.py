@@ -361,35 +361,31 @@ class TqWebHelper(object):
         # others
         parser.add_argument('--_http_server_address', type=str, required=False)
         args, unknown = parser.parse_known_args()
-        if args._action is None:
-            return None
-        else:
-            action = {}
-            action["_action"] = args._action
-            if action["_action"] == "run":
-                if not args._broker_id or not args._account_id or not args._password:
-                    raise Exception("run 必要参数缺失")
-                else:
-                    action["_broker_id"] = args._broker_id
-                    action["_account_id"] = args._account_id
-                    action["_password"] = args._password
-            elif action["_action"] == "backtest":
-                if not args._start_dt or not args._end_dt:
-                    raise Exception("backtest 必要参数缺失")
-                else:
-                    try:
-                        init_balance = 10000000.0 if args._init_balance is None else float(args._init_balance)
-                        action["_start_dt"] = args._start_dt
-                        action["_end_dt"] = args._end_dt
-                        action["_init_balance"] = init_balance
-                    except ValueError:
-                        raise Exception("backtest 参数错误, _init_balance = " + args._init_balance + " 不是数字")
-            elif action["_action"] == "replay":
-                if not args._replay_dt:
-                    raise Exception("replay 必要参数缺失")
-                else:
-                    action["_replay_dt"] = args._replay_dt
+        action = {}
+        action["_action"] = args._action
+        if action["_action"] == "run":
+            if not args._broker_id or not args._account_id or not args._password:
+                raise Exception("run 必要参数缺失")
             else:
-                raise Exception("不支持的类型 _action = %s, 请检查后重试。" % (action["_action"]))
-            action["_http_server_address"] = args._http_server_address
-            return action
+                action["_broker_id"] = args._broker_id
+                action["_account_id"] = args._account_id
+                action["_password"] = args._password
+        elif action["_action"] == "backtest":
+            if not args._start_dt or not args._end_dt:
+                raise Exception("backtest 必要参数缺失")
+            else:
+                try:
+                    init_balance = 10000000.0 if args._init_balance is None else float(args._init_balance)
+                    action["_start_dt"] = args._start_dt
+                    action["_end_dt"] = args._end_dt
+                    action["_init_balance"] = init_balance
+                except ValueError:
+                    raise Exception("backtest 参数错误, _init_balance = " + args._init_balance + " 不是数字")
+        elif action["_action"] == "replay":
+            if not args._replay_dt:
+                raise Exception("replay 必要参数缺失")
+            else:
+                action["_replay_dt"] = args._replay_dt
+
+        action["_http_server_address"] = args._http_server_address
+        return action
