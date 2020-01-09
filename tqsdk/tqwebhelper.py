@@ -25,8 +25,14 @@ class TqWebHelper(object):
         """初始化，检查参数"""
         self._api = api
         self._logger = self._api._logger.getChild("TqWebHelper")  # 调试信息输出
-        self._http_server_host = "127.0.0.1"
-        self._http_server_port = 0
+        if isinstance(self._api._web_gui, str):
+            host, _, port = urlparse(self._api._web_gui).netloc.partition(":")
+            self._http_server_host = host if host else "127.0.0.1"
+            self._http_server_port = int(port) if port else 0
+        else:
+            self._http_server_host = "127.0.0.1"
+            self._http_server_port = 0
+
         args = TqWebHelper.parser_arguments()
         if args:
             if args["_action"] == "run":
@@ -279,7 +285,7 @@ class TqWebHelper(object):
 
     async def link_wsserver(self):
         async def lambda_connection_handler(conn, path): await self.connection_handler(conn)
-        async with websockets.serve(lambda_connection_handler, host='127.0.0.1', port=0) as server:
+        async with websockets.serve(lambda_connection_handler, host=self._http_server_host, port=0) as server:
             port = server.server.sockets[0].getsockname()[1]
             await self.web_port_chan.send({'port': port})
             await asyncio.sleep(100000000000)
@@ -313,7 +319,7 @@ class TqWebHelper(object):
         url_response = {
             "ins_url": self._api._ins_url,
             "md_url": self._api._md_url,
-            "ws_url": 'ws://127.0.0.1:' + str(ws_port['port'])
+            "ws_url": 'ws://%s:%s' % (self._http_server_host, str(ws_port['port']))
         }
         # TODO：在复盘模式下发送 replay_dt 给 web 端，服务器改完后可以去掉
         if isinstance(self._api._backtest, tqsdk.api.TqReplay):
