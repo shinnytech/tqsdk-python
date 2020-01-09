@@ -1469,13 +1469,14 @@ class TqApi(object):
                     # 数据结构与 KSERIAL 保持一致，只有一列的时候，默认 key 值取 "value"
                     "value": data[""][i]
                 }
+            color = data.get(".color", ["#FF0000"])[-1]
             self._send_series_data(symbol, duration, col, {
                 "type": "SERIAL",
                 "data": send_data,
                 "style": data_type,
                 "range_left": right - count,
                 "range_right": right - 1,
-                "color": int(data.get(".color", [0xFFFF0000])[-1]),
+                "color": color if isinstance(color, str) else int(color),
                 "width": int(data.get(".width", [1])[-1]),
                 "board": data.get(".board", ["MAIN"])[-1]
             }, aid="set_web_chart_data")
@@ -1987,7 +1988,7 @@ class TqApi(object):
             self._master._slave_send_pack(pack)
 
     def draw_text(self, base_k_dataframe: pd.DataFrame, text: str, x: Optional[int] = None, y: Optional[float] = None,
-                  id: Optional[str] = None, board: str = "MAIN", color: int = 0xFFFF0000) -> None:
+                  id: Optional[str] = None, board: str = "MAIN", color: Union[str, int] = "red") -> None:
         """
         配合天勤使用时, 在天勤的行情图上绘制一个字符串
 
@@ -2004,7 +2005,9 @@ class TqApi(object):
 
             board (str): 选择图板, 可选, 缺省为 "MAIN" 表示绘制在主图
 
-            color (ARGB): 文本颜色, 可选, 缺省为红色.
+            color (str/int): 文本颜色, 可选, 缺省为 "red"
+                * str : 符合 CSS Color 命名规则的字符串, 例如: "red", "#FF0000", "#FF0000FF", "rgb(255, 0, 0)", "rgba(255, 0, 0, .5)"
+                * int : 十六进制整数表示颜色, ARGB, 例如: 0xffff0000
 
         Example::
 
@@ -2029,7 +2032,7 @@ class TqApi(object):
         self._send_chart_data(base_k_dataframe, id, serial)
 
     def draw_line(self, base_k_dataframe: pd.DataFrame, x1: int, y1: float, x2: int, y2: float,
-                  id: Optional[str] = None, board: str = "MAIN", line_type: str = "LINE", color: int = 0xFFFF0000,
+                  id: Optional[str] = None, board: str = "MAIN", line_type: str = "LINE", color: Union[str, int] = "red",
                   width: int = 1) -> None:
         """
         配合天勤使用时, 在天勤的行情图上绘制一个直线/线段/射线
@@ -2051,7 +2054,9 @@ class TqApi(object):
 
             line_type ("LINE" | "SEG" | "RAY"): 画线类型, 可选, 默认为 LINE. LINE=直线, SEG=线段, RAY=射线
 
-            color (ARGB): 线颜色, 可选, 缺省为 红色
+            color (str/int): 线颜色, 可选, 缺省为 "red"
+                * str : 符合 CSS Color 命名规则的字符串, 例如: "red", "#FF0000", "#FF0000FF", "rgb(255, 0, 0)", "rgba(255, 0, 0, .5)"
+                * int : 十六进制整数表示颜色, ARGB, 例如: 0xffff0000
 
             width (int): 线宽度, 可选, 缺省为 1
         """
@@ -2070,7 +2075,7 @@ class TqApi(object):
         self._send_chart_data(base_k_dataframe, id, serial)
 
     def draw_box(self, base_k_dataframe: pd.DataFrame, x1: int, y1: float, x2: int, y2: float, id: Optional[str] = None,
-                 board: str = "MAIN", bg_color: int = 0x00000000, color: int = 0xFFFF0000, width: int = 1) -> None:
+                 board: str = "MAIN", bg_color: Union[str, int] = "black", color: Union[str, int] = "red", width: int = 1) -> None:
         """
         配合天勤使用时, 在天勤的行情图上绘制一个矩形
 
@@ -2089,9 +2094,13 @@ class TqApi(object):
 
             board (str): 选择图板, 可选, 缺省为 "MAIN" 表示绘制在主图
 
-            bg_color (ARGB): 填充颜色, 可选, 缺省为 空
+            bg_color (str/int): 填充颜色, 可选, 缺省为 "black"
+                * str : 符合 CSS Color 命名规则的字符串, 例如: "red", "#FF0000", "#FF0000FF", "rgb(255, 0, 0)", "rgba(255, 0, 0, .5)"
+                * int : 十六进制整数表示颜色, ARGB, 例如: 0xffff0000
 
-            color (ARGB): 边框颜色, 可选, 缺省为 红色
+            color (str/int): 边框颜色, 可选, 缺省为 "red"
+                * str : 符合 CSS Color 命名规则的字符串, 例如: "red", "#FF0000", "#FF0000FF", "rgb(255, 0, 0)", "rgba(255, 0, 0, .5)"
+                * int : 十六进制整数表示颜色, ARGB, 例如: 0xffff0000
 
             width (int): 边框宽度, 可选, 缺省为 1
 
