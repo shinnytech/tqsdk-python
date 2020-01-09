@@ -775,3 +775,36 @@ def time_to_datetime(input_time):
     # 转为datetime.datetime类型
     dt = datetime.datetime.fromtimestamp(ts)
     return dt
+
+
+def barlast(cond):
+    """
+    最近一次条件 cond 成立到当前的周期数
+    (如果 cond 长度为0或cond中无 True，函数返回-1)
+
+    Args:
+        cond (pandas.Series): 条件序列(序列中的值为 True 或 False)
+
+    Returns:
+        int : 周期数
+
+    Example::
+
+        from tqsdk import TqApi
+        from tqsdk.tafunc import barlast
+
+        api = TqApi()
+        klines = api.get_kline_serial("SHFE.cu2001", 10)
+        # print(list(klines.close))
+        # print(list(klines.open))
+        # print(list(klines.close > klines.open))
+        n = barlast(klines.close > klines.open)  # 计算最后一次k线收盘价大于开盘价到当前的周期数
+        print(n)
+        api.close()
+
+
+    """
+    if len(cond) == 0 or True not in cond.tolist():
+        return -1
+
+    return len(cond) - cond.index.tolist().index(cond[cond != False].index[-1]) - 1
