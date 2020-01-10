@@ -47,7 +47,8 @@ class TestTdBacktest(unittest.TestCase):
         self.mock.run(os.path.join(dir_path, "log_file", "test_various_combinations_of_order_1.script"))
         # 测试1：单次开平 * n次
         TqApi.RD = random.Random(4)
-        api = TqApi(backtest=TqBacktest(start_dt=datetime(2019, 12, 10, 9), end_dt=datetime(2019, 12, 11)))
+        api = TqApi(backtest=TqBacktest(start_dt=datetime(2019, 12, 10, 9), end_dt=datetime(2019, 12, 11)),
+                    _ins_url=self.ins_url, _td_url=self.td_url, _md_url=self.md_url)
         symbol = "DCE.m2005"
         position = api.get_position(symbol)
 
@@ -78,7 +79,8 @@ class TestTdBacktest(unittest.TestCase):
         self.mock.run(os.path.join(dir_path, "log_file", "test_various_combinations_of_order_2.script"))
         # 测试2：多次开,一次全平完
         TqApi.RD = random.Random(4)
-        api = TqApi(backtest=TqBacktest(start_dt=datetime(2019, 12, 10, 9), end_dt=datetime(2019, 12, 11)))
+        api = TqApi(backtest=TqBacktest(start_dt=datetime(2019, 12, 10, 9), end_dt=datetime(2019, 12, 11)),
+                    _ins_url=self.ins_url, _td_url=self.td_url, _md_url=self.md_url)
         symbol = "DCE.m2005"
         position = api.get_position(symbol)
 
@@ -111,7 +113,8 @@ class TestTdBacktest(unittest.TestCase):
         self.mock.run(os.path.join(dir_path, "log_file", "test_various_combinations_of_order_3.script"))
         # 测试3：多次开 分多次平完
         TqApi.RD = random.Random(4)
-        api = TqApi(backtest=TqBacktest(start_dt=datetime(2019, 12, 10, 9), end_dt=datetime(2019, 12, 11)))
+        api = TqApi(backtest=TqBacktest(start_dt=datetime(2019, 12, 10, 9), end_dt=datetime(2019, 12, 11)),
+                    _ins_url=self.ins_url, _td_url=self.td_url, _md_url=self.md_url)
         symbol = "DCE.m2005"
         position = api.get_position(symbol)
 
@@ -145,7 +148,8 @@ class TestTdBacktest(unittest.TestCase):
         self.mock.run(os.path.join(dir_path, "log_file", "test_various_combinations_of_order_4.script"))
         # 测试4：单次开 分多次平完
         TqApi.RD = random.Random(4)
-        api = TqApi(backtest=TqBacktest(start_dt=datetime(2019, 12, 10, 9), end_dt=datetime(2019, 12, 11)))
+        api = TqApi(backtest=TqBacktest(start_dt=datetime(2019, 12, 10, 9), end_dt=datetime(2019, 12, 11)),
+                    _ins_url=self.ins_url, _td_url=self.td_url, _md_url=self.md_url)
         symbol = "DCE.m2005"
         position = api.get_position(symbol)
         trades = api.get_trade()
