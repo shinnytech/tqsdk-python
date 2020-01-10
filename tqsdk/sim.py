@@ -3,7 +3,8 @@
 __author__ = 'chengzhi'
 
 import asyncio
-from datetime import datetime
+import time
+import datetime
 import statistics
 
 
@@ -182,14 +183,33 @@ class TqSim(object):
                 if quote_diff is None:
                     continue
                 quote = self._ensure_quote(symbol)
-                quote["datetime"] = quote_diff.get("datetime", quote["datetime"])
-                self._current_datetime = max(quote["datetime"], self._current_datetime)
+                if quote["datetime"] == "" and quote_diff.get("datetime"):
+                    # 当第一次收到此quote的行情时:计算一次它的交易时段时间戳，之后在每次切换交易日后更新时间戳
+                    quote["datetime"] = quote_diff.get("datetime", quote["datetime"])
+                    self._get_trading_timestamp(quote)
+                else:
+                    quote["datetime"] = quote_diff.get("datetime", quote["datetime"])
+                self._current_datetime = max(quote["datetime"], self._current_datetime)  # 最新行情时间
+
+                # 直接使用本地时间来判断交易时间是否在交易时间段内 可能有较大误差,因此判断的方案为:(判断在_match_order()时估计的交易所时间是否在交易时间段内)
+                # 在获取行情时(_md_recv())，记录当前本地时间(time.time())和行情时间(self._current_datetime)，
+                # 在这之后模拟成交时(_match_order())获取本地时间,判 "self._current_datetime + (当前本地时间 - 记录的本地时间)" 是否在交易时间段内。
+                # 另外, 若在盘后下单且下单前未订阅此合约：
+                # 因为从_md_recv()中获取第一笔行情后立即进入_match_order()速度过快(两次time.time()的时间差小于最后一笔行情(14:59:9995)到15点的时间差),则会立即成交,
+                # 为处理此情况则将当前时间减去5毫秒（模拟发生一毫秒网络延迟）。
+                quote["local_time_record"] = time.time() - 0.005  # 记录这个quote最近一次更新时的本地时间
+
                 if self._current_datetime > self._trading_day_end:  # 结算
+
                     self._settle()
+                    # 若当前行情时间大于交易日的结束时间(切换交易日)，则根据此行情时间更新交易日及交易日结束时间
                     trading_day = self._api._get_trading_day_from_timestamp(self._get_current_timestamp())
-                    self._trading_day_end = datetime.fromtimestamp(
+                    self._trading_day_end = datetime.datetime.fromtimestamp(
                         (self._api._get_trading_day_end_time(trading_day) - 1000) / 1e9).strftime(
                         "%Y-%m-%d %H:%M:%S.%f")
+                    # 切换交易日后，将所有quote的交易时段时间戳更新一次：
+                    for q in self._quotes.values():
+                        self._get_trading_timestamp(q)
                 if "ask_price1" in quote_diff:
                     quote["ask_price1"] = float("nan") if type(quote_diff["ask_price1"]) is str else quote_diff[
                         "ask_price1"]
@@ -202,6 +222,7 @@ class TqSim(object):
                 quote["volume_multiple"] = quote_diff.get("volume_multiple", quote["volume_multiple"])
                 quote["commission"] = quote_diff.get("commission", quote["commission"])
                 quote["margin"] = quote_diff.get("margin", quote["margin"])
+                quote["trading_time"] = quote_diff.get("trading_time", quote["trading_time"])
                 # 收到第一条行情时(无论是已订阅合约中哪一个), 就将订阅合约下的所有挂单(如果订阅前就下单)的时间改为这个行情时间
                 # 此时才将 order的diff下发并将“模拟交易下单”logger信息发出（即保证了 order 的 insert_date_time 为正确的行情时间）
                 if not self._is_recv_quote and self._current_datetime != TqSim.EPOCH:
@@ -217,6 +238,53 @@ class TqSim(object):
                 if symbol in self._positions:
                     self._adjust_position(symbol, price=quote["last_price"])
 
+    def _get_trading_timestamp(self, quote):
+        """ 计算 当前qoute 所在交易日,并将这一日的交易时间段转换为时间戳 """
+        if not quote["datetime"]:  # 判断已经收到行情
+            return
+
+        if len(quote.setdefault("trading_timestamp", {
+            "day": [],
+            "night": []
+        })["day"]) != 0:
+            quote["trading_timestamp"] = {
+                "day": [],
+                "night": []
+            }
+        trading_timestamp = quote["trading_timestamp"]
+
+        quote_datetime = datetime.datetime.strptime(quote["datetime"], '%Y-%m-%d %H:%M:%S.%f')
+        quote_trading_day = quote_datetime.date() + datetime.timedelta(
+            days=1) if quote_datetime.hour >= 18 else quote_datetime.date()
+        if int(quote_trading_day.strftime("%w")) % 6 == 0:  # 周六
+            quote_trading_day += datetime.timedelta(days=2)
+        last_trading_day = quote_trading_day - datetime.timedelta(
+            days=3 if int(quote_trading_day.strftime("%w")) % 6 == 1 else 1)  # 获取上一交易日
+
+        # 处理夜盘交易时间段, period：每个交易时间段 (起、止时间点)
+        for period in quote["trading_time"].get("night", []):
+            trading_timestamp["night"].append([])
+            trading_timestamp["night"][-1].append(
+                datetime.datetime.strptime(datetime.date.strftime(last_trading_day, "%Y-%m-%d") + " " + period[0],
+                                           '%Y-%m-%d %H:%M:%S').timestamp())  # 起始时间(默认起始时间在上一个交易日,可优化为与结束时间相同的判断方法)
+            if int(period[1][1]) >= 4:  # 如果夜盘结束时间跨日，则结束时间在上一交易日的后一自然日
+                trading_timestamp["night"][-1].append(datetime.datetime.strptime(
+                    datetime.date.strftime(last_trading_day + datetime.timedelta(days=1), "%Y-%m-%d") + " " + str(
+                        int(period[1][1]) - 4) + period[1][2:], '%Y-%m-%d %H:%M:%S').timestamp())
+            else:  # 未跨日，则结束时间在上一交易日
+                trading_timestamp["night"][-1].append(
+                    datetime.datetime.strptime(datetime.date.strftime(last_trading_day, "%Y-%m-%d") + " " + period[1],
+                                               '%Y-%m-%d %H:%M:%S').timestamp())
+        # 处理白盘交易时间段
+        for period in quote["trading_time"]["day"]:
+            trading_timestamp["day"].append([])
+            trading_timestamp["day"][-1].append(
+                datetime.datetime.strptime(datetime.date.strftime(quote_trading_day, "%Y-%m-%d") + " " + period[0],
+                                           '%Y-%m-%d %H:%M:%S').timestamp())
+            trading_timestamp["day"][-1].append(
+                datetime.datetime.strptime(datetime.date.strftime(quote_trading_day, "%Y-%m-%d") + " " + period[1],
+                                           '%Y-%m-%d %H:%M:%S').timestamp())
+
     def _insert_order(self, order):
         order["symbol"] = order["exchange_id"] + "." + order["instrument_id"]
         order["exchange_order_id"] = order["order_id"]
@@ -229,7 +297,7 @@ class TqSim(object):
         del order["aid"]
         del order["volume"]
         quote = self._ensure_quote(order["symbol"])
-        quote["orders"][order["order_id"]] = order
+        quote["orders"][order["order_id"]] = order  # 将挂单存入 self._quote 中对应 symbol 下 (挂单处理结束则从中删除)
         self._orders[order["order_id"]] = order
         if order["offset"].startswith("CLOSE"):
             volume_long_frozen = 0 if order["direction"] == "BUY" else order["volume_left"]
@@ -279,7 +347,7 @@ class TqSim(object):
         order["status"] = "FINISHED"
         self._send_order(order)
         del self._orders[order["order_id"]]
-        del self._quotes[order["symbol"]]["orders"][order["order_id"]]
+        del self._quotes[order["symbol"]]["orders"][order["order_id"]]  # 挂单处理结束，将其删除
 
     def _match_orders(self, quote):
         for order in list(quote["orders"].values()):
@@ -290,6 +358,21 @@ class TqSim(object):
         bid_price = quote["bid_price1"]
         if quote["datetime"] == "":  # 如果未收到行情，不处理
             return
+        now_time = datetime.datetime.strptime(quote["datetime"], "%Y-%m-%d %H:%M:%S.%f").timestamp() + (
+                time.time() - quote["local_time_record"])  # 当前预估交易所时间戳
+        is_in_trading_time = False  # 是否在交易时间段内flag
+        # 判断当前交易所时间（估计值）是否在交易时间段内
+        for v in quote["trading_timestamp"].values():
+            for period in v:
+                if now_time >= period[0] and now_time <= period[1]:
+                    is_in_trading_time = True
+                    break
+            if is_in_trading_time:
+                break
+        if not is_in_trading_time:
+            self._del_order(order, "成交失败:下单时间不在可交易时间段内")
+            return
+
         if "limit_price" not in order:
             price = ask_price if order["direction"] == "BUY" else bid_price
             if price != price:
@@ -405,7 +488,7 @@ class TqSim(object):
                 self.trade_log[d]["account"]["balance"] / self.trade_log[d]["account"]["pre_balance"] - 1)
             for t in self.trade_log[d]["trades"]:
                 self._logger.warning("时间:%s,合约:%s,开平:%s,方向:%s,手数:%d,价格:%.3f,手续费:%.2f",
-                                     datetime.fromtimestamp(t["trade_date_time"] / 1e9).strftime(
+                                     datetime.datetime.fromtimestamp(t["trade_date_time"] / 1e9).strftime(
                                          "%Y-%m-%d %H:%M:%S.%f"), t["symbol"], t["offset"], t["direction"], t["volume"],
                                      t["price"], t["commission"])
                 if t["symbol"] not in trades_logs:
@@ -472,9 +555,12 @@ class TqSim(object):
         self._tqsdk_stat["winning_rate"] = (self._tqsdk_stat["profit_volumes"] / (
                 self._tqsdk_stat["profit_volumes"] + self._tqsdk_stat["loss_volumes"])) \
             if self._tqsdk_stat["profit_volumes"] + self._tqsdk_stat["loss_volumes"] else 0
-        profit_pre_volume = self._tqsdk_stat["profit_value"] / self._tqsdk_stat["profit_volumes"] if self._tqsdk_stat["profit_volumes"] else 0
-        loss_pre_volume = self._tqsdk_stat["loss_value"] / self._tqsdk_stat["loss_volumes"] if self._tqsdk_stat["loss_volumes"] else 0
-        self._tqsdk_stat["profit_loss_ratio"] = abs(profit_pre_volume / loss_pre_volume) if loss_pre_volume else float("inf")
+        profit_pre_volume = self._tqsdk_stat["profit_value"] / self._tqsdk_stat["profit_volumes"] if self._tqsdk_stat[
+            "profit_volumes"] else 0
+        loss_pre_volume = self._tqsdk_stat["loss_value"] / self._tqsdk_stat["loss_volumes"] if self._tqsdk_stat[
+            "loss_volumes"] else 0
+        self._tqsdk_stat["profit_loss_ratio"] = abs(profit_pre_volume / loss_pre_volume) if loss_pre_volume else float(
+            "inf")
         self._logger.warning("胜率:%.2f%%,盈亏额比例:%.2f,收益率:%.2f%%,年化收益率:%.2f%%,最大回撤:%.2f%%,年化夏普率:%.4f",
                              self._tqsdk_stat["winning_rate"] * 100,
                              self._tqsdk_stat["profit_loss_ratio"],
@@ -719,6 +805,7 @@ class TqSim(object):
                 "symbol": symbol,
                 "orders": {},
                 "datetime": "",
+                "trading_time": {},
                 "ask_price1": float("nan"),
                 "bid_price1": float("nan"),
                 "last_price": float("nan"),
@@ -762,4 +849,4 @@ class TqSim(object):
         })
 
     def _get_current_timestamp(self):
-        return int(datetime.strptime(self._current_datetime, "%Y-%m-%d %H:%M:%S.%f").timestamp() * 1e6) * 1000
+        return int(datetime.datetime.strptime(self._current_datetime, "%Y-%m-%d %H:%M:%S.%f").timestamp() * 1e6) * 1000
