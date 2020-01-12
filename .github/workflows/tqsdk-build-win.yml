@@ -1,0 +1,35 @@
+name: tqsdk-build-win
+
+on: [push]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        python-version: [3.6, 3.7, 3.8]
+        python-arch: ["x86", "x64"]
+
+    env:
+      PYTHONHASHSEED: 32
+      TZ: "UTC-8"
+
+    runs-on: windows-latest
+
+    steps:
+    - name: checkuot
+      uses: actions/checkout@v1
+
+    - name: Setup Python ${{matrix.python-version}} ${{matrix.python-arch}}
+      uses: actions/setup-python@v1
+      with:
+        python-version: ${{matrix.python-version}}      
+        architecture: ${{matrix.python-arch}}
+        
+    - name: Install dependencies
+      run: |
+        pip install --upgrade pip wheel setuptools pytest    
+        pip install -r requirements.txt 
+        pip install autodocsumm sphinx_rtd_theme jieba
+
+    - name: Run Test Case
+      run: python -W ignore::DeprecationWarning -m pytest

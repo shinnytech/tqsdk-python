@@ -1,0 +1,123 @@
+# 工作流完成以下任务：
+#  1. web和python包制作(ubuntu);
+#  2. SDK测试(Win&ubuntu);  
+#  3. git push操作触发包上传AWS S3存储, 路径命名为 "版本号_日期_COMMITID";
+#  4. git tag 操作触发Pypi包上传操作;
+#
+# 为了使用该工作流, 需要完成以下初始化操作:
+# 1. PyPi上传配置: 仓库->setting->Secrets->Add a new secret,Name填写pypi_password
+#    Value 填写具体token;
+# 2. AWS S3存储配置：参考以上步骤，分别添加AWS_SECRET_ACCESS_KEY和AWS_ACCESS_KEY_ID
+
+name: tqsdk-build-linux
+
+on: [push]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        python-version: [3.6, 3.7, 3.8]
+
+    env:
+        PYTHONHASHSEED: 32
+        TZ: 'Asia/Shanghai'
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: checkuot
+      uses: actions/checkout@v1
+
+    - name: Setup Node.js 12.x
+      uses: actions/setup-node@v1
+      with:
+        node-version: 12.x
+
+    - name: npm install, build, and test
+      run: |
+        cd ./tqsdk-python-web/
+        npm ci
+        npm run build
+      env:
+        CI: true    
+
+    - name: Set up Python ${{matrix.python-version}} x64
+      uses: actions/setup-python@v1
+      with:
+        python-version: ${{matrix.python-version}}      
+        architecture: x64
+        
+    - name: Install dependencies
+      run: |
+        pip install --upgrade pip wheel setuptools pytest    
+        pip install -r requirements.txt 
+        pip install autodocsumm sphinx_rtd_theme jieba
+
+    - name: Run Test Case
+      run: python -W ignore::DeprecationWarning -m pytest  
+
+    - name: build Wheel on Linux Platform
+      run: |
+        pip list
+        ## 拷贝生成的web文件至PYTHON目录
+        mkdir -p ./tqsdk/web
+        cp ./tqsdk-python-web/dist/* ./tqsdk/web -r
+        find ./tqsdk/web -type f -print0 | xargs -0 md5sum
+        ## wheel包及源码包制作
+        python setup.py sdist
+        python setup.py bdist_wheel -p any
+        rm -rf build
+        python setup.py bdist_wheel -p manylinux1_x86_64
+        rm -rf build
+        python setup.py bdist_wheel -p win32
+        rm -rf build
+        python setup.py bdist_wheel -p win_amd64
+        rm -rf build    
+        sphinx-build doc build/doc
+        ## 记录生成包的MD5值
+        find ./dist -type f -print0 | xargs -0 md5sum
+    
+    - name: Publish to pypi
+      if: matrix.python-version == '3.6' && github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags')
+      uses: pypa/gh-action-pypi-publish@master
+      with:
+        user: __token__
+        password: ${{ secrets.pypi_password }}
+        #repository_url: https://test.pypi.org/legacy/
+
+    - name: Setup AWS S3 dist path
+      if: matrix.python-version == '3.6'
+      run: |
+        echo "::set-env name=DEST_DIR::dist/tqsdk-python/\
+        $(python setup.py --version)/dist_$(date -d today +%Y%m%d)_$(git rev-parse --short HEAD)/"
+
+    - name: Publish dist to AWS S3
+      if: matrix.python-version == '3.6' 
+      uses: jakejarvis/s3-sync-action@master
+      with:
+        args: --acl public-read --follow-symlinks      
+      env:
+        AWS_S3_BUCKET: "shinnydeploy"
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_REGION: "ap-east-1"
+        SOURCE_DIR: "dist"
+
+    - name: Setup AWS S3 docs path
+      if: matrix.python-version == '3.6'
+      run: |
+        echo "::set-env name=DEST_DIR::docs/tqsdk-python/\
+        $(python setup.py --version)/dist_$(date -d today +%Y%m%d)_$(git rev-parse --short HEAD)/"
+
+    - name: Publish build/doc to AWS S3
+      if: matrix.python-version == '3.6' 
+      uses: jakejarvis/s3-sync-action@master
+      with:
+        args: --acl public-read --follow-symlinks      
+      env:
+        AWS_S3_BUCKET: "shinnydeploy"
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_REGION: "ap-east-1"
+        SOURCE_DIR: "build/doc"
