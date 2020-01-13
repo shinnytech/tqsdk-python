@@ -12,7 +12,9 @@ class TargetPosTaskSingleton(type):
     _instances = weakref.WeakKeyDictionary({})
 
     def __call__(cls, api, symbol, price="ACTIVE", offset_priority="今昨,开", trade_chan=None, *args, **kwargs):
-        # 每个 api 都有一个独立的 TargetPosTaskSingleton._instances
+        # 每个 api (master) 都有一个独立的 TargetPosTaskSingleton._instances
+        if api._is_slave:
+            api = api._master
         if api not in TargetPosTaskSingleton._instances:
             TargetPosTaskSingleton._instances[api] = {}
         if symbol not in TargetPosTaskSingleton._instances[api]:
