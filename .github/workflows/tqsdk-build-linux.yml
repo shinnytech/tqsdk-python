@@ -86,10 +86,10 @@ jobs:
       with:
         args: --acl public-read --follow-symlinks      
       env:
-        AWS_S3_BUCKET: ${{ secrets.BUCKET_NAME }}
+        AWS_S3_BUCKET: "shinnydeploy"
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        AWS_REGION: ${{ secrets.AWS_REGION }}
+        AWS_REGION: "ap-east-1"
         SOURCE_DIR: "dist"
 
     - name: Setup AWS S3 docs path
@@ -104,8 +104,8 @@ jobs:
       with:
         args: --acl public-read --follow-symlinks      
       env:
-        AWS_S3_BUCKET: ${{ secrets.BUCKET_NAME }}
+        AWS_S3_BUCKET: "shinnydeploy"
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        AWS_REGION: ${{ secrets.AWS_REGION }}
+        AWS_REGION: "ap-east-1"
         SOURCE_DIR: "build/doc"
