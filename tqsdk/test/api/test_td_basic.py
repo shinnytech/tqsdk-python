@@ -58,7 +58,7 @@ class TestTdBasic(unittest.TestCase):
         self.assertEqual(order1.price_type, "ANY")
         self.assertEqual(order1.volume_condition, "ANY")
         self.assertEqual(order1.time_condition, "IOC")
-        self.assertEqual(order1.insert_date_time, 631123200000000000)
+        self.assertEqual(order1.insert_date_time, 1576121399900001000)
         self.assertEqual(order1.status, "FINISHED")
         for k, v in order1.trade_records.items():  # 模拟交易为一次性全部成交
             self.assertEqual(str(v),
@@ -73,7 +73,7 @@ class TestTdBasic(unittest.TestCase):
         self.assertEqual(order2.price_type, "LIMIT")
         self.assertEqual(order2.volume_condition, "ANY")
         self.assertEqual(order2.time_condition, "GFD")
-        self.assertEqual(order2.insert_date_time, 631123200000000000)
+        self.assertEqual(order2.insert_date_time, 1576121399900001000)
         self.assertEqual(order2.status, "FINISHED")
         for k, v in order2.trade_records.items():  # 模拟交易为一次性全部成交
             self.assertEqual(str(v),
@@ -260,9 +260,9 @@ class TestTdBasic(unittest.TestCase):
         get_order2 = api.get_order(order2.order_id)
 
         self.assertEqual(str(get_order1),
-                         "{'order_id': '1710cf5327ac435a7a97c643656412a9', 'exchange_order_id': '1710cf5327ac435a7a97c643656412a9', 'exchange_id': 'DCE', 'instrument_id': 'jd2001', 'direction': 'BUY', 'offset': 'OPEN', 'volume_orign': 1, 'volume_left': 0, 'limit_price': nan, 'price_type': 'ANY', 'volume_condition': 'ANY', 'time_condition': 'IOC', 'insert_date_time': 631123200000000000, 'last_msg': '全部成交', 'status': 'FINISHED', 'user_id': 'TQSIM', 'symbol': 'DCE.jd2001', 'frozen_margin': 0.0}")
+                         "{'order_id': '1710cf5327ac435a7a97c643656412a9', 'exchange_order_id': '1710cf5327ac435a7a97c643656412a9', 'exchange_id': 'DCE', 'instrument_id': 'jd2001', 'direction': 'BUY', 'offset': 'OPEN', 'volume_orign': 1, 'volume_left': 0, 'limit_price': nan, 'price_type': 'ANY', 'volume_condition': 'ANY', 'time_condition': 'IOC', 'insert_date_time': 1576121399900001000, 'last_msg': '全部成交', 'status': 'FINISHED', 'user_id': 'TQSIM', 'symbol': 'DCE.jd2001', 'frozen_margin': 0.0}")
         self.assertEqual(str(get_order2),
-                         "{'order_id': '8ca5996666ceab360512bd1311072231', 'exchange_order_id': '8ca5996666ceab360512bd1311072231', 'exchange_id': 'SHFE', 'instrument_id': 'cu2001', 'direction': 'SELL', 'offset': 'OPEN', 'volume_orign': 2, 'volume_left': 0, 'limit_price': 47040.0, 'price_type': 'LIMIT', 'volume_condition': 'ANY', 'time_condition': 'GFD', 'insert_date_time': 631123200000000000, 'last_msg': '全部成交', 'status': 'FINISHED', 'user_id': 'TQSIM', 'symbol': 'SHFE.cu2001', 'frozen_margin': 0.0}")
+                         "{'order_id': '8ca5996666ceab360512bd1311072231', 'exchange_order_id': '8ca5996666ceab360512bd1311072231', 'exchange_id': 'SHFE', 'instrument_id': 'cu2001', 'direction': 'SELL', 'offset': 'OPEN', 'volume_orign': 2, 'volume_left': 0, 'limit_price': 47040.0, 'price_type': 'LIMIT', 'volume_condition': 'ANY', 'time_condition': 'GFD', 'insert_date_time': 1576121399900001000, 'last_msg': '全部成交', 'status': 'FINISHED', 'user_id': 'TQSIM', 'symbol': 'SHFE.cu2001', 'frozen_margin': 0.0}")
 
         self.assertEqual(get_order1.order_id, "1710cf5327ac435a7a97c643656412a9")
         self.assertEqual(get_order1.direction, "BUY")
@@ -273,7 +273,7 @@ class TestTdBasic(unittest.TestCase):
         self.assertEqual(get_order1.price_type, "ANY")
         self.assertEqual(get_order1.volume_condition, "ANY")
         self.assertEqual(get_order1.time_condition, "IOC")
-        self.assertEqual(get_order1.insert_date_time, 631123200000000000)
+        self.assertEqual(get_order1.insert_date_time, 1576121399900001000)
         self.assertEqual(get_order1.last_msg, "全部成交")
         self.assertEqual(get_order1.status, "FINISHED")
         self.assertEqual(get_order1.symbol, "DCE.jd2001")
@@ -288,7 +288,7 @@ class TestTdBasic(unittest.TestCase):
         self.assertEqual(get_order2.price_type, "LIMIT")
         self.assertEqual(get_order2.volume_condition, "ANY")
         self.assertEqual(get_order2.time_condition, "GFD")
-        self.assertEqual(get_order2["insert_date_time"], 631123200000000000)
+        self.assertEqual(get_order2["insert_date_time"], 1576121399900001000)
         self.assertEqual(get_order2["last_msg"], "全部成交")
         self.assertEqual(get_order2["status"], "FINISHED")
         self.assertEqual(get_order2.symbol, "SHFE.cu2001")
