@@ -94,7 +94,7 @@ jobs:
       if: matrix.python-version == '3.6'
       run: |
         echo "::set-env name=DEST_DIR::docs/tqsdk-python/\
-        $(python setup.py --version)/dist_$(date -d today +%Y%m%d)_$(git rev-parse --short HEAD)/"
+        $(python setup.py --version)/"
 
     - name: Publish build/doc to AWS S3
       if: matrix.python-version == '3.6' 
