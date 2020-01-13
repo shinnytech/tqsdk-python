@@ -84,24 +84,25 @@ jobs:
       if: matrix.python-version == '3.6' 
       uses: jakejarvis/s3-sync-action@master     
       env:
-        AWS_S3_BUCKET: "shinnydeploy"
+        AWS_S3_BUCKET: ${{ secrets.BUCKET_NAME }}
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        AWS_REGION: "ap-east-1"
+        AWS_REGION: ${{ secrets.AWS_REGION }}
         SOURCE_DIR: "dist"
 
     - name: Setup AWS S3 docs path
       if: matrix.python-version == '3.6'
       run: |
-        echo "::set-env name=DEST_DIR::docs/tqsdk-python/\
-        $(python setup.py --version)/"
+        echo "::set-env name=DEST_DIR::docs/tqsdk-python/$(python setup.py --version)/"
 
     - name: Publish build/doc to AWS S3
       if: matrix.python-version == '3.6' 
-      uses: jakejarvis/s3-sync-action@master     
+      uses: jakejarvis/s3-sync-action@master
+      with:
+        args: --exclude '.doctrees/*'          
       env:
-        AWS_S3_BUCKET: "shinnydeploy"
+        AWS_S3_BUCKET: ${{ secrets.BUCKET_NAME }}
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        AWS_REGION: "ap-east-1"
+        AWS_REGION: ${{ secrets.AWS_REGION }}
         SOURCE_DIR: "build/doc"
