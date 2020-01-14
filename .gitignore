@@ -104,3 +104,26 @@ ENV/
 .vscode/
 .reports/
 .DS_Store
+
+#node js dir
+node_modules/
+web/tests/e2e/reports/
+
+# local env files
+.env.local
+.env.*.local
+
+# Log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+selenium-debug.log
+chromedriver.log
+geckodriver.log
+
+# Editor directories and files
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
