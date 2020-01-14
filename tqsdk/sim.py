@@ -168,17 +168,18 @@ class TqSim(object):
                     }
                 })
                 self._has_send_init_account = True
-            self._tqsdk_backtest.update(d.get("_tqsdk_backtest", {}))
+            _tqsdk_backtest = d.get("_tqsdk_backtest", {})
+            if _tqsdk_backtest:
+                # 回测时，用 _tqsdk_backtest 对象中 current_dt 作为 TqSim 的 _current_datetime
+                self._tqsdk_backtest.update(_tqsdk_backtest)
+                self._current_datetime = datetime.fromtimestamp(self._tqsdk_backtest["current_dt"] / 1e9).strftime(
+                    "%Y-%m-%d %H:%M:%S.%f")
             for symbol, quote_diff in d.get("quotes", {}).items():
                 if quote_diff is None:
                     continue
                 quote = self._ensure_quote(symbol)
                 quote["datetime"] = quote_diff.get("datetime", quote["datetime"])
-                if self._tqsdk_backtest == {}:
-                    self._current_datetime = max(quote["datetime"], self._current_datetime)
-                else:
-                    self._current_datetime = datetime.fromtimestamp(self._tqsdk_backtest["current_dt"] / 1e9).strftime(
-                        "%Y-%m-%d %H:%M:%S.%f")
+                self._current_datetime = max(quote["datetime"], self._current_datetime)
                 if self._current_datetime > self._trading_day_end:  # 结算
                     self._settle()
                     trading_day = self._api._get_trading_day_from_timestamp(self._get_current_timestamp())
