@@ -126,7 +126,11 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
         2019-12-13 10:45:26,468 - INFO - 您可以访问 http://127.0.0.1:62964 查看策略绘制出的 K 线图形。
         2019-12-13 10:45:27,422 - INFO - 通知: 与 wss://openmd.shinnytech.com/t/md/front/mobile 的网络连接已建立
 
-点击生成的地址，即可访问订阅的K线图形，具体请见 :ref:`web_gui` 
+点击生成的地址，即可访问订阅的K线图形
+
+.. figure:: images/web_gui_klines.png
+
+具体请见 :ref:`web_gui`
 
 
 .. _quickstart_3:
