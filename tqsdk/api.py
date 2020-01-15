@@ -1485,7 +1485,7 @@ class TqApi(object):
                 "color": color if isinstance(color, str) else int(color),
                 "width": int(data.get(".width", [1])[-1]),
                 "board": data.get(".board", ["MAIN"])[-1]
-            }, aid="set_web_chart_data")
+            }, aid="set_chart_data")
         elif data_type == "KSERIAL":
             send_data = {}
             range_left = right - count
@@ -1502,7 +1502,7 @@ class TqApi(object):
                 "range_left": right - count,
                 "range_right": right - 1,
                 "board": data.get(".board", ["MAIN"])[-1]
-            }, aid="set_web_chart_data")
+            }, aid="set_chart_data")
 
     def _send_series_data(self, symbol, duration, serial_id, serial_data, aid="set_chart_data"):
         pack = {
