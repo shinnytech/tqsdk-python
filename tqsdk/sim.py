@@ -229,10 +229,11 @@ class TqSim(object):
                     self._is_recv_quote = True
                     for q in self._quotes.values():
                         for order in list(q["orders"].values()):
-                            order["insert_date_time"] = self._get_current_timestamp()
+                            order["insert_date_time"] = self._get_trade_time(q) * 1e9
                             self._send_order(order)
                             self._logger.info("模拟交易下单 %s: 时间:%s,合约:%s,开平:%s,方向:%s,手数:%s,价格:%s", order["order_id"],
-                                              self._current_datetime, order["symbol"], order["offset"],
+                                              datetime.datetime.fromtimestamp(self._get_trade_time(q)).strftime(
+                                                  "%Y-%m-%d %H:%M:%S.%f"), order["symbol"], order["offset"],
                                               order["direction"], order["volume_left"], order.get("limit_price", "市价"))
                 self._match_orders(quote)
                 if symbol in self._positions:
@@ -291,7 +292,6 @@ class TqSim(object):
         order["volume_orign"] = order["volume"]
         order["volume_left"] = order["volume"]
         order["frozen_margin"] = 0.0
-        order["insert_date_time"] = self._get_current_timestamp()  # 未收到第一笔行情时，此时返回的是1970.1.1
         order["last_msg"] = "报单成功"
         order["status"] = "ALIVE"
         del order["aid"]
@@ -320,8 +320,10 @@ class TqSim(object):
                 return
         if self._is_recv_quote:  # 如果尚未收到第一笔行情，则不下发 order 初始信息及 logger 信息
             self._send_order(order)
+            order["insert_date_time"] = self._get_trade_time(quote) * 1e9
             self._logger.info("模拟交易下单 %s: 时间:%s,合约:%s,开平:%s,方向:%s,手数:%s,价格:%s", order["order_id"],
-                              self._current_datetime, order["symbol"], order["offset"],
+                              datetime.datetime.fromtimestamp(self._get_trade_time(quote)).strftime(
+                                  "%Y-%m-%d %H:%M:%S.%f"), order["symbol"], order["offset"],
                               order["direction"], order["volume_left"], order.get("limit_price", "市价"))
             self._match_order(quote, order)
 
@@ -358,8 +360,7 @@ class TqSim(object):
         bid_price = quote["bid_price1"]
         if quote["datetime"] == "":  # 如果未收到行情，不处理
             return
-        now_time = datetime.datetime.strptime(quote["datetime"], "%Y-%m-%d %H:%M:%S.%f").timestamp() + (
-                time.time() - quote["local_time_record"])  # 当前预估交易所时间戳
+        now_time = self._get_trade_time(quote)  # 当前预估交易所时间戳
         is_in_trading_time = False  # 是否在交易时间段内flag
         # 判断当前交易所时间（估计值）是否在交易时间段内
         for v in quote["trading_timestamp"].values():
@@ -396,7 +397,7 @@ class TqSim(object):
             "offset": order["offset"],
             "price": price,
             "volume": order["volume_left"],
-            "trade_date_time": self._get_current_timestamp(),
+            "trade_date_time": self._get_trade_time(quote) * 1e9,
             "commission": quote["commission"] * order["volume_left"],
         }
         trade_log = self._ensure_trade_log()
@@ -850,3 +851,8 @@ class TqSim(object):
 
     def _get_current_timestamp(self):
         return int(datetime.datetime.strptime(self._current_datetime, "%Y-%m-%d %H:%M:%S.%f").timestamp() * 1e6) * 1000
+
+    def _get_trade_time(self, quote):
+        # 根据行情时间获取模拟的(预估的)当前交易所时间
+        return datetime.datetime.strptime(quote["datetime"], "%Y-%m-%d %H:%M:%S.%f").timestamp() + (
+                time.time() - quote["local_time_record"])
