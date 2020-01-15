@@ -63,8 +63,8 @@ class TqWebHelper(object):
                 self._data_handler_without_web(api_recv_chan, web_recv_chan))
             try:
                 async for pack in api_send_chan:
-                    # api 发送的包，过滤出 set_chart_data, set_web_chart_data, 其余的原样转发
-                    if pack['aid'] != 'set_chart_data' and pack['aid'] != 'set_web_chart_data':
+                    # api 发送的包，过滤出 set_chart_data, 其余的原样转发
+                    if pack['aid'] != 'set_chart_data':
                         await web_send_chan.send(pack)
             finally:
                 _data_handler_without_web_task.cancel()
@@ -99,15 +99,11 @@ class TqWebHelper(object):
             try:
                 # api 发送的包，过滤出需要的包记录在 self._data
                 async for pack in api_send_chan:
-                    if pack['aid'] == 'set_chart_data' or pack['aid'] == 'set_web_chart_data':
+                    if pack['aid'] == 'set_chart_data':
                         # 发送的是绘图数据
-                        # 旧版 tqhelper aid=set_chart_data，发送除 KSERIAL/SERIAL 之外的序列，因为其 KSERIAL/SERIAL 序列不符合 diff 协议
-                        # 新版 tqwebhelper aid=set_web_chart_data 中发送的 KSERIAL/SERIAL 数据
                         diff_data = {}  # 存储 pack 中的 diff 数据的对象
                         for series_id, series in pack['datas'].items():
-                            if (pack['aid'] == 'set_chart_data' and series["type"] != "KSERIAL" and series["type"] != "SERIAL") or\
-                                    pack['aid'] == 'set_web_chart_data' :
-                                diff_data[series_id] = series
+                            diff_data[series_id] = series
                         if diff_data != {}:
                             web_diff = {'draw_chart_datas': {}}
                             web_diff['draw_chart_datas'][pack['symbol']] = {}
