@@ -1467,42 +1467,40 @@ class TqApi(object):
             data_type = data_type[rows[0]]
         else:
             data_type = "LINE"
+        send_data = {
+            "type": "KSERIAL" if data_type == "KSERIAL" else "SERIAL",
+            "range_left": right - count,
+            "range_right": right - 1,
+            "data": {}
+        }
+        # 在执行 _update_serial_single 时，有可能将未赋值的字段设置为 None, 这里如果为 None 则不发送这个 board 字段，
+        # 因为 None 在 diff 协议中的含义是删除这个字段，这里仅仅表示不赋新值，下面的 color, width 同理
+        board = data.get(".board", ["MAIN"])[-1]
+        if board:
+            send_data["board"] = data.get(".board", ["MAIN"])[-1]
         if data_type in {"LINE", "DOT", "DASH", "BAR"}:
-            send_data = {}
-            range_left = right - count
+            send_data["style"] = data_type
+            color = data.get(".color", ["#FF0000"])[-1]
+            if color:
+                send_data["color"] = color if isinstance(color, str) else int(color)
+            width = int(data.get(".width", [1])[-1])
+            if width:
+                send_data["width"] = int(data.get(".width", [1])[-1])
             for i in range(count):
-                send_data[i + range_left] = {
+                send_data["data"][i + right - count] = {
                     # 数据结构与 KSERIAL 保持一致，只有一列的时候，默认 key 值取 "value"
                     "value": data[""][i]
                 }
-            color = data.get(".color", ["#FF0000"])[-1]
-            self._send_series_data(symbol, duration, col, {
-                "type": "SERIAL",
-                "data": send_data,
-                "style": data_type,
-                "range_left": right - count,
-                "range_right": right - 1,
-                "color": color if isinstance(color, str) else int(color),
-                "width": int(data.get(".width", [1])[-1]),
-                "board": data.get(".board", ["MAIN"])[-1]
-            }, aid="set_chart_data")
+            self._send_series_data(symbol, duration, col, send_data, aid="set_chart_data")
         elif data_type == "KSERIAL":
-            send_data = {}
-            range_left = right - count
             for i in range(count):
-                send_data[i + range_left] = {
+                send_data["data"][i + right - count] = {
                     "open": data[".open"][i],
                     "high": data[".high"][i],
                     "low": data[".low"][i],
                     "close": data[".close"][i]
                 }
-            self._send_series_data(symbol, duration, col, {
-                "type": "KSERIAL",
-                "data": send_data,
-                "range_left": right - count,
-                "range_right": right - 1,
-                "board": data.get(".board", ["MAIN"])[-1]
-            }, aid="set_chart_data")
+            self._send_series_data(symbol, duration, col, send_data, aid="set_chart_data")
 
     def _send_series_data(self, symbol, duration, serial_id, serial_data, aid="set_chart_data"):
         pack = {
