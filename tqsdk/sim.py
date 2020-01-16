@@ -177,16 +177,19 @@ class TqSim(object):
             if _tqsdk_backtest:
                 # 回测时，用 _tqsdk_backtest 对象中 current_dt 作为 TqSim 的 _current_datetime
                 self._tqsdk_backtest.update(_tqsdk_backtest)
-                self._current_datetime = datetime.fromtimestamp(self._tqsdk_backtest["current_dt"] / 1e9).strftime(
+                self._current_datetime = datetime.datetime.fromtimestamp(
+                    self._tqsdk_backtest["current_dt"] / 1e9).strftime(
                     "%Y-%m-%d %H:%M:%S.%f")
             for symbol, quote_diff in d.get("quotes", {}).items():
                 if quote_diff is None:
                     continue
                 quote = self._ensure_quote(symbol)
+                _is_first_datatime_recv = False  # 第一次收到行情标志
                 if quote["datetime"] == "" and quote_diff.get("datetime"):
                     # 当第一次收到此quote的行情时:计算一次它的交易时段时间戳，之后在每次切换交易日后更新时间戳
                     quote["datetime"] = quote_diff.get("datetime", quote["datetime"])
                     self._get_trading_timestamp(quote)
+                    _is_first_datatime_recv = True
                 else:
                     quote["datetime"] = quote_diff.get("datetime", quote["datetime"])
                 self._current_datetime = max(quote["datetime"], self._current_datetime)  # 最新行情时间
@@ -223,19 +226,17 @@ class TqSim(object):
                 quote["commission"] = quote_diff.get("commission", quote["commission"])
                 quote["margin"] = quote_diff.get("margin", quote["margin"])
                 quote["trading_time"] = quote_diff.get("trading_time", quote["trading_time"])
-                # 收到第一条行情时(无论是已订阅合约中哪一个), 就将订阅合约下的所有挂单(如果订阅前就下单)的时间改为这个行情时间
+                # 收到本 quote 第一条行情时, 将其下所有挂单的时间改为这个行情时间
                 # 此时才将 order的diff下发并将“模拟交易下单”logger信息发出（即保证了 order 的 insert_date_time 为正确的行情时间）
-                if not self._is_recv_quote and self._current_datetime != TqSim.EPOCH:
-                    self._is_recv_quote = True
-                    for q in self._quotes.values():
-                        for order in list(q["orders"].values()):
-                            order["insert_date_time"] = self._get_trade_timestamp(q)
-                            self._send_order(order)
-                            self._logger.info("模拟交易下单 %s: 时间:%s,合约:%s,开平:%s,方向:%s,手数:%s,价格:%s", order["order_id"],
-                                              datetime.datetime.fromtimestamp(
-                                                  self._get_trade_timestamp(q) / 1e9).strftime("%Y-%m-%d %H:%M:%S.%f"),
-                                              order["symbol"], order["offset"], order["direction"],
-                                              order["volume_left"], order.get("limit_price", "市价"))
+                if _is_first_datatime_recv:
+                    for order in list(quote["orders"].values()):
+                        order["insert_date_time"] = self._get_trade_timestamp(quote)
+                        self._send_order(order)
+                        self._logger.info("模拟交易下单 %s: 时间:%s,合约:%s,开平:%s,方向:%s,手数:%s,价格:%s", order["order_id"],
+                                          datetime.datetime.fromtimestamp(
+                                              self._get_trade_timestamp(quote) / 1e9).strftime("%Y-%m-%d %H:%M:%S.%f"),
+                                          order["symbol"], order["offset"], order["direction"],
+                                          order["volume_left"], order.get("limit_price", "市价"))
                 self._match_orders(quote)
                 if symbol in self._positions:
                     self._adjust_position(symbol, price=quote["last_price"])
@@ -321,7 +322,8 @@ class TqSim(object):
             if not self._adjust_account(frozen_margin=order["frozen_margin"]):
                 self._del_order(order, "开仓资金不足")
                 return
-        if self._is_recv_quote:  # 如果尚未收到第一笔行情，则不下发 order 初始信息及 logger 信息
+        # 如果尚未收到第一笔行情，则不下发 order 初始信息及 logger 信息
+        if quote.get("trading_timestamp"):  # （只有quote收到过行情后才有 "trading_timestamp" 字段）
             self._send_order(order)
             order["insert_date_time"] = self._get_trade_timestamp(quote)
             self._logger.info("模拟交易下单 %s: 时间:%s,合约:%s,开平:%s,方向:%s,手数:%s,价格:%s", order["order_id"],
