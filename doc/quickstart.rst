@@ -26,7 +26,7 @@
 * Windows 7 以上版本, Mac Os, 或 Linux
 
 
-你可以选择使用 `pip` 命令安装 TqSdk, 或者下载源代码安装. 对于一般用户, 我们推荐采用 pip 命令安装::
+你可以选择使用 `pip` 命令安装 TqSdk, 或者下载源代码安装. 对于一般用户, 我们推荐采用 `pip` 命令安装::
 
     pip install tqsdk
 
