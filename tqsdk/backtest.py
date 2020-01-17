@@ -467,7 +467,7 @@ class TqReplay(object):
         self._md_url = "ws://%s:%d/t/rmd/front/mobile" % (session["ip"], session["gateway_web_port"])
 
         self._server_status = None
-        try_times = 6 # 最多尝试 6 次
+        try_times = 20 # 最多尝试 20 次
         # 同步等待复盘服务状态 initializing / running
         while self._server_status is None and try_times > 0:
             time.sleep(1)
