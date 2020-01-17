@@ -5,27 +5,21 @@ __author__ = 'chengzhi'
 from tqsdk.api import TqChan, TqApi
 from asyncio import gather
 from typing import Optional
-import weakref
 
 
 class TargetPosTaskSingleton(type):
-    _instances = weakref.WeakKeyDictionary({})
+    _instances = {}
 
     def __call__(cls, api, symbol, price="ACTIVE", offset_priority="今昨,开", trade_chan=None, *args, **kwargs):
-        # 每个 api (master) 都有一个独立的 TargetPosTaskSingleton._instances
-        if api._is_slave:
-            api = api._master
-        if api not in TargetPosTaskSingleton._instances:
-            TargetPosTaskSingleton._instances[api] = {}
-        if symbol not in TargetPosTaskSingleton._instances[api]:
-            TargetPosTaskSingleton._instances[api][symbol] = super(TargetPosTaskSingleton, cls).__call__(api, symbol, price, offset_priority, trade_chan, *args, **kwargs)
+        if symbol not in TargetPosTaskSingleton._instances:
+            TargetPosTaskSingleton._instances[symbol] = super(TargetPosTaskSingleton, cls).__call__(api, symbol, price, offset_priority, trade_chan, *args, **kwargs)
         else:
-            instance = TargetPosTaskSingleton._instances[api][symbol]
+            instance = TargetPosTaskSingleton._instances[symbol]
             if instance._offset_priority != offset_priority:
                 raise Exception("您试图用不同的 offset_priority 参数创建两个 %s 调仓任务, offset_priority参数原为 %s, 现为 %s" % (symbol, instance._offset_priority, offset_priority))
             if instance._price != price:
                 raise Exception("您试图用不同的 price 参数创建两个 %s 调仓任务, price参数原为 %s, 现为 %s" % (symbol, instance._price, price))
-        return TargetPosTaskSingleton._instances[api][symbol]
+        return TargetPosTaskSingleton._instances[symbol]
 
 
 class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
@@ -151,27 +145,31 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
 
     async def _target_pos_task(self):
         """负责调整目标持仓的task"""
-        async for target_pos in self._pos_chan:
-            # 确定调仓增减方向
-            delta_volume = target_pos - self._pos.pos
-            pending_forzen = 0
-            all_tasks = []
-            for each_priority in self._offset_priority + ",":  # 按不同模式的优先级顺序报出不同的offset单，股指(“昨开”)平昨优先从不平今就先报平昨，原油平今优先("今昨开")就报平今
-                if each_priority == ",":
-                    await gather(*[each._task for each in all_tasks])
-                    pending_forzen = 0
-                    all_tasks = []
-                    continue
-                order_offset, order_dir, order_volume = self._get_order(each_priority, delta_volume, pending_forzen)
-                if order_volume == 0:  # 如果没有则直接到下一种offset
-                    continue
-                elif order_offset != "OPEN":
-                    pending_forzen += order_volume
-                order_task = InsertOrderUntilAllTradedTask(self._api, self._symbol, order_dir, offset=order_offset,
-                                                           volume=order_volume, price=self._price,
-                                                           trade_chan=self._trade_chan)
-                all_tasks.append(order_task)
-                delta_volume -= order_volume if order_dir == "BUY" else -order_volume
+        try:
+            async for target_pos in self._pos_chan:
+                # 确定调仓增减方向
+                delta_volume = target_pos - self._pos.pos
+                pending_forzen = 0
+                all_tasks = []
+                for each_priority in self._offset_priority + ",":  # 按不同模式的优先级顺序报出不同的offset单，股指(“昨开”)平昨优先从不平今就先报平昨，原油平今优先("今昨开")就报平今
+                    if each_priority == ",":
+                        await gather(*[each._task for each in all_tasks])
+                        pending_forzen = 0
+                        all_tasks = []
+                        continue
+                    order_offset, order_dir, order_volume = self._get_order(each_priority, delta_volume, pending_forzen)
+                    if order_volume == 0:  # 如果没有则直接到下一种offset
+                        continue
+                    elif order_offset != "OPEN":
+                        pending_forzen += order_volume
+                    order_task = InsertOrderUntilAllTradedTask(self._api, self._symbol, order_dir, offset=order_offset,
+                                                               volume=order_volume, price=self._price,
+                                                               trade_chan=self._trade_chan)
+                    all_tasks.append(order_task)
+                    delta_volume -= order_volume if order_dir == "BUY" else -order_volume
+        finally:
+            # 执行 task.cancel() 时, 删除掉该 symbol 对应的 TargetPosTask 实例
+            TargetPosTaskSingleton._instances.pop(self._symbol, None)
 
 
 class InsertOrderUntilAllTradedTask(object):
