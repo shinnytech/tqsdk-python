@@ -178,8 +178,8 @@ class TqSim(object):
                 # 回测时，用 _tqsdk_backtest 对象中 current_dt 作为 TqSim 的 _current_datetime
                 self._tqsdk_backtest.update(_tqsdk_backtest)
                 self._current_datetime = datetime.datetime.fromtimestamp(
-                    self._tqsdk_backtest["current_dt"] / 1e9).strftime(
-                    "%Y-%m-%d %H:%M:%S.%f")
+                    self._tqsdk_backtest["current_dt"] / 1e9).strftime("%Y-%m-%d %H:%M:%S.%f")
+                self._local_time_record = time.time() - 0.005  # 更新最新行情时间时的本地时间
             for symbol, quote_diff in d.get("quotes", {}).items():
                 if quote_diff is None:
                     continue
@@ -187,8 +187,11 @@ class TqSim(object):
                 _is_first_datatime_recv = False  # 第一次收到行情标志
                 if quote["datetime"] == "" and quote_diff.get("datetime"):
                     # 当第一次收到此quote的行情时:计算一次它的交易时段时间戳，之后在每次切换交易日后更新时间戳
+                    quote["datetime"] = quote_diff.get("datetime", quote["datetime"])
                     self._get_trading_timestamp(quote)
                     _is_first_datatime_recv = True
+                else:
+                    quote["datetime"] = quote_diff.get("datetime", quote["datetime"])
                 quote["datetime"] = quote_diff.get("datetime", quote["datetime"])
                 # 若直接使用本地时间来判断交易时间是否在交易时间段内 可能有较大误差,因此判断的方案为:(在成交（_match_order()）前判断 估计的交易所时间 是否在交易时间段内)
                 # 在更新最新行情时间(即self._current_datetime)时，记录当前本地时间(self._local_time_record)，
