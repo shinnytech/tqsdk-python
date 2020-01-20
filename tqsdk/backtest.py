@@ -6,7 +6,6 @@ import json
 import time
 import requests
 import asyncio
-from .__version__ import __version__
 from typing import Union
 from datetime import date, datetime
 from tqsdk.exceptions import BacktestFinished
