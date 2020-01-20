@@ -1,0 +1,55 @@
+name: MacOS Test
+
+on: [push]
+
+jobs:
+  CI:
+    strategy:
+      matrix:
+        python-version: [3.6, 3.7, 3.8]
+        python-arch: ["x64"]
+
+    env:
+      PYTHONHASHSEED: 32
+      TZ: 'Asia/Shanghai'
+
+    runs-on: macos-latest
+
+    steps:
+    - name: checkuot
+      uses: actions/checkout@v1
+
+    - name: Setup Python ${{matrix.python-version}} ${{matrix.python-arch}}
+      uses: actions/setup-python@v1
+      with:
+        python-version: ${{matrix.python-version}}
+        architecture: ${{matrix.python-arch}}
+        
+    - name: Install dependencies
+      run: |
+        git lfs install
+        git lfs pull
+        pip install --upgrade pip wheel setuptools pytest zip-files
+        pip install -r requirements.txt
+        pip install autodocsumm sphinx_rtd_theme jieba
+
+    - name: Format log path and name
+      id: log_info
+      run: |
+        echo "::set-output name=log_name::macos_$(date +%Y%m%d)_${{matrix.python-version}}_${{matrix.python-arch}}_$(git rev-parse --short HEAD)"
+        echo "::set-output name=log_archive_path::./log_archive/"
+
+    - name: Run Test Case
+      run: |
+        mkdir -p ${{steps.log_info.outputs.log_archive_path}}
+        python -W ignore::DeprecationWarning -m pytest --no-print-logs \
+          --log-level=DEBUG \
+          --log-file=${{steps.log_info.outputs.log_name}}.log
+        zip-files -o ${{steps.log_info.outputs.log_archive_path}}${{steps.log_info.outputs.log_name}}.zip ./${{steps.log_info.outputs.log_name}}.log
+
+    - name: Upload log to artifact
+      if: always()
+      uses: actions/upload-artifact@v1
+      with:
+        name: ${{steps.log_info.outputs.log_name}}.zip
+        path: ${{steps.log_info.outputs.log_archive_path}}

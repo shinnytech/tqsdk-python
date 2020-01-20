@@ -1,9 +1,9 @@
-name: tqsdk-build-win
+name: Windows Test
 
 on: [push]
 
 jobs:
-  build:
+  CI:
     strategy:
       matrix:
         python-version: [3.6, 3.7, 3.8]
