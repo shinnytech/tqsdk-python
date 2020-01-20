@@ -16,7 +16,7 @@
   const GetTqsdkUrl = function () {
     return new Promise(function (resolve, reject) {
       // resolve({"ins_url": "https://openmd.shinnytech.com/t/md/symbols/latest.json", "md_url": "wss://openmd.shinnytech.com/t/md/front/mobile", "ws_url": "ws://127.0.0.1:61253"})
-      fetch('http://127.0.0.1:61680/urlcors').then(function(response) {
+      fetch('http://127.0.0.1:54738/urlcors').then(function(response) {
         response.json().then(function(json){
           resolve(json)
         })

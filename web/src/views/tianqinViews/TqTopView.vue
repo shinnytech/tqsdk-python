@@ -108,6 +108,7 @@
       onChangeSelectedSubscribed(symbol, dur_nano){
         this.instrumentId = symbol
         this.duration = dur_nano ? dur_nano : 60000000000
+        this.mainType = 'candle'
       }
     },
     created () {

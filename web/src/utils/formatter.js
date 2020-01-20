@@ -47,8 +47,6 @@ export function FormatStatus(value) {
 }
 
 export function ObjectToArray(obj, arr, key, fn) {
-  //
-  //
   // key [string | function] return string
   // fn [function] return bool
   if (typeof obj !== 'object' || !Array.isArray(arr)) return
@@ -74,7 +72,7 @@ export function ObjectToArray(obj, arr, key, fn) {
   }
 }
 
-export function ParseDuartionToString (duration) {
+export function ParseDurationToString (duration) {
   let parseString = ''
   if (duration && duration >= 1e9) {
     const dur = moment.duration(duration / 1e9, 'seconds')
