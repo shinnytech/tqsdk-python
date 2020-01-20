@@ -3,14 +3,14 @@
         <template v-for="symbol in subscribedSymbols">
             <template v-for="item in subscribed[symbol]">
                 <Button size="small" long @click="onClick(symbol, item)">
-                    {{symbol}} {{ParseDuartionToString(item)}}
+                    {{symbol}} {{ParseDurationToString(item)}}
                 </Button>
             </template>
         </template>
     </div>
 </template>
 <script>
-    import { ParseDuartionToString } from '@/utils/formatter'
+    import { ParseDurationToString } from '@/utils/formatter'
     const subscribedSymbols = []
     const subscribed = {}
   export default {
@@ -65,7 +65,7 @@
       onClick (symbol, dur_nano) {
         this.$emit('onChange', symbol, dur_nano)
       },
-      ParseDuartionToString
+      ParseDurationToString
     }
   }
 </script>
