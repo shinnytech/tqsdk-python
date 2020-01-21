@@ -782,6 +782,8 @@ def barlast(cond):
     最近一次条件 cond 成立到当前的周期数
     (如果 cond 长度为0或cond中无 True，函数返回-1)
 
+     **请注意：为了便于获取更多的 barlast 数据及统一函数返回值类型，在1.5.2版 tqsdk 将会把这个函数返回值改为一个 pandas.Series 类型的序列！**
+
     Args:
         cond (pandas.Series): 条件序列(序列中的值为 True 或 False)
 
