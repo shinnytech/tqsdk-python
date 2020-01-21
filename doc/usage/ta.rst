@@ -11,7 +11,7 @@ tqsdk.ta 模块中包含了大量技术指标. 每个技术指标是一个函数
 
     klines = api.get_kline_serial("SHFE.cu1812", 60)   # 提取SHFE.cu1812的分钟线
     result = MACD(klines, 12, 26, 9)                        # 计算MACD指标
-    print(result.diff)                                   # MACD指标中的diff序列
+    print(result["diff"])                                   # MACD指标中的diff序列
 
 tqsdk.ta 中目前提供的技术指标详表，请见 :ref:`tqsdk.ta`
 
