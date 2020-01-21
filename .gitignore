@@ -104,6 +104,7 @@ ENV/
 .vscode/
 .reports/
 .DS_Store
+tqsdk/web/
 
 #node js dir
 node_modules/
