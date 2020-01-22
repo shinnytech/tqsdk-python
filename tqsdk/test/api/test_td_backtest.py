@@ -44,7 +44,7 @@ class TestTdBacktest(unittest.TestCase):
         """
         # 预设服务器端响应
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        self.mock.run(os.path.join(dir_path, "log_file", "test_various_combinations_of_order_1.script"))
+        self.mock.run(os.path.join(dir_path, "log_file", "test_various_combinations_of_order_1.script.lzma"))
         # 测试1：单次开平 * n次
         TqApi.RD = random.Random(4)
         api = TqApi(backtest=TqBacktest(start_dt=datetime(2019, 12, 10, 9), end_dt=datetime(2019, 12, 11)),
@@ -76,7 +76,7 @@ class TestTdBacktest(unittest.TestCase):
         """
         # 预设服务器端响应
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        self.mock.run(os.path.join(dir_path, "log_file", "test_various_combinations_of_order_2.script"))
+        self.mock.run(os.path.join(dir_path, "log_file", "test_various_combinations_of_order_2.script.lzma"))
         # 测试2：多次开,一次全平完
         TqApi.RD = random.Random(4)
         api = TqApi(backtest=TqBacktest(start_dt=datetime(2019, 12, 10, 9), end_dt=datetime(2019, 12, 11)),
@@ -110,7 +110,7 @@ class TestTdBacktest(unittest.TestCase):
         """
         # 预设服务器端响应
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        self.mock.run(os.path.join(dir_path, "log_file", "test_various_combinations_of_order_3.script"))
+        self.mock.run(os.path.join(dir_path, "log_file", "test_various_combinations_of_order_3.script.lzma"))
         # 测试3：多次开 分多次平完
         TqApi.RD = random.Random(4)
         api = TqApi(backtest=TqBacktest(start_dt=datetime(2019, 12, 10, 9), end_dt=datetime(2019, 12, 11)),
@@ -145,7 +145,7 @@ class TestTdBacktest(unittest.TestCase):
         """
         # 预设服务器端响应
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        self.mock.run(os.path.join(dir_path, "log_file", "test_various_combinations_of_order_4.script"))
+        self.mock.run(os.path.join(dir_path, "log_file", "test_various_combinations_of_order_4.script.lzma"))
         # 测试4：单次开 分多次平完
         TqApi.RD = random.Random(4)
         api = TqApi(backtest=TqBacktest(start_dt=datetime(2019, 12, 10, 9), end_dt=datetime(2019, 12, 11)),
