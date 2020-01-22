@@ -37,7 +37,7 @@ class TestWaitUpdateFunction(unittest.TestCase):
         """
         # 预设服务器端响应
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        self.mock.run(os.path.join(dir_path, "log_file", "test_func_wait_update_1.script"))
+        self.mock.run(os.path.join(dir_path, "log_file", "test_func_wait_update_1.script.lzma"))
         # 测试
         api = TqApi(_ins_url=self.ins_url, _td_url=self.td_url, _md_url=self.md_url)
         TqApi.RD = random.Random(4)

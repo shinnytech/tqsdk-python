@@ -3,6 +3,7 @@
 
 
 import json
+import lzma
 import threading
 import asyncio
 import websockets
@@ -118,7 +119,7 @@ class MockServer():
                 await self.stop_signal
 
     def _run(self):
-        self.script_file = open(self.script_file_name, "rt", encoding="utf-8")
+        self.script_file = lzma.open(self.script_file_name, "rt", encoding="utf-8")
         asyncio.set_event_loop(self.loop)
         self.loop.run_until_complete(self._server())
 

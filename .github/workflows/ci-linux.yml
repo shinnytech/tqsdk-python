@@ -42,9 +42,9 @@ jobs:
       run: |
         git lfs install
         git lfs pull
-        pip install --upgrade pip wheel setuptools pytest zip-files
-        pip install -r requirements.txt
-        pip install autodocsumm sphinx_rtd_theme jieba
+        python -m pip install --upgrade pip wheel setuptools pytest zip-files
+        python -m pip install -r requirements.txt
+        python -m pip install autodocsumm sphinx_rtd_theme jieba
 
     - name: Format log path and name
       id: log_info
