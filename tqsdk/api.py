@@ -164,16 +164,18 @@ class TqApi(object):
         self._td_url = TqApi.DEFAULT_TD_URL
 
         # 支持用户授权
-        self._access_token = ''
+        self._access_token = 'eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJobi1MZ3ZwbWlFTTJHZHAtRmlScjV5MUF5MnZrQmpLSFFyQVlnQ0UwR1JjIn0.eyJqdGkiOiJjZDAzM2JhNC1lZTJkLTRhNjUtYmVjNi04NTAyZmQyMjk4NmUiLCJleHAiOjE2MTI0MDQwMTEsIm5iZiI6MCwiaWF0IjoxNTgwODY4MDExLCJpc3MiOiJodHRwczovL2F1dGguc2hpbm55dGVjaC5jb20vYXV0aC9yZWFsbXMvc2hpbm55dGVjaCIsInN1YiI6IjYzMzJhZmUwLWU5OWQtNDc1OC04MjIzLWY5OTBiN2RmOGY4NSIsInR5cCI6IkJlYXJlciIsImF6cCI6InNoaW5ueV90cSIsImF1dGhfdGltZSI6MCwic2Vzc2lvbl9zdGF0ZSI6IjliNTY1MzYzLTRkNmEtNDc0ZS1hYmMzLTQ0YzU0N2ZhMDZjYiIsImFjciI6IjEiLCJzY29wZSI6ImF0dHJpYnV0ZXMiLCJncmFudHMiOnsiZmVhdHVyZXMiOlsiYWR2Il0sImFjY291bnRzIjpbIioiXX19.OtSweF6mXilJNkQwJQR38BTdYWfShxJrlUIxvHRoZ6AZMtJ9pRMx1SS9mmO9SmA_OPBouLybDmPFbcAMK6_Z4hXNYzd1TyXbPMNIPaMg7E12IEe6RxmsP15j-txfB3lC8LJlc9ey9Y-Hbg2goxS9RCj5m5PR8MuHYwx_E1PwEkOkoBw0eJG5jT0gVh8nHN_p7zsbXOo0PVVNxK1ZBuU-t5NeHy3E33LAOxG1VjqAeOrE4YZrprKcHu6ekd4WPy77cllSRMX6Ob2i9uIFmErbtFK76eYJoPmetSEljAcXwjg3_vWcYOj-xzCeFZoaV9ysNvbANzCS0nAelMvWlBHrkA'
         if auth:
             comma_index = auth.find(',')
             email, pwd = auth[:comma_index], auth[comma_index + 1:]
-            headers = {}
-            headers.update(self._base_headers)
-            headers.update({"Content-Type": "application/x-www-form-urlencoded"})
+            headers = {
+                "User-Agent": "tqsdk-python %s" % __version__,
+                "Accept": "application/json",
+                "Content-Type": "application/x-www-form-urlencoded"
+            }
             response = requests.post("https://auth.shinnytech.com/auth/realms/shinnytech/protocol/openid-connect/token",
                                      headers=headers,
-                                     data="grant_type=password&username=%s&password=%s&client_id=tqsdk&client_secret=bdf198ea-6ecb-4ba1-80fd-1a41453f16f1" % (email, pwd),
+                                     data="grant_type=password&username=%s&password=%s&client_id=shinny_tq&client_secret=be30b9f4-6862-488a-99ad-21bde0400081" % (email, pwd),
                                      timeout=30)
             if response.status_code == 200:
                 self._access_token = json.loads(response.content)["access_token"]
@@ -1792,10 +1794,9 @@ class TqApi(object):
     def _base_headers(self):
         headers = {
             "User-Agent": "tqsdk-python %s" % __version__,
-            "Accept": "application/json"
+            "Accept": "application/json",
+            "Authorization": "Bearer %s" % self._access_token
         }
-        if self._access_token:
-            headers["Authorization"] = "Bearer %s" % self._access_token
         return headers
 
     @staticmethod
