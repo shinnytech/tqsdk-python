@@ -6,7 +6,7 @@ jobs:
   CI:
     strategy:
       matrix:
-        python-version: [3.6, 3.7, 3.8]
+        python-version: [3.6.x, 3.7.x, 3.8.x]
         python-arch: ["x64"]
 
     env:
@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: checkuot
+    - name: checkout
       uses: actions/checkout@v1
 
     - name: Setup Node.js 12.x
@@ -49,7 +49,7 @@ jobs:
     - name: Format log path and name
       id: log_info
       run: |
-        echo "::set-output name=log_name::Linux_$(date -d today +%Y%m%d)_${{matrix.python-version}}_${{matrix.python-arch}}_$(git rev-parse --short HEAD)"
+        echo "::set-output name=log_name::Linux_$(date -d today +%Y%m%d)_${{matrix.python-version}}_${{matrix.python-arch}}_$(echo ${GITHUB_SHA:0:7})"
         echo "::set-output name=log_archive_path::./log_archive/"
 
     - name: Run Test Case
@@ -83,33 +83,32 @@ jobs:
         sphinx-build doc build/doc
     
     - name: Publish to pypi
-      if: matrix.python-version == '3.6' && startsWith(github.event.ref, 'refs/tags')
+      if: matrix.python-version == '3.6.x' && startsWith(github.event.ref, 'refs/tags')
       uses: pypa/gh-action-pypi-publish@master
       with:
         user: __token__
         password: ${{ secrets.PYPI_PASSWORD }}
 
     - name: Publish to github release
-      if: matrix.python-version == '3.6' && startsWith(github.event.ref, 'refs/tags')
+      if: matrix.python-version == '3.6.x' && startsWith(github.event.ref, 'refs/tags')
       uses: fnkr/github-action-ghr@v1
       env:
         GHR_PATH: dist/
         GITHUB_TOKEN: ${{ secrets.GITHUB_USER_TOKEN }}
 
     - name: Setup AWS S3 dist path
-      if: matrix.python-version == '3.6' && startsWith(github.event.ref, 'refs/tags') != true
+      if: matrix.python-version == '3.6.x' && startsWith(github.event.ref, 'refs/tags') != true
       run: |
         echo "::set-env name=DEST_DIR::dist/tqsdk-python/\
-        $(echo ${GITHUB_REF#refs/heads/})/$(date -d today +%Y%m%d)_$(git rev-parse --short HEAD)/"
+        $(echo ${GITHUB_REF#refs/heads/})/$(date -d today +%Y%m%d)_$(echo ${GITHUB_SHA:0:7})/"
 
     - name: Setup AWS S3 dist path on tag
-      if: matrix.python-version == '3.6' && startsWith(github.event.ref, 'refs/tags')
+      if: matrix.python-version == '3.6.x' && startsWith(github.event.ref, 'refs/tags')
       run: |
-        echo "::set-env name=DEST_DIR::dist/tqsdk-python/\
-        $(echo ${GITHUB_REF#refs/tags/})/$(date -d today +%Y%m%d)_$(git rev-parse --short HEAD)/"
+        echo "::set-env name=DEST_DIR::dist/tqsdk-python/$(echo ${GITHUB_REF#refs/tags/})/"
 
     - name: Publish dist to AWS S3
-      if: matrix.python-version == '3.6'
+      if: matrix.python-version == '3.6.x'
       uses: jakejarvis/s3-sync-action@master
       env:
         AWS_S3_BUCKET: ${{ secrets.BUCKET_NAME }}
@@ -119,17 +118,17 @@ jobs:
         SOURCE_DIR: "dist"
 
     - name: Setup branch AWS S3 docs path
-      if: matrix.python-version == '3.6' && startsWith(github.event.ref, 'refs/tags') != true
+      if: matrix.python-version == '3.6.x' && startsWith(github.event.ref, 'refs/tags') != true
       run: |
         echo "::set-env name=DEST_DIR::docs/tqsdk-python/$(echo ${GITHUB_REF#refs/heads/})/"
 
     - name: Setup branch AWS S3 docs path on Tag
-      if: matrix.python-version == '3.6' && startsWith(github.event.ref, 'refs/tags')
+      if: matrix.python-version == '3.6.x' && startsWith(github.event.ref, 'refs/tags')
       run: |
         echo "::set-env name=DEST_DIR::docs/tqsdk-python/$(echo ${GITHUB_REF#refs/tags/})/"
 
     - name: Publish tag build/doc to AWS S3
-      if: matrix.python-version == '3.6'
+      if: matrix.python-version == '3.6.x'
       uses: jakejarvis/s3-sync-action@master
       with:
         args: --exclude '.doctrees/*'

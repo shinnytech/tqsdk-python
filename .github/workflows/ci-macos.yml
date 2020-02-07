@@ -6,7 +6,7 @@ jobs:
   CI:
     strategy:
       matrix:
-        python-version: [3.6, 3.7, 3.8]
+        python-version: [3.6.x, 3.7.x, 3.8.x]
         python-arch: ["x64"]
 
     env:
@@ -16,7 +16,7 @@ jobs:
     runs-on: macos-latest
 
     steps:
-    - name: checkuot
+    - name: checkout
       uses: actions/checkout@v1
 
     - name: Setup Python ${{matrix.python-version}} ${{matrix.python-arch}}
@@ -36,7 +36,7 @@ jobs:
     - name: Format log path and name
       id: log_info
       run: |
-        echo "::set-output name=log_name::macos_$(date +%Y%m%d)_${{matrix.python-version}}_${{matrix.python-arch}}_$(git rev-parse --short HEAD)"
+        echo "::set-output name=log_name::macos_$(date +%Y%m%d)_${{matrix.python-version}}_${{matrix.python-arch}}_$(echo ${GITHUB_SHA:0:7})"
         echo "::set-output name=log_archive_path::./log_archive/"
 
     - name: Run Test Case
