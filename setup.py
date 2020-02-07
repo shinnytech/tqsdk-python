@@ -34,6 +34,7 @@ except ImportError:
 with open("README.md", mode="r", encoding='utf-8') as fh:
     long_description = fh.read()
 
+
 setuptools.setup(
     name='tqsdk-test',
     version="1.5.1",
