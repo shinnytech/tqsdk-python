@@ -171,6 +171,7 @@ class TqBacktest(object):
                     "expire_datetime": quote.get("expire_datetime"),
                     "delivery_month": quote.get("delivery_month"),
                     "delivery_year": quote.get("delivery_year"),
+                    "option_class": quote.get("option_class"),
                 }
         self._diffs.append({
             "quotes": quotes,
