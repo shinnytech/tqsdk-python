@@ -33,12 +33,8 @@
     methods: {
       update () {
         if (!this.account_id) return
-        let account = this.$tqsdk.get({
-          name: 'account',
-          user_id: this.account_id,
-          currency: 'CNY'
-        })
-        if (account._epoch === this.$tqsdk.dm._epoch) {
+        let account = this.$tqsdk.getByPath(['trade', this.account_id, 'accounts', 'CNY'])
+        if (this.$tqsdk.isChanging(account)) {
           this.available = account.available
           this.balance = account.balance
           this.commission = account.commission

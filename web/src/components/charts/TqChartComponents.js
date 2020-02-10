@@ -1,31 +1,10 @@
 import Vue from 'vue'
-
 import TqChart from 'tqchart'
 import 'tqchart/dist/tqchart.css'
 const CHART_ID = 'web_chart'
 const CHART_ID_FOCUS = 'web_chart_focus'
 let klines = null
 let chartInstance = null
-
-const RevertDtToId = function (dt) {
-  const [l, r] = [chartInstance.range.leftId, chartInstance.range.rightId]
-  if (!klines || !klines.data || !klines.data[l] || dt < klines.data[l].datetime) return null
-  // 可能整个图的right_id 大于 klines.last_id， 造成 klines.data[r].datetime 是 undefined
-  const rightId = klines.data[r] ? r : klines.last_id
-  if (dt <= klines.data[rightId].datetime) {
-    for (let i = l; i < rightId + 1; i++) {
-      if (dt - klines.data[i].datetime <= 0) return i
-    }
-  }
-  return null
-}
-
-const GetDatetimeRange = function () {
-  let [l, r] = [chartInstance.range.leftId, chartInstance.range.rightId]
-  r = klines.data[r] ? r : klines.last_id
-  if (!klines.data[l] || !klines.data[r]) return [-1, -1]
-  return [klines.data[l].datetime, klines.data[r].datetime]
-}
 
 export default {
   name: 'tq-chart-components',
@@ -234,7 +213,7 @@ export default {
       })
 
       if (chartInstance) {
-        let quote = this.$tqsdk.get_quote(this.instrumentId)
+        let quote = this.$tqsdk.getQuote(this.instrumentId)
         chartInstance.setMainSeries(this.instrumentId, this.duration, klines, this.mainType)
         chartInstance.price_decs = quote.price_decs
         this.$nextTick(function () {
