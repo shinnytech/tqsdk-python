@@ -10,7 +10,7 @@ from tqsdk.ta import MA
 注意: 画图示例中用到的数据不含有实际意义，请根据自己的实际策略情况进行修改
 '''
 
-api = TqApi(web_gui="http://192.168.139.1:9876") # web_gui="http://192.168.139.1:9876", 指定 web 界面地址, ip 应为本机 ip 地址
+api = TqApi(web_gui="127.0.0.1:9878") # web_gui="[ip]:port", 指定 web 界面地址的 ip 和 port
 klines = api.get_kline_serial("SHFE.au1910", 24 * 60 * 60)
 ma = MA(klines, 30)  # 使用tqsdk自带指标函数计算均线
 

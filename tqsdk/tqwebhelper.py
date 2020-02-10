@@ -14,7 +14,6 @@ import simplejson
 import asyncio
 from datetime import datetime
 from aiohttp import web
-from urllib.parse import urlparse
 import socket
 import websockets
 import tqsdk
@@ -25,13 +24,9 @@ class TqWebHelper(object):
         """初始化，检查参数"""
         self._api = api
         self._logger = self._api._logger.getChild("TqWebHelper")  # 调试信息输出
-        if isinstance(self._api._web_gui, str):
-            host, _, port = urlparse(self._api._web_gui).netloc.partition(":")
-            self._http_server_host = host if host else "127.0.0.1"
-            self._http_server_port = int(port) if port else 0
-        else:
-            self._http_server_host = "127.0.0.1"
-            self._http_server_port = 0
+        ip, port = TqWebHelper.parse_url(self._api._web_gui)
+        self._http_server_host = ip if ip else "0.0.0.0"
+        self._http_server_port = int(port) if port else 0
 
         args = TqWebHelper.parser_arguments()
         if args:
@@ -51,9 +46,8 @@ class TqWebHelper(object):
 
             if args["_http_server_address"]:
                 self._api._web_gui = True  # 命令行 _http_server_address, 一定打开 _web_gui
-                address = urlparse(args["_http_server_address"])
-                host, _, port = address.netloc.partition(":")
-                self._http_server_host = host if host else "127.0.0.1"
+                ip, port = TqWebHelper.parse_url(args["_http_server_address"])
+                self._http_server_host = ip if ip else "0.0.0.0"
                 self._http_server_port = int(port) if port else 0
 
     async def _run(self, api_send_chan, api_recv_chan, web_send_chan, web_recv_chan):
@@ -335,6 +329,16 @@ class TqWebHelper(object):
         await site.start()
         self._logger.info("您可以访问 http://{ip}:{port} 查看策略绘制出的 K 线图形。".format(ip=address[0], port=address[1]))
         await asyncio.sleep(100000000000)
+
+    @staticmethod
+    def parse_url(url):
+        if isinstance(url, str):
+            re1 = '(25[0-5]|2[0-4][0-9]|[0-1]?[0-9]?[0-9])'  # 0~255
+            re2 = '(6553[0-5]|655[0-2][0-9]|65[0-4][0-9]{2}}|6[0-4][0-9]{3}|[0-5]?[0-9]{0,4})'  # 0~65535
+            m = re.match(r'(.*://)?({re1}\.{re1}\.{re1}\.{re1})?:{re2}(.*)?'.format(re1=re1, re2=re2), url)
+            if m:
+                return m.group(2), m.group(7)
+        return None, None
 
     @staticmethod
     def httpserver_url_handler(response):
