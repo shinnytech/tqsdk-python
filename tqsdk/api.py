@@ -95,7 +95,9 @@ class TqApi(object):
 
             loop(asyncio.AbstractEventLoop): [可选]使用指定的 IOLoop, 默认创建一个新的.
 
-            web_gui(bool/str): [可选]是否启用 图形化界面 功能, 默认不启用. 启用图形化界面传入参数web_gui = True会每次以随机端口生成网页，也可以直接设置本机IP端口为网页地址参考example 6
+            web_gui(bool/str): [可选]是否启用图形化界面功能, 默认不启用.
+                * 启用图形化界面传入参数 web_gui=True 会每次以随机端口生成网页，也可以直接设置本机IP和端口 web_gui=[ip]:port 为网页地址，
+                ip 可选，默认为 0.0.0.0，参考example 6
                 * 为了图形化界面能够接收到程序传输的数据并且刷新，在程序中，需要循环调用 api.wait_update的形式去更新和获取数据
                 * 推荐打开图形化界面的浏览器为Google Chrome 或 Firefox
 
@@ -135,7 +137,7 @@ class TqApi(object):
 
             # 开启 web_gui 功能，使用本机IP端口固定网址生成
             from tqsdk import TqApi
-            api = TqApi(web_gui="http://127.0.0.1:9876")
+            api = TqApi(web_gui=":9876")  # 等价于 api = TqApi(web_gui="0.0.0.0:9876")
 
         """
 
