@@ -74,10 +74,7 @@
       this.$tqsdk.on('rtn_data', function(){
         let account_id = self.$store.state.account_id
         if (!account_id) return
-        let positions = self.$tqsdk.get({
-          name: 'positions',
-          user_id: account_id
-        })
+        let positions = self.$tqsdk.getByPath(['trade', account_id, 'positions'])
         if (!positions) return
         for(let symbol in positions){
           if (self.ordersTr[symbol]) {

@@ -136,10 +136,7 @@ export default {
         // 得到某一个 trade, 定位到那里去
         let account_id = self.$store.state.account_id
         if (account_id) {
-          let trades = self.$tqsdk.get({
-            name: 'trades',
-            user_id: account_id
-          })
+          let trades = self.$tqsdk.getByPath(['trade', account_id, 'trades'])
           for(let trade_id in trades){
             let trade = trades[trade_id]
             if (chartInstance && chartInstance.symbol && chartInstance.duration) {
