@@ -322,13 +322,14 @@ class TqWebHelper(object):
 
     @staticmethod
     def parse_url(url):
-        if url is True:
+        if isinstance(url, str):
+            parse_result = urlparse(url, scheme='')
+            ip, _, port = parse_result.path.partition(":")
+            if not port:
+                ip, _, port = parse_result.netloc.partition(":")
+            return ip, port
+        else:
             return '0.0.0.0', '0'
-        parse_result = urlparse(url, scheme='')
-        ip, _, port = parse_result.path.partition(":")
-        if not port:
-            ip, _, port = parse_result.netloc.partition(":")
-        return ip, port
 
     @staticmethod
     def httpserver_url_handler(response):
