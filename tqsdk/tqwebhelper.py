@@ -285,7 +285,7 @@ class TqWebHelper(object):
         self._conn_diff_chans.add(conn_chan)
         try:
             async for msg in ws:
-                pack = simplejson.loads(msg)
+                pack = simplejson.loads(msg.data)
                 if pack["aid"] == 'peek_message':
                     last_diff = await conn_chan.recv()
                     send_msg = self.get_send_msg(last_diff)
