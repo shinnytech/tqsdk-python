@@ -12,6 +12,7 @@ import sys
 import argparse
 import simplejson
 import asyncio
+from urllib.parse import urlparse
 from datetime import datetime
 from aiohttp import web
 import socket
@@ -332,13 +333,13 @@ class TqWebHelper(object):
 
     @staticmethod
     def parse_url(url):
-        if isinstance(url, str):
-            re1 = '(25[0-5]|2[0-4][0-9]|[0-1]?[0-9]?[0-9])'  # 0~255
-            re2 = '(6553[0-5]|655[0-2][0-9]|65[0-4][0-9]{2}}|6[0-4][0-9]{3}|[0-5]?[0-9]{0,4})'  # 0~65535
-            m = re.match(r'(.*://)?({re1}\.{re1}\.{re1}\.{re1})?:{re2}(.*)?'.format(re1=re1, re2=re2), url)
-            if m:
-                return m.group(2), m.group(7)
-        return None, None
+        if url is True:
+            return '0.0.0.0', '0'
+        parse_result = urlparse(url, scheme='')
+        ip, _, port = parse_result.path.partition(":")
+        if not port:
+            ip, _, port = parse_result.netloc.partition(":")
+        return ip, port
 
     @staticmethod
     def httpserver_url_handler(response):
