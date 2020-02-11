@@ -16,7 +16,6 @@ from urllib.parse import urlparse
 from datetime import datetime
 from aiohttp import web
 import socket
-import websockets
 import tqsdk
 
 class TqWebHelper(object):
@@ -86,9 +85,7 @@ class TqWebHelper(object):
             self._order_symbols = set()
             self._diffs = []
             self._conn_diff_chans = set()
-            self.web_port_chan = tqsdk.api.TqChan(self._api)  # 记录到 ws port 的channel
             _data_task = self._api.create_task(self._data_handler(api_recv_chan, web_recv_chan))
-            _wsserver_task = self._api.create_task(self.link_wsserver())
             _httpserver_task = self._api.create_task(self.link_httpserver())
 
             try:
@@ -127,7 +124,6 @@ class TqWebHelper(object):
                         await web_send_chan.send(pack)
             finally:
                 _data_task.cancel()
-                _wsserver_task.cancel()
                 _httpserver_task.cancel()
 
     async def _data_handler_without_web(self, api_recv_chan, web_recv_chan):
@@ -274,43 +270,35 @@ class TqWebHelper(object):
             else:
                 result[key] = diff[key]
 
-    async def link_wsserver(self):
-        async def lambda_connection_handler(conn, path): await self.connection_handler(conn)
-        async with websockets.serve(lambda_connection_handler, host=self._http_server_host, port=0) as server:
-            port = server.server.sockets[0].getsockname()[1]
-            await self.web_port_chan.send({'port': port})
-            await asyncio.sleep(100000000000)
-
     def get_send_msg(self, data=None):
         return simplejson.dumps({
             'aid': 'rtn_data',
             'data': [self._data if data is None else data]
         }, ignore_nan=True)
 
-    async def connection_handler(self, conn):
+    async def connection_handler(self, request):
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
         send_msg = self.get_send_msg(self._data)
-        await conn.send(send_msg)
+        await ws.send_str(send_msg)
         conn_chan = tqsdk.api.TqChan(self._api, last_only=True)
         self._conn_diff_chans.add(conn_chan)
         try:
-            async for msg in conn:
+            async for msg in ws:
                 pack = simplejson.loads(msg)
                 if pack["aid"] == 'peek_message':
                     last_diff = await conn_chan.recv()
                     send_msg = self.get_send_msg(last_diff)
-                    await conn.send(send_msg)
+                    await ws.send_str(send_msg)
         except Exception as e:
             await conn_chan.close()
             self._conn_diff_chans.remove(conn_chan)
 
     async def link_httpserver(self):
-
-        ws_port = await self.web_port_chan.recv()
         # init http server handlers
         url_response = {
             "ins_url": self._api._ins_url,
             "md_url": self._api._md_url,
-            "ws_url": 'ws://%s:%s' % (self._http_server_host, str(ws_port['port']))
         }
         # TODO：在复盘模式下发送 replay_dt 给 web 端，服务器改完后可以去掉
         if isinstance(self._api._backtest, tqsdk.api.TqReplay):
@@ -321,6 +309,7 @@ class TqWebHelper(object):
                            handler=lambda request: TqWebHelper.httpserver_url_handler(url_response))
         app.router.add_get(path='/', handler=lambda request: TqWebHelper.httpserver_index_handler(self._web_dir))
         app.router.add_static('/', self._web_dir, show_index=True)
+        app.add_routes([web.get('/ws', self.connection_handler)])
         runner = web.AppRunner(app)
         await runner.setup()
         server_socket = socket.socket()
