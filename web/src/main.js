@@ -78,7 +78,7 @@ GetTqsdkUrl().then(function(urlJson){
   })
   Vue.prototype.$tqsdk = Vue.$tqsdk
   Vue.$tqsdk.initMdWebsocket()
-  let tqWs = Vue.$tqsdk.addWebSocket(ws_url)
+  let tqWs = Vue.$tqsdk.addWebSocket('ws://' + location.host + '/ws')
   tqWs.on('close', function(){
     store.commit('set_py_file_status', false)
   })
