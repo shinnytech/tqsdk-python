@@ -58,7 +58,6 @@ Vue.filter('toFixed', function (value, decs) {
 GetTqsdkUrl().then(function(urlJson){
   let ins_url = urlJson['ins_url']
   let md_url = urlJson['md_url']
-  let ws_url = urlJson['ws_url']
   if (ins_url === 'https://openmd.shinnytech.com/t/md/symbols/latest.json') {
     let dt = moment().format('YYYY-MM-DD HH:mm:ss.SSSSSS')
     ins_url = `https://openmd.shinnytech.com/t/md/symbols/${dt}.json`
