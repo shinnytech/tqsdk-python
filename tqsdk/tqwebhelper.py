@@ -303,13 +303,12 @@ class TqWebHelper(object):
         # TODO：在复盘模式下发送 replay_dt 给 web 端，服务器改完后可以去掉
         if isinstance(self._api._backtest, tqsdk.api.TqReplay):
             url_response["replay_dt"] = int(datetime.combine(self._api._backtest._replay_dt, datetime.min.time()).timestamp() * 1e9)
-
         app = web.Application()
         app.router.add_get(path='/url',
                            handler=lambda request: TqWebHelper.httpserver_url_handler(url_response))
         app.router.add_get(path='/', handler=lambda request: TqWebHelper.httpserver_index_handler(self._web_dir))
-        app.router.add_static('/', self._web_dir, show_index=True)
         app.add_routes([web.get('/ws', self.connection_handler)])
+        app.router.add_static('/web', self._web_dir, show_index=True)
         runner = web.AppRunner(app)
         await runner.setup()
         server_socket = socket.socket()

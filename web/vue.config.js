@@ -1,5 +1,6 @@
 module.exports = {
   outputDir: '../tqsdk/web',
+  publicPath: 'web/',
   lintOnSave: false,
   productionSourceMap: false,
   chainWebpack: config => {
