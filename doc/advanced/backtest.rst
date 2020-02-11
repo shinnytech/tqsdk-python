@@ -19,6 +19,7 @@ TqSdk 并不提供专门的参数优化机制. 您可以按照自己的需求, �
     acc = TqSim()             # 每次回测都创建一个新的模拟账户
     try:
       api = TqApi(acc, backtest=TqBacktest(start_dt=date(2019, 5, 6), end_dt=date(2019, 5, 10)))
+      account = api.get_account()
       klines = api.get_kline_serial(SYMBOL, duration_seconds=60, data_length=LONG + 2)
       target_pos = TargetPosTask(api, SYMBOL)
       while True:
@@ -32,7 +33,7 @@ TqSdk 并不提供专门的参数优化机制. 您可以按照自己的需求, �
             target_pos.set_target_volume(1)
     except BacktestFinished:
       api.close()
-      print("SHORT=", SHORT, "最终权益=", acc.account["balance"])   # 每次回测结束时, 输出使用的参数和最终权益
+      print("SHORT=", SHORT, "最终权益=", account["balance"])   # 每次回测结束时, 输出使用的参数和最终权益
 
 
 多进程并发执行多个回测任务

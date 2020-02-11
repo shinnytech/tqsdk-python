@@ -173,7 +173,8 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
 
 
 class InsertOrderUntilAllTradedTask(object):
-    """追价下单task, 该task会在行情变化后自动撤单重下，直到全部成交"""
+    """追价下单task, 该task会在行情变化后自动撤单重下，直到全部成交
+     （注：此类主要在tqsdk内部使用，并非简单用法，不建议用户使用）"""
 
     def __init__(self, api, symbol, direction, offset, volume, price="ACTIVE", trade_chan=None):
         """
@@ -267,7 +268,7 @@ class InsertOrderUntilAllTradedTask(object):
 
 
 class InsertOrderTask(object):
-    """下单task"""
+    """下单task （注：此类主要在tqsdk内部使用，并非简单用法，不建议用户使用）"""
 
     def __init__(self, api, symbol, direction, offset, volume, limit_price=None, order_chan=None, trade_chan=None):
         """
