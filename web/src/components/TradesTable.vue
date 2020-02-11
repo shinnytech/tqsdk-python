@@ -63,10 +63,7 @@
         let account_id = self.$store.state.account_id
         if (!account_id) return
         let list = []
-        let trades = self.$tqsdk.get({
-          name: 'trades',
-          user_id: account_id
-        })
+        let trades = self.$tqsdk.getByPath(['trade', account_id, 'trades'])
         if (!trades) return
         for(let trade_id in trades){
           if (trades[trade_id]._epoch === self.$tqsdk.dm._epoch) {

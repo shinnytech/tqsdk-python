@@ -90,11 +90,7 @@
       this.$tqsdk.on('rtn_data', function() {
         let account_id = self.$store.state.account_id
         if (!account_id) return
-        let account = self.$tqsdk.get({
-          name: 'account',
-          user_id: account_id,
-          currency: 'CNY'
-        })
+        let account = self.$tqsdk.getByPath(['trade', account_id, 'accounts', 'CNY'])
         if (account && account._tqsdk_stat) {
           self.init_balance = account._tqsdk_stat.init_balance
           self.balance = account._tqsdk_stat.balance
@@ -104,10 +100,7 @@
           self.sharpe_ratio = account._tqsdk_stat.sharpe_ratio
           self.winning_rate = account._tqsdk_stat.winning_rate
           self.profit_loss_ratio = account._tqsdk_stat.profit_loss_ratio
-          let trades = self.$tqsdk.get({
-            name: 'trades',
-            user_id: account_id
-          })
+          let trades = self.$tqsdk.getByPath(['trade', account_id, 'trades'])
           let commission = 0
           for (let id in trades) commission += trades[id].commission
           self.commission = commission
