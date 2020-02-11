@@ -4,6 +4,7 @@ __author__ = 'limin'
 
 """
 tqsdk.tafunc 模块包含了一批用于技术指标计算的函数
+(函数基本保持 参数为pandas.Series类型则返回值为pandas.Series类型)
 """
 
 import datetime
@@ -779,16 +780,17 @@ def time_to_datetime(input_time):
 
 def barlast(cond):
     """
-    最近一次条件 cond 成立到当前的周期数
-    (如果 cond 长度为0或cond中无 True，函数返回-1)
+    返回一个序列，其中每个值表示从上一次条件成立到当前的周期数
+    注：
+        如果从cond序列第一个值到某个位置之间没有True，则此位置的返回值为 -1；
+        条件成立的位置上的返回值为0。
 
-     **请注意：为了便于获取更多的 barlast 数据及统一函数返回值类型，在1.5.2版 tqsdk 将会把这个函数返回值改为一个 pandas.Series 类型的序列！**
 
     Args:
-        cond (pandas.Series): 条件序列(序列中的值为 True 或 False)
+        cond (pandas.Series): 条件序列(序列中的值需为 True 或 False)
 
     Returns:
-        int : 周期数
+        pandas.Series : 周期数序列（其长度和 cond 相同；最后一个值即为最后一次条件成立到最新一个数据的周期数）
 
     Example::
 
@@ -796,17 +798,24 @@ def barlast(cond):
         from tqsdk.tafunc import barlast
 
         api = TqApi()
-        klines = api.get_kline_serial("SHFE.cu2001", 10)
+        klines = api.get_kline_serial("SHFE.cu1912", 60)
         # print(list(klines.close))
         # print(list(klines.open))
         # print(list(klines.close > klines.open))
-        n = barlast(klines.close > klines.open)  # 计算最后一次k线收盘价大于开盘价到当前的周期数
-        print(n)
+        n = barlast(klines.close > klines.open)  # 获取周期数序列
+        print(list(n))
+        print(n.iloc[-1])  # 获取最后一根k线到上一次满足 "收盘价大于开盘价" 条件的k线的周期数
         api.close()
 
-
     """
-    if len(cond) == 0 or True not in cond.tolist():
-        return -1
-
-    return len(cond) - cond.index.tolist().index(cond[cond != False].index[-1]) - 1
+    cond = cond.to_numpy()
+    v = np.array(~cond, dtype=np.int)
+    c = np.cumsum(v)
+    x = c[cond]
+    d = np.diff(np.concatenate(([0], x)))
+    if len(d) == 0:  # 如果cond长度为0或无True
+        return pd.Series([-1] * len(cond))
+    v[cond] = -d
+    r = np.cumsum(v)
+    r[:x[0]] = -1
+    return pd.Series(r)

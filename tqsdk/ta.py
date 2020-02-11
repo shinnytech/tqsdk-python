@@ -4,6 +4,7 @@ __author__ = 'chengzhi'
 
 """
 tqsdk.ta 模块包含了一批常用的技术指标计算函数
+(函数返回值类型保持为 pandas.Dataframe)
 """
 
 import numpy as np
