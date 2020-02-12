@@ -44,6 +44,7 @@ jobs:
         git lfs pull
         python -m pip install --upgrade pip wheel setuptools pytest zip-files
         python -m pip install -r requirements.txt
+        python -m pip install Sphinx==2.3.1
         python -m pip install autodocsumm sphinx_rtd_theme jieba
 
     - name: Format log path and name
@@ -58,13 +59,17 @@ jobs:
         python -W ignore::DeprecationWarning -m pytest --no-print-logs \
           --log-level=DEBUG \
           --log-file=${{steps.log_info.outputs.log_name}}.log
+
+    - name: Zip test log
+      if: always()
+      run: |
         zip-files -o ${{steps.log_info.outputs.log_archive_path}}${{steps.log_info.outputs.log_name}}.zip ./${{steps.log_info.outputs.log_name}}.log
 
     - name: Upload log to artifact
       if: always()
       uses: actions/upload-artifact@v1
       with:
-        name: ${{steps.log_info.outputs.log_name}}.zip
+        name: ${{steps.log_info.outputs.log_name}}
         path: ${{steps.log_info.outputs.log_archive_path}}
 
     - name: build Wheel on Linux Platform

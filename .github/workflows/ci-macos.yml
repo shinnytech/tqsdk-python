@@ -45,11 +45,15 @@ jobs:
         python -W ignore::DeprecationWarning -m pytest --no-print-logs \
           --log-level=DEBUG \
           --log-file=${{steps.log_info.outputs.log_name}}.log
+
+    - name: Zip test log
+      if: always()
+      run: |
         zip-files -o ${{steps.log_info.outputs.log_archive_path}}${{steps.log_info.outputs.log_name}}.zip ./${{steps.log_info.outputs.log_name}}.log
 
     - name: Upload log to artifact
       if: always()
       uses: actions/upload-artifact@v1
       with:
-        name: ${{steps.log_info.outputs.log_name}}.zip
+        name: ${{steps.log_info.outputs.log_name}}
         path: ${{steps.log_info.outputs.log_archive_path}}
