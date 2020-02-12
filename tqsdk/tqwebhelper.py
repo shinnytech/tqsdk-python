@@ -7,7 +7,6 @@
 @description: 
 """
 import os
-import re
 import sys
 import argparse
 import simplejson
@@ -323,10 +322,8 @@ class TqWebHelper(object):
     def parse_url(url):
         if isinstance(url, str):
             parse_result = urlparse(url, scheme='')
-            ip, _, port = parse_result.path.partition(":")
-            if not port:
-                ip, _, port = parse_result.netloc.partition(":")
-            return ip, port
+            addr = parse_result.netloc if parse_result.scheme == "http" else url
+            return addr.split(':')
         else:
             return '0.0.0.0', '0'
 
