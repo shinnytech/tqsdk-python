@@ -27,6 +27,19 @@ jobs:
     - name: checkout
       uses: actions/checkout@v1
 
+    - name: Setup Node.js 12.x
+      uses: actions/setup-node@v1
+      with:
+        node-version: 12.x
+
+    - name: npm install, build, and test
+      run: |
+        cd ./web/
+        npm ci
+        npm run build
+      env:
+        CI: true
+
     - name: Setup Python ${{matrix.python-version}} ${{matrix.python-arch}}
       uses: actions/setup-python@v1
       with:
@@ -50,6 +63,8 @@ jobs:
     - name: Run Test Case
       timeout-minutes: 60
       run: |
+        wget https://chromedriver.storage.googleapis.com/79.0.3945.36/chromedriver_mac64.zip
+        unzip -d ${{ github.workspace }} chromedriver_mac64.zip
         mkdir -p ${{steps.log_info.outputs.log_archive_path}}
         python -W ignore::DeprecationWarning -m pytest --no-print-logs \
           --log-level=DEBUG \

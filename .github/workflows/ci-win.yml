@@ -27,6 +27,19 @@ jobs:
     - name: checkout
       uses: actions/checkout@v1
 
+    - name: Setup Node.js 12.x
+      uses: actions/setup-node@v1
+      with:
+        node-version: 12.x
+
+    - name: npm install, build, and test
+      run: |
+        cd ./web/
+        npm ci
+        npm run build
+      env:
+        CI: true
+
     - name: Setup Python ${{matrix.python-version}} ${{matrix.python-arch}}
       uses: actions/setup-python@v1
       with:

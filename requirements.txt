@@ -8,3 +8,4 @@ pysimplegui
 matplotlib
 mplcursors
 simplejson
+selenium
