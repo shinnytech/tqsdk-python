@@ -124,6 +124,10 @@ class TqWebHelper(object):
             finally:
                 _data_task.cancel()
                 _httpserver_task.cancel()
+                try:
+                    await _httpserver_task
+                except asyncio.CancelledError:
+                    pass
 
     async def _data_handler_without_web(self, api_recv_chan, web_recv_chan):
         # 没有 web_gui, 接受全部数据转发给下游 api_recv_chan
@@ -294,30 +298,36 @@ class TqWebHelper(object):
             self._conn_diff_chans.remove(conn_chan)
 
     async def link_httpserver(self):
-        # init http server handlers
-        url_response = {
-            "ins_url": self._api._ins_url,
-            "md_url": self._api._md_url,
-        }
-        # TODO：在复盘模式下发送 replay_dt 给 web 端，服务器改完后可以去掉
-        if isinstance(self._api._backtest, tqsdk.api.TqReplay):
-            url_response["replay_dt"] = int(datetime.combine(self._api._backtest._replay_dt, datetime.min.time()).timestamp() * 1e9)
-        app = web.Application()
-        app.router.add_get(path='/url',
-                           handler=lambda request: TqWebHelper.httpserver_url_handler(url_response))
-        app.router.add_get(path='/', handler=lambda request: TqWebHelper.httpserver_index_handler(self._web_dir))
-        app.add_routes([web.get('/ws', self.connection_handler)])
-        app.router.add_static('/web', self._web_dir, show_index=True)
-        runner = web.AppRunner(app)
-        await runner.setup()
-        server_socket = socket.socket()
-        server_socket.bind((self._http_server_host, self._http_server_port))
-        address = server_socket.getsockname()
-        site = web.SockSite(runner, server_socket)
-        await site.start()
-        ip = "127.0.0.1" if address[0] == "0.0.0.0" else address[0]
-        self._logger.info("您可以访问 http://{ip}:{port} 查看策略绘制出的 K 线图形。".format(ip=ip, port=address[1]))
-        await asyncio.sleep(100000000000)
+        try:
+            url_response = {
+                "ins_url": self._api._ins_url,
+                "md_url": self._api._md_url,
+            }
+            # TODO：在复盘模式下发送 replay_dt 给 web 端，服务器改完后可以去掉
+            if isinstance(self._api._backtest, tqsdk.api.TqReplay):
+                url_response["replay_dt"] = int(datetime.combine(self._api._backtest._replay_dt, datetime.min.time()).timestamp() * 1e9)
+            app = web.Application()
+            app.router.add_get(path='/url', handler=lambda request: TqWebHelper.httpserver_url_handler(url_response))
+            app.router.add_get(path='/', handler=self.httpserver_index_handler)
+            app.router.add_get(path='/index.html', handler=self.httpserver_index_handler)
+            app.router.add_static('/web', self._web_dir, show_index=True)
+            app.add_routes([web.get('/ws', self.connection_handler)])
+            runner = web.AppRunner(app)
+            await runner.setup()
+            server_socket = socket.socket()
+            server_socket.bind((self._http_server_host, self._http_server_port))
+            address = server_socket.getsockname()
+            site = web.SockSite(runner, server_socket)
+            await site.start()
+            ip = "127.0.0.1" if address[0] == "0.0.0.0" else address[0]
+            self._logger.info("您可以访问 http://{ip}:{port} 查看策略绘制出的 K 线图形。".format(ip=ip, port=address[1]))
+            await asyncio.sleep(100000000000)
+        finally:
+            await runner.shutdown()
+            await runner.cleanup()
+
+    def httpserver_index_handler(self, request):
+        return web.FileResponse(self._web_dir + '/index.html')
 
     @staticmethod
     def parse_url(url):
@@ -331,10 +341,6 @@ class TqWebHelper(object):
     @staticmethod
     def httpserver_url_handler(response):
         return web.json_response(response)
-
-    @staticmethod
-    def httpserver_index_handler(web_dir):
-        return web.FileResponse(path=web_dir + '/index.html')
 
     @staticmethod
     def parser_arguments():
