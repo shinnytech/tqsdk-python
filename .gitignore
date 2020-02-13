@@ -45,6 +45,8 @@ nosetests.xml
 coverage.xml
 *.cover
 .hypothesis/
+chromedriver
+geckodriver
 
 # Translations
 *.mo
