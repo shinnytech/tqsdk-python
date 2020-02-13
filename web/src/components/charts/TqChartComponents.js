@@ -231,11 +231,7 @@ export default {
     updatePositionLine (snapshot) { // 持仓线
       let account_id = this.$store.state.account_id
       if (!account_id) return
-      let pos = this.$tqsdk.get({
-        name: 'position',
-        user_id: account_id,
-        symbol: chartInstance.symbol
-      })
+      let pos = this.$tqsdk.getByPath(['trade', account_id, 'positions', chartInstance.symbol])
       if (pos && pos.volume_long > 0) {
         chartInstance.addMark({
           id: 'pos_long',
@@ -272,10 +268,7 @@ export default {
     updateTrades (updateAll) { // 成交标记
       let account_id = this.$store.state.account_id
       if (!account_id) return
-      let trades =this.$tqsdk.get({
-        name: 'trades',
-        user_id: account_id
-      })
+      let trades =this.$tqsdk.getByPath(['trade', account_id, 'trades'])
       for(let trade_id in trades){
         let trade = trades[trade_id]
         if (updateAll) {
