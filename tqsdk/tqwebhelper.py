@@ -315,7 +315,8 @@ class TqWebHelper(object):
         address = server_socket.getsockname()
         site = web.SockSite(runner, server_socket)
         await site.start()
-        self._logger.info("您可以访问 http://{ip}:{port} 查看策略绘制出的 K 线图形。".format(ip=address[0], port=address[1]))
+        ip = "127.0.0.1" if address[0] == "0.0.0.0" else address[0]
+        self._logger.info("您可以访问 http://{ip}:{port} 查看策略绘制出的 K 线图形。".format(ip=ip, port=address[1]))
         await asyncio.sleep(100000000000)
 
     @staticmethod
