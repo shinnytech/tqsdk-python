@@ -193,11 +193,11 @@ class TqSim(object):
                     _is_first_datatime_recv = True
                 else:
                     quote["datetime"] = quote_diff.get("datetime", quote["datetime"])
-                # 若直接使用本地时间来判断交易时间是否在交易时间段内 可能有较大误差,因此判断的方案为:(在成交（_match_order()）前判断 估计的交易所时间 是否在交易时间段内)
+                # 若直接使用本地时间来判断下单时间是否在可交易时间段内 可能有较大误差,因此判断的方案为:(在接收到下单指令时判断 估计的交易所时间 是否在交易时间段内)
                 # 在更新最新行情时间(即self._current_datetime)时，记录当前本地时间(self._local_time_record)，
-                # 在这之后模拟成交时(_match_order())获取当前本地时间,判 "最新行情时间 + (当前本地时间 - 记录的本地时间)" 是否在交易时间段内。
+                # 在这之后若收到下单指令，则获取当前本地时间,判 "最新行情时间 + (当前本地时间 - 记录的本地时间)" 是否在交易时间段内。
                 # 另外, 若在盘后下单且下单前未订阅此合约：
-                # 因为从_md_recv()中获取数据后立即进入_match_order()速度过快(两次time.time()的时间差小于最后一笔行情(14:59:9995)到15点的时间差),
+                # 因为从_md_recv()中获取数据后立即判断下单时间则速度过快(两次time.time()的时间差小于最后一笔行情(14:59:9995)到15点的时间差),
                 # 则会立即成交,为处理此情况则将当前时间减去5毫秒（模拟发生5毫秒网络延迟）。
                 if quote["datetime"] > self._current_datetime:
                     self._current_datetime = quote["datetime"]  # 最新行情时间
@@ -229,6 +229,7 @@ class TqSim(object):
                 # 收到本 quote 第一条行情时, 将其下所有挂单的时间改为当前行情时间
                 # 此时才将 order的diff下发并将“模拟交易下单”logger信息发出（即保证了 order 的 insert_date_time 为正确的行情时间）
                 if _is_first_datatime_recv:
+                    is_in_trading_time = self._is_in_trading_time(quote)
                     for order in list(quote["orders"].values()):
                         order["insert_date_time"] = self._get_trade_timestamp()
                         self._send_order(order)
@@ -237,6 +238,8 @@ class TqSim(object):
                                               self._get_trade_timestamp() / 1e9).strftime("%Y-%m-%d %H:%M:%S.%f"),
                                           order["symbol"], order["offset"], order["direction"],
                                           order["volume_left"], order.get("limit_price", "市价"))
+                        if not is_in_trading_time:
+                            self._del_order(order, "下单失败, 不在可交易时间段内")
                 self._match_orders(quote)
                 if symbol in self._positions:
                     self._adjust_position(symbol, price=quote["last_price"])
@@ -333,7 +336,20 @@ class TqSim(object):
                               datetime.datetime.fromtimestamp(self._get_trade_timestamp() / 1e9).strftime(
                                   "%Y-%m-%d %H:%M:%S.%f"), order["symbol"], order["offset"],
                               order["direction"], order["volume_left"], order.get("limit_price", "市价"))
-            self._match_order(quote, order)
+            if not self._is_in_trading_time(quote):
+                self._del_order(order, "下单失败, 不在可交易时间段内")
+            else:
+                self._match_order(quote, order)
+
+    def _is_in_trading_time(self, quote):
+        # 在quote已收到行情后调用此函数
+        now_ns_timestamp = self._get_trade_timestamp()  # 当前预估交易所纳秒时间戳
+        # 判断当前交易所时间（估计值）是否在交易时间段内
+        for v in quote["trading_timestamp"].values():
+            for period in v:
+                if now_ns_timestamp >= period[0] and now_ns_timestamp <= period[1]:
+                    return True
+        return False
 
     def _cancel_order(self, pack):
         if pack["order_id"] in self._orders:
@@ -368,20 +384,6 @@ class TqSim(object):
         bid_price = quote["bid_price1"]
         if quote["datetime"] == "":  # 如果未收到行情，不处理
             return
-        now_ns_timestamp = self._get_trade_timestamp()  # 当前预估交易所纳秒时间戳
-        is_in_trading_time = False  # 是否在交易时间段内flag
-        # 判断当前交易所时间（估计值）是否在交易时间段内
-        for v in quote["trading_timestamp"].values():
-            for period in v:
-                if now_ns_timestamp >= period[0] and now_ns_timestamp <= period[1]:
-                    is_in_trading_time = True
-                    break
-            if is_in_trading_time:
-                break
-        if not is_in_trading_time:
-            self._del_order(order, "成交失败, 不在可交易时间段内")
-            return
-
         if "limit_price" not in order:
             price = ask_price if order["direction"] == "BUY" else bid_price
             if price != price:
