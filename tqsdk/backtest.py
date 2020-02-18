@@ -125,6 +125,7 @@ class TqBacktest(object):
             for s in self._serials.values():
                 await s["generator"].aclose()
             md_task.cancel()
+            await asyncio.gather(md_task, return_exceptions=True)
 
     async def _md_handler(self):
         async for pack in self._md_recv_chan:
