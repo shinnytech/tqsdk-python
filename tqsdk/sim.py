@@ -2,6 +2,7 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'chengzhi'
 
+import asyncio
 from datetime import datetime
 import statistics
 
@@ -106,6 +107,7 @@ class TqSim(object):
             if not self._tqsdk_stat:
                 await self._send_stat_report()
             md_task.cancel()
+            await asyncio.gather(md_task, return_exceptions=True)
 
     async def _md_handler(self):
         async for pack in self._md_recv_chan:
