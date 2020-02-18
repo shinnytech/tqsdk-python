@@ -149,7 +149,7 @@ class Quote(Entity):
         self.delivery_year = 0
         #: 期权方向
         self.option_class = ""
-        #: 合约id
+        #: 品种代码
         self.product_id = ""
 
     def _instance_entity(self, path):
