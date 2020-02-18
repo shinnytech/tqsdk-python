@@ -31,7 +31,7 @@ def run_tianqin_code(port):
     except Exception as e:
         api.close()
 
-class WebFireFoxTest(unittest.TestCase):
+class WebTest(unittest.TestCase):
 
     def setUp(self):
         self.port = "9875"
