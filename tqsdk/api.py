@@ -1251,6 +1251,8 @@ class TqApi(object):
                 "expire_datetime": v.get("expire_datetime"),
                 "delivery_month": v.get("delivery_month"),
                 "delivery_year": v.get("delivery_year"),
+                "option_class": v.get("option_class", ""),
+                "product_id": v.get("product_id", ""),
             } for k, v in rsp.json().items()
         }
 

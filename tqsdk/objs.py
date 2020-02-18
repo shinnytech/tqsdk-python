@@ -147,6 +147,10 @@ class Quote(Entity):
         self.delivery_month = 0
         #: 到期年
         self.delivery_year = 0
+        #: 期权方向
+        self.option_class = ""
+        #: 品种代码
+        self.product_id = ""
 
     def _instance_entity(self, path):
         super(Quote, self)._instance_entity(path)
