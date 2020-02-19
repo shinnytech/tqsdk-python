@@ -40,6 +40,12 @@ jobs:
       env:
         CI: true
 
+    - uses: actions/upload-artifact@v1
+      if: failure()
+      with:
+        name: node-failed-artifact
+        path: C:/npm/cache/_logs
+
     - name: Setup Python ${{matrix.python-version}} ${{matrix.python-arch}}
       uses: actions/setup-python@v1
       with:

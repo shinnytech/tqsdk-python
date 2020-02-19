@@ -66,7 +66,7 @@ class WebTest(unittest.TestCase):
         elif sys.platform.startswith("darwin"):
             exe_path = os.path.join(os.getcwd(), "chromedriver")
             opts = ChromeOptions()
-            opts.headless = True
+            # opts.headless = True
             driver = webdriver.Chrome(executable_path=exe_path, options=opts)
         else:
             return
@@ -74,7 +74,6 @@ class WebTest(unittest.TestCase):
 
 
 def run_for_driver(driver, test):
-    time.sleep(10)
     driver.implicitly_wait(30)
     driver.get("http://127.0.0.1:" + test.port)
     wait = WebDriverWait(driver, 10)
@@ -89,8 +88,14 @@ def run_for_driver(driver, test):
     main_candle_paths = chart_main_candle.find_elements_by_tag_name("path")
     test.assertEqual(6, len(main_candle_paths))
     up_body = chart_main_candle.find_element_by_css_selector("path.candle.body.up")
-    wait = WebDriverWait(driver, 10)
+    down_body = chart_main_candle.find_element_by_css_selector("path.candle.body.down")
+    up_line = chart_main_candle.find_element_by_css_selector("path.candle.line.equal")
+    down_line = chart_main_candle.find_element_by_css_selector("path.candle.line.equal")
+    wait = WebDriverWait(driver, 30)
     wait.until(path_element_has_d(up_body))  # k线图显示
+    wait.until(path_element_has_d(down_body))
+    wait.until(path_element_has_d(up_line))
+    wait.until(path_element_has_d(down_line))
     driver.close()
 
 class path_element_has_d(object):
