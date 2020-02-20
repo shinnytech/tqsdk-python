@@ -1,6 +1,14 @@
 name: MacOS Test
 
-on: [push]
+on:
+  push:
+    branches:
+      - '*'
+    tags:
+      - '*'
+  pull_request:
+    branches:
+      - 'master'
 
 jobs:
   CI:

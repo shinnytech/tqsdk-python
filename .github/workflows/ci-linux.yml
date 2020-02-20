@@ -1,6 +1,14 @@
 name: Linux Build Test and Deploy
 
-on: [push]
+on:
+  push:
+    branches:
+      - '*'
+    tags:
+      - '*'
+  pull_request:
+    branches:
+      - 'master'
 
 jobs:
   CI:
@@ -103,7 +111,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_USER_TOKEN }}
 
     - name: Setup AWS S3 dist path
-      if: matrix.python-version == '3.6.x' && startsWith(github.event.ref, 'refs/tags') != true
+      if: matrix.python-version == '3.6.x' && startsWith(github.event.ref, 'refs/heads')
       run: |
         echo "::set-env name=DEST_DIR::dist/tqsdk-python/\
         $(echo ${GITHUB_REF#refs/heads/})/$(date -d today +%Y%m%d)_$(echo ${GITHUB_SHA:0:7})/"
@@ -112,6 +120,11 @@ jobs:
       if: matrix.python-version == '3.6.x' && startsWith(github.event.ref, 'refs/tags')
       run: |
         echo "::set-env name=DEST_DIR::dist/tqsdk-python/$(echo ${GITHUB_REF#refs/tags/})/"
+
+    - name: Setup AWS S3 dist path on pull_request
+      if: matrix.python-version == '3.6.x' && github.event_name == 'pull_request'
+      run: |
+        echo "::set-env name=DEST_DIR::dist/tqsdk-python/pr-${{ github.event.number }}/"
 
     - name: Publish dist to AWS S3
       if: matrix.python-version == '3.6.x'
@@ -124,7 +137,7 @@ jobs:
         SOURCE_DIR: "dist"
 
     - name: Setup branch AWS S3 docs path
-      if: matrix.python-version == '3.6.x' && startsWith(github.event.ref, 'refs/tags') != true
+      if: matrix.python-version == '3.6.x' && startsWith(github.event.ref, 'refs/heads')
       run: |
         echo "::set-env name=DEST_DIR::docs/tqsdk-python/$(echo ${GITHUB_REF#refs/heads/})/"
 
@@ -134,7 +147,7 @@ jobs:
         echo "::set-env name=DEST_DIR::docs/tqsdk-python/$(echo ${GITHUB_REF#refs/tags/})/"
 
     - name: Publish tag build/doc to AWS S3
-      if: matrix.python-version == '3.6.x'
+      if: matrix.python-version == '3.6.x' && github.event_name != 'pull_request'
       uses: jakejarvis/s3-sync-action@master
       with:
         args: --exclude '.doctrees/*'
