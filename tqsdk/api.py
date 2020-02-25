@@ -2362,3 +2362,6 @@ class TqChan(asyncio.Queue):
 
     async def __aexit__(self, exc_type, exc, tb):
         await self.close()
+
+
+print("在使用天勤量化之前，默认您已经知晓并同意以下免责条款，如果不同意请立即停止使用：https://www.shinnytech.com/blog/disclaimer/", file=sys.stderr)
