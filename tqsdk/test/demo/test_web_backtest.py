@@ -10,7 +10,7 @@ import os
 import sys
 import time
 import unittest
-from multiprocessing import Process
+import multiprocessing as mp
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options as FirefoxOptions
 from selenium.webdriver.chrome.options import Options as ChromeOptions
@@ -40,8 +40,9 @@ def run_tianqin_code(port):
 class WebBacktestTest(unittest.TestCase):
 
     def setUp(self):
-        self.port = "9878"
-        self.tq_process = Process(target=run_tianqin_code, args=(self.port, ))
+        ctx = mp.get_context('spawn')
+        self.port = "8082"
+        self.tq_process = ctx.Process(target=run_tianqin_code, args=(self.port, ))
         self.tq_process.start()
 
     def tearDown(self):
@@ -83,7 +84,7 @@ def run_for_driver(driver, test):
     time.sleep(10)
     driver.implicitly_wait(30)
     driver.get("http://127.0.0.1:" + test.port)
-    wait = WebDriverWait(driver, 10)
+    wait = WebDriverWait(driver, 30)
     wait.until(EC.title_is("tqsdk-python-web"))  # k线图显示
     logo = driver.find_element_by_tag_name("img")
     test.assertEqual("Tianqin", logo.get_attribute("alt"))
