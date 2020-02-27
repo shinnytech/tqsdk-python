@@ -63,8 +63,6 @@ jobs:
     - name: Run Test Case
       timeout-minutes: 60
       run: |
-        wget https://chromedriver.storage.googleapis.com/79.0.3945.36/chromedriver_mac64.zip
-        unzip -d ${{ github.workspace }} chromedriver_mac64.zip
         mkdir -p ${{steps.log_info.outputs.log_archive_path}}
         python -W ignore::DeprecationWarning -m pytest --no-print-logs \
           --log-level=DEBUG \

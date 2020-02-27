@@ -64,14 +64,6 @@ jobs:
     - name: Run Test Case
       timeout-minutes: 60
       run: |
-        wget https://github.com/mozilla/geckodriver/releases/download/v0.26.0/geckodriver-v0.26.0-linux64.tar.gz
-        tar -zxvf geckodriver-v0.26.0-linux64.tar.gz -C $GITHUB_WORKSPACE
-        version=$(google-chrome --version)
-        release=LATEST_RELEASE_${version:14:2}
-        wget http://chromedriver.storage.googleapis.com/$release
-        driverversion=$(cat $release)
-        wget http://chromedriver.storage.googleapis.com/${driverversion}/chromedriver_linux64.zip
-        unzip -d $GITHUB_WORKSPACE chromedriver_linux64.zip
         mkdir -p ${{steps.log_info.outputs.log_archive_path}}
         python -W ignore::DeprecationWarning -m pytest --no-print-logs \
           --log-level=DEBUG \
