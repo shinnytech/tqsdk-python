@@ -35,16 +35,11 @@ jobs:
     - name: npm install, build, and test
       run: |
         cd ./web/
-        npm ci
-        npm run build
+        yarn install --frozen-lockfile
+        yarn run build
       env:
         CI: true
 
-    - uses: actions/upload-artifact@v1
-      if: failure()
-      with:
-        name: node-failed-artifact
-        path: C:/npm/cache/_logs
 
     - name: Setup Python ${{matrix.python-version}} ${{matrix.python-arch}}
       uses: actions/setup-python@v1

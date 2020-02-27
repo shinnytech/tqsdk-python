@@ -35,8 +35,8 @@ jobs:
     - name: npm install, build, and test
       run: |
         cd ./web/
-        npm ci
-        npm run build
+        yarn install --frozen-lockfile
+        yarn run build
       env:
         CI: true
 
