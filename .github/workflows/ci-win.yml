@@ -37,7 +37,7 @@ jobs:
       run: |
         git lfs install
         git lfs pull
-        python -m pip install --upgrade pip wheel setuptools pytest zip-files
+        python -m pip install --upgrade pip wheel setuptools pytest
         python -m pip install -r requirements.txt
         python -m pip install autodocsumm sphinx_rtd_theme jieba
 
@@ -53,12 +53,7 @@ jobs:
         mkdir -p ${{steps.log_info.outputs.log_archive_path}}
         python -W ignore::DeprecationWarning -m pytest --no-print-logs `
           --log-level=DEBUG `
-          --log-file=${{steps.log_info.outputs.log_name}}.log
-          
-    - name: Zip test log
-      if: always()
-      run: |
-        zip-files -o ${{steps.log_info.outputs.log_archive_path}}${{steps.log_info.outputs.log_name}}.zip ./${{steps.log_info.outputs.log_name}}.log
+          --log-file=${{steps.log_info.outputs.log_archive_path}}${{steps.log_info.outputs.log_name}}.log
 
     - name: Upload log to artifact
       if: always()
