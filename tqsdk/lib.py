@@ -4,6 +4,7 @@ __author__ = 'chengzhi'
 
 import datetime
 import time
+from tqsdk.sim import TqSim
 from tqsdk.api import TqChan, TqApi
 from asyncio import gather
 from typing import Optional
@@ -80,65 +81,11 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
         self._task = self._api.create_task(self._target_pos_task())
 
         self._quote = self._api.get_quote(self._symbol)
-        self._quote_update_chan = TqChan(self._api, last_only=True)
-        self._time_update_task = self._api.create_task(
-            self._update_time_from_md(symbol))  # 监听行情更新并记录当时本地时间的task
-        self._local_time_record = time.time() - 0.005  # 更新最新行情时间时的本地时间
+        self._time_update_task = self._api.create_task(self._update_time_from_md())  # 监听行情更新并记录当时本地时间的task
+        self._local_time_record = float("nan")  # 更新最新行情时间时的本地时间
         self._trading_day_end = ""  # self._quote["datetime"] 所在交易日的结束时间
-        self._trading_timestamp = {
-            "day": [],
-            "night": []
-        }  # 此quote的可交易时间段
-        self._update_trading_timestamp()  # 更新self._trading_timestamp
-
-    def _update_trading_timestamp(self):
-        """ 计算 当前qoute 所在交易日,并将这一日的交易时间段转换为纳秒时间戳（tqsdk内部使用的时间戳统一为纳秒） """
-        if not self._quote["datetime"]:  # 确认已经收到行情
-            return
-        if len(self._trading_timestamp["day"]) != 0:  # 清空
-            self._trading_timestamp = {
-                "day": [],
-                "night": []
-            }
-        current_dt = datetime.datetime.strptime(self._quote["datetime"], '%Y-%m-%d %H:%M:%S.%f')
-        current_trading_day = current_dt.date() + datetime.timedelta(
-            days=1) if current_dt.hour >= 18 else current_dt.date()
-        if int(current_trading_day.strftime("%w")) % 6 == 0:  # 周六
-            current_trading_day += datetime.timedelta(days=2)
-        last_trading_day = current_trading_day - datetime.timedelta(
-            days=3 if int(current_trading_day.strftime("%w")) % 6 == 1 else 1)  # 获取上一交易日
-        # 处理夜盘交易时间段, period：每个交易时间段 (起、止时间点)
-        for period in self._quote["trading_time"].get("night", []):
-            self._trading_timestamp["night"].append([])
-            self._trading_timestamp["night"][-1].append(
-                int(datetime.datetime.strptime(datetime.date.strftime(last_trading_day, "%Y-%m-%d") + " " + period[0],
-                                               '%Y-%m-%d %H:%M:%S').timestamp() * 1e6) * 1000)  # 起始时间(默认起始时间在上一个交易日,可优化为与结束时间相同的判断方法)
-            if int(period[1][1]) >= 4:  # 如果夜盘结束时间跨日，则结束时间在上一交易日的后一自然日
-                self._trading_timestamp["night"][-1].append(
-                    int(datetime.datetime.strptime(
-                        datetime.date.strftime(last_trading_day + datetime.timedelta(days=1), "%Y-%m-%d") + " " + str(
-                            int(period[1][1]) - 4) + period[1][2:], '%Y-%m-%d %H:%M:%S').timestamp() * 1e6) * 1000)
-            else:  # 未跨日，则结束时间在上一交易日
-                self._trading_timestamp["night"][-1].append(
-                    int(datetime.datetime.strptime(
-                        datetime.date.strftime(last_trading_day, "%Y-%m-%d") + " " + period[1],
-                        '%Y-%m-%d %H:%M:%S').timestamp() * 1e6) * 1000)
-        # 处理白盘交易时间段
-        for period in self._quote["trading_time"]["day"]:
-            self._trading_timestamp["day"].append([])
-            self._trading_timestamp["day"][-1].append(
-                int(datetime.datetime.strptime(
-                    datetime.date.strftime(current_trading_day, "%Y-%m-%d") + " " + period[0],
-                    '%Y-%m-%d %H:%M:%S').timestamp() * 1e6) * 1000)
-            self._trading_timestamp["day"][-1].append(
-                int(datetime.datetime.strptime(
-                    datetime.date.strftime(current_trading_day, "%Y-%m-%d") + " " + period[1],
-                    '%Y-%m-%d %H:%M:%S').timestamp() * 1e6) * 1000)
-        current_timestamp = int(
-            datetime.datetime.strptime(self._quote["datetime"], "%Y-%m-%d %H:%M:%S.%f").timestamp() * 1e6) * 1000
-        trading_day = self._api._get_trading_day_from_timestamp(current_timestamp)
-        self._trading_day_end = datetime.datetime.fromtimestamp(
-            (self._api._get_trading_day_end_time(trading_day) - 1000) / 1e9).strftime("%Y-%m-%d %H:%M:%S.%f")
+        self._update_time_record()
+        self._local_time_record_update_chan = TqChan(self._api)  # 监听 self._local_time_record 更新的 channel
 
     def set_target_volume(self, volume: int) -> None:
         """
@@ -213,45 +160,35 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
             order_volume = 0
         return order_offset, order_dir, order_volume
 
-    async def _update_time_from_md(self, symbol):
+    async def _update_time_from_md(self):
         """监听行情更新并记录当时本地时间的task"""
-        async with self._api.register_update_notify(self._quote, chan=self._quote_update_chan):
-            async for _ in self._quote_update_chan:  # quote有更新
+        async with self._api.register_update_notify(self._quote) as quote_update_chan:
+            async for _ in quote_update_chan:  # quote有更新时:更新记录的时间
                 self._update_time_record()
+                self._local_time_record_update_chan.send_nowait(True)  # 通知记录的时间有更新
 
     def _update_time_record(self):
         self._local_time_record = time.time() - 0.005  # 更新最新行情时间时的本地时间
         if self._quote["datetime"] > self._trading_day_end:  # 新交易日
-            self._update_trading_timestamp()
-
-    def _is_in_trading_time(self):
-        now_ns_timestamp = int(
-            (datetime.datetime.strptime(self._quote["datetime"], "%Y-%m-%d %H:%M:%S.%f").timestamp() + (
-                    time.time() - self._local_time_record)) * 1e6) * 1000
-        # 判断当前交易所时间（估计值）是否在交易时间段内
-        for v in self._trading_timestamp.values():
-            for period in v:
-                if now_ns_timestamp >= period[0] and now_ns_timestamp <= period[1]:
-                    return True
-        return False
+            current_timestamp = int(
+                datetime.datetime.strptime(self._quote["datetime"], "%Y-%m-%d %H:%M:%S.%f").timestamp() * 1e6) * 1000
+            trading_day = TqApi._get_trading_day_from_timestamp(current_timestamp)
+            self._trading_day_end = datetime.datetime.fromtimestamp(
+                (TqApi._get_trading_day_end_time(trading_day) - 1000) / 1e9).strftime("%Y-%m-%d %H:%M:%S.%f")
 
     async def _target_pos_task(self):
         """负责调整目标持仓的task"""
         try:
             async for target_pos in self._pos_chan:
-                # todo: 交易时间判断相关的函数在 lib 和 sim 中有两份几乎相同代码，可修改为通用函数避免代码冗余
                 # lib 中对于时间判断的方案:
-                # 如果当前时间（模拟交易所时间）不在交易时间段内，则：等待直到行情更新
-                # 行情更新（即下一交易时段开始）后：获取target_pos最新的目标仓位, 开始调整仓位
-                async with self._api.register_update_notify(self._quote) as update_chan:
-                    # 确保获得初始行情
-                    while not self._is_in_trading_time():  # 如果在交易时间段内
-                        await update_chan.recv()
-                        # 如果_time_update_task在这之后运行，则下一次判断是否在交易时间段内时使用的是旧数据，因此增加一次判断并更新为最新数据
-                        if self._quote_update_chan:
-                            self._update_time_record()
-                target_pos = self._pos_chan.recv_latest(target_pos)  # 获取最后一个target_pos目标仓位
+                #   如果当前时间（模拟交易所时间）不在交易时间段内，则：等待直到行情更新
+                #   行情更新（即下一交易时段开始）后：获取target_pos最新的目标仓位, 开始调整仓位
 
+                # 如果不在可交易时间段内: 等待更新
+                while not TqSim._is_in_trading_time(self._quote, self._quote["datetime"], self._local_time_record):
+                    await self._local_time_record_update_chan.recv()
+
+                target_pos = self._pos_chan.recv_latest(target_pos)  # 获取最后一个target_pos目标仓位
                 # 确定调仓增减方向
                 delta_volume = target_pos - self._pos.pos
                 pending_forzen = 0
