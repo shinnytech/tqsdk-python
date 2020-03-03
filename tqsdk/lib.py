@@ -85,7 +85,7 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
         self._local_time_record = float("nan")  # 更新最新行情时间时的本地时间
         self._trading_day_end = ""  # self._quote["datetime"] 所在交易日的结束时间
         self._update_time_record()
-        self._local_time_record_update_chan = TqChan(self._api)  # 监听 self._local_time_record 更新的 channel
+        self._local_time_record_update_chan = TqChan(self._api, last_only=True)  # 监听 self._local_time_record 更新
 
     def set_target_volume(self, volume: int) -> None:
         """
