@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: checkout
+    - name: Checkout
       uses: actions/checkout@v1
 
     - name: Setup Node.js 12.x
@@ -32,7 +32,7 @@ jobs:
       with:
         node-version: 12.x
 
-    - name: npm install, build, and test
+    - name: Package web
       run: |
         cd ./web/
         yarn install --frozen-lockfile
@@ -61,7 +61,7 @@ jobs:
         echo "::set-output name=log_name::Linux_$(date -d today +%Y%m%d)_${{matrix.python-version}}_${{matrix.python-arch}}_$(echo ${GITHUB_SHA:0:7})"
         echo "::set-output name=log_archive_path::./log_archive/"
 
-    - name: Run Test Case
+    - name: Run test case
       timeout-minutes: 60
       run: |
         mkdir -p ${{steps.log_info.outputs.log_archive_path}}
@@ -76,7 +76,7 @@ jobs:
         name: ${{steps.log_info.outputs.log_name}}
         path: ${{steps.log_info.outputs.log_archive_path}}
 
-    - name: build Wheel on Linux Platform
+    - name: Build wheel on linux platform
       run: |
         pip list
         ## wheel包及源码包制作
