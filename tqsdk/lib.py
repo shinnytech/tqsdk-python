@@ -4,6 +4,7 @@ __author__ = 'chengzhi'
 
 import datetime
 import time
+from tqsdk.datetime import _get_trading_day_end_time, _get_trading_day_from_timestamp
 from tqsdk.sim import TqSim
 from tqsdk.api import TqChan, TqApi
 from asyncio import gather
@@ -172,9 +173,8 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
         if self._quote["datetime"] > self._trading_day_end:  # 新交易日
             current_timestamp = int(
                 datetime.datetime.strptime(self._quote["datetime"], "%Y-%m-%d %H:%M:%S.%f").timestamp() * 1e6) * 1000
-            trading_day = TqApi._get_trading_day_from_timestamp(current_timestamp)
-            self._trading_day_end = datetime.datetime.fromtimestamp(
-                (TqApi._get_trading_day_end_time(trading_day) - 1000) / 1e9).strftime("%Y-%m-%d %H:%M:%S.%f")
+            trading_day = _get_trading_day_from_timestamp(current_timestamp)
+            self._trading_day_end = datetime.datetime.fromtimestamp((_get_trading_day_end_time(trading_day) - 1000) / 1e9).strftime("%Y-%m-%d %H:%M:%S.%f")
 
     async def _target_pos_task(self):
         """负责调整目标持仓的task"""

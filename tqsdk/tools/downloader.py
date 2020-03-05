@@ -6,6 +6,7 @@ import csv
 from typing import Union, List
 from datetime import date, datetime
 from tqsdk.api import TqApi
+from tqsdk.datetime import _get_trading_day_start_time, _get_trading_day_end_time
 
 
 class DataDownloader:
@@ -66,13 +67,11 @@ class DataDownloader:
         if isinstance(start_dt, datetime):
             self._start_dt_nano = int(start_dt.timestamp() * 1e9)
         else:
-            self._start_dt_nano = TqApi._get_trading_day_start_time(
-                int(datetime(start_dt.year, start_dt.month, start_dt.day).timestamp()) * 1000000000)
+            self._start_dt_nano = _get_trading_day_start_time(int(datetime(start_dt.year, start_dt.month, start_dt.day).timestamp()) * 1000000000)
         if isinstance(end_dt, datetime):
             self._end_dt_nano = int(end_dt.timestamp() * 1e9)
         else:
-            self._end_dt_nano = TqApi._get_trading_day_end_time(
-                int(datetime(end_dt.year, end_dt.month, end_dt.day).timestamp()) * 1000000000)
+            self._end_dt_nano = _get_trading_day_end_time(int(datetime(end_dt.year, end_dt.month, end_dt.day).timestamp()) * 1000000000)
         self._current_dt_nano = self._start_dt_nano
         self._symbol_list = symbol_list if isinstance(symbol_list, list) else [symbol_list]
         self._dur_nano = dur_sec * 1000000000
