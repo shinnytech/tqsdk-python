@@ -119,7 +119,10 @@ class MockServer():
                 await self.stop_signal
 
     def _run(self):
-        self.script_file = lzma.open(self.script_file_name, "rt", encoding="utf-8")
+        if str.endswith(self.script_file_name, "lzma"):
+            self.script_file = lzma.open(self.script_file_name, "rt", encoding="utf-8")
+        else:  # 用于本地script还未压缩成lzma文件时运行测试用例
+            self.script_file = open(self.script_file_name, "rt", encoding="utf-8")
         asyncio.set_event_loop(self.loop)
         self.loop.run_until_complete(self._server())
 
