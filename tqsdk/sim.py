@@ -338,8 +338,7 @@ class TqSim(object):
             order["insert_date_time"] = TqSim._get_trade_timestamp(self._current_datetime, self._local_time_record)
             self._send_order(order)
             self._logger.info("模拟交易下单 %s: 时间:%s,合约:%s,开平:%s,方向:%s,手数:%s,价格:%s", order["order_id"],
-                              datetime.datetime.fromtimestamp(TqSim._get_trade_timestamp(self._current_datetime,
-                                                                                         self._local_time_record) / 1e9).strftime(
+                              datetime.datetime.fromtimestamp(order["insert_date_time"] / 1e9).strftime(
                                   "%Y-%m-%d %H:%M:%S.%f"), order["symbol"], order["offset"], order["direction"],
                               order["volume_left"], order.get("limit_price", "市价"))
             if not TqSim._is_in_trading_time(quote, self._current_datetime, self._local_time_record):
