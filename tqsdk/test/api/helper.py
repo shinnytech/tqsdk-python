@@ -132,9 +132,9 @@ class MockServer():
         for line in self.script_file:
             # 2019-09-09 16:22:40,652 - DEBUG - websocket message sent to wss://openmd.shinnytech.com/t/md/front/mobile: {"aid": "subscribe_quote",
             item = {}
-            if "websocket message sent" in line and "peek_message" not in line:
+            if "websocket message sent" in line and "peek_message" not in line:  # 在api角度的sent
                 item["type"] = "sent"
-            elif "websocket message received" in line:
+            elif "websocket message received" in line:  # 在api角度的received
                 item["type"] = "received"
             else:
                 continue

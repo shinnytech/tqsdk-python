@@ -175,14 +175,6 @@ class TestTdBacktest(unittest.TestCase):
 
         api.close()
 
-    def is_time_in_correct_duration(self, expect_time, insert_date_time):
-        """用于判断模拟交易时间"""
-        time_interval = 100000000  # 时间间隔
-        if expect_time - time_interval <= insert_date_time and insert_date_time <= expect_time + time_interval:
-            return True
-        else:
-            return False
-
     def test_sim_insert_order_time_check_1(self):
         """
         模拟交易下单时间判断测试1
@@ -200,14 +192,13 @@ class TestTdBacktest(unittest.TestCase):
         """
         # 预设服务器端响应
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        self.mock.run(os.path.join(dir_path, "log_file", "test_sim_insert_order_time_check_1.script"))
+        self.mock.run(os.path.join(dir_path, "log_file", "test_sim_insert_order_time_check_1.script.lzma"))
 
         # 测试
         TqApi.RD = random.Random(4)
         api = TqApi(
             backtest=TqBacktest(datetime.datetime(2019, 12, 2, 21, 0, 0), datetime.datetime(2019, 12, 3, 1, 0, 0)),
-            _ins_url=self.ins_url_2019_12_04, _td_url=self.td_url, _md_url=self.md_url,
-            debug="test_sim_insert_order_time_check_2.script")  # 2019.12.2周一
+            _ins_url=self.ins_url_2019_12_04, _td_url=self.td_url, _md_url=self.md_url)  # 2019.12.2周一
         symbol1 = "DCE.jd2002"  # 无夜盘
         symbol2 = "SHFE.rb2002"  # 夜盘23点结束
         symbol3 = "SHFE.cu2002"  # 夜盘凌晨1点结束
@@ -236,7 +227,7 @@ class TestTdBacktest(unittest.TestCase):
             self.assertEqual(order1.price_type, 'LIMIT')
             self.assertEqual(order1.volume_condition, 'ANY')
             self.assertEqual(order1.time_condition, 'GFD')
-            self.assertEqual(self.is_time_in_correct_duration(1575291600697893000, order1.insert_date_time), True)
+            self.assertAlmostEqual(1575291600697893000 / 1e9, order1.insert_date_time / 1e9, places=0)
 
             self.assertEqual(order2.order_id, "c79d679346d4ac7a5c3902b38963dc6e")
             self.assertEqual(order2.direction, 'BUY')
@@ -247,7 +238,7 @@ class TestTdBacktest(unittest.TestCase):
             self.assertEqual(order2.price_type, 'LIMIT')
             self.assertEqual(order2.volume_condition, 'ANY')
             self.assertEqual(order2.time_condition, 'GFD')
-            self.assertEqual(self.is_time_in_correct_duration(1575291600665972000, order2.insert_date_time), True)
+            self.assertAlmostEqual(1575291600665972000 / 1e9, order2.insert_date_time / 1e9, places=0)
             self.assertEqual(order3.order_id, "43000de01b2ed40ed3addccb2c33be0a")
             self.assertEqual(order3.direction, 'BUY')
             self.assertEqual(order3.offset, 'OPEN')
@@ -257,7 +248,7 @@ class TestTdBacktest(unittest.TestCase):
             self.assertEqual(order3.price_type, 'LIMIT')
             self.assertEqual(order3.volume_condition, 'ANY')
             self.assertEqual(order3.time_condition, 'GFD')
-            self.assertEqual(self.is_time_in_correct_duration(1575291600666268000, order3.insert_date_time), True)
+            self.assertAlmostEqual(1575291600666268000 / 1e9, order3.insert_date_time / 1e9, places=0)
 
             # 2 正常夜盘时间下单
             while datetime.datetime.strptime(quote3.datetime, "%Y-%m-%d %H:%M:%S.%f") < datetime.datetime(2019, 12, 2,
@@ -277,9 +268,9 @@ class TestTdBacktest(unittest.TestCase):
             self.assertEqual(order2.volume_left, 0)
             self.assertEqual(order3.volume_orign, 3)
             self.assertEqual(order3.volume_left, 0)
-            self.assertEqual(self.is_time_in_correct_duration(1575292560005832000, order1.insert_date_time), True)
-            self.assertEqual(self.is_time_in_correct_duration(1575292560006044000, order2.insert_date_time), True)
-            self.assertEqual(self.is_time_in_correct_duration(1575292560006207000, order3.insert_date_time), True)
+            self.assertAlmostEqual(1575292560005832000 / 1e9, order1.insert_date_time / 1e9, places=1)
+            self.assertAlmostEqual(1575292560006044000 / 1e9, order2.insert_date_time / 1e9, places=1)
+            self.assertAlmostEqual(1575292560006207000 / 1e9, order3.insert_date_time / 1e9, places=1)
 
             # 3 23：00rb2002停止交易后不能下单，cu2002能下单；
             while datetime.datetime.strptime(quote3.datetime, "%Y-%m-%d %H:%M:%S.%f") < datetime.datetime(2019, 12, 2,
@@ -299,9 +290,9 @@ class TestTdBacktest(unittest.TestCase):
             self.assertEqual(order2.volume_left, 2)
             self.assertEqual(order3.volume_orign, 3)
             self.assertEqual(order3.volume_left, 0)
-            self.assertEqual(self.is_time_in_correct_duration(1575298860006062000, order1.insert_date_time), True)
-            self.assertEqual(self.is_time_in_correct_duration(1575298860006788000, order2.insert_date_time), True)
-            self.assertEqual(self.is_time_in_correct_duration(1575298860007416000, order3.insert_date_time), True)
+            self.assertAlmostEqual(1575298860006062000 / 1e9, order1.insert_date_time / 1e9, places=1)
+            self.assertAlmostEqual(1575298860006788000 / 1e9, order2.insert_date_time / 1e9, places=1)
+            self.assertAlmostEqual(1575298860007416000 / 1e9, order3.insert_date_time / 1e9, places=1)
 
             while True:
                 api.wait_update()
@@ -326,7 +317,7 @@ class TestTdBacktest(unittest.TestCase):
         """
         # 预设服务器端响应
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        self.mock.run(os.path.join(dir_path, "log_file", "test_sim_insert_order_time_check_2.script"))
+        self.mock.run(os.path.join(dir_path, "log_file", "test_sim_insert_order_time_check_2.script.lzma"))
         # 测试
         TqApi.RD = random.Random(4)
         api = TqApi(
@@ -357,9 +348,9 @@ class TestTdBacktest(unittest.TestCase):
             self.assertEqual(order2.volume_left, 0)
             self.assertEqual(order3.volume_orign, 3)
             self.assertEqual(order3.volume_left, 0)
-            self.assertEqual(self.is_time_in_correct_duration(1581905700669263000, order1.insert_date_time), True)
-            self.assertEqual(self.is_time_in_correct_duration(1581905700669835000, order2.insert_date_time), True)
-            self.assertEqual(self.is_time_in_correct_duration(1581905700670137000, order3.insert_date_time), True)
+            self.assertAlmostEqual(1581905700669263000 / 1e9, order1.insert_date_time / 1e9, places=0)
+            self.assertAlmostEqual(1581905700669835000 / 1e9, order2.insert_date_time / 1e9, places=0)
+            self.assertAlmostEqual(1581905700670137000 / 1e9, order3.insert_date_time / 1e9, places=0)
 
             # 2 10:15 - 10:30之间 IF、T能下单；
             while datetime.datetime.strptime(quote3.datetime, "%Y-%m-%d %H:%M:%S.%f") < datetime.datetime(2020, 2, 17,
@@ -377,9 +368,9 @@ class TestTdBacktest(unittest.TestCase):
             self.assertEqual(order2.volume_left, 0)
             self.assertEqual(order3.volume_orign, 3)
             self.assertEqual(order3.volume_left, 0)
-            self.assertEqual(self.is_time_in_correct_duration(1581906060006487000, order1.insert_date_time), True)
-            self.assertEqual(self.is_time_in_correct_duration(1581906060007280000, order2.insert_date_time), True)
-            self.assertEqual(self.is_time_in_correct_duration(1581906060008033000, order3.insert_date_time), True)
+            self.assertAlmostEqual(1581906060006487000 / 1e9, order1.insert_date_time / 1e9, places=1)
+            self.assertAlmostEqual(1581906060007280000 / 1e9, order2.insert_date_time / 1e9, places=1)
+            self.assertAlmostEqual(1581906060008033000 / 1e9, order3.insert_date_time / 1e9, places=1)
 
             # 3 10:30 - 10:45之间 IF、T、cu都能下单；
             while datetime.datetime.strptime(quote3.datetime, "%Y-%m-%d %H:%M:%S.%f") < datetime.datetime(2020, 2, 17,
@@ -397,9 +388,9 @@ class TestTdBacktest(unittest.TestCase):
             self.assertEqual(order2.volume_left, 0)
             self.assertEqual(order3.volume_orign, 3)
             self.assertEqual(order3.volume_left, 0)
-            self.assertEqual(self.is_time_in_correct_duration(1581906660005991000, order1.insert_date_time), True)
-            self.assertEqual(self.is_time_in_correct_duration(1581906660006376000, order2.insert_date_time), True)
-            self.assertEqual(self.is_time_in_correct_duration(1581906660007046000, order3.insert_date_time), True)
+            self.assertAlmostEqual(1581906660005991000 / 1e9, order1.insert_date_time / 1e9, places=1)
+            self.assertAlmostEqual(1581906660006376000 / 1e9, order2.insert_date_time / 1e9, places=1)
+            self.assertAlmostEqual(1581906660007046000 / 1e9, order3.insert_date_time / 1e9, places=1)
 
             while True:
                 api.wait_update()
@@ -429,7 +420,7 @@ class TestTdBacktest(unittest.TestCase):
         """
         # 预设服务器端响应
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        self.mock.run(os.path.join(dir_path, "log_file", "test_sim_insert_order_time_check_3.script"))
+        self.mock.run(os.path.join(dir_path, "log_file", "test_sim_insert_order_time_check_3.script.lzma"))
         # 测试
         TqApi.RD = random.Random(4)
         api = TqApi(
@@ -460,9 +451,9 @@ class TestTdBacktest(unittest.TestCase):
             self.assertEqual(order2.volume_left, 0)
             self.assertEqual(order3.volume_orign, 3)
             self.assertEqual(order3.volume_left, 0)
-            self.assertEqual(self.is_time_in_correct_duration(1581906569683466000, order1.insert_date_time), True)
-            self.assertEqual(self.is_time_in_correct_duration(1581906569684261000, order2.insert_date_time), True)
-            self.assertEqual(self.is_time_in_correct_duration(1581906569684818000, order3.insert_date_time), True)
+            self.assertAlmostEqual(1581906569683466000 / 1e9, order1.insert_date_time / 1e9, places=0)
+            self.assertAlmostEqual(1581906569684261000 / 1e9, order2.insert_date_time / 1e9, places=0)
+            self.assertAlmostEqual(1581906569684818000 / 1e9, order3.insert_date_time / 1e9, places=0)
 
             # 2 10:30 之后都能下单；
             while max(quote1.datetime, quote2.datetime, quote3.datetime) < "2020-02-17 10:30:00.000000":
@@ -481,9 +472,9 @@ class TestTdBacktest(unittest.TestCase):
             self.assertEqual(order2.volume_left, 0)
             self.assertEqual(order3.volume_orign, 3)
             self.assertEqual(order3.volume_left, 0)
-            self.assertEqual(self.is_time_in_correct_duration(1581906660007331000, order1.insert_date_time), True)
-            self.assertEqual(self.is_time_in_correct_duration(1581906660008030000, order2.insert_date_time), True)
-            self.assertEqual(self.is_time_in_correct_duration(1581906660008637000, order3.insert_date_time), True)
+            self.assertAlmostEqual(1581906660007331000 / 1e9, order1.insert_date_time / 1e9, places=1)
+            self.assertAlmostEqual(1581906660008030000 / 1e9, order2.insert_date_time / 1e9, places=1)
+            self.assertAlmostEqual(1581906660008637000 / 1e9, order3.insert_date_time / 1e9, places=1)
 
             # 3 11：29：29.999999 都不能下单
             while max(quote1.datetime, quote2.datetime, quote3.datetime) != "2020-02-17 11:29:59.999999":
@@ -502,9 +493,9 @@ class TestTdBacktest(unittest.TestCase):
             self.assertEqual(order2.volume_left, 2)
             self.assertEqual(order3.volume_orign, 3)
             self.assertEqual(order3.volume_left, 3)
-            self.assertEqual(self.is_time_in_correct_duration(1581910200006755000, order1.insert_date_time), True)
-            self.assertEqual(self.is_time_in_correct_duration(1581910200007346000, order2.insert_date_time), True)
-            self.assertEqual(self.is_time_in_correct_duration(1581910200007805000, order3.insert_date_time), True)
+            self.assertAlmostEqual(1581910200006755000 / 1e9, order1.insert_date_time / 1e9, places=1)
+            self.assertAlmostEqual(1581910200007346000 / 1e9, order2.insert_date_time / 1e9, places=1)
+            self.assertAlmostEqual(1581910200007805000 / 1e9, order3.insert_date_time / 1e9, places=1)
 
             # 4 13:00 之后T、IF能下单，cu不能下单
             while max(quote1.datetime, quote2.datetime, quote3.datetime) < "2020-02-17 13:00:00.000000":
@@ -523,9 +514,9 @@ class TestTdBacktest(unittest.TestCase):
             self.assertEqual(order2.volume_left, 0)
             self.assertEqual(order3.volume_orign, 3)
             self.assertEqual(order3.volume_left, 0)
-            self.assertEqual(self.is_time_in_correct_duration(1581915660005970000, order1.insert_date_time), True)
-            self.assertEqual(self.is_time_in_correct_duration(1581915660006578000, order2.insert_date_time), True)
-            self.assertEqual(self.is_time_in_correct_duration(1581915660006946000, order3.insert_date_time), True)
+            self.assertAlmostEqual(1581915660005970000 / 1e9, order1.insert_date_time / 1e9, places=1)
+            self.assertAlmostEqual(1581915660006578000 / 1e9, order2.insert_date_time / 1e9, places=1)
+            self.assertAlmostEqual(1581915660006946000 / 1e9, order3.insert_date_time / 1e9, places=1)
 
             # 5 13:30 之后都能下单
             while max(quote1.datetime, quote2.datetime, quote3.datetime) < "2020-02-17 13:30:00.000000":
@@ -544,9 +535,9 @@ class TestTdBacktest(unittest.TestCase):
             self.assertEqual(order2.volume_left, 0)
             self.assertEqual(order3.volume_orign, 3)
             self.assertEqual(order3.volume_left, 0)
-            self.assertEqual(self.is_time_in_correct_duration(1581917460006190000, order1.insert_date_time), True)
-            self.assertEqual(self.is_time_in_correct_duration(1581917460006589000, order2.insert_date_time), True)
-            self.assertEqual(self.is_time_in_correct_duration(1581917460006982000, order3.insert_date_time), True)
+            self.assertAlmostEqual(1581917460006190000 / 1e9, order1.insert_date_time / 1e9, places=1)
+            self.assertAlmostEqual(1581917460006589000 / 1e9, order2.insert_date_time / 1e9, places=1)
+            self.assertAlmostEqual(1581917460006982000 / 1e9, order3.insert_date_time / 1e9, places=1)
 
             # 6 15:00 - 15:15 : T能下单，IF、cu不能下单;
             while max(quote1.datetime, quote2.datetime, quote3.datetime) < "2020-02-17 15:00:00.000000":
@@ -565,9 +556,9 @@ class TestTdBacktest(unittest.TestCase):
             self.assertEqual(order2.volume_left, 0)
             self.assertEqual(order3.volume_orign, 3)
             self.assertEqual(order3.volume_left, 3)
-            self.assertEqual(self.is_time_in_correct_duration(1581922860005861000, order1.insert_date_time), True)
-            self.assertEqual(self.is_time_in_correct_duration(1581922860006710000, order2.insert_date_time), True)
-            self.assertEqual(self.is_time_in_correct_duration(1581922860007193000, order3.insert_date_time), True)
+            self.assertAlmostEqual(1581922860005861000 / 1e9, order1.insert_date_time / 1e9, places=1)
+            self.assertAlmostEqual(1581922860006710000 / 1e9, order2.insert_date_time / 1e9, places=1)
+            self.assertAlmostEqual(1581922860007193000 / 1e9, order3.insert_date_time / 1e9, places=1)
 
             # 7 15:15之后都不能下单
             while max(quote1.datetime, quote2.datetime, quote3.datetime) != "2020-02-17 15:14:59.999999":
@@ -584,9 +575,9 @@ class TestTdBacktest(unittest.TestCase):
             self.assertEqual(order2.volume_left, 2)
             self.assertEqual(order3.volume_orign, 3)
             self.assertEqual(order3.volume_left, 3)
-            self.assertEqual(self.is_time_in_correct_duration(1581923700005658000, order1.insert_date_time), True)
-            self.assertEqual(self.is_time_in_correct_duration(1581923700006205000, order2.insert_date_time), True)
-            self.assertEqual(self.is_time_in_correct_duration(1581923700006644000, order3.insert_date_time), True)
+            self.assertAlmostEqual(1581923700005658000 / 1e9, order1.insert_date_time / 1e9, places=1)
+            self.assertAlmostEqual(1581923700006205000 / 1e9, order2.insert_date_time / 1e9, places=1)
+            self.assertAlmostEqual(1581923700006644000 / 1e9, order3.insert_date_time / 1e9, places=1)
 
             while True:
                 api.wait_update()
@@ -613,7 +604,7 @@ class TestTdBacktest(unittest.TestCase):
         """
         # 预设服务器端响应
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        self.mock.run(os.path.join(dir_path, "log_file", "test_sim_insert_order_time_check_4.script"))
+        self.mock.run(os.path.join(dir_path, "log_file", "test_sim_insert_order_time_check_4.script.lzma"))
 
         TqApi.RD = random.Random(4)
         api = TqApi(backtest=TqBacktest(datetime.date(2019, 12, 2), datetime.date(2019, 12, 3)),
@@ -643,9 +634,9 @@ class TestTdBacktest(unittest.TestCase):
             self.assertEqual(order2.volume_left, 2)
             self.assertEqual(order3.volume_orign, 3)
             self.assertEqual(order3.volume_left, 3)
-            self.assertEqual(self.is_time_in_correct_duration(1575021600659002000, order1.insert_date_time), True)
-            self.assertEqual(self.is_time_in_correct_duration(1575021600659604000, order2.insert_date_time), True)
-            self.assertEqual(self.is_time_in_correct_duration(1575021600660059000, order3.insert_date_time), True)
+            self.assertAlmostEqual(1575021600659002000 / 1e9, order1.insert_date_time / 1e9, places=0)
+            self.assertAlmostEqual(1575021600659604000 / 1e9, order2.insert_date_time / 1e9, places=0)
+            self.assertAlmostEqual(1575021600660059000 / 1e9, order3.insert_date_time / 1e9, places=0)
 
             # 2 周五晚21：00之后: cu和rb能成交
             while max(quote1.datetime, quote2.datetime, quote3.datetime) < "2019-11-29 21:00:00.000000":
@@ -664,9 +655,9 @@ class TestTdBacktest(unittest.TestCase):
             self.assertEqual(order2.volume_left, 0)
             self.assertEqual(order3.volume_orign, 3)
             self.assertEqual(order3.volume_left, 3)
-            self.assertEqual(self.is_time_in_correct_duration(1575032460005588000, order1.insert_date_time), True)
-            self.assertEqual(self.is_time_in_correct_duration(1575032460006011000, order2.insert_date_time), True)
-            self.assertEqual(self.is_time_in_correct_duration(1575032460006358000, order3.insert_date_time), True)
+            self.assertAlmostEqual(1575032460005588000 / 1e9, order1.insert_date_time / 1e9, places=1)
+            self.assertAlmostEqual(1575032460006011000 / 1e9, order2.insert_date_time / 1e9, places=1)
+            self.assertAlmostEqual(1575032460006358000 / 1e9, order3.insert_date_time / 1e9, places=1)
 
             # 3 周六凌晨1点前：cu能成交
             while max(quote1.datetime, quote2.datetime, quote3.datetime) < "2019-11-30 00:01:00.000000":
@@ -685,9 +676,9 @@ class TestTdBacktest(unittest.TestCase):
             self.assertEqual(order2.volume_left, 2)
             self.assertEqual(order3.volume_orign, 3)
             self.assertEqual(order3.volume_left, 3)
-            self.assertEqual(self.is_time_in_correct_duration(1575043320005757000, order1.insert_date_time), True)
-            self.assertEqual(self.is_time_in_correct_duration(1575043320006238000, order2.insert_date_time), True)
-            self.assertEqual(self.is_time_in_correct_duration(1575043320006689000, order3.insert_date_time), True)
+            self.assertAlmostEqual(1575043320005757000 / 1e9, order1.insert_date_time / 1e9, places=1)
+            self.assertAlmostEqual(1575043320006238000 / 1e9, order2.insert_date_time / 1e9, places=1)
+            self.assertAlmostEqual(1575043320006689000 / 1e9, order3.insert_date_time / 1e9, places=1)
 
             # 4 周一早9点后都能成交
             while max(quote1.datetime, quote2.datetime, quote3.datetime) < "2019-12-02 09:00:00.000000":
@@ -706,9 +697,9 @@ class TestTdBacktest(unittest.TestCase):
             self.assertEqual(order2.volume_left, 0)
             self.assertEqual(order3.volume_orign, 3)
             self.assertEqual(order3.volume_left, 0)
-            self.assertEqual(self.is_time_in_correct_duration(1575248460005929000, order1.insert_date_time), True)
-            self.assertEqual(self.is_time_in_correct_duration(1575248460006289000, order2.insert_date_time), True)
-            self.assertEqual(self.is_time_in_correct_duration(1575248460006591000, order3.insert_date_time), True)
+            self.assertAlmostEqual(1575248460005929000 / 1e9, order1.insert_date_time / 1e9, places=1)
+            self.assertAlmostEqual(1575248460006289000 / 1e9, order2.insert_date_time / 1e9, places=1)
+            self.assertAlmostEqual(1575248460006591000 / 1e9, order3.insert_date_time / 1e9, places=1)
 
             # 5 周一晚21点后cu和rb能成交
             while max(quote1.datetime, quote2.datetime, quote3.datetime) < "2019-12-02 21:00:00.000000":
@@ -727,9 +718,9 @@ class TestTdBacktest(unittest.TestCase):
             self.assertEqual(order2.volume_left, 0)
             self.assertEqual(order3.volume_orign, 3)
             self.assertEqual(order3.volume_left, 3)
-            self.assertEqual(self.is_time_in_correct_duration(1575291660006048000, order1.insert_date_time), True)
-            self.assertEqual(self.is_time_in_correct_duration(1575291660006438000, order2.insert_date_time), True)
-            self.assertEqual(self.is_time_in_correct_duration(1575291660006775000, order3.insert_date_time), True)
+            self.assertAlmostEqual(1575291660006048000 / 1e9, order1.insert_date_time / 1e9, places=1)
+            self.assertAlmostEqual(1575291660006438000 / 1e9, order2.insert_date_time / 1e9, places=1)
+            self.assertAlmostEqual(1575291660006775000 / 1e9, order3.insert_date_time / 1e9, places=1)
 
             while True:
                 api.wait_update()
@@ -754,7 +745,7 @@ class TestTdBacktest(unittest.TestCase):
         """
         # 预设服务器端响应
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        self.mock.run(os.path.join(dir_path, "log_file", "test_sim_insert_order_time_check_5.script"))
+        self.mock.run(os.path.join(dir_path, "log_file", "test_sim_insert_order_time_check_5.script.lzma"))
 
         TqApi.RD = random.Random(4)
         api = TqApi(backtest=TqBacktest(datetime.date(2019, 12, 3), datetime.date(2019, 12, 4)),
@@ -784,9 +775,9 @@ class TestTdBacktest(unittest.TestCase):
             self.assertEqual(order2.volume_left, 2)
             self.assertEqual(order3.volume_orign, 3)
             self.assertEqual(order3.volume_left, 3)
-            self.assertEqual(self.is_time_in_correct_duration(1575280800847048000, order1.insert_date_time), True)
-            self.assertEqual(self.is_time_in_correct_duration(1575280800847793000, order2.insert_date_time), True)
-            self.assertEqual(self.is_time_in_correct_duration(1575280800848516000, order3.insert_date_time), True)
+            self.assertAlmostEqual(1575280800847048000 / 1e9, order1.insert_date_time / 1e9, places=0)
+            self.assertAlmostEqual(1575280800847793000 / 1e9, order2.insert_date_time / 1e9, places=0)
+            self.assertAlmostEqual(1575280800848516000 / 1e9, order3.insert_date_time / 1e9, places=0)
 
             # 2 前一日21点以后rb、cu能成交
             while max(quote1.datetime, quote2.datetime, quote3.datetime) < "2019-12-02 21:00:00.000000":
@@ -805,9 +796,9 @@ class TestTdBacktest(unittest.TestCase):
             self.assertEqual(order2.volume_left, 0)
             self.assertEqual(order3.volume_orign, 3)
             self.assertEqual(order3.volume_left, 3)
-            self.assertEqual(self.is_time_in_correct_duration(1575291660005555000, order1.insert_date_time), True)
-            self.assertEqual(self.is_time_in_correct_duration(1575291660006188000, order2.insert_date_time), True)
-            self.assertEqual(self.is_time_in_correct_duration(1575291660006533000, order3.insert_date_time), True)
+            self.assertAlmostEqual(1575291660005555000 / 1e9, order1.insert_date_time / 1e9, places=1)
+            self.assertAlmostEqual(1575291660006188000 / 1e9, order2.insert_date_time / 1e9, places=1)
+            self.assertAlmostEqual(1575291660006533000 / 1e9, order3.insert_date_time / 1e9, places=1)
 
             # 3 本交易日9：00后都能成交
             while max(quote1.datetime, quote2.datetime, quote3.datetime) < "2019-12-03 09:00:00.000000":
@@ -826,9 +817,9 @@ class TestTdBacktest(unittest.TestCase):
             self.assertEqual(order2.volume_left, 0)
             self.assertEqual(order3.volume_orign, 3)
             self.assertEqual(order3.volume_left, 0)
-            self.assertEqual(self.is_time_in_correct_duration(1575334860006039000, order1.insert_date_time), True)
-            self.assertEqual(self.is_time_in_correct_duration(1575334860006430000, order2.insert_date_time), True)
-            self.assertEqual(self.is_time_in_correct_duration(1575334860006731000, order3.insert_date_time), True)
+            self.assertAlmostEqual(1575334860006039000 / 1e9, order1.insert_date_time / 1e9, places=1)
+            self.assertAlmostEqual(1575334860006430000 / 1e9, order2.insert_date_time / 1e9, places=1)
+            self.assertAlmostEqual(1575334860006731000 / 1e9, order3.insert_date_time / 1e9, places=1)
 
             while True:
                 api.wait_update()
@@ -847,7 +838,7 @@ class TestTdBacktest(unittest.TestCase):
         """
         # 预设服务器端响应
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        self.mock.run(os.path.join(dir_path, "log_file", "test_sim_insert_order_time_check_6.script"))
+        self.mock.run(os.path.join(dir_path, "log_file", "test_sim_insert_order_time_check_6.script.lzma"))
         # 测试：
         TqApi.RD = random.Random(4)
         api = TqApi(backtest=TqBacktest(datetime.datetime(2019, 12, 2, 10, 31, 00), datetime.datetime(2019, 12, 3)),
@@ -882,7 +873,7 @@ class TestTdBacktest(unittest.TestCase):
         """
         # 预设服务器端响应
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        self.mock.run(os.path.join(dir_path, "log_file", "test_sim_insert_order_time_check_7.script"))
+        self.mock.run(os.path.join(dir_path, "log_file", "test_sim_insert_order_time_check_7.script.lzma"))
 
         TqApi.RD = random.Random(4)
         api = TqApi(
@@ -913,9 +904,9 @@ class TestTdBacktest(unittest.TestCase):
             self.assertEqual(order2.volume_left, 2)
             self.assertEqual(order3.volume_orign, 3)
             self.assertEqual(order3.volume_left, 3)
-            self.assertEqual(self.is_time_in_correct_duration(1575043200623209000, order1.insert_date_time), True)
-            self.assertEqual(self.is_time_in_correct_duration(1575043200623664000, order2.insert_date_time), True)
-            self.assertEqual(self.is_time_in_correct_duration(1575043200624128000, order3.insert_date_time), True)
+            self.assertAlmostEqual(1575043200623209000 / 1e9, order1.insert_date_time / 1e9, places=0)
+            self.assertAlmostEqual(1575043200623664000 / 1e9, order2.insert_date_time / 1e9, places=0)
+            self.assertAlmostEqual(1575043200624128000 / 1e9, order3.insert_date_time / 1e9, places=0)
 
             # 2 白盘开始后,都能成交
             while max(quote1.datetime, quote2.datetime, quote3.datetime) < "2019-12-02 09:00:00.000000":
@@ -934,9 +925,9 @@ class TestTdBacktest(unittest.TestCase):
             self.assertEqual(order2.volume_left, 0)
             self.assertEqual(order3.volume_orign, 3)
             self.assertEqual(order3.volume_left, 0)
-            self.assertEqual(self.is_time_in_correct_duration(1575248460005877000, order1.insert_date_time), True)
-            self.assertEqual(self.is_time_in_correct_duration(1575248460006269000, order2.insert_date_time), True)
-            self.assertEqual(self.is_time_in_correct_duration(1575248460006573000, order3.insert_date_time), True)
+            self.assertAlmostEqual(1575248460005877000 / 1e9, order1.insert_date_time / 1e9, places=1)
+            self.assertAlmostEqual(1575248460006269000 / 1e9, order2.insert_date_time / 1e9, places=1)
+            self.assertAlmostEqual(1575248460006573000 / 1e9, order3.insert_date_time / 1e9, places=1)
 
             while True:
                 api.wait_update()
