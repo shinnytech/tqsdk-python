@@ -185,21 +185,14 @@ class TqApi(object):
             else:
                 self._logger.warning("用户权限认证失败 (%d,%s)" % (response.status_code, response.content))
 
+        # 交易中继网关
+        response = requests.get("https://files.shinnytech.com/broker-list.json", headers=self._base_headers,
+                                timeout=30)
+        self.broker_list = json.loads(response.content)
         if url and isinstance(self._account, TqSim):
             self._md_url = url
-        if isinstance(self._account, TqAccount):
-            if url:
-                self._td_url = url
-            else:
-                # 支持分散部署的交易中继网关
-                response = requests.get("https://files.shinnytech.com/broker-list.json", headers=self._base_headers,
-                                        timeout=30)
-                broker_list = json.loads(response.content)
-                if self._account._broker_id not in broker_list:
-                    raise Exception("不支持该期货公司-%s，请联系期货公司。" % (self._account._broker_id))
-                if "TQ" not in broker_list[self._account._broker_id]["category"]:
-                    raise Exception("不支持该期货公司-%s，请联系期货公司。" % (self._account._broker_id))
-                self._td_url = broker_list[self._account._broker_id]["url"]
+        if url and isinstance(self._account, TqAccount):
+            self._td_url = url
         if _ins_url:
             self._ins_url = _ins_url
         if _md_url:
@@ -1211,6 +1204,13 @@ class TqApi(object):
             self.create_task(
                 self._account._run(self, self._send_chan, self._recv_chan, ws_md_send_chan, ws_md_recv_chan))
         else:
+            # _td_url 如果还是默认地址，即用户没有特别指定，换成期货公司交易地址，否则不做处理
+            if self._td_url == TqApi.DEFAULT_TD_URL:
+                if self._account._broker_id not in self.broker_list:
+                    raise Exception("不支持该期货公司-%s，请联系期货公司。" % (self._account._broker_id))
+                if "TQ" not in self.broker_list[self._account._broker_id]["category"]:
+                    raise Exception("不支持该期货公司-%s，请联系期货公司。" % (self._account._broker_id))
+                self._td_url = self.broker_list[self._account._broker_id]["url"]
             ws_td_send_chan, ws_td_recv_chan = TqChan(self), TqChan(self)
             self.create_task(self._connect(self._td_url, ws_td_send_chan, ws_td_recv_chan))
             self.create_task(
