@@ -8,7 +8,6 @@
 """
 import os
 import sys
-import argparse
 import simplejson
 import asyncio
 from urllib.parse import urlparse
@@ -27,27 +26,28 @@ class TqWebHelper(object):
         self._http_server_host = ip if ip else "0.0.0.0"
         self._http_server_port = int(port) if port else 0
 
-        args = TqWebHelper.parser_arguments()
-        if args:
-            if args["_action"] == "run":
-                # 运行模式下，账户参数冲突需要抛错，提示用户
-                if isinstance(self._api._account, tqsdk.api.TqAccount) and \
-                        (self._api._account._account_id != args["_account_id"] or self._api._account._broker_id != args["_broker_id"]):
-                    raise Exception("策略代码与设置中的账户参数冲突。可尝试删去代码中的账户参数 TqAccount，以终端或者插件设置的账户参数运行。")
-                self._api._account = tqsdk.api.TqAccount(args["_broker_id"], args["_account_id"], args["_password"])
-                self._api._backtest = None
-            elif args["_action"] == "backtest":
-                self._api._account = tqsdk.api.TqSim(args["_init_balance"])
-                self._api._backtest = tqsdk.api.TqBacktest(start_dt=datetime.strptime(args["_start_dt"], '%Y%m%d'),
-                                            end_dt=datetime.strptime(args["_end_dt"], '%Y%m%d'))
-            elif args["_action"] == "replay":
-                self._api._backtest = tqsdk.api.TqReplay(datetime.strptime(args["_replay_dt"], '%Y%m%d'))
-
-            if args["_http_server_address"]:
-                self._api._web_gui = True  # 命令行 _http_server_address, 一定打开 _web_gui
-                ip, port = TqWebHelper.parse_url(args["_http_server_address"])
-                self._http_server_host = ip if ip else "0.0.0.0"
-                self._http_server_port = int(port) if port else 0
+        args = TqWebHelper.parser_env_arguments()
+        if args["_action"] == "run":
+            # 运行模式下，账户参数冲突需要抛错，提示用户
+            if isinstance(self._api._account, tqsdk.api.TqAccount) and \
+                    (self._api._account._account_id != args["_account_id"] or self._api._account._broker_id != args["_broker_id"]):
+                raise Exception("策略代码与插件设置中的账户参数冲突。可尝试删去代码中的账户参数 TqAccount，以终端或者插件设置的账户参数运行。")
+            self._api._account = tqsdk.api.TqAccount(args["_broker_id"], args["_account_id"], args["_password"])
+            self._api._backtest = None
+            self._logger.info("正在使用账户 {bid}, {aid} 运行策略。".format(bid=args["_broker_id"], aid=args["_account_id"]))
+        elif args["_action"] == "backtest":
+            self._api._account = tqsdk.api.TqSim(args["_init_balance"])
+            self._api._backtest = tqsdk.api.TqBacktest(start_dt=datetime.strptime(args["_start_dt"], '%Y%m%d'),
+                                        end_dt=datetime.strptime(args["_end_dt"], '%Y%m%d'))
+            self._logger.info("当前回测区间 {sdt} - {edt}。".format(sdt=args["_start_dt"], edt=args["_end_dt"]))
+        elif args["_action"] == "replay":
+            self._api._backtest = tqsdk.api.TqReplay(datetime.strptime(args["_replay_dt"], '%Y%m%d'))
+            self._logger.info("当前复盘日期 {rdt}。".format(rdt=args["_replay_dt"]))
+        if args["_http_server_address"]:
+            self._api._web_gui = True  # 命令行 _http_server_address, 一定打开 _web_gui
+            ip, port = TqWebHelper.parse_url(args["_http_server_address"])
+            self._http_server_host = ip if ip else "0.0.0.0"
+            self._http_server_port = int(port) if port else 0
 
     async def _run(self, api_send_chan, api_recv_chan, web_send_chan, web_recv_chan):
         if not self._api._web_gui:
@@ -341,49 +341,28 @@ class TqWebHelper(object):
         return web.json_response(response)
 
     @staticmethod
-    def parser_arguments():
-        """解析命令行参数"""
-        parser = argparse.ArgumentParser()
-        # 天勤连接基本参数
-        parser.add_argument('--_action', type=str, required=False)
-        # action==run
-        parser.add_argument('--_broker_id', type=str, required=False)
-        parser.add_argument('--_account_id', type=str, required=False)
-        parser.add_argument('--_password', type=str, required=False)
-        # action==backtest
-        parser.add_argument('--_start_dt', type=str, required=False)
-        parser.add_argument('--_end_dt', type=str, required=False)
-        parser.add_argument('--_init_balance', type=str, required=False)
-        # action==replay
-        parser.add_argument('--_replay_dt', type=str, required=False)
-        # others
-        parser.add_argument('--_http_server_address', type=str, required=False)
-        args, unknown = parser.parse_known_args()
-        action = {}
-        action["_action"] = args._action
+    def parser_env_arguments():
+        action = {
+            "_action": os.getenv("TQ_ACTION"),
+            "_http_server_address": os.getenv("TQ_HTTP_SERVER_ADDRESS")
+        }
         if action["_action"] == "run":
-            if not args._broker_id or not args._account_id or not args._password:
-                raise Exception("run 必要参数缺失")
-            else:
-                action["_broker_id"] = args._broker_id
-                action["_account_id"] = args._account_id
-                action["_password"] = args._password
+            action["_broker_id"] = os.getenv("TQ_BROKER_ID")
+            action["_account_id"] = os.getenv("TQ_ACCOUNT_ID")
+            action["_password"] = os.getenv("TQ_PASSWORD")
+            if not action["_broker_id"] or not action["_account_id"] or not action["_password"]:
+                action["_action"] = None
         elif action["_action"] == "backtest":
-            if not args._start_dt or not args._end_dt:
-                raise Exception("backtest 必要参数缺失")
-            else:
-                try:
-                    init_balance = 10000000.0 if args._init_balance is None else float(args._init_balance)
-                    action["_start_dt"] = args._start_dt
-                    action["_end_dt"] = args._end_dt
-                    action["_init_balance"] = init_balance
-                except ValueError:
-                    raise Exception("backtest 参数错误, _init_balance = " + args._init_balance + " 不是数字")
+            action["_start_dt"] = os.getenv("TQ_START_DT")
+            action["_end_dt"] = os.getenv("TQ_END_DT")
+            try:
+                action["_init_balance"] = 10000000.0 if os.getenv("TQ_INIT_BALANCE") is None else float(os.getenv("TQ_INIT_BALANCE"))
+            except ValueError:
+                action["_init_balance"] = 10000000.0
+            if not action["_start_dt"] or not action["_end_dt"]:
+                action["_action"] = None
         elif action["_action"] == "replay":
-            if not args._replay_dt:
-                raise Exception("replay 必要参数缺失")
-            else:
-                action["_replay_dt"] = args._replay_dt
-
-        action["_http_server_address"] = args._http_server_address
+            action["_replay_dt"] = os.getenv("TQ_REPLAY_DT")
+            if not action["_replay_dt"]:
+                action["_action"] = None
         return action
