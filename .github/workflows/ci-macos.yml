@@ -18,6 +18,7 @@ jobs:
         python-arch: ["x64"]
 
     env:
+      PYTHONIOENCODING: "utf-8"
       PYTHONHASHSEED: 32
       TZ: 'Asia/Shanghai'
 
