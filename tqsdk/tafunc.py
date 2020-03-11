@@ -10,6 +10,12 @@ tqsdk.tafunc 模块包含了一批用于技术指标计算的函数
 import datetime
 import pandas as pd
 import numpy as np
+import math
+from typing import Union
+from scipy import stats
+
+cdf = stats.norm.cdf  # 累计度分布函数
+pdf = stats.norm.pdf  # 概率分布函数
 
 
 def ref(series, n):
@@ -818,3 +824,106 @@ def barlast(cond):
     r = np.cumsum(v)
     r[:x[0]] = -1
     return pd.Series(r)
+
+
+def get_volatility(series: pd.Series, dur: int) -> float:
+    """
+    计算波动率
+
+    Args:
+        series (pd.Series): 数据序列
+
+        dur (int): 周期对应秒数
+
+    Returns:
+        float: 该序列年化波动率
+    """
+    series_u = np.log(series.shift(1)[1:] / series[1:])
+    # 这里估计每年有连续交易时间 2500 小时
+    return math.sqrt((2500 * 60 * 60 / dur) * np.cov(series_u))
+
+
+def get_d1(series: pd.Series, k: float, r: float, v: Union[float, pd.Series], t: Union[float, pd.Series]):
+    return pd.Series(np.where(v <= 0, 0.0, (np.log(series / k) + (r + 0.5 * np.power(v, 2)) * t) / (v * np.sqrt(t))))
+
+
+def get_bs_price(series: pd.Series, k: float, r: float, v: Union[float, pd.Series], t: Union[float, pd.Series],
+                 o: int) -> pd.Series:
+    """
+    计算期权 BS 模型理论价格
+
+    Args:
+        series (pandas.Series): 标的价格序列
+
+        k (float): 期权行权价
+
+        r (float): 无风险利率
+
+        v (float | pd.Series): 波动率
+
+        t (float | pandas.Series): 到期时间序列
+
+        o (int): 期权方向 CALL: 1; PUT: -1
+
+    Returns:
+        pd.Series: 该序列理论价
+    """
+    d1 = get_d1(series, k, r, v, t)
+    d2 = pd.Series(d1 - v * np.sqrt(t))
+    return pd.Series(np.where(v <= 0, 0.0, o * (series * cdf(o * d1) - k * np.exp(-r * t) * cdf(o * d2))))
+
+
+def get_delta(series: pd.Series, k: float, r: float, v: float, t: Union[float, pd.Series], o: int,
+              d1: pd.Series = None) -> pd.Series:
+    if d1 is None:
+        d1 = get_d1(series, k, r, v, t)
+    return pd.Series(o * cdf(o * d1))
+
+
+def get_gamma(series: pd.Series, k: float, r: float, v: float, t: Union[float, pd.Series],
+              d1: pd.Series = None) -> pd.Series:
+    if d1 is None:
+        d1 = get_d1(series, k, r, v, t)
+    return pd.Series(np.where(v <= 0, 0.0, pdf(d1) / (series * v * np.sqrt(t))))
+
+
+def get_theta(series: pd.Series, k: float, r: float, v: float, t: Union[float, pd.Series], o: int,
+              d1: pd.Series = None) -> pd.Series:
+    if d1 is None:
+        d1 = get_d1(series, k, r, v, t)
+    d2 = d1 - v * np.sqrt(t)
+    return pd.Series(np.where(v <= 0, 0.0, pd.Series(-v * series * pdf(d1) / (2 * np.sqrt(t)) - o * r * k * np.exp(-r * t) * cdf(o * d2))))
+
+
+def get_vega(series: pd.Series, k: float, r: float, v: Union[float, pd.Series], t: Union[float, pd.Series],
+             d1: pd.Series = None) -> pd.Series:
+    if d1 is None:
+        d1 = get_d1(series, k, r, v, t)
+    return pd.Series(np.where(v <= 0, 0.0, series * np.sqrt(t) * pdf(d1)))
+
+
+def get_rho(series: pd.Series, k: float, r: float, v: float, t: Union[float, pd.Series], o: int,
+            d1: pd.Series = None) -> pd.Series:
+    if d1 is None:
+        d1 = get_d1(series, k, r, v, t)
+    d2 = d1 - v * np.sqrt(t)
+    return pd.Series(np.where(v <= 0, 0.0, o * k * t * np.exp(-r * t) * cdf(o * d2)))
+
+
+def get_impv(series: pd.Series, series_option: pd.Series, k: float, r: float, init_v: float, t: Union[float, pd.Series],
+             o: int) -> pd.Series:
+    lower_limit = get_bs_price(series, k, r, 0, t, o)
+    df = pd.DataFrame()
+    df["x"] = pd.Series(np.where(series_option < lower_limit, 0, init_v))
+    df["y"] = pd.Series(np.where(df["x"] == 0, 0, get_bs_price(series, k, r, df["x"], t, o)))
+    df["vega"] = get_vega(series, k, r, df["x"], t)
+    df["diff_x"] = pd.Series(np.where(df["vega"] < 1e-8, 0, (series_option - df["y"]) / df["vega"]))
+    while not pd.DataFrame.all((np.abs(series_option - df["y"]) < 1e-8) | (df["diff_x"] == 0)):
+        df["x"] = pd.Series(np.where(df["x"] * df["diff_x"] == 0, df["x"],
+                                     np.where(df["x"] + df["diff_x"] < 0, df["x"] / 2,
+                                              np.where(df["diff_x"] > df["x"] / 2, df["x"] * 1.5,
+                                                       df["x"] + df["diff_x"]))))
+        df["y"] = pd.Series(np.where(df["x"] == 0, 0, get_bs_price(series, k, r, df["x"], t, o)))
+        df["vega"] = get_vega(series, k, r, df["x"], t)
+        df["diff_x"] = pd.Series(np.where(df["vega"] < 1e-8, 0, (series_option - df["y"]) / df["vega"]))
+    return df["x"]
