@@ -4,6 +4,7 @@ from tqsdk.tafunc import ma
 from contextlib import closing
 from datetime import date, datetime
 import json
+import os
 
 
 class Unit_test(unittest.TestCase):
@@ -24,7 +25,7 @@ class Unit_test(unittest.TestCase):
         SYMBOL = "SHFE.bu1912"  # 合约代码
 
         sim = TqSim()
-        TqApi.DEFAULT_INS_URL = "https://openmd.shinnytech.com/t/md/symbols/2019-07-03.json"
+        os.environ["TQ_INS_URL"] = "https://openmd.shinnytech.com/t/md/symbols/2019-07-03.json"
         api = TqApi(sim, backtest=TqBacktest(start_dt=datetime(2019, 6, 10), end_dt=datetime(2019, 6, 15)))
 
         data_length = LONG + 2  # k线数据长度
@@ -74,7 +75,7 @@ class Unit_test(unittest.TestCase):
         K1 = 0.2  # 上轨K值
         K2 = 0.2  # 下轨K值
         sim = TqSim()
-        TqApi.DEFAULT_INS_URL = "https://openmd.shinnytech.com/t/md/symbols/2019-07-03.json"
+        os.environ["TQ_INS_URL"] = "https://openmd.shinnytech.com/t/md/symbols/2019-07-03.json"
         api = TqApi(sim, backtest=TqBacktest(start_dt=date(2019, 5, 1), end_dt=date(2019, 6, 10)))
 
         quote = api.get_quote(SYMBOL)
@@ -151,7 +152,7 @@ class Unit_test(unittest.TestCase):
 
             return pivot, b_break, s_setup, s_enter, b_enter, b_setup, s_break
 
-        TqApi.DEFAULT_INS_URL = "https://openmd.shinnytech.com/t/md/symbols/2019-06-05.json"
+        os.environ["TQ_INS_URL"] = "https://openmd.shinnytech.com/t/md/symbols/2019-06-05.json"
         sim = TqSim()
         api = TqApi(sim, backtest=TqBacktest(start_dt=date(2019, 5, 1), end_dt=date(2019, 6, 20)))
         quote = api.get_quote(SYMBOL)
@@ -216,7 +217,7 @@ class Unit_test(unittest.TestCase):
         '''
         symbol = "SHFE.cu1905"  # 合约代码
         close_hour, close_minute = 14, 50  # 平仓时间
-        TqApi.DEFAULT_INS_URL = "https://openmd.shinnytech.com/t/md/symbols/2019-06-10.json"  # 合约文件
+        os.environ["TQ_INS_URL"] = "https://openmd.shinnytech.com/t/md/symbols/2019-06-10.json"  # 合约文件
         sim = TqSim()
         api = TqApi(sim, backtest=TqBacktest(start_dt=datetime(2019, 4, 1), end_dt=datetime(2019, 4, 20)))
         quote = api.get_quote(symbol)  # 获取指定合约的盘口行情
