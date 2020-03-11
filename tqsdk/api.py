@@ -53,9 +53,6 @@ class TqApi(object):
     """
 
     RD = random.Random()  # 初始化随机数引擎
-    DEFAULT_INS_URL = "https://openmd.shinnytech.com/t/md/symbols/latest.json"
-    DEFAULT_MD_URL = "wss://openmd.shinnytech.com/t/md/front/mobile"
-    DEFAULT_TD_URL = "wss://opentd.shinnytech.com/trade/user0"
 
     def __init__(self, account: Union['TqAccount', TqSim, None] = None, auth: Optional[str] = None, url: Optional[str] = None,
                  backtest: Union[TqBacktest, TqReplay, None] = None, web_gui: [bool, str] = False, debug: Optional[str] = None,
@@ -161,9 +158,6 @@ class TqApi(object):
         # 记录参数
         self._account = TqSim() if account is None else account
         self._backtest = backtest
-        self._ins_url = TqApi.DEFAULT_INS_URL
-        self._md_url = TqApi.DEFAULT_MD_URL
-        self._td_url = TqApi.DEFAULT_TD_URL
 
         # 支持用户授权
         self._access_token = 'eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJobi1MZ3ZwbWlFTTJHZHAtRmlScjV5MUF5MnZrQmpLSFFyQVlnQ0UwR1JjIn0.eyJqdGkiOiJjZDAzM2JhNC1lZTJkLTRhNjUtYmVjNi04NTAyZmQyMjk4NmUiLCJleHAiOjE2MTI0MDQwMTEsIm5iZiI6MCwiaWF0IjoxNTgwODY4MDExLCJpc3MiOiJodHRwczovL2F1dGguc2hpbm55dGVjaC5jb20vYXV0aC9yZWFsbXMvc2hpbm55dGVjaCIsInN1YiI6IjYzMzJhZmUwLWU5OWQtNDc1OC04MjIzLWY5OTBiN2RmOGY4NSIsInR5cCI6IkJlYXJlciIsImF6cCI6InNoaW5ueV90cSIsImF1dGhfdGltZSI6MCwic2Vzc2lvbl9zdGF0ZSI6IjliNTY1MzYzLTRkNmEtNDc0ZS1hYmMzLTQ0YzU0N2ZhMDZjYiIsImFjciI6IjEiLCJzY29wZSI6ImF0dHJpYnV0ZXMiLCJncmFudHMiOnsiZmVhdHVyZXMiOlsiYWR2Il0sImFjY291bnRzIjpbIioiXX19.OtSweF6mXilJNkQwJQR38BTdYWfShxJrlUIxvHRoZ6AZMtJ9pRMx1SS9mmO9SmA_OPBouLybDmPFbcAMK6_Z4hXNYzd1TyXbPMNIPaMg7E12IEe6RxmsP15j-txfB3lC8LJlc9ey9Y-Hbg2goxS9RCj5m5PR8MuHYwx_E1PwEkOkoBw0eJG5jT0gVh8nHN_p7zsbXOo0PVVNxK1ZBuU-t5NeHy3E33LAOxG1VjqAeOrE4YZrprKcHu6ekd4WPy77cllSRMX6Ob2i9uIFmErbtFK76eYJoPmetSEljAcXwjg3_vWcYOj-xzCeFZoaV9ysNvbANzCS0nAelMvWlBHrkA'
@@ -185,10 +179,9 @@ class TqApi(object):
             else:
                 self._logger.warning("用户权限认证失败 (%d,%s)" % (response.status_code, response.content))
 
-        # 交易中继网关
-        response = requests.get("https://files.shinnytech.com/broker-list.json", headers=self._base_headers,
-                                timeout=30)
-        self.broker_list = json.loads(response.content)
+        self._ins_url = os.getenv("TQ_INS_URL", "https://openmd.shinnytech.com/t/md/symbols/latest.json")
+        self._md_url = os.getenv("TQ_MD_URL", "wss://openmd.shinnytech.com/t/md/front/mobile")
+        self._td_url = os.getenv("TQ_TD_URL", None)
         if url and isinstance(self._account, TqSim):
             self._md_url = url
         if url and isinstance(self._account, TqAccount):
@@ -1205,12 +1198,16 @@ class TqApi(object):
                 self._account._run(self, self._send_chan, self._recv_chan, ws_md_send_chan, ws_md_recv_chan))
         else:
             # _td_url 如果还是默认地址，即用户没有特别指定，换成期货公司交易地址，否则不做处理
-            if self._td_url == TqApi.DEFAULT_TD_URL:
-                if self._account._broker_id not in self.broker_list:
-                    raise Exception("不支持该期货公司-%s，请联系期货公司。" % (self._account._broker_id))
-                if "TQ" not in self.broker_list[self._account._broker_id]["category"]:
-                    raise Exception("不支持该期货公司-%s，请联系期货公司。" % (self._account._broker_id))
-                self._td_url = self.broker_list[self._account._broker_id]["url"]
+            if self._td_url is None:
+                # 交易中继网关
+                response = requests.get("https://files.shinnytech.com/broker-list.json", headers=self._base_headers,
+                                        timeout=30)
+                broker_list = json.loads(response.content)
+                if self._account._broker_id not in broker_list:
+                    raise Exception("不支持该期货公司-%s，请联系期货公司。" % self._account._broker_id)
+                if "TQ" not in broker_list[self._account._broker_id]["category"]:
+                    raise Exception("不支持该期货公司-%s，请联系期货公司。" % self._account._broker_id)
+                self._td_url = broker_list[self._account._broker_id]["url"]
             ws_td_send_chan, ws_td_recv_chan = TqChan(self), TqChan(self)
             self.create_task(self._connect(self._td_url, ws_td_send_chan, ws_td_recv_chan))
             self.create_task(
