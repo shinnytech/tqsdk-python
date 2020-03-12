@@ -2,9 +2,7 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'chengzhi'
 
-import datetime
 import time
-from tqsdk.datetime import _get_trading_day_end_time, _get_trading_day_from_timestamp
 from tqsdk.sim import TqSim
 from tqsdk.api import TqChan, TqApi
 from asyncio import gather
@@ -83,9 +81,7 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
 
         self._quote = self._api.get_quote(self._symbol)
         self._time_update_task = self._api.create_task(self._update_time_from_md())  # 监听行情更新并记录当时本地时间的task
-        self._local_time_record = float("nan")  # 更新最新行情时间时的本地时间
-        self._trading_day_end = ""  # self._quote["datetime"] 所在交易日的结束时间
-        self._update_time_record()
+        self._local_time_record = time.time() - 0.005  # 更新最新行情时间时的本地时间
         self._local_time_record_update_chan = TqChan(self._api, last_only=True)  # 监听 self._local_time_record 更新
 
     def set_target_volume(self, volume: int) -> None:
@@ -165,16 +161,8 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
         """监听行情更新并记录当时本地时间的task"""
         async with self._api.register_update_notify(self._quote) as quote_update_chan:
             async for _ in quote_update_chan:  # quote有更新时:更新记录的时间
-                self._update_time_record()
+                self._local_time_record = time.time() - 0.005  # 更新最新行情时间时的本地时间
                 self._local_time_record_update_chan.send_nowait(True)  # 通知记录的时间有更新
-
-    def _update_time_record(self):
-        self._local_time_record = time.time() - 0.005  # 更新最新行情时间时的本地时间
-        if self._quote["datetime"] > self._trading_day_end:  # 新交易日
-            current_timestamp = int(
-                datetime.datetime.strptime(self._quote["datetime"], "%Y-%m-%d %H:%M:%S.%f").timestamp() * 1e6) * 1000
-            trading_day = _get_trading_day_from_timestamp(current_timestamp)
-            self._trading_day_end = datetime.datetime.fromtimestamp((_get_trading_day_end_time(trading_day) - 1000) / 1e9).strftime("%Y-%m-%d %H:%M:%S.%f")
 
     async def _target_pos_task(self):
         """负责调整目标持仓的task"""
