@@ -256,6 +256,7 @@ class TqSim(object):
         order["frozen_margin"] = 0.0
         order["last_msg"] = "报单成功"
         order["status"] = "ALIVE"
+        order["insert_date_time"] = 0  # 初始化为0：保持 order 的结构不变(所有字段都有，只是值不同)
         del order["aid"]
         del order["volume"]
         quote = self._ensure_quote(order["symbol"])
@@ -281,8 +282,7 @@ class TqSim(object):
                 self._del_order(order, "开仓资金不足")
                 return
 
-        if quote.get("datetime"):  # 在收到过行情后，才下发 order 初始信息及 logger 信息
-            self._match_order(quote, order)
+        self._match_order(quote, order)
 
     @staticmethod
     def _is_in_trading_time(quote, current_datetime, local_time_record):
@@ -334,7 +334,7 @@ class TqSim(object):
         # 需在收到quote行情时, 才将其order的diff下发并将“模拟交易下单”logger发出（即可保证order的insert_date_time为正确的行情时间）
         # 方案为：通过在 match_order() 中判断 “inster_datetime” 来处理：
         # 则能判断收到了行情，又根据 “inster_datetime” 判断了是下单后还未处理（即diff下发和生成logger info）过的order.
-        if not order.get("insert_date_time", None):
+        if not order["insert_date_time"]:  # order["insert_date_time"]已在_insert_order初始化为0
             order["insert_date_time"] = TqSim._get_trade_timestamp(self._current_datetime, self._local_time_record)
             self._send_order(order)
             self._logger.info("模拟交易下单 %s: 时间:%s,合约:%s,开平:%s,方向:%s,手数:%s,价格:%s", order["order_id"],
