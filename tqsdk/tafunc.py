@@ -827,7 +827,7 @@ def barlast(cond):
     return pd.Series(r)
 
 
-def get_volatility(series: pd.Series, dur: int) -> float:
+def get_volatility(series: pd.Series, dur: int, default: float = 0.3) -> float:
     """
     计算波动率
 
@@ -840,6 +840,9 @@ def get_volatility(series: pd.Series, dur: int) -> float:
         float: 该序列年化波动率
     """
     series_u = np.log(series.shift(1)[1:] / series[1:])
+    series_u = series_u[~np.isnan(series_u)]
+    if series_u.size < 2:  # 自由度小于2无法计算，返回一个默认值
+        return default
     # 这里估计每年有连续交易时间 2500 小时
     return math.sqrt((2500 * 60 * 60 / dur) * np.cov(series_u))
 
@@ -879,21 +882,21 @@ def get_bs_price(series: pd.Series, k: float, r: float, v: Union[float, pd.Serie
     """
     d1 = get_d1(series, k, r, v, t)
     d2 = pd.Series(d1 - v * np.sqrt(t))
-    return pd.Series(np.where(v <= 0, 0.0, o * (series * cdf(o * d1) - k * np.exp(-r * t) * cdf(o * d2))))
+    return pd.Series(np.where(v <= 0 | np.isnan(d1), 0.0, o * (series * cdf(o * d1) - k * np.exp(-r * t) * cdf(o * d2))))
 
 
 def get_delta(series: pd.Series, k: float, r: float, v: float, t: Union[float, pd.Series], o: int,
               d1: pd.Series = None) -> pd.Series:
     if d1 is None:
         d1 = get_d1(series, k, r, v, t)
-    return pd.Series(o * cdf(o * d1))
+    return pd.Series(np.where(v <= 0 | np.isnan(d1), 0.0, pd.Series(o * cdf(o * d1))))
 
 
 def get_gamma(series: pd.Series, k: float, r: float, v: float, t: Union[float, pd.Series],
               d1: pd.Series = None) -> pd.Series:
     if d1 is None:
         d1 = get_d1(series, k, r, v, t)
-    return pd.Series(np.where(v <= 0, 0.0, pdf(d1) / (series * v * np.sqrt(t))))
+    return pd.Series(np.where(v <= 0 | np.isnan(d1), 0.0, pdf(d1) / (series * v * np.sqrt(t))))
 
 
 def get_theta(series: pd.Series, k: float, r: float, v: float, t: Union[float, pd.Series], o: int,
@@ -901,14 +904,14 @@ def get_theta(series: pd.Series, k: float, r: float, v: float, t: Union[float, p
     if d1 is None:
         d1 = get_d1(series, k, r, v, t)
     d2 = d1 - v * np.sqrt(t)
-    return pd.Series(np.where(v <= 0, 0.0, pd.Series(-v * series * pdf(d1) / (2 * np.sqrt(t)) - o * r * k * np.exp(-r * t) * cdf(o * d2))))
+    return pd.Series(np.where(v <= 0 | np.isnan(d1), 0.0, pd.Series(-v * series * pdf(d1) / (2 * np.sqrt(t)) - o * r * k * np.exp(-r * t) * cdf(o * d2))))
 
 
 def get_vega(series: pd.Series, k: float, r: float, v: Union[float, pd.Series], t: Union[float, pd.Series],
              d1: pd.Series = None) -> pd.Series:
     if d1 is None:
         d1 = get_d1(series, k, r, v, t)
-    return pd.Series(np.where(v <= 0, 0.0, series * np.sqrt(t) * pdf(d1)))
+    return pd.Series(np.where(v <= 0 | np.isnan(d1), 0.0, series * np.sqrt(t) * pdf(d1)))
 
 
 def get_rho(series: pd.Series, k: float, r: float, v: float, t: Union[float, pd.Series], o: int,
@@ -916,7 +919,7 @@ def get_rho(series: pd.Series, k: float, r: float, v: float, t: Union[float, pd.
     if d1 is None:
         d1 = get_d1(series, k, r, v, t)
     d2 = d1 - v * np.sqrt(t)
-    return pd.Series(np.where(v <= 0, 0.0, o * k * t * np.exp(-r * t) * cdf(o * d2)))
+    return pd.Series(np.where(v <= 0 | np.isnan(d1), 0.0, o * k * t * np.exp(-r * t) * cdf(o * d2)))
 
 
 def get_impv(series: pd.Series, series_option: pd.Series, k: float, r: float, init_v: float, t: Union[float, pd.Series],
