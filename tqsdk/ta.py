@@ -7,7 +7,6 @@ tqsdk.ta 模块包含了一批常用的技术指标计算函数
 (函数返回值类型保持为 pandas.Dataframe)
 """
 
-import re
 import numpy as np
 import pandas as pd
 from tqsdk import tafunc
@@ -2522,9 +2521,7 @@ def BS_PRICE(df, expire_datetime, r: float = 0.025, v: float = None):
     l_data = df.iloc[-1]
     if not v:
         v = tafunc.get_volatility(df["close1"], l_data["duration"])
-    matchs = re.match(r'.*-?([CP])-?(\d+)', l_data["symbol"])
-    o = 1 if matchs.group(1) == 'C' else -1  # 期权方向
-    k = float(matchs.group(2))  # 行权价
+    o, k = tafunc.get_option_info(l_data["symbol"])
     t = pd.Series(pd.to_timedelta(expire_datetime - (df["datetime"] + l_data["duration"]) / 1e9, unit='s'))
     return pd.DataFrame(data=list(tafunc.get_bs_price(df["close1"], k, r, v, t.dt.days / 360, o)), columns=["bs_price"])
 
@@ -2565,9 +2562,7 @@ def GREEKS(df, expire_datetime, r: float = 0.025, v: float = None):
     l_data = df.iloc[-1]
     if not v:
         v = tafunc.get_volatility(df["close1"], l_data["duration"])
-    matchs = re.match(r'.*-?([CP])-?(\d+)', l_data["symbol"])
-    o = 1 if matchs.group(1) == 'C' else -1  # 期权方向
-    k = float(matchs.group(2))  # 行权价
+    o, k = tafunc.get_option_info(l_data["symbol"])
     t = pd.Series(pd.to_timedelta(expire_datetime - (df["datetime"] + l_data["duration"]) / 1e9, unit='s'))  # 到期时间
     d1 = tafunc.get_d1(df["close1"], k, r, v, t.dt.days / 360)
     new_df = pd.DataFrame()
@@ -2602,9 +2597,7 @@ def VALUES(df: pd.DataFrame):
         print(list(values["time"]))
     """
     l_data = df.iloc[-1]
-    matchs = re.match(r'.*-?([CP])-?(\d+)', l_data["symbol"])
-    o = 1 if matchs.group(1) == 'C' else -1  # 期权方向
-    k = float(matchs.group(2))  # 行权价
+    o, k = tafunc.get_option_info(l_data["symbol"])
     new_df = pd.DataFrame()
     intrins = o * (df["close1"] - k)
     new_df["intrins"] = pd.Series(np.where(intrins > 0.0, intrins, 0.0))
@@ -2643,8 +2636,6 @@ def IMPV(df, expire_datetime, r: float = 0.025, init_v: float = None):
     l_data = df.iloc[-1]
     if not init_v:
         init_v = tafunc.get_volatility(df["close1"], l_data["duration"])
-    matchs = re.match(r'.*-?([CP])-?(\d+)', l_data["symbol"])
-    o = 1 if matchs.group(1) == 'C' else -1  # 期权方向
-    k = float(matchs.group(2))  # 行权价
+    o, k = tafunc.get_option_info(l_data["symbol"])
     t = pd.Series(pd.to_timedelta(expire_datetime - (df["datetime"] + l_data["duration"]) / 1e9, unit='s'))  # 到期时间
     return pd.DataFrame(data=list(tafunc.get_impv(df["close1"], df["close"], k, r, init_v, t.dt.days / 360, o)), columns=["impv"])

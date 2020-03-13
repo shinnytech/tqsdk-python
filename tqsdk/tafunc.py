@@ -11,6 +11,7 @@ import datetime
 import pandas as pd
 import numpy as np
 import math
+import re
 from typing import Union
 from scipy import stats
 
@@ -841,6 +842,14 @@ def get_volatility(series: pd.Series, dur: int) -> float:
     series_u = np.log(series.shift(1)[1:] / series[1:])
     # 这里估计每年有连续交易时间 2500 小时
     return math.sqrt((2500 * 60 * 60 / dur) * np.cov(series_u))
+
+
+def get_option_info(symbol: str):
+    """返回期权方向、行权价"""
+    matchs = re.match(r'.*-?([CP])-?(\d+)', symbol)
+    o = 1 if matchs.group(1) == 'C' else -1  # 期权方向
+    k = float(matchs.group(2))  # 行权价
+    return o, k
 
 
 def get_d1(series: pd.Series, k: float, r: float, v: Union[float, pd.Series], t: Union[float, pd.Series]):
