@@ -9,7 +9,8 @@ tqsdk.ta 模块包含了一批常用的技术指标计算函数
 
 import numpy as np
 import pandas as pd
-from tqsdk import tafunc
+from typing import Union
+from tqsdk import tafunc, objs
 
 
 def ATR(df, n):
@@ -2487,21 +2488,23 @@ def TRMA(df, n):
     return new_df
 
 
-def BS_PRICE(df, expire_datetime, r: float = 0.025, v: float = None):
+def BS_PRICE(df: pd.DataFrame, quote: objs.Quote, r: float = 0.025, v: Union[float, pd.Series] = None):
     """
     BS 期权模型理论价格
 
     Args:
         df (pandas.DataFrame): Dataframe格式的K线序列
 
-        expire_datetime (float): 期权到期日
+        quote (tqsdk.objs.Quote): 期权对象，如果不是期权类型的对象，则返回 None
 
         r (float): 无风险利率
 
         v (float): 波动率，默认使用 df 中的 symbol1 序列收盘价计算波动率
 
     Returns:
-        pandas.DataFrame: 返回的DataFrame包含1列, 是"bs_price", 代表计算出来的期权理论价格
+        pandas.DataFrame | None: 返回的DataFrame包含1列, 是"bs_price", 代表计算出来的期权理论价格
+
+            如果参数 quote 不是期权类型的对象，则返回 None
 
 
     Example::
@@ -2510,37 +2513,41 @@ def BS_PRICE(df, expire_datetime, r: float = 0.025, v: float = None):
         from tqsdk.ta import BS_PRICE
 
         api = TqApi()
-        option = api.get_quote("SHFE.cu2006C44000")
-        klines = api.get_kline_serial(["SHFE.cu2006C44000", "SHFE.cu2006"], 24 * 60 * 60, 30)
-        bs_serise = BS_PRICE(klines, option.expire_datetime, 0.025)
+        quote = api.get_quote("SHFE.cu2006C43000")
+        klines = api.get_kline_serial(["SHFE.cu2006C43000", "SHFE.cu2006"], 24 * 60 * 60, 30)
+        bs_serise = BS_PRICE(klines, quote, 0.025)
         print(list(bs_serise["bs_price"]))
 
         # 预计的输出是这样的:
         [..., 3036.698780158862, 2393.333388624822, 2872.607833620801]
     """
-    l_data = df.iloc[-1]
-    if not v:
-        v = tafunc.get_volatility(df["close1"], l_data["duration"])
-    o, k = tafunc.get_option_info(l_data["symbol"])
-    t = pd.Series(pd.to_timedelta(expire_datetime - (df["datetime"] + l_data["duration"]) / 1e9, unit='s'))
-    return pd.DataFrame(data=list(tafunc.get_bs_price(df["close1"], k, r, v, t.dt.days / 360, o)), columns=["bs_price"])
+    if (not quote) and (not quote.ins_class.endswith("OPTION")):
+        return None
+    if v is None:
+        v = tafunc.get_volatility(df["close1"], df["duration"], quote.trading_time)
+    o = 1 if quote.option_class == "CALL" else -1
+    t = pd.Series(pd.to_timedelta(quote.expire_datetime - (df["datetime"] + df["duration"]) / 1e9, unit='s'))
+    return pd.DataFrame(data=list(tafunc.get_bs_price(df["close1"], quote.strike_price, r, v, t.dt.days / 2360, o)),
+                        columns=["bs_price"])
 
 
-def GREEKS(df, expire_datetime, r: float = 0.025, v: float = None):
+def GREEKS(df: pd.DataFrame, quote: objs.Quote, r: float = 0.025, v: Union[float, pd.Series] = None):
     """
     期权希腊指标
 
     Args:
         df (pandas.DataFrame): Dataframe格式的K线序列
 
-        expire_datetime (float): 期权到期日
+        quote (tqsdk.objs.Quote): 期权对象
 
         r (float): 无风险利率
 
-        v (float): 波动率, 默认使用 df 中的 symbol1 序列收盘价计算波动率
+        v (float | pandas.Series): 波动率, 默认使用隐含波动率
 
     Returns:
         pandas.DataFrame: 返回的 DataFrame 包含 5 列, 分别是"delta", "theta", "gamma", "vega", "rho"
+
+            如果参数 quote 不是期权类型的对象，则返回 None
 
 
     Example::
@@ -2549,9 +2556,9 @@ def GREEKS(df, expire_datetime, r: float = 0.025, v: float = None):
         from tqsdk.ta import GREEKS
 
         api = TqApi()
-        option = api.get_quote("SHFE.cu2006C44000")
+        quote = api.get_quote("SHFE.cu2006C44000")
         klines = api.get_kline_serial(["SHFE.cu2006C44000", "SHFE.cu2006"], 24 * 60 * 60, 30)
-        greeks = GREEKS(klines, option.expire_datetime, 0.025)
+        greeks = GREEKS(klines, quote, 0.025)
         print(list(greeks["delta"]))
         print(list(greeks["theta"]))
         print(list(greeks["gamma"]))
@@ -2559,31 +2566,36 @@ def GREEKS(df, expire_datetime, r: float = 0.025, v: float = None):
         print(list(greeks["rho"]))
 
     """
-    l_data = df.iloc[-1]
-    if not v:
-        v = tafunc.get_volatility(df["close1"], l_data["duration"])
-    o, k = tafunc.get_option_info(l_data["symbol"])
-    t = pd.Series(pd.to_timedelta(expire_datetime - (df["datetime"] + l_data["duration"]) / 1e9, unit='s'))  # 到期时间
-    d1 = tafunc.get_d1(df["close1"], k, r, v, t.dt.days / 360)
+    if (not quote) and (not quote.ins_class.endswith("OPTION")):
+        return None
+    o = 1 if quote.option_class == "CALL" else -1
+    t = pd.Series(pd.to_timedelta(quote.expire_datetime - (df["datetime"] + df["duration"]) / 1e9, unit='s'))  # 到期时间
+    if v is None:
+        his_v = tafunc.get_volatility(df["close1"], df["duration"], quote.trading_time, 0.3)
+        v = tafunc.get_impv(df["close1"], df["close"], quote.strike_price, r, his_v, t.dt.days / 360, o)
+    d1 = tafunc.get_d1(df["close1"], quote.strike_price, r, v, t.dt.days / 360)
     new_df = pd.DataFrame()
-    new_df["delta"] = tafunc.get_delta(df["close1"], k, r, v, t.dt.days / 360, o, d1)
-    new_df["theta"] = tafunc.get_theta(df["close1"], k, r, v, t.dt.days / 360, o, d1)
-    new_df["gamma"] = tafunc.get_gamma(df["close1"], k, r, v, t.dt.days / 360, d1)
-    new_df["vega"] = tafunc.get_vega(df["close1"], k, r, v, t.dt.days / 360, d1)
-    new_df["rho"] = tafunc.get_rho(df["close1"], k, r, v, t.dt.days / 360, o, d1)
+    new_df["delta"] = tafunc.get_delta(df["close1"], quote.strike_price, r, v, t.dt.days / 360, o, d1)
+    new_df["theta"] = tafunc.get_theta(df["close1"], quote.strike_price, r, v, t.dt.days / 360, o, d1)
+    new_df["gamma"] = tafunc.get_gamma(df["close1"], quote.strike_price, r, v, t.dt.days / 360, d1)
+    new_df["vega"] = tafunc.get_vega(df["close1"], quote.strike_price, r, v, t.dt.days / 360, d1)
+    new_df["rho"] = tafunc.get_rho(df["close1"], quote.strike_price, r, v, t.dt.days / 360, o, d1)
     return new_df
 
 
-def VALUES(df: pd.DataFrame):
+def VALUES(df: pd.DataFrame, quote: objs.Quote):
     """
     期权内在价值，时间价值
 
     Args:
         df (pandas.DataFrame): Dataframe格式的K线序列
 
-    Returns:
-        pandas.DataFrame: 返回的 DataFrame 包含 2 列, 是 "intrins" 和 "time", 代表内在价值和时间价值
+        quote (tqsdk.objs.Quote): 期权对象，如果不是期权类型的对象，则返回 None
 
+    Returns:
+        pandas.DataFrame | None: 返回的 DataFrame 包含 2 列, 是 "intrins" 和 "time", 代表内在价值和时间价值,
+
+            如果参数 quote 不是期权类型的对象，则返回 None
 
     Example::
 
@@ -2591,28 +2603,60 @@ def VALUES(df: pd.DataFrame):
         from tqsdk.ta import VALUES
 
         api = TqApi()
-        klines = api.get_kline_serial(["SHFE.cu2006C44000", "SHFE.cu2006"], 24 * 60 * 60, 30)
-        values = VALUES(klines)
+        quote = api.get_quote("SHFE.cu2006C43000")
+        klines = api.get_kline_serial(["SHFE.cu2006C43000", "SHFE.cu2006"], 24 * 60 * 60, 30)
+        values = VALUES(klines, quote)
         print(list(values["intrins"]))
         print(list(values["time"]))
+        api.close()
     """
-    l_data = df.iloc[-1]
-    o, k = tafunc.get_option_info(l_data["symbol"])
+    if (not quote) and (not quote.ins_class.endswith("OPTION")):
+        return None
+    o = 1 if quote.option_class == "CALL" else -1
     new_df = pd.DataFrame()
-    intrins = o * (df["close1"] - k)
+    intrins = o * (df["close1"] - quote.strike_price)
     new_df["intrins"] = pd.Series(np.where(intrins > 0.0, intrins, 0.0))
     new_df["time"] = pd.Series(df["close"] - new_df["intrins"])
     return new_df
 
 
-def IMPV(df, expire_datetime, r: float = 0.025, init_v: float = None):
+def HIS_VOLATILITY(df: pd.DataFrame, quote: objs.Quote, default: float = 0.3):
     """
-    期权隐含波动率
+    计算某个合约的历史波动率
 
     Args:
         df (pandas.DataFrame): Dataframe格式的K线序列
 
-        expire_datetime (float): 期权到期日
+        quote (tqsdk.objs.Quote): 合约对象
+
+        default: 序列提供数据无法计算时，返回默认值
+
+    Returns:
+        float : 返回的 df 对应的历史波动率
+
+    Example::
+
+        from tqsdk import TqApi
+        from tqsdk.ta import HIS_VOLATILITY
+
+        api = TqApi()
+        quote = api.get_quote('SHFE.cu2006')
+        klines = api.get_kline_serial('SHFE.cu2006', 24 * 60 * 60, 50)
+        v = HIS_VOLATILITY(klines, quote)
+        print(v)
+        api.close()
+    """
+    return tafunc.get_volatility(df["close"], df["duration"], quote.trading_time, default)
+
+
+def IMP_VOLATILITY(df: pd.DataFrame, quote: objs.Quote, r: float = 0.025, init_v: float = None):
+    """
+    计算期权隐含波动率
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        quote (tqsdk.objs.Quote): 期权对象
 
         r (float): 无风险利率
 
@@ -2621,6 +2665,7 @@ def IMPV(df, expire_datetime, r: float = 0.025, init_v: float = None):
     Returns:
         pandas.DataFrame: 返回的 DataFrame 包含 1 列, 是"impv"
 
+            如果参数 quote 不是期权类型的对象，则返回 None
 
     Example::
 
@@ -2628,14 +2673,17 @@ def IMPV(df, expire_datetime, r: float = 0.025, init_v: float = None):
         from tqsdk.ta import IMPV
 
         api = TqApi()
-        option = api.get_quote("SHFE.cu2006C44000")
-        klines = api.get_kline_serial(["SHFE.cu2006C44000", "SHFE.cu2006"], 24 * 60 * 60, 30)
-        impv = IMPV(klines, option.expire_datetime, 0.025)
-        print(list(impv["impv"]))
+        quote = api.get_quote("SHFE.cu2006C50000")
+        klines = api.get_kline_serial(["SHFE.cu2006C50000", "SHFE.cu2006"], 24 * 60 * 60, 20)
+        impv = IMP_VOLATILITY(klines, quote, 0.025)
+        print(list(impv["impv"] * 100))
     """
-    l_data = df.iloc[-1]
-    if not init_v:
-        init_v = tafunc.get_volatility(df["close1"], l_data["duration"])
-    o, k = tafunc.get_option_info(l_data["symbol"])
-    t = pd.Series(pd.to_timedelta(expire_datetime - (df["datetime"] + l_data["duration"]) / 1e9, unit='s'))  # 到期时间
-    return pd.DataFrame(data=list(tafunc.get_impv(df["close1"], df["close"], k, r, init_v, t.dt.days / 360, o)), columns=["impv"])
+    if (not quote) and (not quote.ins_class.endswith("OPTION")):
+        return None
+    if init_v is None:
+        init_v = tafunc.get_volatility(df["close1"], df["duration"], quote.trading_time)
+    o = 1 if quote.option_class == "CALL" else -1
+    t = pd.Series(pd.to_timedelta(quote.expire_datetime - (df["datetime"] + df["duration"]) / 1e9, unit='s'))  # 到期时间
+    return pd.DataFrame(
+        data=list(tafunc.get_impv(df["close1"], df["close"], quote.strike_price, r, init_v, t.dt.days / 360, o)),
+        columns=["impv"])
