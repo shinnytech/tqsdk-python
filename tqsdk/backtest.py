@@ -379,7 +379,8 @@ class TqBacktest(object):
                                 }
                             }
                             timestamp = item[
-                                            "datetime"] + dur - 1000 if dur < 86400000000000 else _get_trading_day_end_time(item["datetime"])
+                                            "datetime"] + dur - 1000 if dur < 86400000000000 else _get_trading_day_end_time(
+                                item["datetime"]) - 999
                             if timestamp > self._end_dt:  # 超过结束时间
                                 return
                             yield timestamp, diff, self._get_quotes_from_kline(self._data["quotes"][ins], timestamp,
