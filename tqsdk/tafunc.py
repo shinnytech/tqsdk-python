@@ -11,7 +11,6 @@ import datetime
 import pandas as pd
 import numpy as np
 import math
-import re
 from typing import Union
 from scipy import stats
 
@@ -827,14 +826,19 @@ def barlast(cond):
     return pd.Series(r)
 
 
-def get_volatility(series: pd.Series, dur: int, default: float = 0.3) -> float:
+def get_volatility(series: pd.Series, dur: Union[pd.Series, int] = 86400, trading_time: list = None,
+                   default: float = 0.3) -> float:
     """
-    计算波动率
+    计算历史波动率
 
     Args:
         series (pd.Series): 数据序列
 
-        dur (int): 周期对应秒数
+        dur (pd.Series | int): 周期对应秒数
+
+        trading_time (list): 交易时间段列表
+
+        default (float): 默认波动率
 
     Returns:
         float: 该序列年化波动率
@@ -843,16 +847,19 @@ def get_volatility(series: pd.Series, dur: int, default: float = 0.3) -> float:
     series_u = series_u[~np.isnan(series_u)]
     if series_u.size < 2:  # 自由度小于2无法计算，返回一个默认值
         return default
-    # 这里估计每年有连续交易时间 2500 小时
-    return math.sqrt((2500 * 60 * 60 / dur) * np.cov(series_u))
-
-
-def get_option_info(symbol: str):
-    """返回期权方向、行权价"""
-    matchs = re.match(r'.*-?([CP])-?(\d+)', symbol)
-    o = 1 if matchs.group(1) == 'C' else -1  # 期权方向
-    k = float(matchs.group(2))  # 行权价
-    return o, k
+    seconds_per_day = 24 * 60 * 60
+    dur = dur[0] if isinstance(dur, pd.Series) else dur
+    if dur < 24 * 60 * 60 and trading_time:
+        trading_times = pd.DataFrame(trading_time["day"] + trading_time["night"], columns=("start", "end"))
+        trading_times = trading_times.merge(trading_times["start"].str.split(pat=":", expand=True), left_index=True,
+                                            right_index=True)
+        trading_times = trading_times.merge(trading_times["end"].str.split(pat=":", expand=True), left_index=True,
+                                            right_index=True, suffixes=("_start", "_end"))
+        for i in range(0, 3):
+            trading_times[str(i)] = (trading_times[f"{i}_end"].astype(int) - trading_times[f"{i}_start"].astype(
+                int)) * math.pow(60, 2 - i)
+        seconds_per_day = (trading_times["0"] + trading_times["1"] + trading_times["2"]).sum()
+    return math.sqrt((250 * seconds_per_day / dur) * np.cov(series_u))
 
 
 def get_d1(series: pd.Series, k: float, r: float, v: Union[float, pd.Series], t: Union[float, pd.Series]):
@@ -882,39 +889,42 @@ def get_bs_price(series: pd.Series, k: float, r: float, v: Union[float, pd.Serie
     """
     d1 = get_d1(series, k, r, v, t)
     d2 = pd.Series(d1 - v * np.sqrt(t))
-    return pd.Series(np.where(v <= 0 | np.isnan(d1), 0.0, o * (series * cdf(o * d1) - k * np.exp(-r * t) * cdf(o * d2))))
+    return pd.Series(
+        np.where(v <= 0 | np.isnan(d1), 0.0, o * (series * cdf(o * d1) - k * np.exp(-r * t) * cdf(o * d2))))
 
 
-def get_delta(series: pd.Series, k: float, r: float, v: float, t: Union[float, pd.Series], o: int,
+def get_delta(series: pd.Series, k: float, r: float, v: Union[float, pd.Series], t: Union[float, pd.Series], o: int,
               d1: pd.Series = None) -> pd.Series:
     if d1 is None:
         d1 = get_d1(series, k, r, v, t)
     return pd.Series(np.where(v <= 0 | np.isnan(d1), 0.0, pd.Series(o * cdf(o * d1))))
 
 
-def get_gamma(series: pd.Series, k: float, r: float, v: float, t: Union[float, pd.Series],
+def get_gamma(series: pd.Series, k: float, r: float, v: Union[float, pd.Series], t: Union[float, pd.Series],
               d1: pd.Series = None) -> pd.Series:
     if d1 is None:
         d1 = get_d1(series, k, r, v, t)
     return pd.Series(np.where(v <= 0 | np.isnan(d1), 0.0, pdf(d1) / (series * v * np.sqrt(t))))
 
 
-def get_theta(series: pd.Series, k: float, r: float, v: float, t: Union[float, pd.Series], o: int,
+def get_theta(series: pd.Series, k: float, r: float, v: Union[float, pd.Series], t: Union[float, pd.Series], o: int,
               d1: pd.Series = None) -> pd.Series:
     if d1 is None:
         d1 = get_d1(series, k, r, v, t)
     d2 = d1 - v * np.sqrt(t)
-    return pd.Series(np.where(v <= 0 | np.isnan(d1), 0.0, pd.Series(-v * series * pdf(d1) / (2 * np.sqrt(t)) - o * r * k * np.exp(-r * t) * cdf(o * d2))))
+    return pd.Series(np.where(v <= 0 | np.isnan(d1), 0.0, pd.Series(
+        -v * series * pdf(d1) / (2 * np.sqrt(t)) - o * r * k * np.exp(-r * t) * cdf(o * d2))))
 
 
-def get_vega(series: pd.Series, k: float, r: float, v: Union[float, pd.Series], t: Union[float, pd.Series],
+def get_vega(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[float, pd.Series],
+             t: Union[float, pd.Series],
              d1: pd.Series = None) -> pd.Series:
     if d1 is None:
         d1 = get_d1(series, k, r, v, t)
     return pd.Series(np.where(v <= 0 | np.isnan(d1), 0.0, series * np.sqrt(t) * pdf(d1)))
 
 
-def get_rho(series: pd.Series, k: float, r: float, v: float, t: Union[float, pd.Series], o: int,
+def get_rho(series: pd.Series, k: float, r: float, v: Union[float, pd.Series], t: Union[float, pd.Series], o: int,
             d1: pd.Series = None) -> pd.Series:
     if d1 is None:
         d1 = get_d1(series, k, r, v, t)
