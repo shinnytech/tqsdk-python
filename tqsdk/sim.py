@@ -179,7 +179,12 @@ class TqSim(object):
                 self._tqsdk_backtest.update(_tqsdk_backtest)
                 self._current_datetime = datetime.datetime.fromtimestamp(
                     self._tqsdk_backtest["current_dt"] / 1e9).strftime("%Y-%m-%d %H:%M:%S.%f")
-                self._local_time_record = time.time() - 0.005  # 更新最新行情时间时的本地时间
+                self._local_time_record = float("nan")
+                # 1. 回测时不使用时间差来模拟交易所时间的原因(_local_time_record始终为初始值nan)：
+                #   在sim收到行情后记录_local_time_record，然后下发行情到api进行merge_diff(),api需要处理完k线和quote才能结束wait_update(),
+                #   若处理时间过长，此时下单则在判断下单时间时与测试用例中的预期时间相差较大，导致测试用例无法通过。
+                # 2. 回测不使用时间差的方法来判断下单时间仍是可行的: 与使用了时间差的方法相比, 只对在每个交易时间段最后一笔行情时的下单时间判断有差异,
+                #   若不使用时间差, 则在最后一笔行情时下单仍判断为在可交易时间段内, 且可成交.
             for symbol, quote_diff in d.get("quotes", {}).items():
                 if quote_diff is None:
                     continue
@@ -192,7 +197,7 @@ class TqSim(object):
                 # 因为从_md_recv()中获取数据后立即判断下单时间则速度过快(两次time.time()的时间差小于最后一笔行情(14:59:9995)到15点的时间差),
                 # 则会立即成交,为处理此情况则将当前时间减去5毫秒（模拟发生5毫秒网络延迟，则两次time.time()的时间差增加了5毫秒）。
                 # todo: 按交易所来存储 _current_datetime(issue： #277)
-                if quote["datetime"] > self._current_datetime:
+                if quote["datetime"] > self._current_datetime and not self._tqsdk_backtest:
                     self._current_datetime = quote["datetime"]  # 最新行情时间
                     self._local_time_record = time.time() - 0.005  # 更新最新行情时间时的本地时间
 
@@ -201,7 +206,7 @@ class TqSim(object):
                     # 若当前行情时间大于交易日的结束时间(切换交易日)，则根据此行情时间更新交易日及交易日结束时间
                     trading_day = _get_trading_day_from_timestamp(self._get_current_timestamp())
                     self._trading_day_end = datetime.datetime.fromtimestamp(
-                        (_get_trading_day_end_time(trading_day) - 1000) / 1e9).strftime("%Y-%m-%d %H:%M:%S.%f")
+                        (_get_trading_day_end_time(trading_day) - 999) / 1e9).strftime("%Y-%m-%d %H:%M:%S.%f")
                 if "ask_price1" in quote_diff:
                     quote["ask_price1"] = float("nan") if type(quote_diff["ask_price1"]) is str else quote_diff[
                         "ask_price1"]
@@ -293,7 +298,7 @@ class TqSim(object):
         # 判断当前交易所时间（估计值）是否在交易时间段内
         for v in trading_timestamp.values():
             for period in v:
-                if now_ns_timestamp >= period[0] and now_ns_timestamp <= period[1]:
+                if now_ns_timestamp >= period[0] and now_ns_timestamp < period[1]:
                     return True
         return False
 
@@ -827,5 +832,8 @@ class TqSim(object):
     @staticmethod
     def _get_trade_timestamp(current_datetime, local_time_record):
         # 根据最新行情时间获取模拟的(预估的)当前交易所纳秒时间戳（tqsdk内部使用的时间戳统一为纳秒）
-        return int((datetime.datetime.strptime(current_datetime, "%Y-%m-%d %H:%M:%S.%f").timestamp() + (
-                time.time() - local_time_record)) * 1e6) * 1000
+        # 如果local_time_record为nan，則不加时间差
+        return int((datetime.datetime.strptime(current_datetime,
+                                               "%Y-%m-%d %H:%M:%S.%f").timestamp() + (
+                        0 if local_time_record != local_time_record else (
+                                time.time() - local_time_record))) * 1e6) * 1000
