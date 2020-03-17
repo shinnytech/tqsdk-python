@@ -15,7 +15,9 @@ class TestTdBasic(unittest.TestCase):
     1. 在本地运行测试用例前需设置运行环境变量(Environment variables), 保证api中dict及set等类型的数据序列在每次运行时元素顺序一致: PYTHONHASHSEED=32
     2. 若测试用例中调用了会使用uuid的功能函数时（如insert_order()会使用uuid生成order_id）,
         则：在生成script文件时及测试用例中都需设置 TqApi.RD = random.Random(x), 以保证两次生成的uuid一致, x取值范围为0-2^32
-    3. 因为TqSim模拟交易 Order 的 insert_date_time 和 Trade 的 trade_date_time 不是固定值，所以改为判断范围（前后100毫秒）
+    3. 對盤中的測試用例（即非回測）：因为TqSim模拟交易 Order 的 insert_date_time 和 Trade 的 trade_date_time 不是固定值，所以改为判断范围。
+        盘中时：self.assertAlmostEqual(1575292560005832000 / 1e9, order1.insert_date_time / 1e9, places=1)
+        回测时：self.assertEqual(1575291600000000000, order1.insert_date_time)
     """
 
     def setUp(self):
@@ -41,11 +43,11 @@ class TestTdBasic(unittest.TestCase):
         dir_path = os.path.dirname(os.path.realpath(__file__))
         self.mock.run(os.path.join(dir_path, "log_file", "test_td_basic_insert_order_simulate.script.lzma"))
         # 测试: 模拟账户下单
-        # 测试脚本重新生成后，数据根据实际情况有变化
+        # 非回测, 则需在盘中生成测试脚本: 测试脚本重新生成后，数据根据实际情况有变化,因此需要修改assert语句的内容
         TqApi.RD = random.Random(2)
         api = TqApi(_ins_url=self.ins_url, _td_url=self.td_url, _md_url=self.md_url)
-        order1 = api.insert_order("DCE.jd2001", "BUY", "OPEN", 1)
-        order2 = api.insert_order("SHFE.cu2001", "BUY", "OPEN", 2, limit_price=49200)
+        order1 = api.insert_order("DCE.jd2005", "BUY", "OPEN", 1)
+        order2 = api.insert_order("SHFE.cu2004", "BUY", "OPEN", 2, limit_price=49200)
 
         while order1.status == "ALIVE" or order2.status == "ALIVE":
             api.wait_update()
@@ -59,13 +61,13 @@ class TestTdBasic(unittest.TestCase):
         self.assertEqual(order1.price_type, "ANY")
         self.assertEqual(order1.volume_condition, "ANY")
         self.assertEqual(order1.time_condition, "IOC")
-        self.assertAlmostEqual(1576121399900001000 / 1e9, order1.insert_date_time / 1e9, places=1)
+        self.assertAlmostEqual(1584423143664478000 / 1e9, order1.insert_date_time / 1e9, places=1)
         self.assertEqual(order1.status, "FINISHED")
         for k, v in order1.trade_records.items():  # 模拟交易为一次性全部成交，因此只有一条成交记录
-            self.assertAlmostEqual(1576121399900001000 / 1e9, v.trade_date_time / 1e9, places=1)
+            self.assertAlmostEqual(1584423143664478000 / 1e9, v.trade_date_time / 1e9, places=1)
             del v.trade_date_time
             self.assertEqual(str(v),
-                             "{'order_id': '5c6e433715ba2bdd177219d30e7a269f', 'trade_id': '5c6e433715ba2bdd177219d30e7a269f|1', 'exchange_trade_id': '5c6e433715ba2bdd177219d30e7a269f|1', 'exchange_id': 'DCE', 'instrument_id': 'jd2001', 'direction': 'BUY', 'offset': 'OPEN', 'price': 4087.0, 'volume': 1, 'symbol': 'DCE.jd2001', 'user_id': 'TQSIM', 'commission': 6.122999999999999}")
+                             "{'order_id': '5c6e433715ba2bdd177219d30e7a269f', 'trade_id': '5c6e433715ba2bdd177219d30e7a269f|1', 'exchange_trade_id': '5c6e433715ba2bdd177219d30e7a269f|1', 'exchange_id': 'DCE', 'instrument_id': 'jd2005', 'direction': 'BUY', 'offset': 'OPEN', 'price': 3205.0, 'volume': 1, 'symbol': 'DCE.jd2005', 'user_id': 'TQSIM', 'commission': 6.122999999999999}")
 
         self.assertEqual(order2.order_id, "cf1822ffbc6887782b491044d5e34124")
         self.assertEqual(order2.direction, "BUY")
@@ -76,13 +78,13 @@ class TestTdBasic(unittest.TestCase):
         self.assertEqual(order2.price_type, "LIMIT")
         self.assertEqual(order2.volume_condition, "ANY")
         self.assertEqual(order2.time_condition, "GFD")
-        self.assertAlmostEqual(1576121399900001000 / 1e9, order2.insert_date_time / 1e9, places=1)
+        self.assertAlmostEqual(1584423143666130000 / 1e9, order2.insert_date_time / 1e9, places=1)
         self.assertEqual(order2.status, "FINISHED")
         for k, v in order2.trade_records.items():  # 模拟交易为一次性全部成交，因此只有一条成交记录
-            self.assertAlmostEqual(1576121399900001000 / 1e9, v.trade_date_time / 1e9, places=1)
+            self.assertAlmostEqual(1584423143666130000 / 1e9, v.trade_date_time / 1e9, places=1)
             del v.trade_date_time
             self.assertEqual(str(v),
-                             "{'order_id': 'cf1822ffbc6887782b491044d5e34124', 'trade_id': 'cf1822ffbc6887782b491044d5e34124|2', 'exchange_trade_id': 'cf1822ffbc6887782b491044d5e34124|2', 'exchange_id': 'SHFE', 'instrument_id': 'cu2001', 'direction': 'BUY', 'offset': 'OPEN', 'price': 49200.0, 'volume': 2, 'symbol': 'SHFE.cu2001', 'user_id': 'TQSIM', 'commission': 23.189999999999998}")
+                             "{'order_id': 'cf1822ffbc6887782b491044d5e34124', 'trade_id': 'cf1822ffbc6887782b491044d5e34124|2', 'exchange_trade_id': 'cf1822ffbc6887782b491044d5e34124|2', 'exchange_id': 'SHFE', 'instrument_id': 'cu2004', 'direction': 'BUY', 'offset': 'OPEN', 'price': 49200.0, 'volume': 2, 'symbol': 'SHFE.cu2004', 'user_id': 'TQSIM', 'commission': 23.189999999999998}")
 
         api.close()
 
