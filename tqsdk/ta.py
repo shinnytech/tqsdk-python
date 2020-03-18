@@ -2489,7 +2489,7 @@ def TRMA(df, n):
     return new_df
 
 
-def OPTION_BS_PRICE(df: pd.DataFrame, quote: objs.Quote = None, r: float = 0.025, v: Union[float, pd.Series] = None):
+def OPTION_BS_PRICE(df, quote=None, r=0.025, v=None):
     """
     期权 BS 模型理论价格
 
@@ -2500,7 +2500,7 @@ def OPTION_BS_PRICE(df: pd.DataFrame, quote: objs.Quote = None, r: float = 0.025
 
         r (float): 无风险利率
 
-        v (float): 波动率，默认使用 df 中的 symbol1 序列收盘价计算波动率
+        v (float | pandas.Series): 波动率，默认使用 df 中的 symbol1 序列收盘价计算波动率
 
     Returns:
         pandas.DataFrame: 返回的DataFrame包含1列, 是"bs_price", 代表计算出来的期权理论价格
@@ -2515,6 +2515,7 @@ def OPTION_BS_PRICE(df: pd.DataFrame, quote: objs.Quote = None, r: float = 0.025
         klines = api.get_kline_serial(["SHFE.cu2006C43000", "SHFE.cu2006"], 24 * 60 * 60, 30)
         bs_serise = OPTION_BS_PRICE(klines, quote, 0.025)
         print(list(bs_serise["bs_price"]))
+        api.close()
 
         # 预计的输出是这样的:
         [..., 3036.698780158862, 2393.333388624822, 2872.607833620801]
@@ -2535,6 +2536,7 @@ def OPTION_BS_PRICE(df: pd.DataFrame, quote: objs.Quote = None, r: float = 0.025
         klines = api.get_kline_serial(["SHFE.cu2006C43000", "SHFE.cu2006"], 24 * 60 * 60, 30)
         bs_serise = OPTION_BS_PRICE(klines, quote, 0.025, v)
         print(list(bs_serise["bs_price"]))
+        api.close()
 
         # 预计的输出是这样的:
         [..., 3036.698780158862, 2393.333388624822, 2872.607833620801]
@@ -2551,7 +2553,7 @@ def OPTION_BS_PRICE(df: pd.DataFrame, quote: objs.Quote = None, r: float = 0.025
                         columns=["bs_price"])
 
 
-def OPTION_GREEKS(df: pd.DataFrame, quote: objs.Quote, r: float = 0.025, v: Union[float, pd.Series] = None):
+def OPTION_GREEKS(df, quote=None, r=0.025, v=None):
     """
     期权希腊指标
 
@@ -2600,7 +2602,7 @@ def OPTION_GREEKS(df: pd.DataFrame, quote: objs.Quote, r: float = 0.025, v: Unio
     return new_df
 
 
-def OPTION_VALUE(df: pd.DataFrame, quote: objs.Quote = None):
+def OPTION_VALUE(df, quote=None):
     """
     期权内在价值，时间价值
 
@@ -2635,7 +2637,7 @@ def OPTION_VALUE(df: pd.DataFrame, quote: objs.Quote = None):
     return new_df
 
 
-def OPTION_IMPV(df: pd.DataFrame, quote: objs.Quote, r: float = 0.025, init_v: float = None):
+def OPTION_IMPV(df, quote=None, r=0.025, init_v=None):
     """
     计算期权隐含波动率
 

@@ -887,17 +887,18 @@ def get_bs_price(series: pd.Series, k: float, r: float, v: Union[float, pd.Serie
 
         r (float): 无风险利率
 
-        v (float | pd.Series): 波动率
+        v (float / pandas.Series): 波动率
 
-        t (float | pandas.Series): 到期时间序列
+        t (float / pandas.Series): 到期时间序列
 
         o (int): 期权方向 CALL: 1; PUT: -1
 
     Returns:
-        pd.Series: 该序列理论价
+        pandas.Series: 该序列理论价
 
     Example::
 
+        import pandas as pd
         from tqsdk import TqApi, tafunc
 
         api = TqApi()
@@ -929,22 +930,23 @@ def get_delta(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[
 
         k (float): 期权行权价
 
-        r (float | pd.Series): 无风险利率
+        r (float / pandas.Series): 无风险利率
 
-        v (float | pd.Series): 波动率
+        v (float / pandas.Series): 波动率
 
-        t (float | pandas.Series): 到期时间序列
+        t (float / pandas.Series): 到期时间序列
 
         o (int): 期权方向 CALL: 1; PUT: -1
 
         d1 (pandas.Series): 序列对应的 BS 公式中 b1 值
 
     Returns:
-        pd.Series: 该序列的 rho 值
+        pandas.Series: 该序列的 delta 值
 
 
     Example::
 
+        import pandas as pd
         from tqsdk import TqApi, tafunc
 
         api = TqApi()
@@ -956,8 +958,8 @@ def get_delta(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[
         klines = api.get_kline_serial(["SHFE.cu2006C45000", "SHFE.cu2006"], 24 * 60 * 60, 10)
         t = pd.Series(pd.to_timedelta(option.expire_datetime - (klines["datetime"] + klines["duration"]) / 1e9, unit='s')).dt.days / 360
         impv = tafunc.get_impv(klines["close1"], klines["close"], 45000, 0.025, v, t, 1)
-        rho = tafunc.get_delta(klines["close1"], klines["close"], 45000, 0.025, v, t, 1)
-        print("rho", list(rho))
+        delta = tafunc.get_delta(klines["close1"], klines["close"], 45000, 0.025, v, t, 1)
+        print("delta", list(delta))
         api.close()
 
     """
@@ -977,20 +979,21 @@ def get_gamma(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[
 
             k (float): 期权行权价
 
-            r (float | pd.Series): 无风险利率
+            r (float / pandas.Series): 无风险利率
 
-            v (float | pd.Series): 波动率
+            v (float / pandas.Series): 波动率
 
-            t (float | pandas.Series): 到期时间序列
+            t (float / pandas.Series): 到期时间序列
 
             d1 (pandas.Series): 序列对应的 BS 公式中 b1 值
 
         Returns:
-            pd.Series: 该序列的 rho 值
+            pandas.Series: 该序列的 gamma 值
 
 
         Example::
 
+            import pandas as pd
             from tqsdk import TqApi, tafunc
 
             api = TqApi()
@@ -1002,7 +1005,7 @@ def get_gamma(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[
             klines = api.get_kline_serial(["SHFE.cu2006C45000", "SHFE.cu2006"], 24 * 60 * 60, 10)
             t = pd.Series(pd.to_timedelta(option.expire_datetime - (klines["datetime"] + klines["duration"]) / 1e9, unit='s')).dt.days / 360
             impv = tafunc.get_impv(klines["close1"], klines["close"], 45000, 0.025, v, t, 1)
-            gamma = tafunc.get_gamma(klines["close1"], klines["close"], 45000, 0.025, v, t, 1)
+            gamma = tafunc.get_gamma(klines["close1"], klines["close"], 45000, 0.025, v, t)
             print("gamma", list(gamma))
             api.close()
 
@@ -1023,22 +1026,23 @@ def get_theta(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[
 
             k (float): 期权行权价
 
-            r (float | pd.Series): 无风险利率
+            r (float / pandas.Series): 无风险利率
 
-            v (float | pd.Series): 波动率
+            v (float / pandas.Series): 波动率
 
-            t (float | pandas.Series): 到期时间序列
+            t (float / pandas.Series): 到期时间序列
 
             o (int): 期权方向 CALL: 1; PUT: -1
 
             d1 (pandas.Series): 序列对应的 BS 公式中 b1 值
 
         Returns:
-            pd.Series: 该序列的 rho 值
+            pandas.Series: 该序列的 theta 值
 
 
         Example::
 
+            import pandas as pd
             from tqsdk import TqApi, tafunc
 
             api = TqApi()
@@ -1073,20 +1077,21 @@ def get_vega(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[f
 
         k (float): 期权行权价
 
-        r (float | pd.Series): 无风险利率
+        r (float / pandas.Series): 无风险利率
 
-        v (float | pd.Series): 波动率
+        v (float / pandas.Series): 波动率
 
-        t (float | pandas.Series): 到期时间序列
+        t (float / pandas.Series): 到期时间序列
 
         d1 (pandas.Series): 序列对应的 BS 公式中 b1 值
 
     Returns:
-        pd.Series: 该序列的 rho 值
+        pandas.Series: 该序列的 vega 值
 
 
     Example::
 
+        import pandas as pd
         from tqsdk import TqApi, tafunc
 
         api = TqApi()
@@ -1098,7 +1103,7 @@ def get_vega(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[f
         klines = api.get_kline_serial(["SHFE.cu2006C45000", "SHFE.cu2006"], 24 * 60 * 60, 10)
         t = pd.Series(pd.to_timedelta(option.expire_datetime - (klines["datetime"] + klines["duration"]) / 1e9, unit='s')).dt.days / 360
         impv = tafunc.get_impv(klines["close1"], klines["close"], 45000, 0.025, v, t, 1)
-        vega = tafunc.get_vega(klines["close1"], klines["close"], 45000, 0.025, v, t, 1)
+        vega = tafunc.get_vega(klines["close1"], klines["close"], 45000, 0.025, v, t)
         print("vega", list(vega))
         api.close()
 
@@ -1119,22 +1124,23 @@ def get_rho(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[fl
 
         k (float): 期权行权价
 
-        r (float | pd.Series): 无风险利率
+        r (float / pandas.Series): 无风险利率
 
-        v (float | pd.Series): 波动率
+        v (float / pandas.Series): 波动率
 
-        t (float | pandas.Series): 到期时间序列
+        t (float / pandas.Series): 到期时间序列
 
         o (int): 期权方向 CALL: 1; PUT: -1
 
         d1 (pandas.Series): 序列对应的 BS 公式中 b1 值
 
     Returns:
-        pd.Series: 该序列的 rho 值
+        pandas.Series: 该序列的 rho 值
 
 
     Example::
 
+        import pandas as pd
         from tqsdk import TqApi, tafunc
 
         api = TqApi()
@@ -1171,18 +1177,19 @@ def get_impv(series: pd.Series, series_option: pd.Series, k: float, r: float, in
 
         r (float): 无风险利率
 
-        init_v (float | pd.Series): 初始波动率
+        init_v (float  / pandas.Series): 初始波动率
 
-        t (float | pandas.Series): 到期时间序列
+        t (float / pandas.Series): 到期时间序列
 
         o (int): 期权方向 CALL: 1; PUT: -1
 
     Returns:
-        pd.Series: 该序列的隐含波动率
+        pandas.Series: 该序列的隐含波动率
 
 
     Example::
 
+        import pandas as pd
         from tqsdk import TqApi, tafunc
 
         api = TqApi()
