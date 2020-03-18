@@ -117,7 +117,7 @@ def run_for_driver(driver, test):
     # K线是否有成交箭头
     chart_main_marks = driver.find_element_by_css_selector("svg.tqchart>g.root g.main.marks")
     trade_arrow_paths = chart_main_marks.find_element_by_css_selector("g.tradearrow")
-    wait = WebDriverWait(driver, 10)
+    wait = WebDriverWait(driver, 30)
     wait.until(element_has_child(trade_arrow_paths, "path"))
     # 成交列表是否显示
     trades_table = driver.find_element_by_css_selector("div.reports.trades-table>table")
