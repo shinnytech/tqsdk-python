@@ -13,7 +13,8 @@ import numpy as np
 import math
 from typing import Union
 from scipy import stats
-from tqsdk import objs, TqSim
+from tqsdk import TqSim
+from tqsdk.objs import Quote
 
 cdf = stats.norm.cdf  # 累计度分布函数
 pdf = stats.norm.pdf  # 概率分布函数
@@ -850,7 +851,7 @@ def _get_d1(series: pd.Series, k: float, r: float, v: Union[float, pd.Series], t
     return pd.Series(np.where((v <= 0) | (t <= 0), np.nan, (np.log(series / k) + (r + 0.5 * np.power(v, 2)) * t) / (v * np.sqrt(t))))
 
 
-def his_volatility(df: pd.DataFrame, quote: objs.Quote = None):
+def his_volatility(df: pd.DataFrame, quote: Quote = None):
     """
     计算某个合约的历史波动率
 
@@ -1209,7 +1210,7 @@ def get_impv(series: pd.Series, series_option: pd.Series, k: float, r: float, in
         print("impv", list((impv * 100).round(2)))
         api.close()
     """
-    lower_limit = get_bs_price(series, k, r, 0, t, o)
+    lower_limit = get_bs_price(series, k, r, 1e-8, t, o)
     df = pd.DataFrame()
     df["x"] = pd.Series(np.where((series_option < lower_limit) | (t <= 0), np.nan, init_v))
     df["y"] = pd.Series(np.where(np.isnan(df["x"]), np.nan, get_bs_price(series, k, r, df["x"], t, o)))
