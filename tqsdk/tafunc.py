@@ -13,6 +13,7 @@ import numpy as np
 import math
 from typing import Union
 from scipy import stats
+from tqsdk import objs, TqSim
 
 cdf = stats.norm.cdf  # 累计度分布函数
 pdf = stats.norm.pdf  # 概率分布函数
@@ -826,23 +827,8 @@ def barlast(cond):
     return pd.Series(r)
 
 
-def get_volatility(series: pd.Series, dur: Union[pd.Series, int] = 86400, trading_time: list = None,
-                   default: float = 0.3) -> float:
-    """
-    计算历史波动率
-
-    Args:
-        series (pd.Series): 数据序列
-
-        dur (pd.Series | int): 周期对应秒数
-
-        trading_time (list): 交易时间段列表
-
-        default (float): 默认波动率
-
-    Returns:
-        float: 该序列年化波动率
-    """
+def _get_volatility(series: pd.Series, dur: Union[pd.Series, int] = 86400, trading_time: list = None,
+                    default: float = 0.3) -> float:
     series_u = np.log(series.shift(1)[1:] / series[1:])
     series_u = series_u[~np.isnan(series_u)]
     if series_u.size < 2:  # 自由度小于2无法计算，返回一个默认值
@@ -850,20 +836,43 @@ def get_volatility(series: pd.Series, dur: Union[pd.Series, int] = 86400, tradin
     seconds_per_day = 24 * 60 * 60
     dur = dur[0] if isinstance(dur, pd.Series) else dur
     if dur < 24 * 60 * 60 and trading_time:
-        trading_times = pd.DataFrame(trading_time["day"] + trading_time["night"], columns=("start", "end"))
-        trading_times = trading_times.merge(trading_times["start"].str.split(pat=":", expand=True), left_index=True,
-                                            right_index=True)
-        trading_times = trading_times.merge(trading_times["end"].str.split(pat=":", expand=True), left_index=True,
-                                            right_index=True, suffixes=("_start", "_end"))
-        for i in range(0, 3):
-            trading_times[str(i)] = (trading_times[f"{i}_end"].astype(int) - trading_times[f"{i}_start"].astype(
-                int)) * math.pow(60, 2 - i)
-        seconds_per_day = (trading_times["0"] + trading_times["1"] + trading_times["2"]).sum()
+        periods = TqSim._get_period_timestamp(0, trading_time.get("day", []) + trading_time.get("night", []))
+        seconds_per_day = sum([p[1] - p[0] for p in periods]) / 1e9
     return math.sqrt((250 * seconds_per_day / dur) * np.cov(series_u))
 
 
-def get_d1(series: pd.Series, k: float, r: float, v: Union[float, pd.Series], t: Union[float, pd.Series]):
+def _get_d1(series: pd.Series, k: float, r: float, v: Union[float, pd.Series], t: Union[float, pd.Series]):
     return pd.Series(np.where(v <= 0, 0.0, (np.log(series / k) + (r + 0.5 * np.power(v, 2)) * t) / (v * np.sqrt(t))))
+
+
+def his_volatility(df: pd.DataFrame, quote: objs.Quote = None):
+    """
+    计算某个合约的历史波动率
+
+    Args:
+        df (pandas.DataFrame): Dataframe格式的K线序列
+
+        quote (tqsdk.objs.Quote): 合约对象
+
+    Returns:
+        float : 返回的 df 对应的历史波动率
+
+    Example::
+
+        from tqsdk import TqApi, tafunc
+
+        api = TqApi()
+        quote = api.get_quote('SHFE.cu2006')
+        klines = api.get_kline_serial('SHFE.cu2006', 24 * 60 * 60, 50)
+        v = tafunc.his_volatility(klines, quote)
+        print(v)
+        api.close()
+    """
+    if quote:
+        trading_time = quote.trading_time
+    else:
+        trading_time = None
+    return _get_volatility(df["close"], df["duration"], trading_time, default=float("nan"))
 
 
 def get_bs_price(series: pd.Series, k: float, r: float, v: Union[float, pd.Series], t: Union[float, pd.Series],
@@ -886,31 +895,168 @@ def get_bs_price(series: pd.Series, k: float, r: float, v: Union[float, pd.Serie
 
     Returns:
         pd.Series: 该序列理论价
+
+    Example::
+
+        from tqsdk import TqApi, tafunc
+
+        api = TqApi()
+        quote = api.get_quote("SHFE.cu2006")
+        ks = api.get_kline_serial("SHFE.cu2006", 24 * 60 * 60, 10)
+        v = tafunc.his_volatility(ks, quote)  # 历史波动率
+
+        option = api.get_quote("SHFE.cu2006C45000")
+        klines = api.get_kline_serial(["SHFE.cu2006C45000", "SHFE.cu2006"], 24 * 60 * 60, 10)
+        t = pd.Series(pd.to_timedelta(option.expire_datetime - (klines["datetime"] + klines["duration"]) / 1e9, unit='s')).dt.days / 360
+        bs_price = tafunc.get_bs_price(klines["close1"], 45000, 0.025, v, t, 1)  # 理论价
+        print(list(bs_price.round(2)))
+        api.close()
     """
-    d1 = get_d1(series, k, r, v, t)
+    d1 = _get_d1(series, k, r, v, t)
     d2 = pd.Series(d1 - v * np.sqrt(t))
     return pd.Series(
         np.where(v <= 0 | np.isnan(d1), 0.0, o * (series * cdf(o * d1) - k * np.exp(-r * t) * cdf(o * d2))))
 
 
-def get_delta(series: pd.Series, k: float, r: float, v: Union[float, pd.Series], t: Union[float, pd.Series], o: int,
+def get_delta(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[float, pd.Series],
+              t: Union[float, pd.Series], o: int,
               d1: pd.Series = None) -> pd.Series:
+    """
+    计算期权希腊指标 delta 值
+
+    Args:
+        series (pandas.Series): 标的价格序列
+
+        k (float): 期权行权价
+
+        r (float | pd.Series): 无风险利率
+
+        v (float | pd.Series): 波动率
+
+        t (float | pandas.Series): 到期时间序列
+
+        o (int): 期权方向 CALL: 1; PUT: -1
+
+        d1 (pandas.Series): 序列对应的 BS 公式中 b1 值
+
+    Returns:
+        pd.Series: 该序列的 rho 值
+
+
+    Example::
+
+        from tqsdk import TqApi, tafunc
+
+        api = TqApi()
+        quote = api.get_quote("SHFE.cu2006")
+        ks = api.get_kline_serial("SHFE.cu2006", 24 * 60 * 60, 10)
+        v = tafunc.his_volatility(ks, quote)  # 历史波动率
+
+        option = api.get_quote("SHFE.cu2006C45000")
+        klines = api.get_kline_serial(["SHFE.cu2006C45000", "SHFE.cu2006"], 24 * 60 * 60, 10)
+        t = pd.Series(pd.to_timedelta(option.expire_datetime - (klines["datetime"] + klines["duration"]) / 1e9, unit='s')).dt.days / 360
+        impv = tafunc.get_impv(klines["close1"], klines["close"], 45000, 0.025, v, t, 1)
+        rho = tafunc.get_delta(klines["close1"], klines["close"], 45000, 0.025, v, t, 1)
+        print("rho", list(rho))
+        api.close()
+
+    """
     if d1 is None:
-        d1 = get_d1(series, k, r, v, t)
+        d1 = _get_d1(series, k, r, v, t)
     return pd.Series(np.where(v <= 0 | np.isnan(d1), 0.0, pd.Series(o * cdf(o * d1))))
 
 
-def get_gamma(series: pd.Series, k: float, r: float, v: Union[float, pd.Series], t: Union[float, pd.Series],
+def get_gamma(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[float, pd.Series],
+              t: Union[float, pd.Series],
               d1: pd.Series = None) -> pd.Series:
+    """
+        计算期权希腊指标 gamma 值
+
+        Args:
+            series (pandas.Series): 标的价格序列
+
+            k (float): 期权行权价
+
+            r (float | pd.Series): 无风险利率
+
+            v (float | pd.Series): 波动率
+
+            t (float | pandas.Series): 到期时间序列
+
+            d1 (pandas.Series): 序列对应的 BS 公式中 b1 值
+
+        Returns:
+            pd.Series: 该序列的 rho 值
+
+
+        Example::
+
+            from tqsdk import TqApi, tafunc
+
+            api = TqApi()
+            quote = api.get_quote("SHFE.cu2006")
+            ks = api.get_kline_serial("SHFE.cu2006", 24 * 60 * 60, 10)
+            v = tafunc.his_volatility(ks, quote)  # 历史波动率
+
+            option = api.get_quote("SHFE.cu2006C45000")
+            klines = api.get_kline_serial(["SHFE.cu2006C45000", "SHFE.cu2006"], 24 * 60 * 60, 10)
+            t = pd.Series(pd.to_timedelta(option.expire_datetime - (klines["datetime"] + klines["duration"]) / 1e9, unit='s')).dt.days / 360
+            impv = tafunc.get_impv(klines["close1"], klines["close"], 45000, 0.025, v, t, 1)
+            gamma = tafunc.get_gamma(klines["close1"], klines["close"], 45000, 0.025, v, t, 1)
+            print("gamma", list(gamma))
+            api.close()
+
+        """
     if d1 is None:
-        d1 = get_d1(series, k, r, v, t)
+        d1 = _get_d1(series, k, r, v, t)
     return pd.Series(np.where(v <= 0 | np.isnan(d1), 0.0, pdf(d1) / (series * v * np.sqrt(t))))
 
 
-def get_theta(series: pd.Series, k: float, r: float, v: Union[float, pd.Series], t: Union[float, pd.Series], o: int,
+def get_theta(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[float, pd.Series],
+              t: Union[float, pd.Series], o: int,
               d1: pd.Series = None) -> pd.Series:
+    """
+        计算期权希腊指标 theta 值
+
+        Args:
+            series (pandas.Series): 标的价格序列
+
+            k (float): 期权行权价
+
+            r (float | pd.Series): 无风险利率
+
+            v (float | pd.Series): 波动率
+
+            t (float | pandas.Series): 到期时间序列
+
+            o (int): 期权方向 CALL: 1; PUT: -1
+
+            d1 (pandas.Series): 序列对应的 BS 公式中 b1 值
+
+        Returns:
+            pd.Series: 该序列的 rho 值
+
+
+        Example::
+
+            from tqsdk import TqApi, tafunc
+
+            api = TqApi()
+            quote = api.get_quote("SHFE.cu2006")
+            ks = api.get_kline_serial("SHFE.cu2006", 24 * 60 * 60, 10)
+            v = tafunc.his_volatility(ks, quote)  # 历史波动率
+
+            option = api.get_quote("SHFE.cu2006C45000")
+            klines = api.get_kline_serial(["SHFE.cu2006C45000", "SHFE.cu2006"], 24 * 60 * 60, 10)
+            t = pd.Series(pd.to_timedelta(option.expire_datetime - (klines["datetime"] + klines["duration"]) / 1e9, unit='s')).dt.days / 360
+            impv = tafunc.get_impv(klines["close1"], klines["close"], 45000, 0.025, v, t, 1)
+            theta = tafunc.get_theta(klines["close1"], klines["close"], 45000, 0.025, v, t, 1)
+            print("theta", list(theta))
+            api.close()
+
+        """
     if d1 is None:
-        d1 = get_d1(series, k, r, v, t)
+        d1 = _get_d1(series, k, r, v, t)
     d2 = d1 - v * np.sqrt(t)
     return pd.Series(np.where(v <= 0 | np.isnan(d1), 0.0, pd.Series(
         -v * series * pdf(d1) / (2 * np.sqrt(t)) - o * r * k * np.exp(-r * t) * cdf(o * d2))))
@@ -919,21 +1065,138 @@ def get_theta(series: pd.Series, k: float, r: float, v: Union[float, pd.Series],
 def get_vega(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[float, pd.Series],
              t: Union[float, pd.Series],
              d1: pd.Series = None) -> pd.Series:
+    """
+    计算期权希腊指标 vega 值
+
+    Args:
+        series (pandas.Series): 标的价格序列
+
+        k (float): 期权行权价
+
+        r (float | pd.Series): 无风险利率
+
+        v (float | pd.Series): 波动率
+
+        t (float | pandas.Series): 到期时间序列
+
+        d1 (pandas.Series): 序列对应的 BS 公式中 b1 值
+
+    Returns:
+        pd.Series: 该序列的 rho 值
+
+
+    Example::
+
+        from tqsdk import TqApi, tafunc
+
+        api = TqApi()
+        quote = api.get_quote("SHFE.cu2006")
+        ks = api.get_kline_serial("SHFE.cu2006", 24 * 60 * 60, 10)
+        v = tafunc.his_volatility(ks, quote)  # 历史波动率
+
+        option = api.get_quote("SHFE.cu2006C45000")
+        klines = api.get_kline_serial(["SHFE.cu2006C45000", "SHFE.cu2006"], 24 * 60 * 60, 10)
+        t = pd.Series(pd.to_timedelta(option.expire_datetime - (klines["datetime"] + klines["duration"]) / 1e9, unit='s')).dt.days / 360
+        impv = tafunc.get_impv(klines["close1"], klines["close"], 45000, 0.025, v, t, 1)
+        vega = tafunc.get_vega(klines["close1"], klines["close"], 45000, 0.025, v, t, 1)
+        print("vega", list(vega))
+        api.close()
+
+    """
     if d1 is None:
-        d1 = get_d1(series, k, r, v, t)
+        d1 = _get_d1(series, k, r, v, t)
     return pd.Series(np.where(v <= 0 | np.isnan(d1), 0.0, series * np.sqrt(t) * pdf(d1)))
 
 
-def get_rho(series: pd.Series, k: float, r: float, v: Union[float, pd.Series], t: Union[float, pd.Series], o: int,
+def get_rho(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[float, pd.Series],
+            t: Union[float, pd.Series], o: int,
             d1: pd.Series = None) -> pd.Series:
+    """
+    计算期权希腊指标 rho 值
+
+    Args:
+        series (pandas.Series): 标的价格序列
+
+        k (float): 期权行权价
+
+        r (float | pd.Series): 无风险利率
+
+        v (float | pd.Series): 波动率
+
+        t (float | pandas.Series): 到期时间序列
+
+        o (int): 期权方向 CALL: 1; PUT: -1
+
+        d1 (pandas.Series): 序列对应的 BS 公式中 b1 值
+
+    Returns:
+        pd.Series: 该序列的 rho 值
+
+
+    Example::
+
+        from tqsdk import TqApi, tafunc
+
+        api = TqApi()
+        quote = api.get_quote("SHFE.cu2006")
+        ks = api.get_kline_serial("SHFE.cu2006", 24 * 60 * 60, 10)
+        v = tafunc.his_volatility(ks, quote)  # 历史波动率
+
+        option = api.get_quote("SHFE.cu2006C45000")
+        klines = api.get_kline_serial(["SHFE.cu2006C45000", "SHFE.cu2006"], 24 * 60 * 60, 10)
+        t = pd.Series(pd.to_timedelta(option.expire_datetime - (klines["datetime"] + klines["duration"]) / 1e9, unit='s')).dt.days / 360
+        impv = tafunc.get_impv(klines["close1"], klines["close"], 45000, 0.025, v, t, 1)
+        rho = tafunc.get_rho(klines["close1"], klines["close"], 45000, 0.025, v, t, 1)
+        print("rho", list(rho))
+        api.close()
+
+    """
     if d1 is None:
-        d1 = get_d1(series, k, r, v, t)
+        d1 = _get_d1(series, k, r, v, t)
     d2 = d1 - v * np.sqrt(t)
     return pd.Series(np.where(v <= 0 | np.isnan(d1), 0.0, o * k * t * np.exp(-r * t) * cdf(o * d2)))
 
 
 def get_impv(series: pd.Series, series_option: pd.Series, k: float, r: float, init_v: float, t: Union[float, pd.Series],
              o: int) -> pd.Series:
+    """
+    计算期权隐含波动率
+
+    Args:
+        series (pandas.Series): 标的价格序列
+
+        series_option (pandas.Series): 期权价格序列
+
+        k (float): 期权行权价
+
+        r (float): 无风险利率
+
+        init_v (float | pd.Series): 初始波动率
+
+        t (float | pandas.Series): 到期时间序列
+
+        o (int): 期权方向 CALL: 1; PUT: -1
+
+    Returns:
+        pd.Series: 该序列的隐含波动率
+
+
+    Example::
+
+        from tqsdk import TqApi, tafunc
+
+        api = TqApi()
+        quote = api.get_quote("SHFE.cu2006")
+        ks = api.get_kline_serial("SHFE.cu2006", 24 * 60 * 60, 10)
+        v = tafunc.his_volatility(ks, quote)  # 历史波动率
+
+        option = api.get_quote("SHFE.cu2006C45000")
+        klines = api.get_kline_serial(["SHFE.cu2006C45000", "SHFE.cu2006"], 24 * 60 * 60, 10)
+        t = pd.Series(pd.to_timedelta(option.expire_datetime - (klines["datetime"] + klines["duration"]) / 1e9, unit='s')).dt.days / 360
+        impv = tafunc.get_impv(klines["close1"], klines["close"], 45000, 0.025, v, t, 1)
+        print("impv", list((impv * 100).round(2)))
+        api.close()
+    """
     lower_limit = get_bs_price(series, k, r, 0, t, o)
     df = pd.DataFrame()
     df["x"] = pd.Series(np.where(series_option < lower_limit, 0, init_v))
