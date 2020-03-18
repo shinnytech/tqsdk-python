@@ -10,8 +10,7 @@ tqsdk.ta 模块包含了一批常用的技术指标计算函数
 import math
 import numpy as np
 import pandas as pd
-from typing import Union
-from tqsdk import tafunc, objs
+from tqsdk import tafunc
 
 
 def ATR(df, n):
@@ -2489,7 +2488,7 @@ def TRMA(df, n):
     return new_df
 
 
-def OPTION_BS_PRICE(df, quote=None, r=0.025, v=None):
+def BS_VALUE(df, quote=None, r=0.025, v=None):
     """
     期权 BS 模型理论价格
 
@@ -2512,8 +2511,8 @@ def OPTION_BS_PRICE(df, quote=None, r=0.025, v=None):
 
         api = TqApi()
         quote = api.get_quote("SHFE.cu2006C43000")
-        klines = api.get_kline_serial(["SHFE.cu2006C43000", "SHFE.cu2006"], 24 * 60 * 60, 30)
-        bs_serise = OPTION_BS_PRICE(klines, quote, 0.025)
+        klines = api.get_kline_serial(["SHFE.cu2006"], 24 * 60 * 60, 30)
+        bs_serise = BS_VALUE(klines, quote, 0.025)
         print(list(bs_serise["bs_price"]))
         api.close()
 
@@ -2533,8 +2532,8 @@ def OPTION_BS_PRICE(df, quote=None, r=0.025, v=None):
         print("历史波动率:", v)
 
         quote = api.get_quote("SHFE.cu2006C43000")
-        klines = api.get_kline_serial(["SHFE.cu2006C43000", "SHFE.cu2006"], 24 * 60 * 60, 30)
-        bs_serise = OPTION_BS_PRICE(klines, quote, 0.025, v)
+        klines = api.get_kline_serial(["SHFE.cu2006"], 24 * 60 * 60, 30)
+        bs_serise = BS_VALUE(klines, quote, 0.025, v)
         print(list(bs_serise["bs_price"]))
         api.close()
 
@@ -2542,14 +2541,14 @@ def OPTION_BS_PRICE(df, quote=None, r=0.025, v=None):
         [..., 3036.698780158862, 2393.333388624822, 2872.607833620801]
     """
     if not quote or not quote.ins_class.endswith("OPTION"):
-        return pd.DataFrame(df.where(df["close1"] < 0), columns=["bs_price"])
+        return pd.DataFrame(df.where(df["close"] < 0), columns=["bs_price"])
     if v is None:
-        v = tafunc._get_volatility(df["close1"], df["duration"], quote.trading_time, float('nan'))
+        v = tafunc._get_volatility(df["close"], df["duration"], quote.trading_time, float('nan'))
         if math.isnan(v):
-            return pd.DataFrame(df.where(df["close1"] < 0), columns=["bs_price"])
+            return pd.DataFrame(df.where(df["close"] < 0), columns=["bs_price"])
     o = 1 if quote.option_class == "CALL" else -1
     t = pd.Series(pd.to_timedelta(quote.expire_datetime - (df["datetime"] + df["duration"]) / 1e9, unit='s'))
-    return pd.DataFrame(data=list(tafunc.get_bs_price(df["close1"], quote.strike_price, r, v, t.dt.days / 360, o)),
+    return pd.DataFrame(data=list(tafunc.get_bs_price(df["close"], quote.strike_price, r, v, t.dt.days / 360, o)),
                         columns=["bs_price"])
 
 
