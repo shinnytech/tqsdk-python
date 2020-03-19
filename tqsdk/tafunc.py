@@ -1210,7 +1210,7 @@ def get_impv(series: pd.Series, series_option: pd.Series, k: float, r: float, in
         print("impv", list((impv * 100).round(2)))
         api.close()
     """
-    lower_limit = get_bs_price(series, k, r, 1e-8, t, o)
+    lower_limit = o * (series - k * np.exp(-r * t))
     df = pd.DataFrame()
     df["x"] = pd.Series(np.where((series_option < lower_limit) | (t <= 0), np.nan, init_v))
     df["y"] = pd.Series(np.where(np.isnan(df["x"]), np.nan, get_bs_price(series, k, r, df["x"], t, o)))
