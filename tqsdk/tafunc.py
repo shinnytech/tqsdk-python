@@ -827,6 +827,11 @@ def barlast(cond):
     return pd.Series(r)
 
 
+def _get_t_series(series: pd.Series, dur: int, quote):
+    t = pd.Series(pd.to_timedelta(quote.expire_datetime - (series / 1e9 + dur), unit='s'))
+    return (t.dt.days * 86400 + t.dt.seconds) / (360 * 86400)
+
+
 def _get_volatility(series: pd.Series, dur: Union[pd.Series, int] = 86400, trading_time: list = None,
                     default: float = 0.3) -> float:
     series_u = np.log(series.shift(1)[1:] / series[1:])
@@ -842,7 +847,7 @@ def _get_volatility(series: pd.Series, dur: Union[pd.Series, int] = 86400, tradi
 
 
 def _get_d1(series: pd.Series, k: float, r: float, v: Union[float, pd.Series], t: Union[float, pd.Series]):
-    return pd.Series(np.where(v <= 0, 0.0, (np.log(series / k) + (r + 0.5 * np.power(v, 2)) * t) / (v * np.sqrt(t))))
+    return pd.Series(np.where((v <= 0) | (t <= 0), np.nan, (np.log(series / k) + (r + 0.5 * np.power(v, 2)) * t) / (v * np.sqrt(t))))
 
 
 def his_volatility(df: pd.DataFrame, quote: objs.Quote = None):
@@ -914,9 +919,9 @@ def get_bs_price(series: pd.Series, k: float, r: float, v: Union[float, pd.Serie
         api.close()
     """
     d1 = _get_d1(series, k, r, v, t)
-    d2 = pd.Series(d1 - v * np.sqrt(t))
+    d2 = pd.Series(np.where((v <= 0) | (t <= 0) | np.isnan(d1), np.nan, d1 - v * np.sqrt(t)))
     return pd.Series(
-        np.where(v <= 0 | np.isnan(d1), 0.0, o * (series * cdf(o * d1) - k * np.exp(-r * t) * cdf(o * d2))))
+        np.where((v <= 0) | (t <= 0) | np.isnan(d1), np.nan, o * (series * cdf(o * d1) - k * np.exp(-r * t) * cdf(o * d2))))
 
 
 def get_delta(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[float, pd.Series],
@@ -965,7 +970,7 @@ def get_delta(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[
     """
     if d1 is None:
         d1 = _get_d1(series, k, r, v, t)
-    return pd.Series(np.where(v <= 0 | np.isnan(d1), 0.0, pd.Series(o * cdf(o * d1))))
+    return pd.Series(np.where((v <= 0) | (t <= 0) | np.isnan(d1), np.nan, pd.Series(o * cdf(o * d1))))
 
 
 def get_gamma(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[float, pd.Series],
@@ -1012,7 +1017,7 @@ def get_gamma(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[
         """
     if d1 is None:
         d1 = _get_d1(series, k, r, v, t)
-    return pd.Series(np.where(v <= 0 | np.isnan(d1), 0.0, pdf(d1) / (series * v * np.sqrt(t))))
+    return pd.Series(np.where((v <= 0) | (t <= 0) | np.isnan(d1), np.nan, pdf(d1) / (series * v * np.sqrt(t))))
 
 
 def get_theta(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[float, pd.Series],
@@ -1061,8 +1066,8 @@ def get_theta(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[
         """
     if d1 is None:
         d1 = _get_d1(series, k, r, v, t)
-    d2 = d1 - v * np.sqrt(t)
-    return pd.Series(np.where(v <= 0 | np.isnan(d1), 0.0, pd.Series(
+    d2 = pd.Series(np.where((v <= 0) | (t <= 0) | np.isnan(d1), np.nan, d1 - v * np.sqrt(t)))
+    return pd.Series(np.where((v <= 0) | (t <= 0) | np.isnan(d1), np.nan, pd.Series(
         -v * series * pdf(d1) / (2 * np.sqrt(t)) - o * r * k * np.exp(-r * t) * cdf(o * d2))))
 
 
@@ -1110,7 +1115,7 @@ def get_vega(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[f
     """
     if d1 is None:
         d1 = _get_d1(series, k, r, v, t)
-    return pd.Series(np.where(v <= 0 | np.isnan(d1), 0.0, series * np.sqrt(t) * pdf(d1)))
+    return pd.Series(np.where((v <= 0) | (t <= 0) | np.isnan(d1), np.nan, series * np.sqrt(t) * pdf(d1)))
 
 
 def get_rho(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[float, pd.Series],
@@ -1159,8 +1164,8 @@ def get_rho(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[fl
     """
     if d1 is None:
         d1 = _get_d1(series, k, r, v, t)
-    d2 = d1 - v * np.sqrt(t)
-    return pd.Series(np.where(v <= 0 | np.isnan(d1), 0.0, o * k * t * np.exp(-r * t) * cdf(o * d2)))
+    d2 = pd.Series(np.where((v <= 0) | (t <= 0) | np.isnan(d1), np.nan, d1 - v * np.sqrt(t)))
+    return pd.Series(np.where((v <= 0) | (t <= 0) | np.isnan(d1), np.nan, o * k * t * np.exp(-r * t) * cdf(o * d2)))
 
 
 def get_impv(series: pd.Series, series_option: pd.Series, k: float, r: float, init_v: float, t: Union[float, pd.Series],
@@ -1206,16 +1211,16 @@ def get_impv(series: pd.Series, series_option: pd.Series, k: float, r: float, in
     """
     lower_limit = get_bs_price(series, k, r, 0, t, o)
     df = pd.DataFrame()
-    df["x"] = pd.Series(np.where(series_option < lower_limit, 0, init_v))
-    df["y"] = pd.Series(np.where(df["x"] == 0, 0, get_bs_price(series, k, r, df["x"], t, o)))
+    df["x"] = pd.Series(np.where((series_option < lower_limit) | (t <= 0), np.nan, init_v))
+    df["y"] = pd.Series(np.where(np.isnan(df["x"]), np.nan, get_bs_price(series, k, r, df["x"], t, o)))
     df["vega"] = get_vega(series, k, r, df["x"], t)
-    df["diff_x"] = pd.Series(np.where(df["vega"] < 1e-8, 0, (series_option - df["y"]) / df["vega"]))
-    while not pd.DataFrame.all((np.abs(series_option - df["y"]) < 1e-8) | (df["diff_x"] == 0)):
-        df["x"] = pd.Series(np.where(df["x"] * df["diff_x"] == 0, df["x"],
+    df["diff_x"] = pd.Series(np.where(np.isnan(df["vega"]) | (df["vega"] < 1e-8), np.nan, (series_option - df["y"]) / df["vega"]))
+    while not pd.DataFrame.all((np.abs(series_option - df["y"]) < 1e-8) | np.isnan(df["diff_x"])):
+        df["x"] = pd.Series(np.where(np.isnan(df["x"]) | np.isnan(df["diff_x"]), df["x"],
                                      np.where(df["x"] + df["diff_x"] < 0, df["x"] / 2,
                                               np.where(df["diff_x"] > df["x"] / 2, df["x"] * 1.5,
                                                        df["x"] + df["diff_x"]))))
-        df["y"] = pd.Series(np.where(df["x"] == 0, 0, get_bs_price(series, k, r, df["x"], t, o)))
+        df["y"] = pd.Series(np.where(np.isnan(df["x"]), np.nan, get_bs_price(series, k, r, df["x"], t, o)))
         df["vega"] = get_vega(series, k, r, df["x"], t)
-        df["diff_x"] = pd.Series(np.where(df["vega"] < 1e-8, 0, (series_option - df["y"]) / df["vega"]))
+        df["diff_x"] = pd.Series(np.where(np.isnan(df["vega"]) | (df["vega"] < 1e-8), np.nan, (series_option - df["y"]) / df["vega"]))
     return df["x"]
