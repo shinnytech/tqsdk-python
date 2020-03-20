@@ -265,9 +265,9 @@ class Account(Entity):
         self._api = api
         #: 币种
         self.currency = ""
-        #: 昨日账户权益
+        #: 昨日账户权益(对期权无效)
         self.pre_balance = float("nan")
-        #: 静态权益 （静态权益 = 昨日结算的权益 + 今日入金 - 今日出金, 以服务器查询ctp后返回的金额为准）
+        #: 静态权益 （静态权益 = 昨日结算的权益 + 今日入金 - 今日出金, 以服务器查询ctp后返回的金额为准）(对期权无效)
         self.static_balance = float("nan")
         #: 账户权益 （账户权益 = 动态权益 = 静态权益 + 平仓盈亏 + 持仓盈亏 - 手续费）
         self.balance = float("nan")
@@ -297,6 +297,12 @@ class Account(Entity):
         self.withdraw = float("nan")
         #: 风险度
         self.risk_ratio = float("nan")
+        #: 市值
+        self.market_value = float("nan")
+        #: 期货公司返回的balance
+        self.ctp_balance = float("nan")
+        #: 期货公司返回的available
+        self.ctp_available = float("nan")
 
 
 class Position(Entity):
@@ -374,6 +380,12 @@ class Position(Entity):
         self.margin_short = float("nan")
         #: 占用保证金
         self.margin = float("nan")
+        #: 权利方市值(始终 >= 0)
+        self.market_value_long = float("nan")
+        #: 义务方市值(始终 <= 0)
+        self.market_value_short = float("nan")
+        #: 市值
+        self.market_value = float("nan")
 
     @property
     def pos(self):
@@ -456,6 +468,11 @@ class Order(Entity):
         self.last_msg = ""
         #: 委托单状态, ALIVE=有效, FINISHED=已完
         self.status = ""
+        #: 冻结权利金
+        self.frozen_premium = float("nan")
+        #: 冻结保证金
+        self.frozen_margin = float("nan")
+
         self._this_session = False
 
     @property
