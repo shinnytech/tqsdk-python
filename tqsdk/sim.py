@@ -95,7 +95,7 @@ class TqSim(object):
                         await self._md_send_chan.send(pack)
                 elif pack["aid"] == "insert_order":
                     self._insert_order(pack)
-                    if pack["symbol"] not in self._all_subscribe:
+                    if pack["exchange_id"] + "." + pack["instrument_id"] not in self._all_subscribe:
                         await self._subscribe_quote()
                     await self._send_diff()
                 elif pack["aid"] == "cancel_order":
@@ -130,9 +130,8 @@ class TqSim(object):
             await self._api_recv_chan.send(rtn_data)
 
     async def _subscribe_quote(self):
-        self._all_subscribe = self._client_subscribe | {o["symbol"] for o in self._orders.values()} | {p["symbol"] for p
-                                                                                                       in
-                                                                                                       self._positions.values()}
+        self._all_subscribe = self._client_subscribe | {o["exchange_id"] + "." + o["instrument_id"] for o in
+                                                        self._orders.values()} | self._positions.keys()
         await self._md_send_chan.send({
             "aid": "subscribe_quote",
             "ins_list": ",".join(self._all_subscribe)
@@ -255,7 +254,7 @@ class TqSim(object):
         return period_timestamp
 
     def _insert_order(self, order):
-        order["symbol"] = order["exchange_id"] + "." + order["instrument_id"]
+        symbol = order["exchange_id"] + "." + order["instrument_id"]
         order["exchange_order_id"] = order["order_id"]
         order["volume_orign"] = order["volume"]
         order["volume_left"] = order["volume"]
@@ -265,7 +264,7 @@ class TqSim(object):
         order["insert_date_time"] = 0  # 初始化为0：保持 order 的结构不变(所有字段都有，只是值不同)
         del order["aid"]
         del order["volume"]
-        quote = self._ensure_quote(order["symbol"])
+        quote = self._ensure_quote(symbol)
         quote["orders"][order["order_id"]] = order  # 将挂单存入 self._quote 中对应 symbol 下 (挂单处理结束则从中删除)
         self._orders[order["order_id"]] = order
         if order["offset"].startswith("CLOSE"):
@@ -275,7 +274,7 @@ class TqSim(object):
                 priority = "H" if order["offset"] == "CLOSE" else "T"
             else:
                 priority = "TH"
-            if not self._adjust_position(order["symbol"], volume_long_frozen=volume_long_frozen,
+            if not self._adjust_position(symbol, volume_long_frozen=volume_long_frozen,
                                          volume_short_frozen=volume_short_frozen, priority=priority):
                 self._del_order(order, "平仓手数不足")
                 return
@@ -308,6 +307,7 @@ class TqSim(object):
             self._del_order(self._orders[pack["order_id"]], "已撤单")
 
     def _del_order(self, order, msg):
+        symbol = order["exchange_id"] + "." + order["instrument_id"]
         self._logger.info("模拟交易委托单 %s: %s", order["order_id"], msg)
         if order["offset"].startswith("CLOSE"):
             volume_long_frozen = 0 if order["direction"] == "BUY" else -order["volume_left"]
@@ -316,7 +316,7 @@ class TqSim(object):
                 priority = "H" if order["offset"] == "CLOSE" else "T"
             else:
                 priority = "HT"
-            self._adjust_position(order["symbol"], volume_long_frozen=volume_long_frozen,
+            self._adjust_position(symbol, volume_long_frozen=volume_long_frozen,
                                   volume_short_frozen=volume_short_frozen, priority=priority)
         else:
             self._adjust_account(frozen_margin=-order["frozen_margin"])
@@ -325,7 +325,7 @@ class TqSim(object):
         order["status"] = "FINISHED"
         self._send_order(order)
         del self._orders[order["order_id"]]
-        del self._quotes[order["symbol"]]["orders"][order["order_id"]]  # 挂单处理结束，将其删除
+        del self._quotes[symbol]["orders"][order["order_id"]]  # 挂单处理结束，将其删除
 
     def _match_orders(self, quote):
         for order in list(quote["orders"].values()):
@@ -336,6 +336,7 @@ class TqSim(object):
         bid_price = quote["bid_price1"]
         if quote["datetime"] == "":  # 如果未收到行情，不处理
             return
+        symbol = order["exchange_id"] + "." + order["instrument_id"]
 
         # 需在收到quote行情时, 才将其order的diff下发并将“模拟交易下单”logger发出（即可保证order的insert_date_time为正确的行情时间）
         # 方案为：通过在 match_order() 中判断 “inster_datetime” 来处理：
@@ -345,7 +346,7 @@ class TqSim(object):
             self._send_order(order)
             self._logger.info("模拟交易下单 %s: 时间:%s,合约:%s,开平:%s,方向:%s,手数:%s,价格:%s", order["order_id"],
                               datetime.datetime.fromtimestamp(order["insert_date_time"] / 1e9).strftime(
-                                  "%Y-%m-%d %H:%M:%S.%f"), order["symbol"], order["offset"], order["direction"],
+                                  "%Y-%m-%d %H:%M:%S.%f"), symbol, order["offset"], order["direction"],
                               order["volume_left"], order.get("limit_price", "市价"))
             if not TqSim._is_in_trading_time(quote, self._current_datetime, self._local_time_record):
                 self._del_order(order, "下单失败, 不在可交易时间段内")
@@ -363,7 +364,6 @@ class TqSim(object):
         else:
             return
         trade = {
-            "symbol": order["symbol"],
             "user_id": order["user_id"],
             "order_id": order["order_id"],
             "trade_id": order["order_id"] + "|" + str(order["volume_left"]),
@@ -396,12 +396,12 @@ class TqSim(object):
         if order["offset"].startswith("CLOSE"):
             volume_long = 0 if order["direction"] == "BUY" else -order["volume_left"]
             volume_short = 0 if order["direction"] == "SELL" else -order["volume_left"]
-            self._adjust_position(order["symbol"], volume_long_frozen=volume_long, volume_short_frozen=volume_short,
+            self._adjust_position(symbol, volume_long_frozen=volume_long, volume_short_frozen=volume_short,
                                   priority=priority)
         else:
             volume_long = 0 if order["direction"] == "SELL" else order["volume_left"]
             volume_short = 0 if order["direction"] == "BUY" else order["volume_left"]
-        self._adjust_position(order["symbol"], volume_long=volume_long, volume_short=volume_short, price=price,
+        self._adjust_position(symbol, volume_long=volume_long, volume_short=volume_short, price=price,
                               priority=priority)
         self._adjust_account(commission=trade["commission"])
         order["volume_left"] = 0
@@ -466,23 +466,24 @@ class TqSim(object):
             daily_yield.append(
                 self.trade_log[d]["account"]["balance"] / self.trade_log[d]["account"]["pre_balance"] - 1)
             for t in self.trade_log[d]["trades"]:
+                symbol = t["exchange_id"] + "." + t["instrument_id"]
                 self._logger.warning("时间:%s,合约:%s,开平:%s,方向:%s,手数:%d,价格:%.3f,手续费:%.2f",
                                      datetime.datetime.fromtimestamp(t["trade_date_time"] / 1e9).strftime(
-                                         "%Y-%m-%d %H:%M:%S.%f"), t["symbol"], t["offset"], t["direction"], t["volume"],
+                                         "%Y-%m-%d %H:%M:%S.%f"), symbol, t["offset"], t["direction"], t["volume"],
                                      t["price"], t["commission"])
-                if t["symbol"] not in trades_logs:
-                    trades_logs[t["symbol"]] = {
+                if symbol not in trades_logs:
+                    trades_logs[symbol] = {
                         "BUY": [],
                         "SELL": [],
                     }
                 if t["offset"] == "OPEN":
-                    trades_logs[t["symbol"]][t["direction"]].append({
+                    trades_logs[symbol][t["direction"]].append({
                         "volume": t["volume"],
                         "price": t["price"]
                     })
                 else:
                     opposite_dir = "BUY" if t["direction"] == "SELL" else "SELL"
-                    opposite_list = trades_logs[t["symbol"]][opposite_dir]
+                    opposite_list = trades_logs[symbol][opposite_dir]
                     cur_close_volume = t["volume"]
                     cur_close_price = t["price"]
                     cur_close_dir = 1 if t["direction"] == "SELL" else -1
@@ -491,13 +492,13 @@ class TqSim(object):
                         profit = (cur_close_price - opposite_list[0]["price"]) * cur_close_dir
                         if profit >= 0:
                             profit_logs.append({
-                                "symbol": t["symbol"],
+                                "symbol": symbol,
                                 "profit": profit,
                                 "volume": volume
                             })
                         else:
                             loss_logs.append({
-                                "symbol": t["symbol"],
+                                "symbol": symbol,
                                 "profit": profit,
                                 "volume": volume
                             })
@@ -738,7 +739,6 @@ class TqSim(object):
     def _ensure_position(self, symbol):
         if symbol not in self._positions:
             self._positions[symbol] = {
-                "symbol": symbol,
                 "exchange_id": symbol.split(".", maxsplit=1)[0],
                 "instrument_id": symbol.split(".", maxsplit=1)[1],
                 "pos_long_his": 0,
