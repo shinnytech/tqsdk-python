@@ -19,12 +19,17 @@ print("理论价:", list(round(bs_serise['bs_price'], 2)))
 klines2 = api.get_kline_serial(["SHFE.cu2009C44000", "SHFE.cu2009"], 24 * 60 * 60, 20)
 
 values = OPTION_VALUE(klines2, quote)
-print(values)
+print("内在价值:", list(values["intrins"]))
+print("时间价值:", list(values["time"]))
 
 impv = OPTION_IMPV(klines2, quote, 0.025)
 print("隐含波动率:", list(round(impv['impv'] * 100, 2)))
 
 greeks = OPTION_GREEKS(klines2, quote, 0.025, impv['impv'])
-print(greeks)
+print("delta:", list(greeks["delta"]))
+print("theta:", list(greeks["theta"]))
+print("gamma:", list(greeks["gamma"]))
+print("vega:", list(greeks["vega"]))
+print("rho:", list(greeks["rho"]))
 
 api.close()
