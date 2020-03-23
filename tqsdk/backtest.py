@@ -493,9 +493,12 @@ class TqReplay(object):
             raise Exception("无法创建复盘服务器，请检查复盘日期后重试。")
 
     async def _run(self):
-        while True:
-            self._set_server_session({"aid": "heartbeat"})
-            await asyncio.sleep(30)
+        try:
+            while True:
+                self._set_server_session({"aid": "heartbeat"})
+                await asyncio.sleep(30)
+        finally:
+            self._set_server_session({"aid": "terminate"})
 
     def _prepare_session(self):
         create_session_url = "http://replay.api.shinnytech.com/t/rmd/replay/create_session"
