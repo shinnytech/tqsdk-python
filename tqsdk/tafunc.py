@@ -18,6 +18,7 @@ from tqsdk.objs import Quote
 
 cdf = stats.norm.cdf  # 累计度分布函数
 pdf = stats.norm.pdf  # 概率分布函数
+np.seterr(invalid='ignore')
 
 
 def ref(series, n):

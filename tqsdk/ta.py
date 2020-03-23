@@ -2547,8 +2547,8 @@ def BS_VALUE(df, quote=None, r=0.025, v=None):
         if math.isnan(v):
             return pd.DataFrame(df.where(df["close"] < 0), columns=["bs_price"])
     o = 1 if quote.option_class == "CALL" else -1
-    t = pd.Series(pd.to_timedelta(quote.expire_datetime - (df["datetime"] + df["duration"]) / 1e9, unit='s'))
-    return pd.DataFrame(data=list(tafunc.get_bs_price(df["close"], quote.strike_price, r, v, t.dt.days / 360, o)),
+    t = tafunc._get_t_series(df["datetime"], df["duration"], quote)
+    return pd.DataFrame(data=list(tafunc.get_bs_price(df["close"], quote.strike_price, r, v, t, o)),
                         columns=["bs_price"])
 
 
@@ -2587,17 +2587,17 @@ def OPTION_GREEKS(df, quote=None, r=0.025, v=None):
     if not quote or not quote.ins_class.endswith("OPTION"):
         return pd.DataFrame(df.where(df["close1"] < 0), columns=["delta", "theta", "gamma", "vega", "rho"])
     o = 1 if quote.option_class == "CALL" else -1
-    t = pd.Series(pd.to_timedelta(quote.expire_datetime - (df["datetime"] + df["duration"]) / 1e9, unit='s'))  # 到期时间
+    t = tafunc._get_t_series(df["datetime"], df["duration"], quote)  # 到期时间
     if v is None:
         his_v = tafunc._get_volatility(df["close1"], df["duration"], quote.trading_time, 0.3)
-        v = tafunc.get_impv(df["close1"], df["close"], quote.strike_price, r, his_v, t.dt.days / 360, o)
-    d1 = tafunc._get_d1(df["close1"], quote.strike_price, r, v, t.dt.days / 360)
+        v = tafunc.get_impv(df["close1"], df["close"], quote.strike_price, r, his_v, t, o)
+    d1 = tafunc._get_d1(df["close1"], quote.strike_price, r, v, t)
     new_df = pd.DataFrame()
-    new_df["delta"] = tafunc.get_delta(df["close1"], quote.strike_price, r, v, t.dt.days / 360, o, d1)
-    new_df["theta"] = tafunc.get_theta(df["close1"], quote.strike_price, r, v, t.dt.days / 360, o, d1)
-    new_df["gamma"] = tafunc.get_gamma(df["close1"], quote.strike_price, r, v, t.dt.days / 360, d1)
-    new_df["vega"] = tafunc.get_vega(df["close1"], quote.strike_price, r, v, t.dt.days / 360, d1)
-    new_df["rho"] = tafunc.get_rho(df["close1"], quote.strike_price, r, v, t.dt.days / 360, o, d1)
+    new_df["delta"] = tafunc.get_delta(df["close1"], quote.strike_price, r, v, t, o, d1)
+    new_df["theta"] = tafunc.get_theta(df["close1"], quote.strike_price, r, v, t, o, d1)
+    new_df["gamma"] = tafunc.get_gamma(df["close1"], quote.strike_price, r, v, t, d1)
+    new_df["vega"] = tafunc.get_vega(df["close1"], quote.strike_price, r, v, t, d1)
+    new_df["rho"] = tafunc.get_rho(df["close1"], quote.strike_price, r, v, t, o, d1)
     return new_df
 
 
@@ -2668,7 +2668,7 @@ def OPTION_IMPV(df, quote=None, r=0.025, init_v=None):
     if init_v is None:
         init_v = tafunc._get_volatility(df["close1"], df["duration"], quote.trading_time, 0.3)
     o = 1 if quote.option_class == "CALL" else -1
-    t = pd.Series(pd.to_timedelta(quote.expire_datetime - (df["datetime"] + df["duration"]) / 1e9, unit='s'))  # 到期时间
+    t = tafunc._get_t_series(df["datetime"], df["duration"], quote)  # 到期时间
     return pd.DataFrame(
-        data=list(tafunc.get_impv(df["close1"], df["close"], quote.strike_price, r, init_v, t.dt.days / 360, o)),
+        data=list(tafunc.get_impv(df["close1"], df["close"], quote.strike_price, r, init_v, t, o)),
         columns=["impv"])
