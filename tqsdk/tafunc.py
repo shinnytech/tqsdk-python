@@ -8,17 +8,15 @@ tqsdk.tafunc 模块包含了一批用于技术指标计算的函数
 """
 
 import datetime
-import pandas as pd
-import numpy as np
 import math
 from typing import Union
+
+import numpy as np
+import pandas as pd
 from scipy import stats
+
 from tqsdk import TqSim
 from tqsdk.objs import Quote
-
-cdf = stats.norm.cdf  # 累计度分布函数
-pdf = stats.norm.pdf  # 概率分布函数
-np.seterr(invalid='ignore')
 
 
 def ref(series, n):
@@ -849,7 +847,18 @@ def _get_volatility(series: pd.Series, dur: Union[pd.Series, int] = 86400, tradi
 
 
 def _get_d1(series: pd.Series, k: float, r: float, v: Union[float, pd.Series], t: Union[float, pd.Series]):
-    return pd.Series(np.where((v <= 0) | (t <= 0), np.nan, (np.log(series / k) + (r + 0.5 * np.power(v, 2)) * t) / (v * np.sqrt(t))))
+    return pd.Series(
+        np.where((v <= 0) | (t <= 0), np.nan, (np.log(series / k) + (r + 0.5 * np.power(v, 2)) * t) / (v * np.sqrt(t))))
+
+
+def _get_cdf(series: pd.Series):
+    s = series.loc[series.notna()]
+    return series.loc[series.isna()].append(pd.Series(stats.norm.cdf(s), index=s.index), verify_integrity=True)
+
+
+def _get_pdf(series: pd.Series):
+    s = series.loc[series.notna()]
+    return series.loc[series.isna()].append(pd.Series(stats.norm.pdf(s), index=s.index), verify_integrity=True)
 
 
 def his_volatility(df: pd.DataFrame, quote: Quote = None):
@@ -921,9 +930,9 @@ def get_bs_price(series: pd.Series, k: float, r: float, v: Union[float, pd.Serie
         api.close()
     """
     d1 = _get_d1(series, k, r, v, t)
-    d2 = pd.Series(np.where((v <= 0) | (t <= 0) | np.isnan(d1), np.nan, d1 - v * np.sqrt(t)))
+    d2 = pd.Series(np.where(np.isnan(d1), np.nan, d1 - v * np.sqrt(t)))
     return pd.Series(
-        np.where((v <= 0) | (t <= 0) | np.isnan(d1), np.nan, o * (series * cdf(o * d1) - k * np.exp(-r * t) * cdf(o * d2))))
+        np.where(np.isnan(d1), np.nan, o * (series * _get_cdf(o * d1) - k * np.exp(-r * t) * _get_cdf(o * d2))))
 
 
 def get_delta(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[float, pd.Series],
@@ -972,7 +981,7 @@ def get_delta(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[
     """
     if d1 is None:
         d1 = _get_d1(series, k, r, v, t)
-    return pd.Series(np.where((v <= 0) | (t <= 0) | np.isnan(d1), np.nan, pd.Series(o * cdf(o * d1))))
+    return pd.Series(np.where(np.isnan(d1), np.nan, pd.Series(o * _get_cdf(o * d1))))
 
 
 def get_gamma(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[float, pd.Series],
@@ -1019,7 +1028,7 @@ def get_gamma(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[
         """
     if d1 is None:
         d1 = _get_d1(series, k, r, v, t)
-    return pd.Series(np.where((v <= 0) | (t <= 0) | np.isnan(d1), np.nan, pdf(d1) / (series * v * np.sqrt(t))))
+    return pd.Series(np.where(np.isnan(d1), np.nan, _get_pdf(d1) / (series * v * np.sqrt(t))))
 
 
 def get_theta(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[float, pd.Series],
@@ -1068,9 +1077,9 @@ def get_theta(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[
         """
     if d1 is None:
         d1 = _get_d1(series, k, r, v, t)
-    d2 = pd.Series(np.where((v <= 0) | (t <= 0) | np.isnan(d1), np.nan, d1 - v * np.sqrt(t)))
-    return pd.Series(np.where((v <= 0) | (t <= 0) | np.isnan(d1), np.nan, pd.Series(
-        -v * series * pdf(d1) / (2 * np.sqrt(t)) - o * r * k * np.exp(-r * t) * cdf(o * d2))))
+    d2 = pd.Series(np.where(np.isnan(d1), np.nan, d1 - v * np.sqrt(t)))
+    return pd.Series(np.where(np.isnan(d1), np.nan, pd.Series(
+        -v * series * _get_pdf(d1) / (2 * np.sqrt(t)) - o * r * k * np.exp(-r * t) * _get_cdf(o * d2))))
 
 
 def get_vega(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[float, pd.Series],
@@ -1117,7 +1126,7 @@ def get_vega(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[f
     """
     if d1 is None:
         d1 = _get_d1(series, k, r, v, t)
-    return pd.Series(np.where((v <= 0) | (t <= 0) | np.isnan(d1), np.nan, series * np.sqrt(t) * pdf(d1)))
+    return pd.Series(np.where(np.isnan(d1), np.nan, series * np.sqrt(t) * _get_pdf(d1)))
 
 
 def get_rho(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[float, pd.Series],
@@ -1166,8 +1175,8 @@ def get_rho(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[fl
     """
     if d1 is None:
         d1 = _get_d1(series, k, r, v, t)
-    d2 = pd.Series(np.where((v <= 0) | (t <= 0) | np.isnan(d1), np.nan, d1 - v * np.sqrt(t)))
-    return pd.Series(np.where((v <= 0) | (t <= 0) | np.isnan(d1), np.nan, o * k * t * np.exp(-r * t) * cdf(o * d2)))
+    d2 = pd.Series(np.where(np.isnan(d1), np.nan, d1 - v * np.sqrt(t)))
+    return pd.Series(np.where(np.isnan(d1), np.nan, o * k * t * np.exp(-r * t) * _get_cdf(o * d2)))
 
 
 def get_impv(series: pd.Series, series_option: pd.Series, k: float, r: float, init_v: float, t: Union[float, pd.Series],
@@ -1224,5 +1233,6 @@ def get_impv(series: pd.Series, series_option: pd.Series, k: float, r: float, in
                                                        df["x"] + df["diff_x"]))))
         df["y"] = pd.Series(np.where(np.isnan(df["x"]), np.nan, get_bs_price(series, k, r, df["x"], t, o)))
         df["vega"] = get_vega(series, k, r, df["x"], t)
-        df["diff_x"] = pd.Series(np.where(np.isnan(df["vega"]) | (df["vega"] < 1e-8), np.nan, (series_option - df["y"]) / df["vega"]))
+        df["diff_x"] = pd.Series(
+            np.where(np.isnan(df["vega"]) | (df["vega"] < 1e-8), np.nan, (series_option - df["y"]) / df["vega"]))
     return df["x"]
