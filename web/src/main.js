@@ -77,13 +77,14 @@ GetTqsdkUrl().then(function(urlJson){
   })
   Vue.prototype.$tqsdk = Vue.$tqsdk
   Vue.$tqsdk.initMdWebsocket()
-  let tqWs = Vue.$tqsdk.addWebSocket('ws://' + location.host + '/ws')
+  let tqWs = Vue.$tqsdk.addWebSocket(`ws://${TqsdkAddress}/ws`)
   tqWs.on('close', function(){
     store.commit('set_py_file_status', false)
   })
   tqWs.on('open', function(){
     store.commit('set_py_file_status', true)
   })
+
   Vue.$tqsdk.on('rtn_data', function(){
     let backtest = Vue.$tqsdk.get_by_path(['_tqsdk_backtest'])
     if (backtest && backtest.current_dt) {

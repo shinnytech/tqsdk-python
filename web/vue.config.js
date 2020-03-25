@@ -1,6 +1,6 @@
 module.exports = {
   outputDir: '../tqsdk/web',
-  publicPath: 'web/',
+  publicPath: process.env.NODE_ENV === 'production' ? 'web/' : '/',
   lintOnSave: false,
   productionSourceMap: false,
   chainWebpack: config => {
