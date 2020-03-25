@@ -40,7 +40,15 @@
 
 回测时的成交规则和推进
 -------------------------------------------------
-策略回测时使用内置模拟账户 :py:class:`~tqsdk.sim.TqSim` , 撮合成交规则为对价成交. 即限价单的价格达到对手盘价格时判定为成交. 不会出现委托单部分成交的情况.
+策略回测时使用内置模拟账户 :py:class:`~tqsdk.sim.TqSim` , 默认回测资金为1000w , 如果需要修改初始回测资金，只需给 TqSim 传入需要设定的金额即可::
+
+
+  from datetime import date
+  from tqsdk import TqApi, TqSim, TqBacktest
+
+  api = TqApi(TqSim(10000), backtest=TqBacktest(start_dt=date(2018, 5, 1), end_dt=date(2018, 10, 1)))
+
+撮合成交规则为对价成交. 即限价单的价格达到对手盘价格时判定为成交. 不会出现委托单部分成交的情况.
 
 回测时策略程序报单, 会立即做一次成交判定. 
 
