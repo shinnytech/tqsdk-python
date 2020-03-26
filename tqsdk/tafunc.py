@@ -861,7 +861,7 @@ def _get_pdf(series: pd.Series):
     return series.loc[series.isna()].append(pd.Series(stats.norm.pdf(s), index=s.index), verify_integrity=True)
 
 
-def his_volatility(df: pd.DataFrame, quote: Quote = None):
+def get_his_volatility(df: pd.DataFrame, quote: Quote = None):
     """
     计算某个合约的历史波动率
 
@@ -880,7 +880,7 @@ def his_volatility(df: pd.DataFrame, quote: Quote = None):
         api = TqApi()
         quote = api.get_quote('SHFE.cu2006')
         klines = api.get_kline_serial('SHFE.cu2006', 24 * 60 * 60, 50)
-        v = tafunc.his_volatility(klines, quote)
+        v = tafunc.get_his_volatility(klines, quote)
         print(v)
         api.close()
     """
@@ -920,7 +920,7 @@ def get_bs_price(series: pd.Series, k: float, r: float, v: Union[float, pd.Serie
         api = TqApi()
         quote = api.get_quote("SHFE.cu2006")
         ks = api.get_kline_serial("SHFE.cu2006", 24 * 60 * 60, 10)
-        v = tafunc.his_volatility(ks, quote)  # 历史波动率
+        v = tafunc.get_his_volatility(ks, quote)  # 历史波动率
 
         option = api.get_quote("SHFE.cu2006C45000")
         klines = api.get_kline_serial(["SHFE.cu2006C45000", "SHFE.cu2006"], 24 * 60 * 60, 10)
@@ -968,7 +968,7 @@ def get_delta(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[
         api = TqApi()
         quote = api.get_quote("SHFE.cu2006")
         ks = api.get_kline_serial("SHFE.cu2006", 24 * 60 * 60, 10)
-        v = tafunc.his_volatility(ks, quote)  # 历史波动率
+        v = tafunc.get_his_volatility(ks, quote)  # 历史波动率
 
         option = api.get_quote("SHFE.cu2006C45000")
         klines = api.get_kline_serial(["SHFE.cu2006C45000", "SHFE.cu2006"], 24 * 60 * 60, 10)
@@ -1015,7 +1015,7 @@ def get_gamma(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[
             api = TqApi()
             quote = api.get_quote("SHFE.cu2006")
             ks = api.get_kline_serial("SHFE.cu2006", 24 * 60 * 60, 10)
-            v = tafunc.his_volatility(ks, quote)  # 历史波动率
+            v = tafunc.get_his_volatility(ks, quote)  # 历史波动率
 
             option = api.get_quote("SHFE.cu2006C45000")
             klines = api.get_kline_serial(["SHFE.cu2006C45000", "SHFE.cu2006"], 24 * 60 * 60, 10)
@@ -1064,7 +1064,7 @@ def get_theta(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[
             api = TqApi()
             quote = api.get_quote("SHFE.cu2006")
             ks = api.get_kline_serial("SHFE.cu2006", 24 * 60 * 60, 10)
-            v = tafunc.his_volatility(ks, quote)  # 历史波动率
+            v = tafunc.get_his_volatility(ks, quote)  # 历史波动率
 
             option = api.get_quote("SHFE.cu2006C45000")
             klines = api.get_kline_serial(["SHFE.cu2006C45000", "SHFE.cu2006"], 24 * 60 * 60, 10)
@@ -1113,7 +1113,7 @@ def get_vega(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[f
         api = TqApi()
         quote = api.get_quote("SHFE.cu2006")
         ks = api.get_kline_serial("SHFE.cu2006", 24 * 60 * 60, 10)
-        v = tafunc.his_volatility(ks, quote)  # 历史波动率
+        v = tafunc.get_his_volatility(ks, quote)  # 历史波动率
 
         option = api.get_quote("SHFE.cu2006C45000")
         klines = api.get_kline_serial(["SHFE.cu2006C45000", "SHFE.cu2006"], 24 * 60 * 60, 10)
@@ -1162,7 +1162,7 @@ def get_rho(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[fl
         api = TqApi()
         quote = api.get_quote("SHFE.cu2006")
         ks = api.get_kline_serial("SHFE.cu2006", 24 * 60 * 60, 10)
-        v = tafunc.his_volatility(ks, quote)  # 历史波动率
+        v = tafunc.get_his_volatility(ks, quote)  # 历史波动率
 
         option = api.get_quote("SHFE.cu2006C45000")
         klines = api.get_kline_serial(["SHFE.cu2006C45000", "SHFE.cu2006"], 24 * 60 * 60, 10)
@@ -1211,7 +1211,7 @@ def get_impv(series: pd.Series, series_option: pd.Series, k: float, r: float, in
         api = TqApi()
         quote = api.get_quote("SHFE.cu2006")
         ks = api.get_kline_serial("SHFE.cu2006", 24 * 60 * 60, 10)
-        v = tafunc.his_volatility(ks, quote)  # 历史波动率
+        v = tafunc.get_his_volatility(ks, quote)  # 历史波动率
 
         option = api.get_quote("SHFE.cu2006C45000")
         klines = api.get_kline_serial(["SHFE.cu2006C45000", "SHFE.cu2006"], 24 * 60 * 60, 10)
