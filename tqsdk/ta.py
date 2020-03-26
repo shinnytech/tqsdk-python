@@ -10,7 +10,7 @@ tqsdk.ta 模块包含了一批常用的技术指标计算函数
 import math
 import numpy as np
 import pandas as pd
-from tqsdk import tafunc
+import tqsdk.tafunc
 
 
 def ATR(df, n):
@@ -48,7 +48,7 @@ def ATR(df, n):
                                      df["high"] - df["low"], np.absolute(pre_close - df["low"])),
                             np.where(np.absolute(pre_close - df["high"]) > np.absolute(pre_close - df["low"]),
                                      np.absolute(pre_close - df["high"]), np.absolute(pre_close - df["low"])))
-    new_df["atr"] = tafunc.ma(new_df["tr"], n)
+    new_df["atr"] = tqsdk.tafunc.ma(new_df["tr"], n)
     return new_df
 
 
@@ -78,7 +78,7 @@ def BIAS(df, n):
         # 预计的输出是这样的:
         [..., 2.286835533357118, 2.263301549041151, 0.7068445823271412, ...]
     """
-    ma1 = tafunc.ma(df["close"], n)
+    ma1 = tqsdk.tafunc.ma(df["close"], n)
     new_df = pd.DataFrame(data=list((df["close"] - ma1) / ma1 * 100), columns=["bias"])
     return new_df
 
@@ -116,7 +116,7 @@ def BOLL(df, n, p):
         [..., 2967.593013324702, 2970.5224206797247, 2982.760746891571, ...]
     """
     new_df = pd.DataFrame()
-    mid = tafunc.ma(df["close"], n)
+    mid = tqsdk.tafunc.ma(df["close"], n)
     std = df["close"].rolling(n).std()
     new_df["mid"] = mid
     new_df["top"] = mid + p * std
@@ -166,12 +166,12 @@ def DMI(df, n, m):
     pre_low = df["low"].shift(1)
     hd = df["high"] - pre_high
     ld = pre_low - df["low"]
-    admp = tafunc.ma(pd.Series(np.where((hd > 0) & (hd > ld), hd, 0)), n)
-    admm = tafunc.ma(pd.Series(np.where((ld > 0) & (ld > hd), ld, 0)), n)
+    admp = tqsdk.tafunc.ma(pd.Series(np.where((hd > 0) & (hd > ld), hd, 0)), n)
+    admm = tqsdk.tafunc.ma(pd.Series(np.where((ld > 0) & (ld > hd), ld, 0)), n)
     new_df["pdi"] = pd.Series(np.where(new_df["atr"] > 0, admp / new_df["atr"] * 100, np.NaN)).ffill()
     new_df["mdi"] = pd.Series(np.where(new_df["atr"] > 0, admm / new_df["atr"] * 100, np.NaN)).ffill()
     ad = pd.Series(np.absolute(new_df["mdi"] - new_df["pdi"]) / (new_df["mdi"] + new_df["pdi"]) * 100)
-    new_df["adx"] = tafunc.ma(ad, m)
+    new_df["adx"] = tqsdk.tafunc.ma(ad, m)
     new_df["adxr"] = (new_df["adx"] + new_df["adx"].shift(m)) / 2
     return new_df
 
@@ -214,8 +214,8 @@ def KDJ(df, n, m1, m2):
     hv = df["high"].rolling(n).max()
     lv = df["low"].rolling(n).min()
     rsv = pd.Series(np.where(hv == lv, 0, (df["close"] - lv) / (hv - lv) * 100))
-    new_df["k"] = tafunc.sma(rsv, m1, 1)
-    new_df["d"] = tafunc.sma(new_df["k"], m2, 1)
+    new_df["k"] = tqsdk.tafunc.sma(rsv, m1, 1)
+    new_df["d"] = tqsdk.tafunc.sma(new_df["k"], m2, 1)
     new_df["j"] = 3 * new_df["k"] - 2 * new_df["d"]
     return new_df
 
@@ -257,10 +257,10 @@ def MACD(df, short, long, m):
         [..., 56.2273866049872, 54.46153821709879, 51.19853926602451, ...]
     """
     new_df = pd.DataFrame()
-    eshort = tafunc.ema(df["close"], short)
-    elong = tafunc.ema(df["close"], long)
+    eshort = tqsdk.tafunc.ema(df["close"], short)
+    elong = tqsdk.tafunc.ema(df["close"], long)
     new_df["diff"] = eshort - elong
-    new_df["dea"] = tafunc.ema(new_df["diff"], m)
+    new_df["dea"] = tqsdk.tafunc.ema(new_df["diff"], m)
     new_df["bar"] = 2 * (new_df["diff"] - new_df["dea"])
     return new_df
 
@@ -404,8 +404,8 @@ def RSI(df, n):
         [..., 80.21169825630794, 81.57315806032297, 72.34968324924667, ...]
     """
     lc = df["close"].shift(1)
-    rsi = tafunc.sma(pd.Series(np.where(df["close"] - lc > 0, df["close"] - lc, 0)), n, 1) / \
-          tafunc.sma(np.absolute(df["close"] - lc), n, 1) * 100
+    rsi = tqsdk.tafunc.sma(pd.Series(np.where(df["close"] - lc > 0, df["close"] - lc, 0)), n, 1) / \
+          tqsdk.tafunc.sma(np.absolute(df["close"] - lc), n, 1) * 100
     new_df = pd.DataFrame(data=rsi, columns=["rsi"])
     return new_df
 
@@ -554,8 +554,8 @@ def DMA(df, short, long, m):
         [..., 300.64360000000147, 325.0860000000015, 349.75200000000166, ...]
     """
     new_df = pd.DataFrame()
-    new_df["ddd"] = tafunc.ma(df["close"], short) - tafunc.ma(df["close"], long)
-    new_df["ama"] = tafunc.ma(new_df["ddd"], m)
+    new_df["ddd"] = tqsdk.tafunc.ma(df["close"], short) - tqsdk.tafunc.ma(df["close"], long)
+    new_df["ama"] = tqsdk.tafunc.ma(new_df["ddd"], m)
     return new_df
 
 
@@ -591,8 +591,8 @@ def EXPMA(df, p1, p2):
         [..., 3672.4492964832566, 3704.113060759028, 3723.1470497119317, ...]
     """
     new_df = pd.DataFrame()
-    new_df["ma1"] = tafunc.ema(df["close"], p1)
-    new_df["ma2"] = tafunc.ema(df["close"], p2)
+    new_df["ma1"] = tqsdk.tafunc.ema(df["close"], p1)
+    new_df["ma2"] = tqsdk.tafunc.ema(df["close"], p2)
     return new_df
 
 
@@ -631,7 +631,7 @@ def CR(df, n, m):
     mid = (df["high"] + df["low"] + df["close"]) / 3
     new_df["cr"] = pd.Series(np.where(0 > df["high"] - mid.shift(1), 0, df["high"] - mid.shift(1))).rolling(
         n).sum() / pd.Series(np.where(0 > mid.shift(1) - df["low"], 0, mid.shift(1) - df["low"])).rolling(n).sum() * 100
-    new_df["crma"] = tafunc.ma(new_df["cr"], m).shift(int(m / 2.5 + 1))
+    new_df["crma"] = tqsdk.tafunc.ma(new_df["cr"], m).shift(int(m / 2.5 + 1))
     return new_df
 
 
@@ -663,7 +663,7 @@ def CCI(df, n):
         [..., 98.13054698810375, 93.57661788413617, 77.8671380173813, ...]
     """
     typ = (df["high"] + df["low"] + df["close"]) / 3
-    ma = tafunc.ma(typ, n)
+    ma = tqsdk.tafunc.ma(typ, n)
 
     def mad(x):
         return np.fabs(x - x.mean()).mean()
@@ -740,10 +740,10 @@ def CDP(df, n):
     new_df = pd.DataFrame()
     pt = df["high"].shift(1) - df["low"].shift(1)
     cdp = (df["high"].shift(1) + df["low"].shift(1) + df["close"].shift(1)) / 3
-    new_df["ah"] = tafunc.ma(cdp + pt, n)
-    new_df["al"] = tafunc.ma(cdp - pt, n)
-    new_df["nh"] = tafunc.ma(2 * cdp - df["low"], n)
-    new_df["nl"] = tafunc.ma(2 * cdp - df["high"], n)
+    new_df["ah"] = tqsdk.tafunc.ma(cdp + pt, n)
+    new_df["al"] = tqsdk.tafunc.ma(cdp - pt, n)
+    new_df["nh"] = tqsdk.tafunc.ma(2 * cdp - df["low"], n)
+    new_df["nl"] = tqsdk.tafunc.ma(2 * cdp - df["high"], n)
     return new_df
 
 
@@ -779,9 +779,9 @@ def HCL(df, n):
         [..., 3666.1600000000008, 3705.8600000000006, 3741.940000000001, ...]
     """
     new_df = pd.DataFrame()
-    new_df["mah"] = tafunc.ma(df["high"], n)
-    new_df["mal"] = tafunc.ma(df["low"], n)
-    new_df["mac"] = tafunc.ma(df["close"], n)
+    new_df["mah"] = tqsdk.tafunc.ma(df["high"], n)
+    new_df["mal"] = tqsdk.tafunc.ma(df["low"], n)
+    new_df["mac"] = tqsdk.tafunc.ma(df["close"], n)
     return new_df
 
 
@@ -817,8 +817,8 @@ def ENV(df, n, k):
         [..., 3407.244857142857, 3437.875428571429, 3453.036285714286, ...]
     """
     new_df = pd.DataFrame()
-    new_df["upper"] = tafunc.ma(df["close"], n) * (1 + k / 100)
-    new_df["lower"] = tafunc.ma(df["close"], n) * (1 - k / 100)
+    new_df["upper"] = tqsdk.tafunc.ma(df["close"], n) * (1 + k / 100)
+    new_df["lower"] = tqsdk.tafunc.ma(df["close"], n) * (1 - k / 100)
     return new_df
 
 
@@ -899,7 +899,7 @@ def PUBU(df, m):
         # 预计的输出是这样的:
         [..., 3719.087702972829, 3728.9326217836974, 3715.7537397368856, ...]
     """
-    pb = (tafunc.ema(df["close"], m) + tafunc.ma(df["close"], m * 2) + tafunc.ma(df["close"], m * 4)) / 3
+    pb = (tqsdk.tafunc.ema(df["close"], m) + tqsdk.tafunc.ma(df["close"], m * 2) + tqsdk.tafunc.ma(df["close"], m * 4)) / 3
     new_df = pd.DataFrame(data=list(pb), columns=["pb"])
     return new_df
 
@@ -937,7 +937,7 @@ def BBI(df, n1, n2, n3, n4):
         # 预计的输出是这样的:
         [..., 3679.841666666668, 3700.9645833333348, 3698.025000000002, ...]
     """
-    bbi = (tafunc.ma(df["close"], n1) + tafunc.ma(df["close"], n2) + tafunc.ma(df["close"], n3) + tafunc.ma(
+    bbi = (tqsdk.tafunc.ma(df["close"], n1) + tqsdk.tafunc.ma(df["close"], n2) + tqsdk.tafunc.ma(df["close"], n3) + tqsdk.tafunc.ma(
         df["close"], n4)) / 4
     new_df = pd.DataFrame(data=list(bbi), columns=["bbi"])
     return new_df
@@ -981,7 +981,7 @@ def DKX(df, m):
                 12) + 7 * a.shift(13) + 6 * a.shift(14) + 5 * a.shift(15) + 4 * a.shift(16) + 3 * a.shift(
                 17) + 2 * a.shift(18) + a.shift(20)
                    ) / 210
-    new_df["d"] = tafunc.ma(new_df["b"], m)
+    new_df["d"] = tqsdk.tafunc.ma(new_df["b"], m)
     return new_df
 
 
@@ -1019,8 +1019,8 @@ def BBIBOLL(df, n, m):
         [..., 3367.960700061947, 3410.1329332218015, 3451.2778533942655, ...]
     """
     new_df = pd.DataFrame()
-    new_df["bbiboll"] = (tafunc.ma(df["close"], 3) + tafunc.ma(df["close"], 6) + tafunc.ma(df["close"],
-                                                                                           12) + tafunc.ma(
+    new_df["bbiboll"] = (tqsdk.tafunc.ma(df["close"], 3) + tqsdk.tafunc.ma(df["close"], 6) + tqsdk.tafunc.ma(df["close"],
+                                                                                           12) + tqsdk.tafunc.ma(
         df["close"], 24)) / 4
     new_df["upr"] = new_df["bbiboll"] + m * new_df["bbiboll"].rolling(n).std()
     new_df["dwn"] = new_df["bbiboll"] - m * new_df["bbiboll"].rolling(n).std()
@@ -1068,7 +1068,7 @@ def ADTM(df, n, m):
     stm = pd.Series(dtm).rolling(n).sum()
     sbm = pd.Series(dbm).rolling(n).sum()
     new_df["adtm"] = np.where(stm > sbm, (stm - sbm) / stm, np.where(stm == sbm, 0, (stm - sbm) / sbm))
-    new_df["adtmma"] = tafunc.ma(new_df["adtm"], m)
+    new_df["adtmma"] = tqsdk.tafunc.ma(new_df["adtm"], m)
     return new_df
 
 
@@ -1100,8 +1100,8 @@ def B3612(df):
         [..., 99.28333333333285, 88.98333333333221, 69.64999999999918, ...]
     """
     new_df = pd.DataFrame()
-    new_df["b36"] = tafunc.ma(df["close"], 3) - tafunc.ma(df["close"], 6)
-    new_df["b612"] = tafunc.ma(df["close"], 6) - tafunc.ma(df["close"], 12)
+    new_df["b36"] = tqsdk.tafunc.ma(df["close"], 3) - tqsdk.tafunc.ma(df["close"], 6)
+    new_df["b612"] = tqsdk.tafunc.ma(df["close"], 6) - tqsdk.tafunc.ma(df["close"], 12)
     return new_df
 
 
@@ -1139,10 +1139,10 @@ def DBCD(df, n, m, t):
         [..., 0.003998499673401192, 0.003864353204606074, 0.0035925052896395872, ...]
     """
     new_df = pd.DataFrame()
-    bias = (df["close"] - tafunc.ma(df["close"], n)) / tafunc.ma(df["close"], n)
+    bias = (df["close"] - tqsdk.tafunc.ma(df["close"], n)) / tqsdk.tafunc.ma(df["close"], n)
     dif = bias - bias.shift(m)
-    new_df["dbcd"] = tafunc.sma(dif, t, 1)
-    new_df["mm"] = tafunc.ma(new_df["dbcd"], 5)
+    new_df["dbcd"] = tqsdk.tafunc.sma(dif, t, 1)
+    new_df["mm"] = tqsdk.tafunc.ma(new_df["dbcd"], 5)
     return new_df
 
 
@@ -1191,8 +1191,8 @@ def DDI(df, n, n1, m, m1):
     diz = pd.Series(dmz).rolling(n).sum() / (pd.Series(dmz).rolling(n).sum() + pd.Series(dmf).rolling(n).sum())
     dif = pd.Series(dmf).rolling(n).sum() / (pd.Series(dmf).rolling(n).sum() + pd.Series(dmz).rolling(n).sum())
     new_df["ddi"] = diz - dif
-    new_df["addi"] = tafunc.sma(new_df["ddi"], n1, m)
-    new_df["ad"] = tafunc.ma(new_df["addi"], m1)
+    new_df["addi"] = tqsdk.tafunc.sma(new_df["ddi"], n1, m)
+    new_df["ad"] = tqsdk.tafunc.ma(new_df["addi"], m1)
     return new_df
 
 
@@ -1233,8 +1233,8 @@ def KD(df, n, m1, m2):
     hv = df["high"].rolling(n).max()
     lv = df["low"].rolling(n).min()
     rsv = pd.Series(np.where(hv == lv, 0, (df["close"] - lv) / (hv - lv) * 100))
-    new_df["k"] = tafunc.sma(rsv, m1, 1)
-    new_df["d"] = tafunc.sma(new_df["k"], m2, 1)
+    new_df["k"] = tqsdk.tafunc.sma(rsv, m1, 1)
+    new_df["d"] = tqsdk.tafunc.sma(new_df["k"], m2, 1)
     return new_df
 
 
@@ -1270,7 +1270,7 @@ def LWR(df, n, m):
     hv = df["high"].rolling(n).max()
     lv = df["low"].rolling(n).min()
     rsv = pd.Series(np.where(hv == lv, 0, (df["close"] - hv) / (hv - lv) * 100))
-    new_df = pd.DataFrame(data=list(tafunc.sma(rsv, m, 1)), columns=["lwr"])
+    new_df = pd.DataFrame(data=list(tqsdk.tafunc.sma(rsv, m, 1)), columns=["lwr"])
     return new_df
 
 
@@ -1303,8 +1303,8 @@ def MASS(df, n1, n2):
         # 预计的输出是这样的:
         [..., 27.478822053291733, 27.485710830466964, 27.561223922342652, ...]
     """
-    ema1 = tafunc.ema(df["high"] - df["low"], n1)
-    ema2 = tafunc.ema(ema1, n1)
+    ema1 = tqsdk.tafunc.ema(df["high"] - df["low"], n1)
+    ema2 = tqsdk.tafunc.ema(ema1, n1)
     new_df = pd.DataFrame(data=list((ema1 / ema2).rolling(n2).sum()), columns=["mass"])
     return new_df
 
@@ -1374,7 +1374,7 @@ def MI(df, n):
     """
     new_df = pd.DataFrame()
     new_df["a"] = df["close"] - df["close"].shift(n)
-    new_df["mi"] = tafunc.sma(new_df["a"], n, 1)
+    new_df["mi"] = tqsdk.tafunc.sma(new_df["a"], n, 1)
     return new_df
 
 
@@ -1413,9 +1413,9 @@ def MICD(df, n, n1, n2):
     """
     new_df = pd.DataFrame()
     mi = df["close"] - df["close"].shift(1)
-    ami = tafunc.sma(mi, n, 1)
-    new_df["dif"] = tafunc.ma(ami.shift(1), n1) - tafunc.ma(ami.shift(1), n2)
-    new_df["micd"] = tafunc.sma(new_df["dif"], 10, 1)
+    ami = tqsdk.tafunc.sma(mi, n, 1)
+    new_df["dif"] = tqsdk.tafunc.ma(ami.shift(1), n1) - tqsdk.tafunc.ma(ami.shift(1), n2)
+    new_df["micd"] = tqsdk.tafunc.sma(new_df["dif"], 10, 1)
     return new_df
 
 
@@ -1452,7 +1452,7 @@ def MTM(df, n, n1):
     """
     new_df = pd.DataFrame()
     new_df["mtm"] = df["close"] - df["close"].shift(n)
-    new_df["mtmma"] = tafunc.ma(new_df["mtm"], n1)
+    new_df["mtmma"] = tqsdk.tafunc.ma(new_df["mtm"], n1)
     return new_df
 
 
@@ -1485,8 +1485,8 @@ def PRICEOSC(df, long, short):
         # 预计的输出是这样的:
         [..., 5.730468338384374, 5.826866231225718, 5.776959240989803, ...]
     """
-    ma_s = tafunc.ma(df["close"], short)
-    ma_l = tafunc.ma(df["close"], long)
+    ma_s = tqsdk.tafunc.ma(df["close"], short)
+    ma_l = tqsdk.tafunc.ma(df["close"], long)
     new_df = pd.DataFrame(data=list((ma_s - ma_l) / ma_s * 100), columns=["priceosc"])
     return new_df
 
@@ -1523,8 +1523,8 @@ def PSY(df, n, m):
         [..., 54.16666666666671, 54.16666666666671, 54.16666666666671, ...]
     """
     new_df = pd.DataFrame()
-    new_df["psy"] = tafunc.count(df["close"] > df["close"].shift(1), n) / n * 100
-    new_df["psyma"] = tafunc.ma(new_df["psy"], m)
+    new_df["psy"] = tqsdk.tafunc.count(df["close"] > df["close"].shift(1), n) / n * 100
+    new_df["psyma"] = tqsdk.tafunc.ma(new_df["psy"], m)
     return new_df
 
 
@@ -1598,7 +1598,7 @@ def RC(df, n):
         [..., 1.011782057069131, 1.0157160672001329, 1.019680175228899, ...]
     """
     rc = df["close"] / df["close"].shift(n)
-    new_df = pd.DataFrame(data=list(tafunc.sma(rc.shift(1), n, 1)), columns=["arc"])
+    new_df = pd.DataFrame(data=list(tqsdk.tafunc.sma(rc.shift(1), n, 1)), columns=["arc"])
     return new_df
 
 
@@ -1637,9 +1637,9 @@ def RCCD(df, n, n1, n2):
     """
     new_df = pd.DataFrame()
     rc = df["close"] / df["close"].shift(n)
-    arc = tafunc.sma(rc.shift(1), n, 1)
-    new_df["dif"] = tafunc.ma(arc.shift(1), n1) - tafunc.ma(arc.shift(1), n2)
-    new_df["rccd"] = tafunc.sma(new_df["dif"], n, 1)
+    arc = tqsdk.tafunc.sma(rc.shift(1), n, 1)
+    new_df["dif"] = tqsdk.tafunc.ma(arc.shift(1), n1) - tqsdk.tafunc.ma(arc.shift(1), n2)
+    new_df["rccd"] = tqsdk.tafunc.sma(new_df["dif"], n, 1)
     return new_df
 
 
@@ -1676,7 +1676,7 @@ def ROC(df, n, m):
     """
     new_df = pd.DataFrame()
     new_df["roc"] = (df["close"] - df['close'].shift(n)) / df["close"].shift(n) * 100
-    new_df["rocma"] = tafunc.ma(new_df["roc"], m)
+    new_df["rocma"] = tqsdk.tafunc.ma(new_df["roc"], m)
     return new_df
 
 
@@ -1718,9 +1718,9 @@ def SLOWKD(df, n, m1, m2, m3):
     new_df = pd.DataFrame()
     rsv = (df["close"] - df["low"].rolling(n).min()) / \
           (df["high"].rolling(n).max() - df["low"].rolling(n).min()) * 100
-    fastk = tafunc.sma(rsv, m1, 1)
-    new_df["k"] = tafunc.sma(fastk, m2, 1)
-    new_df["d"] = tafunc.sma(new_df["k"], m3, 1)
+    fastk = tqsdk.tafunc.sma(rsv, m1, 1)
+    new_df["k"] = tqsdk.tafunc.sma(fastk, m2, 1)
+    new_df["d"] = tqsdk.tafunc.sma(new_df["k"], m3, 1)
     return new_df
 
 
@@ -1760,10 +1760,10 @@ def SRDM(df, n):
     dmf = np.where((df["high"] + df["low"]) >= (df["high"].shift(1) + df["low"].shift(1)), 0,
                    np.where(np.absolute(df["high"] - df["high"].shift(1)) > np.absolute(df["low"] - df["low"].shift(1)),
                             np.absolute(df["high"] - df["high"].shift(1)), np.absolute(df["low"] - df["low"].shift(1))))
-    admz = tafunc.ma(pd.Series(dmz), 10)
-    admf = tafunc.ma(pd.Series(dmf), 10)
+    admz = tqsdk.tafunc.ma(pd.Series(dmz), 10)
+    admf = tqsdk.tafunc.ma(pd.Series(dmf), 10)
     new_df["srdm"] = np.where(admz > admf, (admz - admf) / admz, np.where(admz == admf, 0, (admz - admf) / admf))
-    new_df["asrdm"] = tafunc.sma(new_df["srdm"], n, 1)
+    new_df["asrdm"] = tqsdk.tafunc.sma(new_df["srdm"], n, 1)
     return new_df
 
 
@@ -1801,7 +1801,7 @@ def SRMI(df, n):
                            (df["close"] - df["close"].shift(n)) / df["close"].shift(n),
                            np.where(df["close"] == df["close"].shift(n), 0,
                                     (df["close"] - df["close"].shift(n)) / df["close"]))
-    new_df["mi"] = tafunc.sma(new_df["a"], n, 1)
+    new_df["mi"] = tqsdk.tafunc.sma(new_df["a"], n, 1)
     return new_df
 
 
@@ -1841,8 +1841,8 @@ def ZDZB(df, n1, n2, n3):
     new_df = pd.DataFrame()
     a = pd.Series(np.where(df["close"] >= df["close"].shift(1), 1, 0)).rolling(n1).sum() / pd.Series(
         np.where(df["close"] < df["close"].shift(1), 1, 0)).rolling(n1).sum()
-    new_df["b"] = tafunc.ma(a, n2)
-    new_df["d"] = tafunc.ma(a, n3)
+    new_df["b"] = tqsdk.tafunc.ma(a, n2)
+    new_df["d"] = tqsdk.tafunc.ma(a, n3)
     return new_df
 
 
@@ -1871,7 +1871,7 @@ def DPO(df):
         # 预计的输出是这样的:
         [..., 595.4100000000021, 541.8300000000017, 389.7200000000016, ...]
     """
-    dpo = df["close"] - (tafunc.ma(df["close"], 20)).shift(11)
+    dpo = df["close"] - (tqsdk.tafunc.ma(df["close"], 20)).shift(11)
     new_df = pd.DataFrame(data=list(dpo), columns=["dpo"])
     return new_df
 
@@ -1916,7 +1916,7 @@ def LON(df):
     vol11 = vol1.ewm(alpha=0.05, adjust=False).mean()  # DMA
     res1 = vol10 - vol11
     new_df["lon"] = res1.cumsum()
-    new_df["ma1"] = tafunc.ma(new_df["lon"], 10)
+    new_df["ma1"] = tqsdk.tafunc.ma(new_df["lon"], 10)
     return new_df
 
 
@@ -1958,7 +1958,7 @@ def SHORT(df):
     vol10 = vol1.ewm(alpha=0.1, adjust=False).mean()  # DMA 动态均值
     vol11 = vol1.ewm(alpha=0.05, adjust=False).mean()  # DMA
     new_df["short"] = vol10 - vol11
-    new_df["ma1"] = tafunc.ma(new_df["short"], 10)
+    new_df["ma1"] = tqsdk.tafunc.ma(new_df["short"], 10)
     return new_df
 
 
@@ -1994,8 +1994,8 @@ def MV(df, n, m):
         [..., 49044.75870654942, 51386.27077122195, 53924.557232660845, ...]
     """
     new_df = pd.DataFrame()
-    new_df["mv1"] = tafunc.sma(df["volume"], n, 1)
-    new_df["mv2"] = tafunc.sma(df["volume"], m, 1)
+    new_df["mv1"] = tqsdk.tafunc.sma(df["volume"], n, 1)
+    new_df["mv2"] = tqsdk.tafunc.sma(df["volume"], m, 1)
     return new_df
 
 
@@ -2039,8 +2039,8 @@ def WAD(df, n, m):
                                        np.where(df["close"] < df["close"].shift(1), df["close"] - np.where(
                                            df["close"].shift(1) > df["high"], df["close"].shift(1), df["high"]),
                                                 0)).cumsum())
-    new_df["b"] = tafunc.sma(new_df["a"], n, 1)
-    new_df["e"] = tafunc.sma(new_df["a"], m, 1)
+    new_df["b"] = tqsdk.tafunc.sma(new_df["a"], n, 1)
+    new_df["e"] = tqsdk.tafunc.sma(new_df["a"], m, 1)
     return new_df
 
 
@@ -2231,7 +2231,7 @@ def VOSC(df, short, long):
         # 预计的输出是这样的:
         [..., 38.72537848731668, 36.61748077024136, 35.4059127302802, ...]
     """
-    vosc = (tafunc.ma(df["volume"], short) - tafunc.ma(df["volume"], long)) / tafunc.ma(df["volume"], short) * 100
+    vosc = (tqsdk.tafunc.ma(df["volume"], short) - tqsdk.tafunc.ma(df["volume"], long)) / tqsdk.tafunc.ma(df["volume"], short) * 100
     new_df = pd.DataFrame(data=list(vosc), columns=["vosc"])
     return new_df
 
@@ -2295,9 +2295,9 @@ def VRSI(df, n):
         # 预计的输出是这样的:
         [..., 59.46573277427041, 63.3447660581749, 45.21081537920358, ...]
     """
-    vrsi = tafunc.sma(
+    vrsi = tqsdk.tafunc.sma(
         pd.Series(np.where(df["volume"] - df["volume"].shift(1) > 0, df["volume"] - df["volume"].shift(1), 0)), n,
-        1) / tafunc.sma(np.absolute(df["volume"] - df["volume"].shift(1)), n, 1) * 100
+        1) / tqsdk.tafunc.sma(np.absolute(df["volume"] - df["volume"].shift(1)), n, 1) * 100
     new_df = pd.DataFrame(data=list(vrsi), columns=["vrsi"])
     return new_df
 
@@ -2359,7 +2359,7 @@ def MA(df, n):
         # 预计的输出是这样的:
         [..., 3436.300000000001, 3452.8733333333344, 3470.5066666666676, ...]
     """
-    new_df = pd.DataFrame(data=list(tafunc.ma(df["close"], n)), columns=["ma"])
+    new_df = pd.DataFrame(data=list(tqsdk.tafunc.ma(df["close"], n)), columns=["ma"])
     return new_df
 
 
@@ -2392,7 +2392,7 @@ def SMA(df, n, m):
         # 预计的输出是这样的:
         [..., 3803.9478653510914, 3751.648719210655, 3739.389231526393, ...]
     """
-    new_df = pd.DataFrame(data=list(tafunc.sma(df["close"], n, m)), columns=["sma"])
+    new_df = pd.DataFrame(data=list(tqsdk.tafunc.sma(df["close"], n, m)), columns=["sma"])
     return new_df
 
 
@@ -2423,7 +2423,7 @@ def EMA(df, n):
         # 预计的输出是这样的:
         [..., 3723.1470497119317, 3714.065767946126, 3715.3265374104667, ...]
     """
-    new_df = pd.DataFrame(data=list(tafunc.ema(df["close"], n)), columns=["ema"])
+    new_df = pd.DataFrame(data=list(tqsdk.tafunc.ema(df["close"], n)), columns=["ema"])
     return new_df
 
 
@@ -2454,7 +2454,7 @@ def EMA2(df, n):
         # 预计的输出是这样的:
         [..., 3775.832727272727, 3763.334545454546, 3757.101818181818, ...]
     """
-    new_df = pd.DataFrame(data=list(tafunc.ema2(df["close"], n)), columns=["ema2"])
+    new_df = pd.DataFrame(data=list(tqsdk.tafunc.ema2(df["close"], n)), columns=["ema2"])
     return new_df
 
 
@@ -2484,7 +2484,7 @@ def TRMA(df, n):
         # 预计的输出是这样的:
         [..., 341.366666666669, 3759.160000000002, 3767.7533333333354, ...]
     """
-    new_df = pd.DataFrame(data=list(tafunc.trma(df["close"], n)), columns=["trma"])
+    new_df = pd.DataFrame(data=list(tqsdk.tafunc.trma(df["close"], n)), columns=["trma"])
     return new_df
 
 
@@ -2542,12 +2542,12 @@ def BS_VALUE(df, quote=None, r=0.025, v=None):
     if not (quote and quote.ins_class.endswith("OPTION") and quote.underlying_symbol == df["symbol"][0]):
         return pd.DataFrame(df.where(df["close"] < 0), columns=["bs_price"])
     if v is None:
-        v = tafunc._get_volatility(df["close"], df["duration"], quote.trading_time, float('nan'))
+        v = tqsdk.tafunc._get_volatility(df["close"], df["duration"], quote.trading_time, float('nan'))
         if math.isnan(v):
             return pd.DataFrame(df.where(df["close"] < 0), columns=["bs_price"])
     o = 1 if quote.option_class == "CALL" else -1
-    t = tafunc._get_t_series(df["datetime"], df["duration"], quote)
-    return pd.DataFrame(data=list(tafunc.get_bs_price(df["close"], quote.strike_price, r, v, t, o)),
+    t = tqsdk.tafunc._get_t_series(df["datetime"], df["duration"], quote)
+    return pd.DataFrame(data=list(tqsdk.tafunc.get_bs_price(df["close"], quote.strike_price, r, v, t, o)),
                         columns=["bs_price"])
 
 
@@ -2587,17 +2587,17 @@ def OPTION_GREEKS(df, quote=None, r=0.025, v=None):
             and quote.underlying_symbol == df["symbol1"][0]):
         return pd.DataFrame(df.where(df["close1"] < 0), columns=["delta", "theta", "gamma", "vega", "rho"])
     o = 1 if quote.option_class == "CALL" else -1
-    t = tafunc._get_t_series(df["datetime"], df["duration"], quote)  # 到期时间
+    t = tqsdk.tafunc._get_t_series(df["datetime"], df["duration"], quote)  # 到期时间
     if v is None:
-        his_v = tafunc._get_volatility(df["close1"], df["duration"], quote.trading_time, 0.3)
-        v = tafunc.get_impv(df["close1"], df["close"], quote.strike_price, r, his_v, t, o)
-    d1 = tafunc._get_d1(df["close1"], quote.strike_price, r, v, t)
+        his_v = tqsdk.tafunc._get_volatility(df["close1"], df["duration"], quote.trading_time, 0.3)
+        v = tqsdk.tafunc.get_impv(df["close1"], df["close"], quote.strike_price, r, his_v, t, o)
+    d1 = tqsdk.tafunc._get_d1(df["close1"], quote.strike_price, r, v, t)
     new_df = pd.DataFrame()
-    new_df["delta"] = tafunc.get_delta(df["close1"], quote.strike_price, r, v, t, o, d1)
-    new_df["theta"] = tafunc.get_theta(df["close1"], quote.strike_price, r, v, t, o, d1)
-    new_df["gamma"] = tafunc.get_gamma(df["close1"], quote.strike_price, r, v, t, d1)
-    new_df["vega"] = tafunc.get_vega(df["close1"], quote.strike_price, r, v, t, d1)
-    new_df["rho"] = tafunc.get_rho(df["close1"], quote.strike_price, r, v, t, o, d1)
+    new_df["delta"] = tqsdk.tafunc.get_delta(df["close1"], quote.strike_price, r, v, t, o, d1)
+    new_df["theta"] = tqsdk.tafunc.get_theta(df["close1"], quote.strike_price, r, v, t, o, d1)
+    new_df["gamma"] = tqsdk.tafunc.get_gamma(df["close1"], quote.strike_price, r, v, t, d1)
+    new_df["vega"] = tqsdk.tafunc.get_vega(df["close1"], quote.strike_price, r, v, t, d1)
+    new_df["rho"] = tqsdk.tafunc.get_rho(df["close1"], quote.strike_price, r, v, t, o, d1)
     return new_df
 
 
@@ -2668,9 +2668,9 @@ def OPTION_IMPV(df, quote=None, r=0.025, init_v=None):
             and quote.underlying_symbol == df["symbol1"][0]):
         return pd.DataFrame(df.where(df["close1"] < 0), columns=["impv"])
     if init_v is None:
-        init_v = tafunc._get_volatility(df["close1"], df["duration"], quote.trading_time, 0.3)
+        init_v = tqsdk.tafunc._get_volatility(df["close1"], df["duration"], quote.trading_time, 0.3)
     o = 1 if quote.option_class == "CALL" else -1
-    t = tafunc._get_t_series(df["datetime"], df["duration"], quote)  # 到期时间
+    t = tqsdk.tafunc._get_t_series(df["datetime"], df["duration"], quote)  # 到期时间
     return pd.DataFrame(
-        data=list(tafunc.get_impv(df["close1"], df["close"], quote.strike_price, r, init_v, t, o)),
+        data=list(tqsdk.tafunc.get_impv(df["close1"], df["close"], quote.strike_price, r, init_v, t, o)),
         columns=["impv"])
