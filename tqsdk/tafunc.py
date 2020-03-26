@@ -15,8 +15,8 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-from tqsdk import TqSim
-from tqsdk.objs import Quote
+import tqsdk.sim
+import tqsdk.objs
 
 
 def ref(series, n):
@@ -841,7 +841,7 @@ def _get_volatility(series: pd.Series, dur: Union[pd.Series, int] = 86400, tradi
     seconds_per_day = 24 * 60 * 60
     dur = dur[0] if isinstance(dur, pd.Series) else dur
     if dur < 24 * 60 * 60 and trading_time:
-        periods = TqSim._get_period_timestamp(0, trading_time.get("day", []) + trading_time.get("night", []))
+        periods = tqsdk.sim.TqSim._get_period_timestamp(0, trading_time.get("day", []) + trading_time.get("night", []))
         seconds_per_day = sum([p[1] - p[0] for p in periods]) / 1e9
     return math.sqrt((250 * seconds_per_day / dur) * np.cov(series_u))
 
@@ -861,7 +861,7 @@ def _get_pdf(series: pd.Series):
     return series.loc[series.isna()].append(pd.Series(stats.norm.pdf(s), index=s.index), verify_integrity=True)
 
 
-def get_his_volatility(df: pd.DataFrame, quote: Quote = None):
+def get_his_volatility(df: pd.DataFrame, quote: tqsdk.objs.Quote = None):
     """
     计算某个合约的历史波动率
 
