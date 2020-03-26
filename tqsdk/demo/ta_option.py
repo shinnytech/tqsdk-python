@@ -8,7 +8,7 @@ api = TqApi()
 
 underlying_quote = api.get_quote("SHFE.cu2009")
 klines = api.get_kline_serial('SHFE.cu2009', 24 * 60 * 60, 20)
-v = tafunc.his_volatility(klines, underlying_quote)
+v = tafunc.get_his_volatility(klines, underlying_quote)
 print("历史波动率:", v)
 
 quote = api.get_quote("SHFE.cu2009C44000")

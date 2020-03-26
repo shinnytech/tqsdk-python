@@ -2524,11 +2524,11 @@ def BS_VALUE(df, quote=None, r=0.025, v=None):
 
         from tqsdk import TqApi
         from tqsdk.ta import OPTION_BS_PRICE
-        from tqsdk.tafunc import his_volatility
+        from tqsdk.tafunc import get_his_volatility
 
         api = TqApi()
         ks = api.get_kline_serial("SHFE.cu2006", 24 * 60 * 60, 30)
-        v = his_volatility(ks, api.get_quote("SHFE.cu2006"))
+        v = get_his_volatility(ks, api.get_quote("SHFE.cu2006"))
         print("历史波动率:", v)
 
         quote = api.get_quote("SHFE.cu2006C43000")
