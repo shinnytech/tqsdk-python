@@ -2542,7 +2542,7 @@ def BS_VALUE(df, quote=None, r=0.025, v=None):
     if not (quote and quote.ins_class.endswith("OPTION") and quote.underlying_symbol == df["symbol"][0]):
         return pd.DataFrame(np.full_like(df["close"], float('nan')), columns=["bs_price"])
     if v is None:
-        v = tqsdk.tafunc._get_volatility(df["close"], df["duration"], quote.trading_time, float('nan'))
+        v = tqsdk.tafunc._get_volatility(df["close"], df["duration"], quote.trading_time)
         if math.isnan(v):
             return pd.DataFrame(np.full_like(df["close"], float('nan')), columns=["bs_price"])
     o = 1 if quote.option_class == "CALL" else -1
@@ -2595,8 +2595,7 @@ def OPTION_GREEKS(df, quote=None, r=0.025, v=None):
         o = 1 if quote.option_class == "CALL" else -1
         t = tqsdk.tafunc._get_t_series(df["datetime"], df["duration"], quote)  # 到期时间
         if v is None:
-            his_v = tqsdk.tafunc._get_volatility(df["close1"], df["duration"], quote.trading_time, 0.3)
-            v = tqsdk.tafunc.get_impv(df["close1"], df["close"], quote.strike_price, r, his_v, t, o)
+            v = tqsdk.tafunc.get_impv(df["close1"], df["close"], quote.strike_price, r, 0.3, t, o)
         d1 = tqsdk.tafunc._get_d1(df["close1"], quote.strike_price, r, v, t)
         new_df["delta"] = tqsdk.tafunc.get_delta(df["close1"], quote.strike_price, r, v, t, o, d1)
         new_df["theta"] = tqsdk.tafunc.get_theta(df["close1"], quote.strike_price, r, v, t, o, d1)
@@ -2672,9 +2671,10 @@ def OPTION_IMPV(df, quote=None, r=0.025):
     if not (quote and quote.ins_class.endswith("OPTION") and quote.instrument_id == df["symbol"][0]
             and quote.underlying_symbol == df["symbol1"][0]):
         return pd.DataFrame(np.full_like(df["close1"], float('nan')), columns=["impv"])
-    init_v = tqsdk.tafunc._get_volatility(df["close1"], df["duration"], quote.trading_time, 0.3)
+    his_v = tqsdk.tafunc._get_volatility(df["close1"], df["duration"], quote.trading_time)
+    his_v = 0.3 if math.isnan(his_v) else his_v
     o = 1 if quote.option_class == "CALL" else -1
     t = tqsdk.tafunc._get_t_series(df["datetime"], df["duration"], quote)  # 到期时间
     return pd.DataFrame(
-        data=list(tqsdk.tafunc.get_impv(df["close1"], df["close"], quote.strike_price, r, init_v, t, o)),
+        data=list(tqsdk.tafunc.get_impv(df["close1"], df["close"], quote.strike_price, r, his_v, t, o)),
         columns=["impv"])

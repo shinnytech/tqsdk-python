@@ -832,20 +832,6 @@ def _get_t_series(series: pd.Series, dur: int, quote):
     return (t.dt.days * 86400 + t.dt.seconds) / (360 * 86400)
 
 
-def _get_volatility(series: pd.Series, dur: Union[pd.Series, int] = 86400, trading_time: list = None,
-                    default: float = 0.3) -> float:
-    series_u = np.log(series.shift(1)[1:] / series[1:])
-    series_u = series_u[~np.isnan(series_u)]
-    if series_u.size < 2:  # 自由度小于2无法计算，返回一个默认值
-        return default
-    seconds_per_day = 24 * 60 * 60
-    dur = dur[0] if isinstance(dur, pd.Series) else dur
-    if dur < 24 * 60 * 60 and trading_time:
-        periods = tqsdk.sim.TqSim._get_period_timestamp(0, trading_time.get("day", []) + trading_time.get("night", []))
-        seconds_per_day = sum([p[1] - p[0] for p in periods]) / 1e9
-    return math.sqrt((250 * seconds_per_day / dur) * np.cov(series_u))
-
-
 def _get_d1(series: pd.Series, k: float, r: float, v: Union[float, pd.Series], t: Union[float, pd.Series]):
     return pd.Series(
         np.where((v <= 0) | (t <= 0), np.nan, (np.log(series / k) + (r + 0.5 * np.power(v, 2)) * t) / (v * np.sqrt(t))))
@@ -888,7 +874,20 @@ def get_his_volatility(df: pd.DataFrame, quote: tqsdk.objs.Quote = None):
         trading_time = quote.trading_time
     else:
         trading_time = None
-    return _get_volatility(df["close"], df["duration"], trading_time, default=float("nan"))
+    return _get_volatility(df["close"], df["duration"], trading_time)
+
+
+def _get_volatility(series: pd.Series, dur: Union[pd.Series, int] = 86400, trading_time: list = None) -> float:
+    series_u = np.log(series.shift(1)[1:] / series[1:])
+    series_u = series_u[~np.isnan(series_u)]
+    if series_u.size < 2:  # 自由度小于2无法计算，返回一个默认值
+        return float("nan")
+    seconds_per_day = 24 * 60 * 60
+    dur = dur[0] if isinstance(dur, pd.Series) else dur
+    if dur < 24 * 60 * 60 and trading_time:
+        periods = tqsdk.sim.TqSim._get_period_timestamp(0, trading_time.get("day", []) + trading_time.get("night", []))
+        seconds_per_day = sum([p[1] - p[0] for p in periods]) / 1e9
+    return math.sqrt((250 * seconds_per_day / dur) * np.cov(series_u))
 
 
 def get_bs_price(series: pd.Series, k: float, r: float, v: Union[float, pd.Series], t: Union[float, pd.Series],
