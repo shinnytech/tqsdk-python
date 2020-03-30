@@ -2540,11 +2540,11 @@ def BS_VALUE(df, quote=None, r=0.025, v=None):
         [..., 3036.698780158862, 2393.333388624822, 2872.607833620801]
     """
     if not (quote and quote.ins_class.endswith("OPTION") and quote.underlying_symbol == df["symbol"][0]):
-        return pd.DataFrame(df.where(df["close"] < 0), columns=["bs_price"])
+        return pd.DataFrame(np.full_like(df["close"], float('nan')), columns=["bs_price"])
     if v is None:
         v = tqsdk.tafunc._get_volatility(df["close"], df["duration"], quote.trading_time, float('nan'))
         if math.isnan(v):
-            return pd.DataFrame(df.where(df["close"] < 0), columns=["bs_price"])
+            return pd.DataFrame(np.full_like(df["close"], float('nan')), columns=["bs_price"])
     o = 1 if quote.option_class == "CALL" else -1
     t = tqsdk.tafunc._get_t_series(df["datetime"], df["duration"], quote)
     return pd.DataFrame(data=list(tqsdk.tafunc.get_bs_price(df["close"], quote.strike_price, r, v, t, o)),
@@ -2583,21 +2583,26 @@ def OPTION_GREEKS(df, quote=None, r=0.025, v=None):
         print(list(greeks["rho"]))
 
     """
+    new_df = pd.DataFrame()
     if not (quote and quote.ins_class.endswith("OPTION") and quote.instrument_id == df["symbol"][0]
             and quote.underlying_symbol == df["symbol1"][0]):
-        return pd.DataFrame(df.where(df["close1"] < 0), columns=["delta", "theta", "gamma", "vega", "rho"])
-    o = 1 if quote.option_class == "CALL" else -1
-    t = tqsdk.tafunc._get_t_series(df["datetime"], df["duration"], quote)  # 到期时间
-    if v is None:
-        his_v = tqsdk.tafunc._get_volatility(df["close1"], df["duration"], quote.trading_time, 0.3)
-        v = tqsdk.tafunc.get_impv(df["close1"], df["close"], quote.strike_price, r, his_v, t, o)
-    d1 = tqsdk.tafunc._get_d1(df["close1"], quote.strike_price, r, v, t)
-    new_df = pd.DataFrame()
-    new_df["delta"] = tqsdk.tafunc.get_delta(df["close1"], quote.strike_price, r, v, t, o, d1)
-    new_df["theta"] = tqsdk.tafunc.get_theta(df["close1"], quote.strike_price, r, v, t, o, d1)
-    new_df["gamma"] = tqsdk.tafunc.get_gamma(df["close1"], quote.strike_price, r, v, t, d1)
-    new_df["vega"] = tqsdk.tafunc.get_vega(df["close1"], quote.strike_price, r, v, t, d1)
-    new_df["rho"] = tqsdk.tafunc.get_rho(df["close1"], quote.strike_price, r, v, t, o, d1)
+        new_df["delta"] = pd.Series(np.full_like(df["close1"], float('nan')))
+        new_df["theta"] = pd.Series(np.full_like(df["close1"], float('nan')))
+        new_df["gamma"] = pd.Series(np.full_like(df["close1"], float('nan')))
+        new_df["vega"] = pd.Series(np.full_like(df["close1"], float('nan')))
+        new_df["rho"] = pd.Series(np.full_like(df["close1"], float('nan')))
+    else:
+        o = 1 if quote.option_class == "CALL" else -1
+        t = tqsdk.tafunc._get_t_series(df["datetime"], df["duration"], quote)  # 到期时间
+        if v is None:
+            his_v = tqsdk.tafunc._get_volatility(df["close1"], df["duration"], quote.trading_time, 0.3)
+            v = tqsdk.tafunc.get_impv(df["close1"], df["close"], quote.strike_price, r, his_v, t, o)
+        d1 = tqsdk.tafunc._get_d1(df["close1"], quote.strike_price, r, v, t)
+        new_df["delta"] = tqsdk.tafunc.get_delta(df["close1"], quote.strike_price, r, v, t, o, d1)
+        new_df["theta"] = tqsdk.tafunc.get_theta(df["close1"], quote.strike_price, r, v, t, o, d1)
+        new_df["gamma"] = tqsdk.tafunc.get_gamma(df["close1"], quote.strike_price, r, v, t, d1)
+        new_df["vega"] = tqsdk.tafunc.get_vega(df["close1"], quote.strike_price, r, v, t, d1)
+        new_df["rho"] = tqsdk.tafunc.get_rho(df["close1"], quote.strike_price, r, v, t, o, d1)
     return new_df
 
 
@@ -2626,18 +2631,20 @@ def OPTION_VALUE(df, quote=None):
         print(list(values["time"]))
         api.close()
     """
+    new_df = pd.DataFrame()
     if not (quote and quote.ins_class.endswith("OPTION") and quote.instrument_id == df["symbol"][0]
             and quote.underlying_symbol == df["symbol1"][0]):
-        return pd.DataFrame(df.where(df["close1"] < 0), columns=["intrins", "time"])
-    o = 1 if quote.option_class == "CALL" else -1
-    new_df = pd.DataFrame()
-    intrins = o * (df["close1"] - quote.strike_price)
-    new_df["intrins"] = pd.Series(np.where(intrins > 0.0, intrins, 0.0))
-    new_df["time"] = pd.Series(df["close"] - new_df["intrins"])
+        new_df["intrins"] = pd.Series(np.full_like(df["close1"], float('nan')))
+        new_df["time"] = pd.Series(np.full_like(df["close1"], float('nan')))
+    else:
+        o = 1 if quote.option_class == "CALL" else -1
+        intrins = o * (df["close1"] - quote.strike_price)
+        new_df["intrins"] = pd.Series(np.where(intrins > 0.0, intrins, 0.0))
+        new_df["time"] = pd.Series(df["close"] - new_df["intrins"])
     return new_df
 
 
-def OPTION_IMPV(df, quote=None, r=0.025, init_v=None):
+def OPTION_IMPV(df, quote=None, r=0.025):
     """
     计算期权隐含波动率
 
@@ -2647,8 +2654,6 @@ def OPTION_IMPV(df, quote=None, r=0.025, init_v=None):
         quote (tqsdk.objs.Quote): 期权对象，如果不是期权类型的对象或者与 df 中期权合约不同，则返回序列值全为 nan
 
         r (float): 无风险利率
-
-        init_v (float): 初始对波动率的估计
 
     Returns:
         pandas.DataFrame: 返回的 DataFrame 包含 1 列, 是 "impv", 与参数 df 行数相同
@@ -2666,9 +2671,8 @@ def OPTION_IMPV(df, quote=None, r=0.025, init_v=None):
     """
     if not (quote and quote.ins_class.endswith("OPTION") and quote.instrument_id == df["symbol"][0]
             and quote.underlying_symbol == df["symbol1"][0]):
-        return pd.DataFrame(df.where(df["close1"] < 0), columns=["impv"])
-    if init_v is None:
-        init_v = tqsdk.tafunc._get_volatility(df["close1"], df["duration"], quote.trading_time, 0.3)
+        return pd.DataFrame(np.full_like(df["close1"], float('nan')), columns=["impv"])
+    init_v = tqsdk.tafunc._get_volatility(df["close1"], df["duration"], quote.trading_time, 0.3)
     o = 1 if quote.option_class == "CALL" else -1
     t = tqsdk.tafunc._get_t_series(df["datetime"], df["duration"], quote)  # 到期时间
     return pd.DataFrame(
