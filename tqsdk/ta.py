@@ -2488,18 +2488,24 @@ def TRMA(df, n):
     return new_df
 
 
-def BS_VALUE(df, quote=None, r=0.025, v=None):
+def BS_VALUE(df, quote, r=0.025, v=None):
     """
     期权 BS 模型理论价格
 
     Args:
         df (pandas.DataFrame): 需要计算理论价的期权对应标的合约的 K 线序列，Dataframe 格式
 
-        quote (tqsdk.objs.Quote): 需要计算理论价的期权对象，如果不是期权类型的对象或者该期权对应的标的合约 df 序列中合约，则返回序列值全为 nan
+        quote (tqsdk.objs.Quote): 需要计算理论价的期权对象，其标的合约应该是 df 序列对应的合约，否则返回序列值全为 nan
 
-        r (float): 无风险利率
+        r (float): [可选]无风险利率
 
-        v (float | pandas.Series): 波动率，默认使用 df 中的 close 序列计算波动率
+        v (None | float | pandas.Series): [可选]波动率
+
+            * None [默认]: 使用 df 中的 close 序列计算的波动率来计算期权理论价格
+
+            * float: 对于 df 中每一行都使用相同的 v 计算期权理论价格
+
+            * pandas.Series: 其行数应该和 df 行数相同，对于 df 中每一行都使用 v 中对应行的值计算期权理论价格
 
     Returns:
         pandas.DataFrame: 返回的 DataFrame 包含 1 列, 是 "bs_price", 代表计算出来的期权理论价格, 与参数 df 行数相同
@@ -2507,7 +2513,7 @@ def BS_VALUE(df, quote=None, r=0.025, v=None):
     Example1::
 
         from tqsdk import TqApi
-        from tqsdk.ta import OPTION_BS_PRICE
+        from tqsdk.ta import BS_VALUE
 
         api = TqApi()
         quote = api.get_quote("SHFE.cu2006C43000")
@@ -2523,7 +2529,7 @@ def BS_VALUE(df, quote=None, r=0.025, v=None):
     Example2::
 
         from tqsdk import TqApi
-        from tqsdk.ta import OPTION_BS_PRICE
+        from tqsdk.ta import BS_VALUE
         from tqsdk.tafunc import get_his_volatility
 
         api = TqApi()
@@ -2539,30 +2545,42 @@ def BS_VALUE(df, quote=None, r=0.025, v=None):
         # 预计的输出是这样的:
         [..., 3036.698780158862, 2393.333388624822, 2872.607833620801]
     """
-    if not (quote and quote.ins_class.endswith("OPTION") and quote.underlying_symbol == df["symbol"][0]):
+    if not (quote.ins_class.endswith("OPTION") and quote.underlying_symbol == df["symbol"][0]):
         return pd.DataFrame(np.full_like(df["close"], float('nan')), columns=["bs_price"])
     if v is None:
         v = tqsdk.tafunc._get_volatility(df["close"], df["duration"], quote.trading_time)
         if math.isnan(v):
             return pd.DataFrame(np.full_like(df["close"], float('nan')), columns=["bs_price"])
-    o = 1 if quote.option_class == "CALL" else -1
     t = tqsdk.tafunc._get_t_series(df["datetime"], df["duration"], quote)
-    return pd.DataFrame(data=list(tqsdk.tafunc.get_bs_price(df["close"], quote.strike_price, r, v, t, o)),
+    return pd.DataFrame(data=list(tqsdk.tafunc.get_bs_price(df["close"], quote.strike_price, r, v, t, quote.option_class)),
                         columns=["bs_price"])
 
 
-def OPTION_GREEKS(df, quote=None, r=0.025, v=None):
+def OPTION_GREEKS(df, quote, r=0.025, v=None):
     """
     期权希腊指标
 
     Args:
-        df (pandas.DataFrame): 期权合约及对应标的合约组成的 K 线序列, Dataframe 格式
+        df (pandas.DataFrame): 期权合约及对应标的合约组成的多 K 线序列, Dataframe 格式
 
-        quote (tqsdk.objs.Quote): 期权对象，如果不是期权类型的对象或者与 df 中期权合约不同，则返回序列值全为 nan
+            对于参数 df，需要用 api.get_kline_serial() 获取多 K 线序列，第一个参数为 list 类型，顺序为期权合约在前，对应标的合约在后，否则返回序列值全为 nan。
 
-        r (float): 无风险利率
+            例如：api.get_kline_serial(["SHFE.cu2006C44000", "SHFE.cu2006"], 60, 100)
 
-        v (float | pandas.Series): 波动率, 默认使用隐含波动率
+
+        quote (tqsdk.objs.Quote): 期权对象，应该是 df 中多 K 线序列中的期权合约对象，否则返回序列值全为 nan。
+
+            例如：api.get_quote("SHFE.cu2006C44000")
+
+        r (float): [可选]无风险利率
+
+        v (None | float | pandas.Series): [可选]波动率
+
+            * None [默认]: 使用 df 序列计算出的隐含波动率计算希腊指标值
+
+            * float: 对于 df 中每一行都使用相同的 v 计算希腊指标值
+
+            * pandas.Series: 其行数应该和 df 行数相同，对于 df 中每一行都使用 v 中对应行的值计算希腊指标值
 
     Returns:
         pandas.DataFrame: 返回的 DataFrame 包含 5 列, 分别是 "delta", "theta", "gamma", "vega", "rho", 与参数 df 行数相同
@@ -2581,10 +2599,11 @@ def OPTION_GREEKS(df, quote=None, r=0.025, v=None):
         print(list(greeks["gamma"]))
         print(list(greeks["vega"]))
         print(list(greeks["rho"]))
+        api.close()
 
     """
     new_df = pd.DataFrame()
-    if not (quote and quote.ins_class.endswith("OPTION") and quote.instrument_id == df["symbol"][0]
+    if not (quote.ins_class.endswith("OPTION") and quote.instrument_id == df["symbol"][0]
             and quote.underlying_symbol == df["symbol1"][0]):
         new_df["delta"] = pd.Series(np.full_like(df["close1"], float('nan')))
         new_df["theta"] = pd.Series(np.full_like(df["close1"], float('nan')))
@@ -2592,27 +2611,33 @@ def OPTION_GREEKS(df, quote=None, r=0.025, v=None):
         new_df["vega"] = pd.Series(np.full_like(df["close1"], float('nan')))
         new_df["rho"] = pd.Series(np.full_like(df["close1"], float('nan')))
     else:
-        o = 1 if quote.option_class == "CALL" else -1
         t = tqsdk.tafunc._get_t_series(df["datetime"], df["duration"], quote)  # 到期时间
         if v is None:
-            v = tqsdk.tafunc.get_impv(df["close1"], df["close"], quote.strike_price, r, 0.3, t, o)
+            v = tqsdk.tafunc.get_impv(df["close1"], df["close"], quote.strike_price, r, 0.3, t, quote.option_class)
         d1 = tqsdk.tafunc._get_d1(df["close1"], quote.strike_price, r, v, t)
-        new_df["delta"] = tqsdk.tafunc.get_delta(df["close1"], quote.strike_price, r, v, t, o, d1)
-        new_df["theta"] = tqsdk.tafunc.get_theta(df["close1"], quote.strike_price, r, v, t, o, d1)
+        new_df["delta"] = tqsdk.tafunc.get_delta(df["close1"], quote.strike_price, r, v, t, quote.option_class, d1)
+        new_df["theta"] = tqsdk.tafunc.get_theta(df["close1"], quote.strike_price, r, v, t, quote.option_class, d1)
         new_df["gamma"] = tqsdk.tafunc.get_gamma(df["close1"], quote.strike_price, r, v, t, d1)
         new_df["vega"] = tqsdk.tafunc.get_vega(df["close1"], quote.strike_price, r, v, t, d1)
-        new_df["rho"] = tqsdk.tafunc.get_rho(df["close1"], quote.strike_price, r, v, t, o, d1)
+        new_df["rho"] = tqsdk.tafunc.get_rho(df["close1"], quote.strike_price, r, v, t, quote.option_class, d1)
     return new_df
 
 
-def OPTION_VALUE(df, quote=None):
+def OPTION_VALUE(df, quote):
     """
     期权内在价值，时间价值
 
     Args:
-        df (pandas.DataFrame): 期权合约及对应标的合约组成的 K 线序列, Dataframe 格式
+        df (pandas.DataFrame): 期权合约及对应标的合约组成的多 K 线序列, Dataframe 格式
 
-        quote (tqsdk.objs.Quote): 期权对象，如果不是期权类型的对象或者与 df 中期权合约不同，则返回序列值全为 nan
+            对于参数 df，需要用 api.get_kline_serial() 获取多 K 线序列，第一个参数为 list 类型，顺序为期权合约在前，对应标的合约在后，否则返回序列值全为 nan。
+
+            例如：api.get_kline_serial(["SHFE.cu2006C44000", "SHFE.cu2006"], 60, 100)
+
+
+        quote (tqsdk.objs.Quote): 期权对象，应该是 df 中多 K 线序列中的期权合约对象，否则返回序列值全为 nan。
+
+            例如：api.get_quote("SHFE.cu2006C44000")
 
     Returns:
         pandas.DataFrame: 返回的 DataFrame 包含 2 列, 是 "intrins" 和 "time", 代表内在价值和时间价值, 与参数 df 行数相同
@@ -2631,7 +2656,7 @@ def OPTION_VALUE(df, quote=None):
         api.close()
     """
     new_df = pd.DataFrame()
-    if not (quote and quote.ins_class.endswith("OPTION") and quote.instrument_id == df["symbol"][0]
+    if not (quote.ins_class.endswith("OPTION") and quote.instrument_id == df["symbol"][0]
             and quote.underlying_symbol == df["symbol1"][0]):
         new_df["intrins"] = pd.Series(np.full_like(df["close1"], float('nan')))
         new_df["time"] = pd.Series(np.full_like(df["close1"], float('nan')))
@@ -2643,16 +2668,23 @@ def OPTION_VALUE(df, quote=None):
     return new_df
 
 
-def OPTION_IMPV(df, quote=None, r=0.025):
+def OPTION_IMPV(df, quote, r=0.025):
     """
     计算期权隐含波动率
 
     Args:
-        df (pandas.DataFrame): 期权合约及对应标的合约组成的 K 线序列, Dataframe 格式
+        df (pandas.DataFrame): 期权合约及对应标的合约组成的多 K 线序列, Dataframe 格式
 
-        quote (tqsdk.objs.Quote): 期权对象，如果不是期权类型的对象或者与 df 中期权合约不同，则返回序列值全为 nan
+            对于参数 df，需要用 api.get_kline_serial() 获取多 K 线序列，第一个参数为 list 类型，顺序为期权合约在前，对应标的合约在后，否则返回序列值全为 nan。
 
-        r (float): 无风险利率
+            例如：api.get_kline_serial(["SHFE.cu2006C44000", "SHFE.cu2006"], 60, 100)
+
+
+        quote (tqsdk.objs.Quote): 期权对象，应该是 df 中多 K 线序列中的期权合约对象，否则返回序列值全为 nan。
+
+            例如：api.get_quote("SHFE.cu2006C44000")
+
+        r (float): [可选]无风险利率
 
     Returns:
         pandas.DataFrame: 返回的 DataFrame 包含 1 列, 是 "impv", 与参数 df 行数相同
@@ -2667,14 +2699,14 @@ def OPTION_IMPV(df, quote=None, r=0.025):
         klines = api.get_kline_serial(["SHFE.cu2006C50000", "SHFE.cu2006"], 24 * 60 * 60, 20)
         impv = OPTION_IMPV(klines, quote, 0.025)
         print(list(impv["impv"] * 100))
+        api.close()
     """
-    if not (quote and quote.ins_class.endswith("OPTION") and quote.instrument_id == df["symbol"][0]
+    if not (quote.ins_class.endswith("OPTION") and quote.instrument_id == df["symbol"][0]
             and quote.underlying_symbol == df["symbol1"][0]):
         return pd.DataFrame(np.full_like(df["close1"], float('nan')), columns=["impv"])
     his_v = tqsdk.tafunc._get_volatility(df["close1"], df["duration"], quote.trading_time)
     his_v = 0.3 if math.isnan(his_v) else his_v
-    o = 1 if quote.option_class == "CALL" else -1
     t = tqsdk.tafunc._get_t_series(df["datetime"], df["duration"], quote)  # 到期时间
     return pd.DataFrame(
-        data=list(tqsdk.tafunc.get_impv(df["close1"], df["close"], quote.strike_price, r, his_v, t, o)),
+        data=list(tqsdk.tafunc.get_impv(df["close1"], df["close"], quote.strike_price, r, his_v, t, quote.option_class)),
         columns=["impv"])

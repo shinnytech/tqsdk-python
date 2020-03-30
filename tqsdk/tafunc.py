@@ -10,10 +10,10 @@ tqsdk.tafunc 模块包含了一批用于技术指标计算的函数
 import datetime
 import math
 from typing import Union
-
 import numpy as np
 import pandas as pd
 from scipy import stats
+
 import tqsdk.sim
 import tqsdk.objs
 
@@ -846,7 +846,7 @@ def _get_pdf(series: pd.Series):
     return series.loc[series.isna()].append(pd.Series(stats.norm.pdf(s), index=s.index), verify_integrity=True)
 
 
-def get_his_volatility(df: pd.DataFrame, quote: tqsdk.objs.Quote = None):
+def get_his_volatility(df, quote):
     """
     计算某个合约的历史波动率
 
@@ -889,8 +889,7 @@ def _get_volatility(series: pd.Series, dur: Union[pd.Series, int] = 86400, tradi
     return math.sqrt((250 * seconds_per_day / dur) * np.cov(series_u))
 
 
-def get_bs_price(series: pd.Series, k: float, r: float, v: Union[float, pd.Series], t: Union[float, pd.Series],
-                 option_class: str) -> pd.Series:
+def get_bs_price(series, k, r, v, t, option_class):
     """
     计算期权 BS 模型理论价格
 
@@ -902,11 +901,13 @@ def get_bs_price(series: pd.Series, k: float, r: float, v: Union[float, pd.Serie
         r (float): 无风险利率
 
         v (float / pandas.Series): 波动率
+
             * float: 对于 series 中每个元素都使用相同的 v 计算理论价
 
             * pandas.Series: 其元素个数应该和 series 元素个数相同，对于 series 中每个元素都使用 v 中对应的值计算理论价
 
         t (float / pandas.Series): 年化到期时间，例如：还有 100 天到期，则年化到期时间为 100/360
+
             * float: 对于 series 中每个元素都使用相同的 t 计算理论价
 
             * pandas.Series: 其元素个数应该和 series 元素个数相同，对于 series 中每个元素都使用 t 中对应的值计算理论价
@@ -929,7 +930,7 @@ def get_bs_price(series: pd.Series, k: float, r: float, v: Union[float, pd.Serie
         option = api.get_quote("SHFE.cu2006C45000")
         klines = api.get_kline_serial(["SHFE.cu2006C45000", "SHFE.cu2006"], 24 * 60 * 60, 10)
         t = pd.Series(pd.to_timedelta(option.expire_datetime - (klines["datetime"] + klines["duration"]) / 1e9, unit='s')).dt.days / 360
-        bs_price = tafunc.get_bs_price(klines["close1"], 45000, 0.025, v, t, 1)  # 理论价
+        bs_price = tafunc.get_bs_price(klines["close1"], 45000, 0.025, v, t, option.option_class)  # 理论价
         print(list(bs_price.round(2)))
         api.close()
     """
@@ -942,8 +943,7 @@ def get_bs_price(series: pd.Series, k: float, r: float, v: Union[float, pd.Serie
         np.where(np.isnan(d1), np.nan, o * (series * _get_cdf(o * d1) - k * np.exp(-r * t) * _get_cdf(o * d2))))
 
 
-def get_delta(series: pd.Series, k: float, r: float, v: Union[float, pd.Series],t: Union[float, pd.Series],
-              option_class: str, d1: pd.Series = None) -> pd.Series:
+def get_delta(series, k, r, v, t, option_class, d1=None):
     """
     计算期权希腊指标 delta 值
 
@@ -955,11 +955,13 @@ def get_delta(series: pd.Series, k: float, r: float, v: Union[float, pd.Series],
         r (float): 无风险利率
 
         v (float / pandas.Series): 波动率
+
             * float: 对于 series 中每个元素都使用相同的 v 计算理论价
 
             * pandas.Series: 其元素个数应该和 series 元素个数相同，对于 series 中每个元素都使用 v 中对应的值计算理论价
 
         t (float / pandas.Series): 年化到期时间，例如：还有 100 天到期，则年化到期时间为 100/360
+
             * float: 对于 series 中每个元素都使用相同的 t 计算理论价
 
             * pandas.Series: 其元素个数应该和 series 元素个数相同，对于 series 中每个元素都使用 t 中对应的值计算理论价
@@ -985,8 +987,8 @@ def get_delta(series: pd.Series, k: float, r: float, v: Union[float, pd.Series],
         option = api.get_quote("SHFE.cu2006C45000")
         klines = api.get_kline_serial(["SHFE.cu2006C45000", "SHFE.cu2006"], 24 * 60 * 60, 10)
         t = pd.Series(pd.to_timedelta(option.expire_datetime - (klines["datetime"] + klines["duration"]) / 1e9, unit='s')).dt.days / 360
-        impv = tafunc.get_impv(klines["close1"], klines["close"], 45000, 0.025, v, t, 1)
-        delta = tafunc.get_delta(klines["close1"], klines["close"], 45000, 0.025, v, t, 1)
+        impv = tafunc.get_impv(klines["close1"], klines["close"], 45000, 0.025, v, t, "CALL")
+        delta = tafunc.get_delta(klines["close1"], 45000, 0.025, v, t, "CALL")
         print("delta", list(delta))
         api.close()
 
@@ -999,8 +1001,7 @@ def get_delta(series: pd.Series, k: float, r: float, v: Union[float, pd.Series],
     return pd.Series(np.where(np.isnan(d1), np.nan, pd.Series(o * _get_cdf(o * d1))))
 
 
-def get_gamma(series: pd.Series, k: float, r: float, v: Union[float, pd.Series], t: Union[float, pd.Series],
-              d1: pd.Series = None) -> pd.Series:
+def get_gamma(series, k, r, v, t, d1=None):
     """
     计算期权希腊指标 gamma 值
 
@@ -1012,11 +1013,13 @@ def get_gamma(series: pd.Series, k: float, r: float, v: Union[float, pd.Series],
         r (float): 无风险利率
 
         v (float / pandas.Series): 波动率
+
             * float: 对于 series 中每个元素都使用相同的 v 计算理论价
 
             * pandas.Series: 其元素个数应该和 series 元素个数相同，对于 series 中每个元素都使用 v 中对应的值计算理论价
 
         t (float / pandas.Series): 年化到期时间，例如：还有 100 天到期，则年化到期时间为 100/360
+
             * float: 对于 series 中每个元素都使用相同的 t 计算理论价
 
             * pandas.Series: 其元素个数应该和 series 元素个数相同，对于 series 中每个元素都使用 t 中对应的值计算理论价
@@ -1040,8 +1043,8 @@ def get_gamma(series: pd.Series, k: float, r: float, v: Union[float, pd.Series],
         option = api.get_quote("SHFE.cu2006C45000")
         klines = api.get_kline_serial(["SHFE.cu2006C45000", "SHFE.cu2006"], 24 * 60 * 60, 10)
         t = pd.Series(pd.to_timedelta(option.expire_datetime - (klines["datetime"] + klines["duration"]) / 1e9, unit='s')).dt.days / 360
-        impv = tafunc.get_impv(klines["close1"], klines["close"], 45000, 0.025, v, t, 1)
-        gamma = tafunc.get_gamma(klines["close1"], klines["close"], 45000, 0.025, v, t)
+        impv = tafunc.get_impv(klines["close1"], klines["close"], 45000, 0.025, v, t, "CALL")
+        gamma = tafunc.get_gamma(klines["close1"], 45000, 0.025, v, t)
         print("gamma", list(gamma))
         api.close()
 
@@ -1051,8 +1054,7 @@ def get_gamma(series: pd.Series, k: float, r: float, v: Union[float, pd.Series],
     return pd.Series(np.where(np.isnan(d1), np.nan, _get_pdf(d1) / (series * v * np.sqrt(t))))
 
 
-def get_theta(series: pd.Series, k: float, r: float, v: Union[float, pd.Series], t: Union[float, pd.Series],
-              option_class: str, d1: pd.Series = None) -> pd.Series:
+def get_theta(series, k, r, v, t, option_class, d1=None):
     """
     计算期权希腊指标 theta 值
 
@@ -1064,11 +1066,13 @@ def get_theta(series: pd.Series, k: float, r: float, v: Union[float, pd.Series],
         r (float): 无风险利率
 
         v (float / pandas.Series): 波动率
+
             * float: 对于 series 中每个元素都使用相同的 v 计算理论价
 
             * pandas.Series: 其元素个数应该和 series 元素个数相同，对于 series 中每个元素都使用 v 中对应的值计算理论价
 
         t (float / pandas.Series): 年化到期时间，例如：还有 100 天到期，则年化到期时间为 100/360
+
             * float: 对于 series 中每个元素都使用相同的 t 计算理论价
 
             * pandas.Series: 其元素个数应该和 series 元素个数相同，对于 series 中每个元素都使用 t 中对应的值计算理论价
@@ -1094,8 +1098,8 @@ def get_theta(series: pd.Series, k: float, r: float, v: Union[float, pd.Series],
         option = api.get_quote("SHFE.cu2006C45000")
         klines = api.get_kline_serial(["SHFE.cu2006C45000", "SHFE.cu2006"], 24 * 60 * 60, 10)
         t = pd.Series(pd.to_timedelta(option.expire_datetime - (klines["datetime"] + klines["duration"]) / 1e9, unit='s')).dt.days / 360
-        impv = tafunc.get_impv(klines["close1"], klines["close"], 45000, 0.025, v, t, 1)
-        theta = tafunc.get_theta(klines["close1"], klines["close"], 45000, 0.025, v, t, 1)
+        impv = tafunc.get_impv(klines["close1"], klines["close"], 45000, 0.025, v, t, "CALL")
+        theta = tafunc.get_theta(klines["close1"], 45000, 0.025, v, t, "CALL")
         print("theta", list(theta))
         api.close()
 
@@ -1110,8 +1114,7 @@ def get_theta(series: pd.Series, k: float, r: float, v: Union[float, pd.Series],
         -v * series * _get_pdf(d1) / (2 * np.sqrt(t)) - o * r * k * np.exp(-r * t) * _get_cdf(o * d2))))
 
 
-def get_vega(series: pd.Series, k: float, r: float, v: Union[float, pd.Series], t: Union[float, pd.Series],
-             d1: pd.Series = None) -> pd.Series:
+def get_vega(series, k, r, v, t, d1=None):
     """
     计算期权希腊指标 vega 值
 
@@ -1123,11 +1126,13 @@ def get_vega(series: pd.Series, k: float, r: float, v: Union[float, pd.Series], 
         r (float): 无风险利率
 
         v (float / pandas.Series): 波动率
+
             * float: 对于 series 中每个元素都使用相同的 v 计算理论价
 
             * pandas.Series: 其元素个数应该和 series 元素个数相同，对于 series 中每个元素都使用 v 中对应的值计算理论价
 
         t (float / pandas.Series): 年化到期时间，例如：还有 100 天到期，则年化到期时间为 100/360
+
             * float: 对于 series 中每个元素都使用相同的 t 计算理论价
 
             * pandas.Series: 其元素个数应该和 series 元素个数相同，对于 series 中每个元素都使用 t 中对应的值计算理论价
@@ -1151,8 +1156,8 @@ def get_vega(series: pd.Series, k: float, r: float, v: Union[float, pd.Series], 
         option = api.get_quote("SHFE.cu2006C45000")
         klines = api.get_kline_serial(["SHFE.cu2006C45000", "SHFE.cu2006"], 24 * 60 * 60, 10)
         t = pd.Series(pd.to_timedelta(option.expire_datetime - (klines["datetime"] + klines["duration"]) / 1e9, unit='s')).dt.days / 360
-        impv = tafunc.get_impv(klines["close1"], klines["close"], 45000, 0.025, v, t, 1)
-        vega = tafunc.get_vega(klines["close1"], klines["close"], 45000, 0.025, v, t)
+        impv = tafunc.get_impv(klines["close1"], klines["close"], 45000, 0.025, v, t, "CALL")
+        vega = tafunc.get_vega(klines["close1"], 45000, 0.025, v, t)
         print("vega", list(vega))
         api.close()
 
@@ -1162,8 +1167,7 @@ def get_vega(series: pd.Series, k: float, r: float, v: Union[float, pd.Series], 
     return pd.Series(np.where(np.isnan(d1), np.nan, series * np.sqrt(t) * _get_pdf(d1)))
 
 
-def get_rho(series: pd.Series, k: float, r: float, v: Union[float, pd.Series], t: Union[float, pd.Series],
-            option_class: str, d1: pd.Series = None) -> pd.Series:
+def get_rho(series, k, r, v, t, option_class, d1=None):
     """
     计算期权希腊指标 rho 值
 
@@ -1175,11 +1179,13 @@ def get_rho(series: pd.Series, k: float, r: float, v: Union[float, pd.Series], t
         r (float): 无风险利率
 
         v (float / pandas.Series): 波动率
+
             * float: 对于 series 中每个元素都使用相同的 v 计算理论价
 
             * pandas.Series: 其元素个数应该和 series 元素个数相同，对于 series 中每个元素都使用 v 中对应的值计算理论价
 
         t (float / pandas.Series): 年化到期时间，例如：还有 100 天到期，则年化到期时间为 100/360
+
             * float: 对于 series 中每个元素都使用相同的 t 计算理论价
 
             * pandas.Series: 其元素个数应该和 series 元素个数相同，对于 series 中每个元素都使用 t 中对应的值计算理论价
@@ -1205,8 +1211,8 @@ def get_rho(series: pd.Series, k: float, r: float, v: Union[float, pd.Series], t
         option = api.get_quote("SHFE.cu2006C45000")
         klines = api.get_kline_serial(["SHFE.cu2006C45000", "SHFE.cu2006"], 24 * 60 * 60, 10)
         t = pd.Series(pd.to_timedelta(option.expire_datetime - (klines["datetime"] + klines["duration"]) / 1e9, unit='s')).dt.days / 360
-        impv = tafunc.get_impv(klines["close1"], klines["close"], 45000, 0.025, v, t, 1)
-        rho = tafunc.get_rho(klines["close1"], klines["close"], 45000, 0.025, v, t, 1)
+        impv = tafunc.get_impv(klines["close1"], klines["close"], 45000, 0.025, v, t, "CALL")
+        rho = tafunc.get_rho(klines["close1"], 45000, 0.025, v, t, "CALL")
         print("rho", list(rho))
         api.close()
 
@@ -1220,10 +1226,9 @@ def get_rho(series: pd.Series, k: float, r: float, v: Union[float, pd.Series], t
     return pd.Series(np.where(np.isnan(d1), np.nan, o * k * t * np.exp(-r * t) * _get_cdf(o * d2)))
 
 
-def get_impv(series: pd.Series, series_option: pd.Series, k: float, r: float, init_v: [float, pd.Series],
-             t: Union[float, pd.Series], option_class: str) -> pd.Series:
+def get_impv(series, series_option, k, r, init_v, t, option_class):
     """
-    计算期权隐含波动率，使用二分迭代法
+    计算期权隐含波动率
 
     Args:
         series (pandas.Series): 标的价格序列
@@ -1235,11 +1240,13 @@ def get_impv(series: pd.Series, series_option: pd.Series, k: float, r: float, in
         r (float): 无风险利率
 
         init_v (float / pandas.Series): 初始波动率，迭代初始值
+
             * float: 对于 series 中每个元素都使用相同的 init_v 计算隐含波动率
 
             * pandas.Series: 其元素个数应该和 series 元素个数相同，对于 series 中每个元素都使用 init_v 中对应的值计算隐含波动率
 
         t (float / pandas.Series): 年化到期时间，例如：还有 100 天到期，则年化到期时间为 100/360
+
             * float: 对于 series 中每个元素都使用相同的 t 计算理论价
 
             * pandas.Series: 其元素个数应该和 series 元素个数相同，对于 series 中每个元素都使用 t 中对应的值计算理论价
@@ -1263,7 +1270,7 @@ def get_impv(series: pd.Series, series_option: pd.Series, k: float, r: float, in
         option = api.get_quote("SHFE.cu2006C45000")
         klines = api.get_kline_serial(["SHFE.cu2006C45000", "SHFE.cu2006"], 24 * 60 * 60, 10)
         t = pd.Series(pd.to_timedelta(option.expire_datetime - (klines["datetime"] + klines["duration"]) / 1e9, unit='s')).dt.days / 360
-        impv = tafunc.get_impv(klines["close1"], klines["close"], 45000, 0.025, v, t, 1)
+        impv = tafunc.get_impv(klines["close1"], klines["close"], 45000, 0.025, v, t, "CALL")
         print("impv", list((impv * 100).round(2)))
         api.close()
     """
