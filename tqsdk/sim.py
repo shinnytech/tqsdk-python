@@ -58,7 +58,7 @@ class TqSim(object):
             "balance": self._init_balance,
             "available": self._init_balance,
             "float_profit": 0.0,
-            "position_profit": 0.0,
+            "position_profit": 0.0,  # 期权没有持仓盈亏
             "close_profit": 0.0,
             "frozen_margin": 0.0,
             "margin": 0.0,
@@ -464,6 +464,7 @@ class TqSim(object):
         self._account["position_profit"] = 0
         self._account["close_profit"] = 0
         self._account["commission"] = 0
+        self._account["premium"] = 0
         self._send_account()
         self._adjust_account()
         for symbol, position in self._positions.items():
@@ -653,15 +654,17 @@ class TqSim(object):
                 position["float_profit_long"] += float_profit_long
                 position["float_profit_short"] += float_profit_short
                 position["float_profit"] += float_profit
-                position["position_profit_long"] += float_profit_long
-                position["position_profit_short"] += float_profit_short
-                position["position_profit"] += float_profit
-                if quote["ins_class"] == "OPTION":
-                    # 期权市值 = 权利金 + 期权持仓盈亏
+                if quote["ins_class"] == "OPTION":  # 期权市值 = 权利金 + 期权持仓盈亏
                     position["market_value_long"] += float_profit_long  # 权利方市值(始终 >= 0)
                     position["market_value_short"] += float_profit_short  # 义务方市值(始终 <= 0)
                     position["market_value"] += float_profit
-                self._adjust_account(float_profit=float_profit, position_profit=float_profit, market_value=float_profit)
+                else:  # 期权没有持仓盈亏
+                    position["position_profit_long"] += float_profit_long
+                    position["position_profit_short"] += float_profit_short
+                    position["position_profit"] += float_profit
+            self._adjust_account(float_profit=float_profit,
+                                 position_profit=float_profit if quote["ins_class"] != "OPTION" else 0,
+                                 market_value=float_profit)
             position["last_price"] = price
         if volume_long:  # volume_long > 0:买开,  < 0:卖平
             if quote["ins_class"] != "OPTION":
@@ -700,8 +703,8 @@ class TqSim(object):
                 "volume_long"] if position["volume_long"] else float("nan")
             position["float_profit_long"] += float_profit
             position["float_profit"] += float_profit
-            position["position_profit_long"] -= close_profit
-            position["position_profit"] -= close_profit
+            position["position_profit_long"] -= close_profit if quote["ins_class"] != "OPTION" else 0
+            position["position_profit"] -= close_profit if quote["ins_class"] != "OPTION" else 0
             position["margin_long"] += margin
             position["margin"] += margin
             if priority[0] == "T":
@@ -730,7 +733,9 @@ class TqSim(object):
                         position["pos_long_today"] += position["pos_long_his"]
                         position["pos_long_his"] = 0
 
-            self._adjust_account(float_profit=float_profit, position_profit=-close_profit, close_profit=close_profit,
+            self._adjust_account(float_profit=float_profit,
+                                 position_profit=-close_profit if quote["ins_class"] != "OPTION" else 0,
+                                 close_profit=close_profit,
                                  margin=margin, market_value=market_value)
         if volume_short:  # volume_short > 0: 卖开,  < 0:买平
             if quote["ins_class"] != "OPTION":
@@ -770,8 +775,8 @@ class TqSim(object):
                 "volume_short"] if position["volume_short"] else float("nan")
             position["float_profit_short"] += float_profit
             position["float_profit"] += float_profit
-            position["position_profit_short"] -= close_profit
-            position["position_profit"] -= close_profit
+            position["position_profit_short"] -= close_profit if quote["ins_class"] != "OPTION" else 0
+            position["position_profit"] -= close_profit if quote["ins_class"] != "OPTION" else 0
             position["margin_short"] += margin
             position["margin"] += margin
             if priority[0] == "T":
@@ -799,7 +804,9 @@ class TqSim(object):
                     if position["pos_short_his"] < 0:
                         position["pos_short_today"] += position["pos_short_his"]
                         position["pos_short_his"] = 0
-            self._adjust_account(float_profit=float_profit, position_profit=-close_profit, close_profit=close_profit,
+            self._adjust_account(float_profit=float_profit,
+                                 position_profit=-close_profit if quote["ins_class"] != "OPTION" else 0,
+                                 close_profit=close_profit,
                                  margin=margin, market_value=market_value)
         self._send_position(position)
         return position["volume_long_his"] - position["volume_long_frozen_his"] >= 0 and position["volume_long_today"] - \
@@ -808,13 +815,12 @@ class TqSim(object):
                    "volume_short_today"] - position["volume_short_frozen_today"] >= 0
 
     def _adjust_account(self, commission=0.0, frozen_margin=0.0, frozen_premium=0.0, float_profit=0.0,
-                        position_profit=0.0,
-                        close_profit=0.0, margin=0.0, premium=0.0, market_value=0.0):
-        # 权益 += 持仓盈亏 + 平仓盈亏 - 手续费 + 权利金
-        self._account["balance"] += position_profit + close_profit - commission - premium
-        # 可用资金 += (持仓盈亏 + 平仓盈亏 - 手续费 + 权利金) - 冻结保证金 - 保证金 - 冻结权利金 - 市值
+                        position_profit=0.0, close_profit=0.0, margin=0.0, premium=0.0, market_value=0.0):
+        # 权益 += 持仓盈亏 + 平仓盈亏 - 手续费 + 权利金(收入为负值,支出为正值) + 市值
+        self._account["balance"] += position_profit + close_profit - commission + premium + market_value
+        # 可用资金 += 权益 - 冻结保证金 - 保证金 - 冻结权利金 - 市值
         self._account[
-            "available"] += position_profit + close_profit - commission - premium - frozen_margin - margin - frozen_premium - market_value
+            "available"] += position_profit + close_profit - commission + premium - frozen_margin - margin - frozen_premium
         self._account["float_profit"] += float_profit
         self._account["position_profit"] += position_profit
         self._account["close_profit"] += close_profit
