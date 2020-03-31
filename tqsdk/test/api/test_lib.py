@@ -51,7 +51,7 @@ class TestLib(unittest.TestCase):
         """
         # 预设服务器端响应
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        self.mock.run(os.path.join(dir_path, "log_file", "test_lib_insert_order_time_check_1.script.lzma.lzma"))
+        self.mock.run(os.path.join(dir_path, "log_file", "test_lib_insert_order_time_check_1.script.lzma"))
 
         TqApi.RD = random.Random(4)
         api = TqApi(
@@ -463,7 +463,7 @@ class TestLib(unittest.TestCase):
         """
         # 预设服务器端响应
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        self.mock.run(os.path.join(dir_path, "log_file", "test_lib_insert_order_time_check_7.script.lzma.lzma"))
+        self.mock.run(os.path.join(dir_path, "log_file", "test_lib_insert_order_time_check_7.script.lzma"))
 
         TqApi.RD = random.Random(4)
         api = TqApi(
