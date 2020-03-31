@@ -132,9 +132,14 @@ class TqSim(object):
             self._logger.debug("TqSim message send: %s", rtn_data)
             await self._api_recv_chan.send(rtn_data)
 
-    async def _subscribe_quote(self, symbol: str = ""):
+    async def _subscribe_quote(self):
+        underlying_symbol_list = set()
+        for o in self._orders.values():
+            if self._quotes[o["exchange_id"] + "." + o["instrument_id"]]["ins_class"] == "OPTION":
+                underlying_symbol_list.add(
+                    self._quotes[o["exchange_id"] + "." + o["instrument_id"]]["underlying_symbol"])
         self._all_subscribe = self._client_subscribe | {o["exchange_id"] + "." + o["instrument_id"] for o in
-                                                        self._orders.values()} | self._positions.keys() | {symbol}
+                                                        self._orders.values()} | self._positions.keys() | underlying_symbol_list
         await self._md_send_chan.send({
             "aid": "subscribe_quote",
             "ins_list": ",".join(self._all_subscribe)
@@ -320,12 +325,9 @@ class TqSim(object):
             self._match_order(quote, order)
 
     def _match_order(self, quote, order):
-        if quote["datetime"] == "":
-            return
-        if quote["underlying_symbol"] not in self._all_subscribe:
-            await self._subscribe_quote(quote["underlying_symbol"])
         underlying_quote = self._ensure_quote(quote["underlying_symbol"])
-        if underlying_quote["datetime"] == "":  # 如果未收到行情，不处理
+        if quote["datetime"] == "" or (
+                quote["ins_class"] == "OPTION" and underlying_quote["datetime"] == ""):  # 如果未收到行情，不处理
             return
         symbol = order["exchange_id"] + "." + order["instrument_id"]
 
