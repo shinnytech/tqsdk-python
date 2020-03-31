@@ -14,7 +14,6 @@ from typing import Union
 import numpy as np
 import pandas as pd
 from scipy import stats
-
 import tqsdk.sim
 import tqsdk.objs
 
@@ -852,9 +851,9 @@ def get_his_volatility(df: pd.DataFrame, quote: tqsdk.objs.Quote = None):
     计算某个合约的历史波动率
 
     Args:
-        df (pandas.DataFrame): Dataframe格式的K线序列
+        df (pandas.DataFrame): Dataframe 格式的 K 线序列
 
-        quote (tqsdk.objs.Quote): 合约对象
+        quote (tqsdk.objs.Quote): df 序列对应合约对象
 
     Returns:
         float : 返回的 df 对应的历史波动率
@@ -870,7 +869,7 @@ def get_his_volatility(df: pd.DataFrame, quote: tqsdk.objs.Quote = None):
         print(v)
         api.close()
     """
-    if quote:
+    if quote and quote.instrument_id == df["symbol"][0]:
         trading_time = quote.trading_time
     else:
         trading_time = None
@@ -891,7 +890,7 @@ def _get_volatility(series: pd.Series, dur: Union[pd.Series, int] = 86400, tradi
 
 
 def get_bs_price(series: pd.Series, k: float, r: float, v: Union[float, pd.Series], t: Union[float, pd.Series],
-                 o: int) -> pd.Series:
+                 option_class: str) -> pd.Series:
     """
     计算期权 BS 模型理论价格
 
@@ -903,13 +902,19 @@ def get_bs_price(series: pd.Series, k: float, r: float, v: Union[float, pd.Serie
         r (float): 无风险利率
 
         v (float / pandas.Series): 波动率
+            * float: 对于 series 中每个元素都使用相同的 v 计算理论价
 
-        t (float / pandas.Series): 到期时间序列
+            * pandas.Series: 其元素个数应该和 series 元素个数相同，对于 series 中每个元素都使用 v 中对应的值计算理论价
 
-        o (int): 期权方向 CALL: 1; PUT: -1
+        t (float / pandas.Series): 年化到期时间，例如：还有 100 天到期，则年化到期时间为 100/360
+            * float: 对于 series 中每个元素都使用相同的 t 计算理论价
+
+            * pandas.Series: 其元素个数应该和 series 元素个数相同，对于 series 中每个元素都使用 t 中对应的值计算理论价
+
+        option_class (str): 期权方向，必须是 "CALL" 或者 "PUT"，否则返回的序列值全部为 nan
 
     Returns:
-        pandas.Series: 该序列理论价
+        pandas.Series: 返回该序列理论价
 
     Example::
 
@@ -928,15 +933,17 @@ def get_bs_price(series: pd.Series, k: float, r: float, v: Union[float, pd.Serie
         print(list(bs_price.round(2)))
         api.close()
     """
+    if option_class not in ["CALL", "PUT"]:
+        return pd.Series(np.full_like(series, float('nan')))
+    o = 1 if option_class == "CALL" else -1
     d1 = _get_d1(series, k, r, v, t)
     d2 = pd.Series(np.where(np.isnan(d1), np.nan, d1 - v * np.sqrt(t)))
     return pd.Series(
         np.where(np.isnan(d1), np.nan, o * (series * _get_cdf(o * d1) - k * np.exp(-r * t) * _get_cdf(o * d2))))
 
 
-def get_delta(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[float, pd.Series],
-              t: Union[float, pd.Series], o: int,
-              d1: pd.Series = None) -> pd.Series:
+def get_delta(series: pd.Series, k: float, r: float, v: Union[float, pd.Series],t: Union[float, pd.Series],
+              option_class: str, d1: pd.Series = None) -> pd.Series:
     """
     计算期权希腊指标 delta 值
 
@@ -945,15 +952,21 @@ def get_delta(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[
 
         k (float): 期权行权价
 
-        r (float / pandas.Series): 无风险利率
+        r (float): 无风险利率
 
         v (float / pandas.Series): 波动率
+            * float: 对于 series 中每个元素都使用相同的 v 计算理论价
 
-        t (float / pandas.Series): 到期时间序列
+            * pandas.Series: 其元素个数应该和 series 元素个数相同，对于 series 中每个元素都使用 v 中对应的值计算理论价
 
-        o (int): 期权方向 CALL: 1; PUT: -1
+        t (float / pandas.Series): 年化到期时间，例如：还有 100 天到期，则年化到期时间为 100/360
+            * float: 对于 series 中每个元素都使用相同的 t 计算理论价
 
-        d1 (pandas.Series): 序列对应的 BS 公式中 b1 值
+            * pandas.Series: 其元素个数应该和 series 元素个数相同，对于 series 中每个元素都使用 t 中对应的值计算理论价
+
+        option_class (str): 期权方向，必须是 "CALL" 或者 "PUT"，否则返回的序列值全部为 nan
+
+        d1 (None | pandas.Series): [可选] 序列对应的 BS 公式中 b1 值
 
     Returns:
         pandas.Series: 该序列的 delta 值
@@ -978,102 +991,118 @@ def get_delta(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[
         api.close()
 
     """
+    if option_class not in ["CALL", "PUT"]:
+        return pd.Series(np.full_like(series, float('nan')))
+    o = 1 if option_class == "CALL" else -1
     if d1 is None:
         d1 = _get_d1(series, k, r, v, t)
     return pd.Series(np.where(np.isnan(d1), np.nan, pd.Series(o * _get_cdf(o * d1))))
 
 
-def get_gamma(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[float, pd.Series],
-              t: Union[float, pd.Series],
+def get_gamma(series: pd.Series, k: float, r: float, v: Union[float, pd.Series], t: Union[float, pd.Series],
               d1: pd.Series = None) -> pd.Series:
     """
-        计算期权希腊指标 gamma 值
+    计算期权希腊指标 gamma 值
 
-        Args:
-            series (pandas.Series): 标的价格序列
+    Args:
+        series (pandas.Series): 标的价格序列
 
-            k (float): 期权行权价
+        k (float): 期权行权价
 
-            r (float / pandas.Series): 无风险利率
+        r (float): 无风险利率
 
-            v (float / pandas.Series): 波动率
+        v (float / pandas.Series): 波动率
+            * float: 对于 series 中每个元素都使用相同的 v 计算理论价
 
-            t (float / pandas.Series): 到期时间序列
+            * pandas.Series: 其元素个数应该和 series 元素个数相同，对于 series 中每个元素都使用 v 中对应的值计算理论价
 
-            d1 (pandas.Series): 序列对应的 BS 公式中 b1 值
+        t (float / pandas.Series): 年化到期时间，例如：还有 100 天到期，则年化到期时间为 100/360
+            * float: 对于 series 中每个元素都使用相同的 t 计算理论价
 
-        Returns:
-            pandas.Series: 该序列的 gamma 值
+            * pandas.Series: 其元素个数应该和 series 元素个数相同，对于 series 中每个元素都使用 t 中对应的值计算理论价
+
+        d1 (None | pandas.Series): [可选] 序列对应的 BS 公式中 b1 值
+
+    Returns:
+        pandas.Series: 该序列的 gamma 值
 
 
-        Example::
+    Example::
 
-            import pandas as pd
-            from tqsdk import TqApi, tafunc
+        import pandas as pd
+        from tqsdk import TqApi, tafunc
 
-            api = TqApi()
-            quote = api.get_quote("SHFE.cu2006")
-            ks = api.get_kline_serial("SHFE.cu2006", 24 * 60 * 60, 10)
-            v = tafunc.get_his_volatility(ks, quote)  # 历史波动率
+        api = TqApi()
+        quote = api.get_quote("SHFE.cu2006")
+        ks = api.get_kline_serial("SHFE.cu2006", 24 * 60 * 60, 10)
+        v = tafunc.get_his_volatility(ks, quote)  # 历史波动率
 
-            option = api.get_quote("SHFE.cu2006C45000")
-            klines = api.get_kline_serial(["SHFE.cu2006C45000", "SHFE.cu2006"], 24 * 60 * 60, 10)
-            t = pd.Series(pd.to_timedelta(option.expire_datetime - (klines["datetime"] + klines["duration"]) / 1e9, unit='s')).dt.days / 360
-            impv = tafunc.get_impv(klines["close1"], klines["close"], 45000, 0.025, v, t, 1)
-            gamma = tafunc.get_gamma(klines["close1"], klines["close"], 45000, 0.025, v, t)
-            print("gamma", list(gamma))
-            api.close()
+        option = api.get_quote("SHFE.cu2006C45000")
+        klines = api.get_kline_serial(["SHFE.cu2006C45000", "SHFE.cu2006"], 24 * 60 * 60, 10)
+        t = pd.Series(pd.to_timedelta(option.expire_datetime - (klines["datetime"] + klines["duration"]) / 1e9, unit='s')).dt.days / 360
+        impv = tafunc.get_impv(klines["close1"], klines["close"], 45000, 0.025, v, t, 1)
+        gamma = tafunc.get_gamma(klines["close1"], klines["close"], 45000, 0.025, v, t)
+        print("gamma", list(gamma))
+        api.close()
 
-        """
+    """
     if d1 is None:
         d1 = _get_d1(series, k, r, v, t)
     return pd.Series(np.where(np.isnan(d1), np.nan, _get_pdf(d1) / (series * v * np.sqrt(t))))
 
 
-def get_theta(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[float, pd.Series],
-              t: Union[float, pd.Series], o: int,
-              d1: pd.Series = None) -> pd.Series:
+def get_theta(series: pd.Series, k: float, r: float, v: Union[float, pd.Series], t: Union[float, pd.Series],
+              option_class: str, d1: pd.Series = None) -> pd.Series:
     """
-        计算期权希腊指标 theta 值
+    计算期权希腊指标 theta 值
 
-        Args:
-            series (pandas.Series): 标的价格序列
+    Args:
+        series (pandas.Series): 标的价格序列
 
-            k (float): 期权行权价
+        k (float): 期权行权价
 
-            r (float / pandas.Series): 无风险利率
+        r (float): 无风险利率
 
-            v (float / pandas.Series): 波动率
+        v (float / pandas.Series): 波动率
+            * float: 对于 series 中每个元素都使用相同的 v 计算理论价
 
-            t (float / pandas.Series): 到期时间序列
+            * pandas.Series: 其元素个数应该和 series 元素个数相同，对于 series 中每个元素都使用 v 中对应的值计算理论价
 
-            o (int): 期权方向 CALL: 1; PUT: -1
+        t (float / pandas.Series): 年化到期时间，例如：还有 100 天到期，则年化到期时间为 100/360
+            * float: 对于 series 中每个元素都使用相同的 t 计算理论价
 
-            d1 (pandas.Series): 序列对应的 BS 公式中 b1 值
+            * pandas.Series: 其元素个数应该和 series 元素个数相同，对于 series 中每个元素都使用 t 中对应的值计算理论价
 
-        Returns:
-            pandas.Series: 该序列的 theta 值
+        option_class (str): 期权方向，必须是 "CALL" 或者 "PUT"，否则返回的序列值全部为 nan
+
+        d1 (None | pandas.Series): [可选] 序列对应的 BS 公式中 b1 值
+
+    Returns:
+        pandas.Series: 该序列的 theta 值
 
 
-        Example::
+    Example::
 
-            import pandas as pd
-            from tqsdk import TqApi, tafunc
+        import pandas as pd
+        from tqsdk import TqApi, tafunc
 
-            api = TqApi()
-            quote = api.get_quote("SHFE.cu2006")
-            ks = api.get_kline_serial("SHFE.cu2006", 24 * 60 * 60, 10)
-            v = tafunc.get_his_volatility(ks, quote)  # 历史波动率
+        api = TqApi()
+        quote = api.get_quote("SHFE.cu2006")
+        ks = api.get_kline_serial("SHFE.cu2006", 24 * 60 * 60, 10)
+        v = tafunc.get_his_volatility(ks, quote)  # 历史波动率
 
-            option = api.get_quote("SHFE.cu2006C45000")
-            klines = api.get_kline_serial(["SHFE.cu2006C45000", "SHFE.cu2006"], 24 * 60 * 60, 10)
-            t = pd.Series(pd.to_timedelta(option.expire_datetime - (klines["datetime"] + klines["duration"]) / 1e9, unit='s')).dt.days / 360
-            impv = tafunc.get_impv(klines["close1"], klines["close"], 45000, 0.025, v, t, 1)
-            theta = tafunc.get_theta(klines["close1"], klines["close"], 45000, 0.025, v, t, 1)
-            print("theta", list(theta))
-            api.close()
+        option = api.get_quote("SHFE.cu2006C45000")
+        klines = api.get_kline_serial(["SHFE.cu2006C45000", "SHFE.cu2006"], 24 * 60 * 60, 10)
+        t = pd.Series(pd.to_timedelta(option.expire_datetime - (klines["datetime"] + klines["duration"]) / 1e9, unit='s')).dt.days / 360
+        impv = tafunc.get_impv(klines["close1"], klines["close"], 45000, 0.025, v, t, 1)
+        theta = tafunc.get_theta(klines["close1"], klines["close"], 45000, 0.025, v, t, 1)
+        print("theta", list(theta))
+        api.close()
 
-        """
+    """
+    if option_class not in ["CALL", "PUT"]:
+        return pd.Series(np.full_like(series, float('nan')))
+    o = 1 if option_class == "CALL" else -1
     if d1 is None:
         d1 = _get_d1(series, k, r, v, t)
     d2 = pd.Series(np.where(np.isnan(d1), np.nan, d1 - v * np.sqrt(t)))
@@ -1081,8 +1110,7 @@ def get_theta(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[
         -v * series * _get_pdf(d1) / (2 * np.sqrt(t)) - o * r * k * np.exp(-r * t) * _get_cdf(o * d2))))
 
 
-def get_vega(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[float, pd.Series],
-             t: Union[float, pd.Series],
+def get_vega(series: pd.Series, k: float, r: float, v: Union[float, pd.Series], t: Union[float, pd.Series],
              d1: pd.Series = None) -> pd.Series:
     """
     计算期权希腊指标 vega 值
@@ -1092,13 +1120,19 @@ def get_vega(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[f
 
         k (float): 期权行权价
 
-        r (float / pandas.Series): 无风险利率
+        r (float): 无风险利率
 
         v (float / pandas.Series): 波动率
+            * float: 对于 series 中每个元素都使用相同的 v 计算理论价
 
-        t (float / pandas.Series): 到期时间序列
+            * pandas.Series: 其元素个数应该和 series 元素个数相同，对于 series 中每个元素都使用 v 中对应的值计算理论价
 
-        d1 (pandas.Series): 序列对应的 BS 公式中 b1 值
+        t (float / pandas.Series): 年化到期时间，例如：还有 100 天到期，则年化到期时间为 100/360
+            * float: 对于 series 中每个元素都使用相同的 t 计算理论价
+
+            * pandas.Series: 其元素个数应该和 series 元素个数相同，对于 series 中每个元素都使用 t 中对应的值计算理论价
+
+        d1 (None | pandas.Series): [可选] 序列对应的 BS 公式中 b1 值
 
     Returns:
         pandas.Series: 该序列的 vega 值
@@ -1128,9 +1162,8 @@ def get_vega(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[f
     return pd.Series(np.where(np.isnan(d1), np.nan, series * np.sqrt(t) * _get_pdf(d1)))
 
 
-def get_rho(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[float, pd.Series],
-            t: Union[float, pd.Series], o: int,
-            d1: pd.Series = None) -> pd.Series:
+def get_rho(series: pd.Series, k: float, r: float, v: Union[float, pd.Series], t: Union[float, pd.Series],
+            option_class: str, d1: pd.Series = None) -> pd.Series:
     """
     计算期权希腊指标 rho 值
 
@@ -1139,15 +1172,21 @@ def get_rho(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[fl
 
         k (float): 期权行权价
 
-        r (float / pandas.Series): 无风险利率
+        r (float): 无风险利率
 
         v (float / pandas.Series): 波动率
+            * float: 对于 series 中每个元素都使用相同的 v 计算理论价
 
-        t (float / pandas.Series): 到期时间序列
+            * pandas.Series: 其元素个数应该和 series 元素个数相同，对于 series 中每个元素都使用 v 中对应的值计算理论价
 
-        o (int): 期权方向 CALL: 1; PUT: -1
+        t (float / pandas.Series): 年化到期时间，例如：还有 100 天到期，则年化到期时间为 100/360
+            * float: 对于 series 中每个元素都使用相同的 t 计算理论价
 
-        d1 (pandas.Series): 序列对应的 BS 公式中 b1 值
+            * pandas.Series: 其元素个数应该和 series 元素个数相同，对于 series 中每个元素都使用 t 中对应的值计算理论价
+
+        option_class (str): 期权方向，必须是 "CALL" 或者 "PUT"，否则返回的序列值全部为 nan
+
+        d1 (None | pandas.Series): [可选] 序列对应的 BS 公式中 b1 值
 
     Returns:
         pandas.Series: 该序列的 rho 值
@@ -1172,31 +1211,40 @@ def get_rho(series: pd.Series, k: float, r: Union[float, pd.Series], v: Union[fl
         api.close()
 
     """
+    if option_class not in ["CALL", "PUT"]:
+        return pd.Series(np.full_like(series, float('nan')))
+    o = 1 if option_class == "CALL" else -1
     if d1 is None:
         d1 = _get_d1(series, k, r, v, t)
     d2 = pd.Series(np.where(np.isnan(d1), np.nan, d1 - v * np.sqrt(t)))
     return pd.Series(np.where(np.isnan(d1), np.nan, o * k * t * np.exp(-r * t) * _get_cdf(o * d2)))
 
 
-def get_impv(series: pd.Series, series_option: pd.Series, k: float, r: float, init_v: float, t: Union[float, pd.Series],
-             o: int) -> pd.Series:
+def get_impv(series: pd.Series, series_option: pd.Series, k: float, r: float, init_v: [float, pd.Series],
+             t: Union[float, pd.Series], option_class: str) -> pd.Series:
     """
-    计算期权隐含波动率
+    计算期权隐含波动率，使用二分迭代法
 
     Args:
         series (pandas.Series): 标的价格序列
 
-        series_option (pandas.Series): 期权价格序列
+        series_option (pandas.Series): 期权价格序列，与 series 长度应该相同
 
         k (float): 期权行权价
 
         r (float): 无风险利率
 
-        init_v (float  / pandas.Series): 初始波动率
+        init_v (float / pandas.Series): 初始波动率，迭代初始值
+            * float: 对于 series 中每个元素都使用相同的 init_v 计算隐含波动率
 
-        t (float / pandas.Series): 到期时间序列
+            * pandas.Series: 其元素个数应该和 series 元素个数相同，对于 series 中每个元素都使用 init_v 中对应的值计算隐含波动率
 
-        o (int): 期权方向 CALL: 1; PUT: -1
+        t (float / pandas.Series): 年化到期时间，例如：还有 100 天到期，则年化到期时间为 100/360
+            * float: 对于 series 中每个元素都使用相同的 t 计算理论价
+
+            * pandas.Series: 其元素个数应该和 series 元素个数相同，对于 series 中每个元素都使用 t 中对应的值计算理论价
+
+        option_class (str): 期权方向，必须是 "CALL" 或者 "PUT"，否则返回的序列值全部为 nan
 
     Returns:
         pandas.Series: 该序列的隐含波动率
@@ -1219,19 +1267,19 @@ def get_impv(series: pd.Series, series_option: pd.Series, k: float, r: float, in
         print("impv", list((impv * 100).round(2)))
         api.close()
     """
+    if option_class not in ["CALL", "PUT"]:
+        return pd.Series(np.full_like(series, float('nan')))
+    o = 1 if option_class == "CALL" else -1
     lower_limit = o * (series - k * np.exp(-r * t))
-    df = pd.DataFrame()
-    df["x"] = pd.Series(np.where((series_option < lower_limit) | (t <= 0), np.nan, init_v))
-    df["y"] = pd.Series(np.where(np.isnan(df["x"]), np.nan, get_bs_price(series, k, r, df["x"], t, o)))
-    df["vega"] = get_vega(series, k, r, df["x"], t)
-    df["diff_x"] = pd.Series(np.where(np.isnan(df["vega"]) | (df["vega"] < 1e-8), np.nan, (series_option - df["y"]) / df["vega"]))
-    while not pd.DataFrame.all((np.abs(series_option - df["y"]) < 1e-8) | np.isnan(df["diff_x"])):
-        df["x"] = pd.Series(np.where(np.isnan(df["x"]) | np.isnan(df["diff_x"]), df["x"],
-                                     np.where(df["x"] + df["diff_x"] < 0, df["x"] / 2,
-                                              np.where(df["diff_x"] > df["x"] / 2, df["x"] * 1.5,
-                                                       df["x"] + df["diff_x"]))))
-        df["y"] = pd.Series(np.where(np.isnan(df["x"]), np.nan, get_bs_price(series, k, r, df["x"], t, o)))
-        df["vega"] = get_vega(series, k, r, df["x"], t)
-        df["diff_x"] = pd.Series(
-            np.where(np.isnan(df["vega"]) | (df["vega"] < 1e-8), np.nan, (series_option - df["y"]) / df["vega"]))
-    return df["x"]
+    x = pd.Series(np.where((series_option < lower_limit) | (t <= 0), np.nan, init_v))
+    y = pd.Series(np.where(np.isnan(x), np.nan, get_bs_price(series, k, r, x, t, option_class)))
+    vega = get_vega(series, k, r, x, t)
+    diff_x = pd.Series(np.where(np.isnan(vega) | (vega < 1e-8), np.nan, (series_option - y) / vega))
+    while not pd.DataFrame.all((np.abs(series_option - y) < 1e-8) | np.isnan(diff_x)):
+        x = pd.Series(np.where(np.isnan(x) | np.isnan(diff_x), x,
+                                     np.where(x + diff_x < 0, x / 2,
+                                              np.where(diff_x > x / 2, x * 1.5, x + diff_x))))
+        y = pd.Series(np.where(np.isnan(x), np.nan, get_bs_price(series, k, r, x, t, option_class)))
+        vega = get_vega(series, k, r, x, t)
+        diff_x = pd.Series(np.where(np.isnan(vega) | (vega < 1e-8), np.nan, (series_option - y) / vega))
+    return x
