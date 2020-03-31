@@ -655,6 +655,8 @@ class TqApi(object):
             "price_type": "ANY" if limit_price is None else "LIMIT",
             "volume_condition": "ANY",
             "time_condition": "IOC" if limit_price is None else "GFD",
+            "frozen_premium": 0.0,
+            "frozen_margin": 0.0,
         })
         return order
 

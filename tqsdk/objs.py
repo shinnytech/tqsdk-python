@@ -289,7 +289,7 @@ class Account(Entity):
         self.commission = float("nan")
         #: 冻结权利金
         self.frozen_premium = float("nan")
-        #: 本交易日内交纳的权利金
+        #: 本交易日内收入-交纳的权利金
         self.premium = float("nan")
         #: 本交易日内的入金金额
         self.deposit = float("nan")
