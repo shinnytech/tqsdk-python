@@ -2551,7 +2551,7 @@ def BS_VALUE(df, quote, r=0.025, v=None):
         v = tqsdk.tafunc._get_volatility(df["close"], df["duration"], quote.trading_time)
         if math.isnan(v):
             return pd.DataFrame(np.full_like(df["close"], float('nan')), columns=["bs_price"])
-    t = tqsdk.tafunc._get_t_series(df["datetime"], df["duration"], quote)
+    t = tqsdk.tafunc._get_t_series(df["datetime"], df["duration"], quote.expire_datetime)
     return pd.DataFrame(data=list(tqsdk.tafunc.get_bs_price(df["close"], quote.strike_price, r, v, t, quote.option_class)),
                         columns=["bs_price"])
 
@@ -2611,7 +2611,7 @@ def OPTION_GREEKS(df, quote, r=0.025, v=None):
         new_df["vega"] = pd.Series(np.full_like(df["close1"], float('nan')))
         new_df["rho"] = pd.Series(np.full_like(df["close1"], float('nan')))
     else:
-        t = tqsdk.tafunc._get_t_series(df["datetime"], df["duration"], quote)  # 到期时间
+        t = tqsdk.tafunc._get_t_series(df["datetime"], df["duration"], quote.expire_datetime)  # 到期时间
         if v is None:
             v = tqsdk.tafunc.get_impv(df["close1"], df["close"], quote.strike_price, r, 0.3, t, quote.option_class)
         d1 = tqsdk.tafunc._get_d1(df["close1"], quote.strike_price, r, v, t)
@@ -2706,7 +2706,7 @@ def OPTION_IMPV(df, quote, r=0.025):
         return pd.DataFrame(np.full_like(df["close1"], float('nan')), columns=["impv"])
     his_v = tqsdk.tafunc._get_volatility(df["close1"], df["duration"], quote.trading_time)
     his_v = 0.3 if math.isnan(his_v) else his_v
-    t = tqsdk.tafunc._get_t_series(df["datetime"], df["duration"], quote)  # 到期时间
+    t = tqsdk.tafunc._get_t_series(df["datetime"], df["duration"], quote.expire_datetime)  # 到期时间
     return pd.DataFrame(
         data=list(tqsdk.tafunc.get_impv(df["close1"], df["close"], quote.strike_price, r, his_v, t, quote.option_class)),
         columns=["impv"])
