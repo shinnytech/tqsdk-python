@@ -826,8 +826,8 @@ def barlast(cond):
     return pd.Series(r)
 
 
-def _get_t_series(series: pd.Series, dur: int, quote):
-    t = pd.Series(pd.to_timedelta(quote.expire_datetime - (series / 1e9 + dur), unit='s'))
+def _get_t_series(series: pd.Series, dur: int, expire_datetime: int):
+    t = pd.Series(pd.to_timedelta(expire_datetime - (series / 1e9 + dur), unit='s'))
     return (t.dt.days * 86400 + t.dt.seconds) / (360 * 86400)
 
 
@@ -844,6 +844,32 @@ def _get_cdf(series: pd.Series):
 def _get_pdf(series: pd.Series):
     s = series.loc[series.notna()]
     return series.loc[series.isna()].append(pd.Series(stats.norm.pdf(s), index=s.index), verify_integrity=True)
+
+
+def get_t(df, expire_datetime):
+    """
+    计算 K 线序列对应的年化到期时间，主要用于计算期权相关希腊指标时，需要得到计算出序列对应的年化到期时间
+
+    Args:
+        df (pandas.DataFrame): Dataframe 格式的 K 线序列
+
+        expire_datetime (int): 到期日, 秒级时间戳
+
+    Returns:
+        pandas.Series : 返回的 df 对应的年化时间序列
+
+    Example::
+
+        from tqsdk import TqApi, tafunc
+
+        api = TqApi()
+        quote = api.get_quote('SHFE.cu2006C45000')
+        klines = api.get_kline_serial(['SHFE.cu2006C45000', 'SHFE.cu2006'], 24 * 60 * 60, 50)
+        t = tafunc.get_t(klines, quote.expire_datetime)
+        print(t)
+        api.close()
+    """
+    return pd.Series(_get_t_series(df["datetime"], df["duration"], expire_datetime))
 
 
 def get_his_volatility(df, quote):
@@ -929,7 +955,7 @@ def get_bs_price(series, k, r, v, t, option_class):
 
         option = api.get_quote("SHFE.cu2006C45000")
         klines = api.get_kline_serial(["SHFE.cu2006C45000", "SHFE.cu2006"], 24 * 60 * 60, 10)
-        t = pd.Series(pd.to_timedelta(option.expire_datetime - (klines["datetime"] + klines["duration"]) / 1e9, unit='s')).dt.days / 360
+        t = tafunc.get_t(klines, option.expire_datetime)
         bs_price = tafunc.get_bs_price(klines["close1"], 45000, 0.025, v, t, option.option_class)  # 理论价
         print(list(bs_price.round(2)))
         api.close()
@@ -986,7 +1012,7 @@ def get_delta(series, k, r, v, t, option_class, d1=None):
 
         option = api.get_quote("SHFE.cu2006C45000")
         klines = api.get_kline_serial(["SHFE.cu2006C45000", "SHFE.cu2006"], 24 * 60 * 60, 10)
-        t = pd.Series(pd.to_timedelta(option.expire_datetime - (klines["datetime"] + klines["duration"]) / 1e9, unit='s')).dt.days / 360
+        t = tafunc.get_t(klines, option.expire_datetime)
         impv = tafunc.get_impv(klines["close1"], klines["close"], 45000, 0.025, v, t, "CALL")
         delta = tafunc.get_delta(klines["close1"], 45000, 0.025, v, t, "CALL")
         print("delta", list(delta))
@@ -1042,7 +1068,7 @@ def get_gamma(series, k, r, v, t, d1=None):
 
         option = api.get_quote("SHFE.cu2006C45000")
         klines = api.get_kline_serial(["SHFE.cu2006C45000", "SHFE.cu2006"], 24 * 60 * 60, 10)
-        t = pd.Series(pd.to_timedelta(option.expire_datetime - (klines["datetime"] + klines["duration"]) / 1e9, unit='s')).dt.days / 360
+        t = tafunc.get_t(klines, option.expire_datetime)
         impv = tafunc.get_impv(klines["close1"], klines["close"], 45000, 0.025, v, t, "CALL")
         gamma = tafunc.get_gamma(klines["close1"], 45000, 0.025, v, t)
         print("gamma", list(gamma))
@@ -1097,7 +1123,7 @@ def get_theta(series, k, r, v, t, option_class, d1=None):
 
         option = api.get_quote("SHFE.cu2006C45000")
         klines = api.get_kline_serial(["SHFE.cu2006C45000", "SHFE.cu2006"], 24 * 60 * 60, 10)
-        t = pd.Series(pd.to_timedelta(option.expire_datetime - (klines["datetime"] + klines["duration"]) / 1e9, unit='s')).dt.days / 360
+        t = tafunc.get_t(klines, option.expire_datetime)
         impv = tafunc.get_impv(klines["close1"], klines["close"], 45000, 0.025, v, t, "CALL")
         theta = tafunc.get_theta(klines["close1"], 45000, 0.025, v, t, "CALL")
         print("theta", list(theta))
@@ -1155,7 +1181,7 @@ def get_vega(series, k, r, v, t, d1=None):
 
         option = api.get_quote("SHFE.cu2006C45000")
         klines = api.get_kline_serial(["SHFE.cu2006C45000", "SHFE.cu2006"], 24 * 60 * 60, 10)
-        t = pd.Series(pd.to_timedelta(option.expire_datetime - (klines["datetime"] + klines["duration"]) / 1e9, unit='s')).dt.days / 360
+        t = tafunc.get_t(klines, option.expire_datetime)
         impv = tafunc.get_impv(klines["close1"], klines["close"], 45000, 0.025, v, t, "CALL")
         vega = tafunc.get_vega(klines["close1"], 45000, 0.025, v, t)
         print("vega", list(vega))
@@ -1210,7 +1236,7 @@ def get_rho(series, k, r, v, t, option_class, d1=None):
 
         option = api.get_quote("SHFE.cu2006C45000")
         klines = api.get_kline_serial(["SHFE.cu2006C45000", "SHFE.cu2006"], 24 * 60 * 60, 10)
-        t = pd.Series(pd.to_timedelta(option.expire_datetime - (klines["datetime"] + klines["duration"]) / 1e9, unit='s')).dt.days / 360
+        t = tafunc.get_t(klines, option.expire_datetime)
         impv = tafunc.get_impv(klines["close1"], klines["close"], 45000, 0.025, v, t, "CALL")
         rho = tafunc.get_rho(klines["close1"], 45000, 0.025, v, t, "CALL")
         print("rho", list(rho))
@@ -1269,7 +1295,7 @@ def get_impv(series, series_option, k, r, init_v, t, option_class):
 
         option = api.get_quote("SHFE.cu2006C45000")
         klines = api.get_kline_serial(["SHFE.cu2006C45000", "SHFE.cu2006"], 24 * 60 * 60, 10)
-        t = pd.Series(pd.to_timedelta(option.expire_datetime - (klines["datetime"] + klines["duration"]) / 1e9, unit='s')).dt.days / 360
+        t = tafunc.get_t(klines, option.expire_datetime)
         impv = tafunc.get_impv(klines["close1"], klines["close"], 45000, 0.025, v, t, "CALL")
         print("impv", list((impv * 100).round(2)))
         api.close()
