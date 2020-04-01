@@ -269,10 +269,14 @@ class Account(Entity):
         self.pre_balance = float("nan")
         #: 静态权益 （静态权益 = 昨日结算的权益 + 今日入金 - 今日出金, 以服务器查询ctp后返回的金额为准）(对期权无效)
         self.static_balance = float("nan")
-        #: 账户权益 （账户权益 = 动态权益 = 静态权益 + 平仓盈亏 + 持仓盈亏 - 手续费）
+        #: 账户权益 （账户权益 = 动态权益 = 静态权益 + 平仓盈亏 + 持仓盈亏 - 手续费 + 权利金 + 市值）
         self.balance = float("nan")
-        #: 可用资金
+        #: 可用资金（可用资金 = 账户权益 - 冻结保证金 - 保证金 - 冻结权利金 - 冻结手续费 - 市值）
         self.available = float("nan")
+        #: 期货公司返回的balance（ctp_balance = 静态权益 + 平仓盈亏 + 持仓盈亏 - 手续费 + 权利金）
+        self.ctp_balance = float("nan")
+        #: 期货公司返回的available（ctp_available = ctp_balance - 保证金 - 冻结保证金 - 冻结手续费 - 冻结权利金）
+        self.ctp_available = float("nan")
         #: 浮动盈亏
         self.float_profit = float("nan")
         #: 持仓盈亏
@@ -295,14 +299,10 @@ class Account(Entity):
         self.deposit = float("nan")
         #: 本交易日内的出金金额
         self.withdraw = float("nan")
-        #: 风险度
+        #: 风险度（风险度 = 保证金 / 账户权益）
         self.risk_ratio = float("nan")
-        #: 市值
+        #: 期权市值
         self.market_value = float("nan")
-        #: 期货公司返回的balance
-        self.ctp_balance = float("nan")
-        #: 期货公司返回的available
-        self.ctp_available = float("nan")
 
 
 class Position(Entity):
@@ -350,17 +350,17 @@ class Position(Entity):
         self.open_price_long = float("nan")
         #: 空头开仓均价
         self.open_price_short = float("nan")
-        #: 多头开仓市值
+        #: 多头开仓成本
         self.open_cost_long = float("nan")
-        #: 空头开仓市值
+        #: 空头开仓成本
         self.open_cost_short = float("nan")
         #: 多头持仓均价
         self.position_price_long = float("nan")
         #: 空头持仓均价
         self.position_price_short = float("nan")
-        #: 多头持仓市值
+        #: 多头持仓成本
         self.position_cost_long = float("nan")
-        #: 空头持仓市值
+        #: 空头持仓成本
         self.position_cost_short = float("nan")
         #: 多头浮动盈亏
         self.float_profit_long = float("nan")
