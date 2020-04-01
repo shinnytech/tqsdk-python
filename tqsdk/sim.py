@@ -662,9 +662,9 @@ class TqSim(object):
                     position["position_profit_long"] += float_profit_long
                     position["position_profit_short"] += float_profit_short
                     position["position_profit"] += float_profit
-            self._adjust_account(float_profit=float_profit,
-                                 position_profit=float_profit if quote["ins_class"] != "OPTION" else 0,
-                                 market_value=float_profit)
+                self._adjust_account(float_profit=float_profit,
+                                     position_profit=float_profit if quote["ins_class"] != "OPTION" else 0,
+                                     market_value=float_profit)
             position["last_price"] = price
         if volume_long:  # volume_long > 0:买开,  < 0:卖平
             if quote["ins_class"] != "OPTION":
