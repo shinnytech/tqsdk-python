@@ -135,7 +135,7 @@ class TqSim(object):
     async def _subscribe_quote(self):
         underlying_symbol_list = set()
         for o in self._orders.values():
-            if self._quotes[o["exchange_id"] + "." + o["instrument_id"]]["ins_class"] == "OPTION":
+            if self._quotes[o["exchange_id"] + "." + o["instrument_id"]]["ins_class"] in ["OPTION", "FUTURE_OPTION"]:
                 underlying_symbol_list.add(
                     self._quotes[o["exchange_id"] + "." + o["instrument_id"]]["underlying_symbol"])
         self._all_subscribe = self._client_subscribe | {o["exchange_id"] + "." + o["instrument_id"] for o in
@@ -326,8 +326,9 @@ class TqSim(object):
 
     def _match_order(self, quote, order):
         underlying_quote = self._ensure_quote(quote["underlying_symbol"])
+        # 如果未收到行情，不处理
         if quote["datetime"] == "" or (
-                quote["ins_class"] == "OPTION" and underlying_quote["datetime"] == ""):  # 如果未收到行情，不处理
+                quote["ins_class"] in ["OPTION", "FUTURE_OPTION"] and underlying_quote["datetime"] == ""):
             return
         symbol = order["exchange_id"] + "." + order["instrument_id"]
 
@@ -349,9 +350,9 @@ class TqSim(object):
                 if quote["commission"] is None or quote["margin"] is None:
                     self._del_order(order, "合约不存在")
                     return
-                if "limit_price" in order:
-                    if quote["ins_class"] != "OPTION":  # 期货
-                        order["frozen_margin"] = quote["margin"] * order["volume_orign"]
+                if quote["ins_class"] in ["OPTION", "FUTURE_OPTION"]:
+                    if order["price_type"] == "ANY":
+                        self._del_order(order, "期权不支持市价单")
                     elif order["direction"] == "SELL":  # 期权的SELL义务仓
                         if quote["option_class"] == "CALL":
                             # 认购期权义务仓开仓保证金＝[合约最新价 + Max（12% × 合约标的最新价 - 认购期权虚值， 7% × 合约标的前收盘价）] × 合约单位
@@ -370,7 +371,9 @@ class TqSim(object):
                     else:  # 期权的BUY权利仓
                         # 市价单立即成交或不成, 对api来说普通市价单没有 冻结_xxx 数据存在的状态
                         order["frozen_premium"] = order["volume_orign"] * quote["volume_multiple"] * order[
-                            "limit_price"]  # 正数
+                            "limit_price"]
+                else:  # 期货
+                    order["frozen_margin"] = quote["margin"] * order["volume_orign"]
                 if not self._adjust_account(frozen_margin=order["frozen_margin"],
                                             frozen_premium=order["frozen_premium"]):
                     self._del_order(order, "开仓资金不足")
@@ -442,8 +445,7 @@ class TqSim(object):
             volume_short = 0 if order["direction"] == "BUY" else order["volume_left"]
         self._adjust_position(symbol, volume_long=volume_long, volume_short=volume_short, price=price,
                               priority=priority)
-        premium = -order["frozen_premium"] if order["direction"] == "BUY" else order["volume_orign"] * quote[
-            "volume_multiple"] * order["limit_price"]
+        premium = -order["frozen_premium"] if order["direction"] == "BUY" else order["frozen_premium"]
         self._adjust_account(commission=trade["commission"], premium=premium)
         order["volume_left"] = 0
         self._del_order(order, "全部成交")
@@ -478,8 +480,10 @@ class TqSim(object):
             position["volume_short_his"] = position["volume_short"]
             position["position_price_long"] = position["last_price"]
             position["position_price_short"] = position["last_price"]
+            quote = self._quotes[position["exchange_id"] + position["instrument_id"]]
             position["position_cost_long"] = position["open_cost_long"] + position["float_profit_long"]
-            position["position_cost_short"] = position["open_cost_short"] + position["float_profit_short"]
+            position["position_cost_short"] = position["open_cost_short"] + position["float_profit_short"] * (
+                -1 if quote["ins_class"] in ["OPTION", "FUTURE_OPTION"] else 1)
             position["position_profit_long"] = 0
             position["position_profit_short"] = 0
             position["position_profit"] = 0
@@ -654,33 +658,18 @@ class TqSim(object):
                 position["float_profit_long"] += float_profit_long
                 position["float_profit_short"] += float_profit_short
                 position["float_profit"] += float_profit
-                if quote["ins_class"] == "OPTION":  # 期权市值 = 权利金 + 期权持仓盈亏
+                if quote["ins_class"] in ["OPTION", "FUTURE_OPTION"]:  # 期权市值 = 权利金 + 期权持仓盈亏
                     position["market_value_long"] += float_profit_long  # 权利方市值(始终 >= 0)
                     position["market_value_short"] += float_profit_short  # 义务方市值(始终 <= 0)
                     position["market_value"] += float_profit
+                    self._adjust_account(float_profit=float_profit, market_value=float_profit)
                 else:  # 期权没有持仓盈亏
                     position["position_profit_long"] += float_profit_long
                     position["position_profit_short"] += float_profit_short
                     position["position_profit"] += float_profit
-                self._adjust_account(float_profit=float_profit,
-                                     position_profit=float_profit if quote["ins_class"] != "OPTION" else 0,
-                                     market_value=float_profit)
+                    self._adjust_account(float_profit=float_profit, position_profit=float_profit)
             position["last_price"] = price
         if volume_long:  # volume_long > 0:买开,  < 0:卖平
-            if quote["ins_class"] != "OPTION":
-                margin = volume_long * self._quotes[symbol]["margin"]
-            elif volume_long < 0:
-                if quote["option_class"] == "CALL":
-                    margin = (quote["last_price"] + max(0.12 * underlying_quote["last_price"] - max(
-                        quote["strike_price"] - underlying_quote["last_price"], 0),
-                                                        0.07 * underlying_quote["last_price"])) * quote[
-                                 "volume_multiple"]
-                else:
-                    margin = min(quote["last_price"] + max(0.12 * underlying_quote["last_price"] - max(
-                        underlying_quote["last_price"] - quote["strike_price"], 0), 0.07 * quote["strike_price"]),
-                                 quote["strike_price"]) * quote["volume_multiple"]
-            else:
-                margin = 0.0
             close_profit = 0 if volume_long > 0 else (position["last_price"] - position[
                 "position_price_long"]) * -volume_long * volume_multiple
             float_profit = 0 if volume_long > 0 else position["float_profit_long"] / position[
@@ -690,10 +679,27 @@ class TqSim(object):
             position["position_cost_long"] += volume_long * position[
                 "last_price"] * volume_multiple if volume_long > 0 else position["position_cost_long"] / position[
                 "volume_long"] * volume_long
-            # 期权市值 = 权利金 + 期权持仓盈亏； 市值初始值为权利金
-            market_value = (
-                position["last_price"] * volume_long * volume_multiple if volume_long > 0 else -close_profit) if quote[
-                                                                                                                     "ins_class"] == "OPTION" else 0.0
+            market_value = 0
+            margin = 0.0
+            if quote["ins_class"] in ["OPTION", "FUTURE_OPTION"]:
+                # 期权市值 = 权利金 + 期权持仓盈亏； 市值初始值为权利金
+                if volume_long > 0:
+                    market_value = position["last_price"] * volume_long * volume_multiple
+                else:
+                    market_value = -close_profit
+                    if quote["option_class"] == "CALL":
+                        margin = (quote["last_price"] + max(0.12 * underlying_quote["last_price"] - max(
+                            quote["strike_price"] - underlying_quote["last_price"], 0),
+                                                            0.07 * underlying_quote["last_price"])) * quote[
+                                     "volume_multiple"]
+                    else:
+                        margin = min(quote["last_price"] + max(0.12 * underlying_quote["last_price"] - max(
+                            underlying_quote["last_price"] - quote["strike_price"], 0), 0.07 * quote["strike_price"]),
+                                     quote["strike_price"]) * quote["volume_multiple"]
+            else:
+                margin = volume_long * self._quotes[symbol]["margin"]
+                position["position_profit_long"] -= close_profit
+                position["position_profit"] -= close_profit
             position["market_value_long"] += market_value
             position["market_value"] += market_value
             position["volume_long"] += volume_long
@@ -703,8 +709,6 @@ class TqSim(object):
                 "volume_long"] if position["volume_long"] else float("nan")
             position["float_profit_long"] += float_profit
             position["float_profit"] += float_profit
-            position["position_profit_long"] -= close_profit if quote["ins_class"] != "OPTION" else 0
-            position["position_profit"] -= close_profit if quote["ins_class"] != "OPTION" else 0
             position["margin_long"] += margin
             position["margin"] += margin
             if priority[0] == "T":
@@ -734,38 +738,42 @@ class TqSim(object):
                         position["pos_long_his"] = 0
 
             self._adjust_account(float_profit=float_profit,
-                                 position_profit=-close_profit if quote["ins_class"] != "OPTION" else 0,
+                                 position_profit=-close_profit if quote["ins_class"] not in ["OPTION",
+                                                                                             "FUTURE_OPTION"] else 0,
                                  close_profit=close_profit,
                                  margin=margin, market_value=market_value)
         if volume_short:  # volume_short > 0: 卖开,  < 0:买平
-            if quote["ins_class"] != "OPTION":
-                margin = volume_short * self._quotes[symbol]["margin"]
-            elif volume_short > 0:
-                if quote["option_class"] == "CALL":
-                    margin = (quote["last_price"] + max(0.12 * underlying_quote["last_price"] - max(
-                        quote["strike_price"] - underlying_quote["last_price"], 0),
-                                                        0.07 * underlying_quote["last_price"])) * quote[
-                                 "volume_multiple"]
-                else:
-                    margin = min(quote["last_price"] + max(0.12 * underlying_quote["last_price"] - max(
-                        underlying_quote["last_price"] - quote["strike_price"], 0), 0.07 * quote["strike_price"]),
-                                 quote["strike_price"]) * quote["volume_multiple"]
-            else:
-                margin = 0.0
             close_profit = 0 if volume_short > 0 else (position["position_price_short"] - position[
                 "last_price"]) * -volume_short * volume_multiple
             float_profit = 0 if volume_short > 0 else position["float_profit_short"] / position[
                 "volume_short"] * volume_short
-            open_cost = volume_short * position["last_price"] * volume_multiple * (
-                -1 if quote["ins_class"] == "OPTION" else 1)
-            position["open_cost_short"] += open_cost if volume_short > 0 else position["open_cost_short"] / position[
-                "volume_short"] * volume_short  # 期权: open_cost_short < 0, open_cost_long > 0
-            position["position_cost_short"] += open_cost if volume_short > 0 else position["position_cost_short"] / \
-                                                                                  position[
-                                                                                      "volume_short"] * volume_short
-            market_value = (
-                -position["last_price"] * volume_short * volume_multiple if volume_short > 0 else close_profit) if \
-                quote["ins_class"] == "OPTION" else 0.0
+            # 期权: open_cost_short < 0, open_cost_long > 0
+            position["open_cost_short"] += volume_short * position[
+                "last_price"] * volume_multiple if volume_short > 0 else position["open_cost_short"] / position[
+                "volume_short"] * volume_short
+            position["position_cost_short"] += volume_short * position[
+                "last_price"] * volume_multiple if volume_short > 0 else position["position_cost_short"] / position[
+                "volume_short"] * volume_short
+            market_value = 0
+            margin = 0
+            if quote["ins_class"] in ["OPTION", "FUTURE_OPTION"]:
+                if volume_short > 0:
+                    market_value = -(position["last_price"] * volume_short * volume_multiple)
+                    if quote["option_class"] == "CALL":
+                        margin = (quote["last_price"] + max(0.12 * underlying_quote["last_price"] - max(
+                            quote["strike_price"] - underlying_quote["last_price"], 0),
+                                                            0.07 * underlying_quote["last_price"])) * quote[
+                                     "volume_multiple"]
+                    else:
+                        margin = min(quote["last_price"] + max(0.12 * underlying_quote["last_price"] - max(
+                            underlying_quote["last_price"] - quote["strike_price"], 0), 0.07 * quote["strike_price"]),
+                                     quote["strike_price"]) * quote["volume_multiple"]
+                else:
+                    market_value = close_profit
+            else:
+                margin = volume_short * self._quotes[symbol]["margin"]
+                position["position_profit_short"] -= close_profit
+                position["position_profit"] -= close_profit
             position["market_value_short"] += market_value
             position["market_value"] += market_value
             position["volume_short"] += volume_short
@@ -775,8 +783,6 @@ class TqSim(object):
                 "volume_short"] if position["volume_short"] else float("nan")
             position["float_profit_short"] += float_profit
             position["float_profit"] += float_profit
-            position["position_profit_short"] -= close_profit if quote["ins_class"] != "OPTION" else 0
-            position["position_profit"] -= close_profit if quote["ins_class"] != "OPTION" else 0
             position["margin_short"] += margin
             position["margin"] += margin
             if priority[0] == "T":
@@ -805,7 +811,8 @@ class TqSim(object):
                         position["pos_short_today"] += position["pos_short_his"]
                         position["pos_short_his"] = 0
             self._adjust_account(float_profit=float_profit,
-                                 position_profit=-close_profit if quote["ins_class"] != "OPTION" else 0,
+                                 position_profit=-close_profit if quote["ins_class"] not in ["OPTION",
+                                                                                             "FUTURE_OPTION"] else 0,
                                  close_profit=close_profit,
                                  margin=margin, market_value=market_value)
         self._send_position(position)
@@ -827,7 +834,8 @@ class TqSim(object):
         self._account["frozen_margin"] += frozen_margin
         self._account["frozen_premium"] += frozen_premium
         self._account["margin"] += margin
-        self._account["premium"] += premium  # premium: 字段本身是有正负，正数表示收入的权利金，负数表示付出的权利金
+        # premium变量的值有正负，正数表示收入的权利金，负数表示付出的权利金；account["premium"]为累计值
+        self._account["premium"] += premium
         self._account["market_value"] += premium + position_profit  # 期权市值 = 权利金 + 期权持仓盈亏
         self._account["commission"] += commission
         self._account["risk_ratio"] = (self._account["frozen_margin"] + self._account["margin"]) / self._account[
