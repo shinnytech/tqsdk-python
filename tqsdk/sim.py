@@ -480,7 +480,7 @@ class TqSim(object):
             position["volume_short_his"] = position["volume_short"]
             position["position_price_long"] = position["last_price"]
             position["position_price_short"] = position["last_price"]
-            quote = self._quotes[position["exchange_id"] + position["instrument_id"]]
+            quote = self._quotes[position["exchange_id"] + "." + position["instrument_id"]]
             position["position_cost_long"] = position["open_cost_long"] + position["float_profit_long"]
             position["position_cost_short"] = position["open_cost_short"] + position["float_profit_short"] * (
                 -1 if quote["ins_class"] in ["OPTION", "FUTURE_OPTION"] else 1)
