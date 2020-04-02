@@ -15,32 +15,34 @@
 """
 __author__ = 'chengzhi'
 
-import re
-import json
-import ssl
-import uuid
-import sys
-import time
-import logging
+import asyncio
+import base64
 import copy
 import ctypes
-import asyncio
 import functools
-import certifi
-import websockets
-import requests
-import random
-import base64
+import json
+import logging
 import os
+import random
+import re
+import ssl
+import sys
+import time
+import uuid
 from datetime import datetime
 from typing import Union, List, Any, Optional
-import pandas as pd
+
+import certifi
 import numpy as np
-from .__version__ import __version__
-from tqsdk.sim import TqSim
-from tqsdk.objs import Entity, Quote, Kline, Tick, Account, Position, Order, Trade
+import pandas as pd
+import requests
+import websockets
+
 from tqsdk.backtest import TqBacktest, TqReplay
+from tqsdk.objs import Entity, Quote, Kline, Tick, Account, Position, Order, Trade
+from tqsdk.sim import TqSim
 from tqsdk.tqwebhelper import TqWebHelper
+from .__version__ import __version__
 
 
 class TqApi(object):

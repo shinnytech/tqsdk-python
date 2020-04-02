@@ -3,9 +3,10 @@
 __author__ = 'chengzhi'
 
 import asyncio
-import time
 import datetime
 import statistics
+import time
+
 from tqsdk.datetime import _get_trading_day_end_time, _get_trading_day_from_timestamp, _get_trading_day_start_time
 
 

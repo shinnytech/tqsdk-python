@@ -3,10 +3,11 @@
 __author__ = 'chengzhi'
 
 import time
-from tqsdk.sim import TqSim
-from tqsdk.api import TqChan, TqApi
 from asyncio import gather
 from typing import Optional
+
+from tqsdk.api import TqChan, TqApi
+from tqsdk.sim import TqSim
 
 
 class TargetPosTaskSingleton(type):
