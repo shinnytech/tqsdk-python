@@ -1,11 +1,7 @@
 #!usr/bin/env python3
 #-*- coding:utf-8 -*-
-"""
-@author: yanqiong
-@file: guihelper.py
-@create_on: 2019/11/7
-@description: 
-"""
+__author__ = 'yanqiong'
+
 import asyncio
 import os
 import socket
