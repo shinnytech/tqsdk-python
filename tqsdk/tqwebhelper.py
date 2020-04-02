@@ -6,16 +6,19 @@
 @create_on: 2019/11/7
 @description: 
 """
-import os
-import sys
-import simplejson
 import asyncio
-from urllib.parse import urlparse
-from datetime import datetime
-from aiohttp import web
+import os
 import socket
+import sys
+from datetime import datetime
+from urllib.parse import urlparse
+
+import simplejson
+from aiohttp import web
+
 import tqsdk
 from tqsdk.datetime import _get_trading_day_start_time
+
 
 class TqWebHelper(object):
 

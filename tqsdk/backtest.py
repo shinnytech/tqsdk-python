@@ -2,16 +2,18 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'chengzhi'
 
+import asyncio
 import json
 import time
-import requests
-import asyncio
-from typing import Union
 from datetime import date, datetime
+from typing import Union
+
+import requests
+
+import tqsdk.api
 from tqsdk.datetime import _get_trading_day_start_time, _get_trading_day_end_time
 from tqsdk.exceptions import BacktestFinished
 from tqsdk.objs import Entity
-import tqsdk.api
 
 
 class TqBacktest(object):
