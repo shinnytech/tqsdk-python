@@ -10,12 +10,13 @@ tqsdk.tafunc 模块包含了一批用于技术指标计算的函数
 import datetime
 import math
 from typing import Union
+
 import numpy as np
 import pandas as pd
 from scipy import stats
 
-import tqsdk.sim
 import tqsdk.objs
+import tqsdk.sim
 
 
 def ref(series, n):
