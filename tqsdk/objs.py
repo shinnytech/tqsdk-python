@@ -2,9 +2,9 @@
 #:  -*- coding: utf-8 -*-
 __author__ = 'chengzhi'
 
+import copy
 import weakref
 from collections.abc import MutableMapping
-import copy
 
 
 class Entity(MutableMapping):
