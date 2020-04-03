@@ -12,7 +12,9 @@ from urllib.parse import urlparse
 import simplejson
 from aiohttp import web
 
-import tqsdk
+import tqsdk.api
+import tqsdk.sim
+import tqsdk.backtest
 from tqsdk.datetime import _get_trading_day_start_time
 
 
@@ -36,12 +38,12 @@ class TqWebHelper(object):
             self._api._backtest = None
             self._logger.info("正在使用账户 {bid}, {aid} 运行策略。".format(bid=args["_broker_id"], aid=args["_account_id"]))
         elif args["_action"] == "backtest":
-            self._api._account = tqsdk.api.TqSim(args["_init_balance"])
-            self._api._backtest = tqsdk.api.TqBacktest(start_dt=datetime.strptime(args["_start_dt"], '%Y%m%d'),
+            self._api._account = tqsdk.sim.TqSim(args["_init_balance"])
+            self._api._backtest = tqsdk.backtest.TqBacktest(start_dt=datetime.strptime(args["_start_dt"], '%Y%m%d'),
                                         end_dt=datetime.strptime(args["_end_dt"], '%Y%m%d'))
             self._logger.info("当前回测区间 {sdt} - {edt}。".format(sdt=args["_start_dt"], edt=args["_end_dt"]))
         elif args["_action"] == "replay":
-            self._api._backtest = tqsdk.api.TqReplay(datetime.strptime(args["_replay_dt"], '%Y%m%d'))
+            self._api._backtest = tqsdk.backtest.TqReplay(datetime.strptime(args["_replay_dt"], '%Y%m%d'))
             self._logger.info("当前复盘日期 {rdt}。".format(rdt=args["_replay_dt"]))
         if args["_http_server_address"]:
             self._api._web_gui = True  # 命令行 _http_server_address, 一定打开 _web_gui
@@ -69,9 +71,9 @@ class TqWebHelper(object):
             # 初始化数据截面
             self._data = {
                 "action": {
-                    "mode": "replay" if isinstance(self._api._backtest, tqsdk.api.TqReplay) else "backtest" if isinstance(self._api._backtest, tqsdk.api.TqBacktest) else "run",
+                    "mode": "replay" if isinstance(self._api._backtest, tqsdk.backtest.TqReplay) else "backtest" if isinstance(self._api._backtest, tqsdk.backtest.TqBacktest) else "run",
                     "md_url_status": '-',
-                    "td_url_status": True if isinstance(self._api._account, tqsdk.api.TqSim) else '-',
+                    "td_url_status": True if isinstance(self._api._account, tqsdk.sim.TqSim) else '-',
                     "account_id": self._api._account._account_id,
                     "broker_id": self._api._account._broker_id if isinstance(self._api._account, tqsdk.api.TqAccount) else 'TQSIM',
                     "file_path": file_path[0].upper() + file_path[1:],
@@ -302,7 +304,7 @@ class TqWebHelper(object):
                 "md_url": self._api._md_url,
             }
             # TODO：在复盘模式下发送 replay_dt 给 web 端，服务器改完后可以去掉
-            if isinstance(self._api._backtest, tqsdk.api.TqReplay):
+            if isinstance(self._api._backtest, tqsdk.backtest.TqReplay):
                 url_response["replay_dt"] = int(datetime.combine(self._api._backtest._replay_dt, datetime.min.time()).timestamp() * 1e9)
             app = web.Application()
             app.router.add_get(path='/url', handler=lambda request: TqWebHelper.httpserver_url_handler(url_response))
