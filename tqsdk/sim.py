@@ -69,7 +69,7 @@ class TqSim(object):
             "deposit": 0.0,
             "withdraw": 0.0,
             "risk_ratio": 0.0,
-            "market_value": float("nan"),
+            "market_value": 0.0,
             "ctp_balance": float("nan"),
             "ctp_available": float("nan"),
         }
@@ -347,8 +347,9 @@ class TqSim(object):
                     self._del_order(order, "平仓手数不足")
                     return
             else:
-                if quote["commission"] is None or quote["margin"] is None:
-                    self._del_order(order, "合约不存在")
+                if (quote["commission"] is None or quote["margin"] is None) and quote["ins_class"] not in ["OPTION",
+                                                                                                           "FUTURE_OPTION"]:
+                    self._del_order(order, "合约不存在")  # 除了期权外，主连、指数和组合没有这两个字段
                     return
                 if quote["ins_class"] in ["OPTION", "FUTURE_OPTION"]:
                     if order["price_type"] == "ANY":
@@ -418,7 +419,9 @@ class TqSim(object):
             "volume": order["volume_left"],
             # todo: 可能导致测试结果不确定
             "trade_date_time": TqSim._get_trade_timestamp(self._current_datetime, self._local_time_record),
-            "commission": quote["commission"] * order["volume_left"],
+            # 期权quote没有commission字段, 设为固定10元一张
+            "commission": (quote["commission"] if quote["ins_class"] not in ["OPTION", "FUTURE_OPTION"] else 10) *
+                          order["volume_left"],
         }
         trade_log = self._ensure_trade_log()
         trade_log["trades"].append(trade)
@@ -882,9 +885,9 @@ class TqSim(object):
                 "margin_short": 0.0,
                 "margin": 0.0,
                 "last_price": None,
-                "market_value_long": float("nan"),  # 权利方市值(始终 >= 0)
-                "market_value_short": float("nan"),  # 义务方市值(始终 <= 0)
-                "market_value": float("nan"),
+                "market_value_long": 0.0,  # 权利方市值(始终 >= 0)
+                "market_value_short": 0.0,  # 义务方市值(始终 <= 0)
+                "market_value": 0.0,
             }
         return self._positions[symbol]
 
