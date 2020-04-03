@@ -265,13 +265,13 @@ class Account(Entity):
         self._api = api
         #: 币种
         self.currency = ""
-        #: 昨日账户权益(对期权无效)
+        #: 昨日账户权益(不包含期权)
         self.pre_balance = float("nan")
-        #: 静态权益 （静态权益 = 昨日结算的权益 + 今日入金 - 今日出金, 以服务器查询ctp后返回的金额为准）(对期权无效)
+        #: 静态权益 （静态权益 = 昨日结算的权益 + 今日入金 - 今日出金, 以服务器查询ctp后返回的金额为准）(不包含期权)
         self.static_balance = float("nan")
-        #: 账户权益 （账户权益 = 动态权益 = 静态权益 + 平仓盈亏 + 持仓盈亏 - 手续费 + 权利金 + 市值）
+        #: 账户权益 （账户权益 = 动态权益 = 静态权益 + 平仓盈亏 + 持仓盈亏 - 手续费 + 权利金 + 期权市值）
         self.balance = float("nan")
-        #: 可用资金（可用资金 = 账户权益 - 冻结保证金 - 保证金 - 冻结权利金 - 冻结手续费 - 市值）
+        #: 可用资金（可用资金 = 账户权益 - 冻结保证金 - 保证金 - 冻结权利金 - 冻结手续费 - 期权市值）
         self.available = float("nan")
         #: 期货公司返回的balance（ctp_balance = 静态权益 + 平仓盈亏 + 持仓盈亏 - 手续费 + 权利金）
         self.ctp_balance = float("nan")
@@ -380,11 +380,11 @@ class Position(Entity):
         self.margin_short = float("nan")
         #: 占用保证金
         self.margin = float("nan")
-        #: 权利方市值(始终 >= 0)
+        #: 期权权利方市值(始终 >= 0)
         self.market_value_long = float("nan")
-        #: 义务方市值(始终 <= 0)
+        #: 期权义务方市值(始终 <= 0)
         self.market_value_short = float("nan")
-        #: 市值
+        #: 期权市值
         self.market_value = float("nan")
 
     @property
