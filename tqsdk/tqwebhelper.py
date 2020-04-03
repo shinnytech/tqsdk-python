@@ -12,7 +12,7 @@ from urllib.parse import urlparse
 import simplejson
 from aiohttp import web
 
-import tqsdk
+import tqsdk.api
 from tqsdk.datetime import _get_trading_day_start_time
 
 
