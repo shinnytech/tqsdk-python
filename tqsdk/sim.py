@@ -370,10 +370,10 @@ class TqSim(object):
                                     underlying_quote["last_price"] - quote["strike_price"], 0),
                                 0.07 * quote["strike_price"]), quote["strike_price"]) * quote["volume_multiple"]
                     else:  # 期权的BUY权利仓
-                        # 市价单立即成交或不成, 对api来说普通市价单没有 冻结_xxx 数据存在的状态
                         order["frozen_premium"] = order["volume_orign"] * quote["volume_multiple"] * order[
                             "limit_price"]
                 else:  # 期货
+                    # 市价单立即成交或不成, 对api来说普通市价单没有 冻结_xxx 数据存在的状态
                     order["frozen_margin"] = quote["margin"] * order["volume_orign"]
                 if not self._adjust_account(frozen_margin=order["frozen_margin"],
                                             frozen_premium=order["frozen_premium"]):
@@ -822,7 +822,7 @@ class TqSim(object):
         self._account["premium"] += premium
         self._account["market_value"] += market_value
         self._account["commission"] += commission
-        self._account["risk_ratio"] = (self._account["frozen_margin"] + self._account["margin"]) / self._account[
+        self._account["risk_ratio"] = self._account["margin"] / self._account[
             "balance"] if self._account["balance"] else 0.0
         self._send_account()
         return self._account["available"] >= 0
