@@ -839,7 +839,7 @@ class TqSim(object):
         self._account["margin"] += margin
         # premium变量的值有正负，正数表示收入的权利金，负数表示付出的权利金；account["premium"]为累计值
         self._account["premium"] += premium
-        self._account["market_value"] += premium + position_profit  # 期权市值 = 权利金 + 期权持仓盈亏
+        self._account["market_value"] += market_value
         self._account["commission"] += commission
         self._account["risk_ratio"] = (self._account["frozen_margin"] + self._account["margin"]) / self._account[
             "balance"] if self._account["balance"] else 0.0
