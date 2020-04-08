@@ -228,9 +228,9 @@ class TqSim(object):
                 quote["commission"] = quote_diff.get("commission", quote["commission"])
                 quote["margin"] = quote_diff.get("margin", quote["margin"])
                 quote["trading_time"] = quote_diff.get("trading_time", quote["trading_time"])
-                quote["ins_class"] = quote_diff.get("ins_class")
-                quote["option_class"] = quote_diff.get("option_class")
-                quote["underlying_symbol"] = quote_diff.get("underlying_symbol")
+                quote["ins_class"] = quote_diff.get("ins_class", quote["ins_class"])
+                quote["option_class"] = quote_diff.get("option_class", quote["option_class"])
+                quote["underlying_symbol"] = quote_diff.get("underlying_symbol", quote["underlying_symbol"])
                 self._match_orders(quote)
                 if symbol in self._positions:
                     self._adjust_position(symbol, price=quote["last_price"])
