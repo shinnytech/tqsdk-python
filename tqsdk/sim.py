@@ -333,7 +333,7 @@ class TqSim(object):
         symbol = order["exchange_id"] + "." + order["instrument_id"]
 
         if not order["insert_date_time"]:  # 此字段已在_insert_order()初始化为0
-            # order初始化时计算frozen_margin需要使用行情数据，因此等待收到行情后再调整初始化字段的方案：
+            # order初始化时计算期权的frozen_margin需要使用行情数据，因此等待收到行情后再调整初始化字段的方案：
             # 在_insert_order()只把order存在quote下的orders字典中，然后在match_order()判断收到行情后从根据insert_order_time来判断此委托单是否已初始化.
             if order["offset"].startswith("CLOSE"):
                 volume_long_frozen = 0 if order["direction"] == "BUY" else order["volume_left"]
@@ -354,6 +354,7 @@ class TqSim(object):
                 if quote["ins_class"] in ["OPTION", "FUTURE_OPTION"]:
                     if order["price_type"] == "ANY":
                         self._del_order(order, "期权不支持市价单")
+                        return
                     elif order["direction"] == "SELL":  # 期权的SELL义务仓
                         if quote["option_class"] == "CALL":
                             # 认购期权义务仓开仓保证金＝[合约最新价 + Max（12% × 合约标的最新价 - 认购期权虚值， 7% × 合约标的前收盘价）] × 合约单位
