@@ -468,10 +468,6 @@ class Order(Entity):
         self.last_msg = ""
         #: 委托单状态, ALIVE=有效, FINISHED=已完
         self.status = ""
-        #: 冻结权利金
-        self.frozen_premium = float("nan")
-        #: 冻结保证金
-        self.frozen_margin = float("nan")
 
         self._this_session = False
 
