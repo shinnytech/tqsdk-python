@@ -296,7 +296,7 @@ class TqSim(object):
         return False
 
     def _cancel_order(self, pack):
-        if not self._orders[pack["order_id"]]["insert_date_time"]:  # 如果未收到行情
+        if self._orders[pack["order_id"]]["insert_date_time"] <= 0:  # 如果未收到行情或已经发过撤单指令
             self._orders[pack["order_id"]]["insert_date_time"] = -1
             return
         if pack["order_id"] in self._orders:
