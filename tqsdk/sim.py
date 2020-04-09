@@ -273,6 +273,7 @@ class TqSim(object):
         order["frozen_premium"] = 0.0
         order["last_msg"] = "报单成功"
         order["status"] = "ALIVE"
+        # order 的 insert_date_time 携带flag信息, <0:未收到行情但需要撤单，==0:未收到行情需撮合，>0:收到行情需撮合
         order["insert_date_time"] = 0  # 初始化为0：保持 order 的结构不变(所有字段都有，只是值不同)
         del order["aid"]
         del order["volume"]
@@ -295,6 +296,9 @@ class TqSim(object):
         return False
 
     def _cancel_order(self, pack):
+        if not self._orders[pack["order_id"]]["insert_date_time"]:  # 如果未收到行情
+            self._orders[pack["order_id"]]["insert_date_time"] = -1
+            return
         if pack["order_id"] in self._orders:
             self._del_order(self._orders[pack["order_id"]], "已撤单")
 
@@ -332,7 +336,7 @@ class TqSim(object):
             return
         symbol = order["exchange_id"] + "." + order["instrument_id"]
 
-        if not order["insert_date_time"]:  # 此字段已在_insert_order()初始化为0
+        if order["insert_date_time"] <= 0:  # 此字段已在_insert_order()初始化为0，或在cancel_order置为-1
             # order初始化时计算期权的frozen_margin需要使用行情数据，因此等待收到行情后再调整初始化字段的方案：
             # 在_insert_order()只把order存在quote下的orders字典中，然后在match_order()判断收到行情后从根据insert_order_time来判断此委托单是否已初始化.
             if order["offset"].startswith("CLOSE"):
@@ -384,6 +388,9 @@ class TqSim(object):
             # 需在收到quote行情时, 才将其order的diff下发并将“模拟交易下单”logger发出（即可保证order的insert_date_time为正确的行情时间）
             # 方案为：通过在 match_order() 中判断 “inster_datetime” 来处理：
             # 则能判断收到了行情，又根据 “inster_datetime” 判断了是下单后还未处理（即diff下发和生成logger info）过的order.
+            cancel_order_flag = False
+            if order["insert_date_time"] == -1:  # 如果等待撤单
+                cancel_order_flag = True
             order["insert_date_time"] = TqSim._get_trade_timestamp(self._current_datetime, self._local_time_record)
             self._send_order(order)
             self._logger.info("模拟交易下单 %s: 时间:%s,合约:%s,开平:%s,方向:%s,手数:%s,价格:%s", order["order_id"],
@@ -393,6 +400,8 @@ class TqSim(object):
             if not TqSim._is_in_trading_time(quote, self._current_datetime, self._local_time_record):
                 self._del_order(order, "下单失败, 不在可交易时间段内")
                 return
+            if cancel_order_flag:
+                self._api.cancel_order(order["order_id"])
 
         ask_price = quote["ask_price1"]
         bid_price = quote["bid_price1"]
