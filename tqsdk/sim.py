@@ -693,12 +693,14 @@ class TqSim(object):
                 "last_price"] * volume_multiple if volume_long > 0 else position["position_cost_long"] / position[
                 "volume_long"] * volume_long
             market_value = 0
+            margin = 0.0
             if quote["ins_class"] in ["OPTION", "FUTURE_OPTION"]:
                 # 期权市值 = 权利金 + 期权持仓盈亏
                 market_value = position["last_price"] * volume_long * volume_multiple
                 position["market_value_long"] += market_value
                 position["market_value"] += market_value
             else:
+                margin = volume_long * self._quotes[symbol]["margin"]
                 position["position_profit_long"] -= close_profit
                 position["position_profit"] -= close_profit
             position["volume_long"] += volume_long
@@ -708,6 +710,8 @@ class TqSim(object):
                 "volume_long"] if position["volume_long"] else float("nan")
             position["float_profit_long"] += float_profit
             position["float_profit"] += float_profit
+            position["margin_long"] += margin
+            position["margin"] += margin
             if priority[0] == "T":
                 position["volume_long_today"] += volume_long
                 if len(priority) > 1:
@@ -737,7 +741,7 @@ class TqSim(object):
             self._adjust_account(float_profit=float_profit,
                                  position_profit=-close_profit if quote["ins_class"] not in ["OPTION",
                                                                                              "FUTURE_OPTION"] else 0,
-                                 close_profit=close_profit, market_value=market_value)
+                                 close_profit=close_profit, margin=margin, market_value=market_value)
         if volume_short:  # volume_short > 0: 卖开,  < 0:买平
             close_profit = 0 if volume_short > 0 else (position["position_price_short"] - position[
                 "last_price"]) * -volume_short * volume_multiple
