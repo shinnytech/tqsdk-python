@@ -3,10 +3,12 @@
 """
 天勤接口的PYTHON封装, 提供以下功能
 
-* 连接行情和交易服务器或天勤终端的websocket扩展接口, 接收行情及交易推送数据
+* 连接行情和交易服务器, 接收行情及交易推送数据
 * 在内存中存储管理一份完整的业务数据(行情+交易), 并在接收到新数据包时更新内存数据
 * 通过一批函数接口, 支持用户代码访问业务数据
 * 发送交易指令
+* 提供本地的模拟交易账户，同时完成撮合成交
+* 支持回测功能
 
 
 * PYTHON SDK使用文档: https://doc.shinnytech.com/pysdk/latest/
@@ -49,8 +51,6 @@ class TqApi(object):
     """
     天勤接口及数据管理类
 
-    该类中所有参数只针对天勤外部IDE编写使用, 在天勤内使用 api = TqApi() 即可指定为当前天勤终端登录用户
-
     通常情况下, 一个线程中 **应该只有一个** TqApi的实例, 它负责维护网络连接, 接收行情及账户数据, 并在内存中维护业务数据截面
     """
 
@@ -64,9 +64,9 @@ class TqApi(object):
 
         Args:
             account (None/TqAccount/TqSim): [可选]交易账号:
-                * None: 账号将根据命令行参数决定, 默认为 :py:class:`~tqsdk.sim.TqSim`
+                * None: 账号将根据环境变量决定, 默认为 :py:class:`~tqsdk.sim.TqSim`
 
-                * :py:class:`~tqsdk.api.TqAccount` : 使用实盘账号, 直连行情和交易服务器(不通过天勤终端), 需提供期货公司/帐号/密码
+                * :py:class:`~tqsdk.api.TqAccount` : 使用实盘账号, 直连行情和交易服务器, 需提供期货公司/帐号/密码
 
                 * :py:class:`~tqsdk.sim.TqSim` : 使用 TqApi 自带的内部模拟账号
 
@@ -857,7 +857,6 @@ class TqApi(object):
             bool: 如果收到业务数据更新则返回 True, 如果到截止时间依然没有收到业务数据更新则返回 False
 
         注意:
-            * 天勤终端里策略日志窗口输出的内容由每次调用wait_update()时发出.
             * 由于存在网络延迟, 因此有数据更新不代表之前发出的所有请求都被处理了, 例如::
 
                 from tqsdk import TqApi
@@ -2140,7 +2139,7 @@ class TqAccount(object):
         创建天勤实盘实例
 
         Args:
-            broker_id (str): 期货公司, 可以在天勤终端中查看期货公司名称
+            broker_id (str): 期货公司，支持的期货公司列表 https://www.shinnytech.com/blog/tq-support-broker/
 
             account_id (str): 帐号
 
