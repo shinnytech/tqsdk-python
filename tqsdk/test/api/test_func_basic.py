@@ -25,6 +25,7 @@ class TestFuncBasic(unittest.TestCase):
         self.mock = MockServer()
         # self.tq = WebsocketServer(5300)
         self.ins_url = "https://openmd.shinnytech.com/t/md/symbols/2019-07-03.json"
+        self.ins_url_2020_04_02 = "https://openmd.shinnytech.com/t/md/symbols/2020-04-02.json"
         self.md_url = "ws://127.0.0.1:5100/"
         self.td_url = "ws://127.0.0.1:5200/"
 
@@ -33,24 +34,27 @@ class TestFuncBasic(unittest.TestCase):
         self.mock.close()
 
     def test_is_changing(self):
-        """is_changing() 测试"""
+        """
+            is_changing() 测试
+            注：本函数不是回测，重新生成测试用例script文件时更改为当前可交易的合约代码,在盘中生成,且_ins_url可能需修改。
+        """
 
         # 预设服务器端响应
         dir_path = os.path.dirname(os.path.realpath(__file__))
         self.mock.run(os.path.join(dir_path, "log_file", "test_func_basic_is_changing.script.lzma"))
         # 测试: 模拟账户下单
         TqApi.RD = random.Random(4)
-        api = TqApi(_ins_url=self.ins_url, _td_url=self.td_url, _md_url=self.md_url)
-        quote = api.get_quote("SHFE.rb2001")
-        position = api.get_position("SHFE.rb2001")
-        order1 = api.insert_order("DCE.m2001", "BUY", "OPEN", 1)
+        api = TqApi(_ins_url=self.ins_url_2020_04_02, _td_url=self.td_url, _md_url=self.md_url)
+        quote = api.get_quote("SHFE.rb2010")
+        position = api.get_position("SHFE.rb2010")
+        order1 = api.insert_order("DCE.m2009", "BUY", "OPEN", 1)
         api.wait_update()
-        order2 = api.insert_order("SHFE.rb2001", "SELL", "OPEN", 2)
+        order2 = api.insert_order("SHFE.rb2010", "SELL", "OPEN", 2)
         api.wait_update()
         self.assertTrue(api.is_changing(order2, "status"))
         self.assertTrue(api.is_changing(position, "volume_short"))
         self.assertFalse(api.is_changing(position, "volume_long"))
-        order3 = api.insert_order("SHFE.rb2001", "BUY", "CLOSETODAY", 1)
+        order3 = api.insert_order("SHFE.rb2010", "BUY", "CLOSETODAY", 1)
         while order3.status == "ALIVE":
             api.wait_update()
         self.assertTrue(api.is_changing(order3, "status"))
