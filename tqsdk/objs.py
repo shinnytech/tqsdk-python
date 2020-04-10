@@ -8,6 +8,17 @@ from tqsdk.diff import _get_obj
 from tqsdk.entity import Entity
 
 
+class QuotesEntity(Entity):
+
+    def __init__(self, api):
+        self._api = api
+
+    def __iter__(self):
+        # todo: 添加说明链接
+        self._api._logger.warning("DeprecationWarning 使用 api._data['quotes'] 方式获取全部合约会在 2.0.0 版本废弃, 请尽快修改使用新的接口 xxx")
+        return super().__iter__()
+
+
 class Quote(Entity):
     """ Quote 是一个行情对象 """
 
