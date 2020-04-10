@@ -339,6 +339,7 @@ class TqSim(object):
             return
         symbol = order["exchange_id"] + "." + order["instrument_id"]
 
+        cancel_order_flag = False  # 是否需要在不能成交的时候撤掉该委托单，适用于连着发下单和撤单指令时
         if order["insert_date_time"] <= 0:  # 此字段已在_insert_order()初始化为0，或在cancel_order置为-1
             # order初始化时计算期权的frozen_margin需要使用行情数据，因此等待收到行情后再调整初始化字段的方案：
             # 在_insert_order()只把order存在quote下的orders字典中，然后在match_order()判断收到行情后从根据insert_order_time来判断此委托单是否已初始化.
@@ -391,7 +392,6 @@ class TqSim(object):
             # 需在收到quote行情时, 才将其order的diff下发并将“模拟交易下单”logger发出（即可保证order的insert_date_time为正确的行情时间）
             # 方案为：通过在 match_order() 中判断 “inster_datetime” 来处理：
             # 则能判断收到了行情，又根据 “inster_datetime” 判断了是下单后还未处理（即diff下发和生成logger info）过的order.
-            cancel_order_flag = False
             if order["insert_date_time"] == -1:  # 如果等待撤单
                 cancel_order_flag = True
             order["insert_date_time"] = TqSim._get_trade_timestamp(self._current_datetime, self._local_time_record)
@@ -402,9 +402,6 @@ class TqSim(object):
                               order["volume_left"], order.get("limit_price", "市价"))
             if not TqSim._is_in_trading_time(quote, self._current_datetime, self._local_time_record):
                 self._del_order(order, "下单失败, 不在可交易时间段内")
-                return
-            if cancel_order_flag:
-                self._del_order(order, "已撤单")
                 return
 
         ask_price = quote["ask_price1"]
@@ -418,6 +415,9 @@ class TqSim(object):
             price = order["limit_price"]
         elif order["direction"] == "SELL" and order["limit_price"] <= bid_price:
             price = order["limit_price"]
+        elif cancel_order_flag:
+            self._del_order(order, "已撤单")
+            return
         else:
             return
         trade = {
