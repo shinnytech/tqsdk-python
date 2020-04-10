@@ -12,3 +12,4 @@
     gui.rst
     for_vnpy_user.rst
     for_ctp_user.rst
+    unanttended.rst
