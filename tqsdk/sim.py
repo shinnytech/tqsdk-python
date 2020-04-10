@@ -234,6 +234,7 @@ class TqSim(object):
                 quote["ins_class"] = quote_diff.get("ins_class", quote["ins_class"])
                 quote["option_class"] = quote_diff.get("option_class", quote["option_class"])
                 quote["underlying_symbol"] = quote_diff.get("underlying_symbol", quote["underlying_symbol"])
+                quote["strike_price"] = quote_diff.get("strike_price", quote["strike_price"])
                 self._match_orders(quote)
                 if symbol in self._positions:
                     self._adjust_position(symbol, price=quote["last_price"])
@@ -590,11 +591,11 @@ class TqSim(object):
         self._logger.warning("模拟交易账户资金")
         for d in sorted(self.trade_log.keys()):
             account = self.trade_log[d]["account"]
-            self._logger.warning("日期:%s,账户权益:%.2f,可用资金:%.2f,浮动盈亏:%.2f,持仓盈亏:%.2f,平仓盈亏:%.2f,保证金:%.2f,手续费:%.2f,风险度:%.2f%%",
-                                 d, account["balance"], account["available"], account["float_profit"],
-                                 account["position_profit"],
-                                 account["close_profit"], account["margin"], account["commission"],
-                                 account["risk_ratio"] * 100)
+            self._logger.warning(
+                "日期:%s,账户权益:%.2f,可用资金:%.2f,浮动盈亏:%.2f,持仓盈亏:%.2f,平仓盈亏:%.2f,市值:%.2f,保证金:%.2f,手续费:%.2f,风险度:%.2f%%",
+                d, account["balance"], account["available"], account["float_profit"], account["position_profit"],
+                account["close_profit"], account["market_value"], account["margin"], account["commission"],
+                account["risk_ratio"] * 100)
 
         self._tqsdk_stat["winning_rate"] = (self._tqsdk_stat["profit_volumes"] / (
                 self._tqsdk_stat["profit_volumes"] + self._tqsdk_stat["loss_volumes"])) \
@@ -905,6 +906,7 @@ class TqSim(object):
                 "bid_price1": float("nan"),
                 "last_price": float("nan"),
                 "volume_multiple": None,
+                "strike_price": float("nan"),
                 "margin": None,
                 "commission": None,
             }
