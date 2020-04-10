@@ -98,7 +98,10 @@ class TqSim(object):
                         await self._md_send_chan.send(pack)
                 elif pack["aid"] == "insert_order":
                     self._insert_order(pack)
-                    if pack["exchange_id"] + "." + pack["instrument_id"] not in self._all_subscribe:
+                    symbol = pack["exchange_id"] + "." + pack["instrument_id"]
+                    if symbol not in self._all_subscribe or (
+                            self._quotes[symbol]["ins_class"] in ["OPTION", "FUTURE_OPTION"] and self._quotes[symbol][
+                        "underlying_symbol"] not in self._all_subscribe):
                         await self._subscribe_quote()
                     await self._send_diff()
                 elif pack["aid"] == "cancel_order":
@@ -401,7 +404,8 @@ class TqSim(object):
                 self._del_order(order, "下单失败, 不在可交易时间段内")
                 return
             if cancel_order_flag:
-                self._api.cancel_order(order["order_id"])
+                self._del_order(order, "已撤单")
+                return
 
         ask_price = quote["ask_price1"]
         bid_price = quote["bid_price1"]
@@ -469,7 +473,10 @@ class TqSim(object):
         trade_log = self._ensure_trade_log()
         # 撤销所有委托单
         for order in list(self._orders.values()):
-            self._del_order(order, "交易日结束，自动撤销当日有效的委托单（GFD）")
+            # 在结算时只删除已有行情的order(它们已下单成功);
+            # 因为调用settle()一定是某合约的行情已经到了第二个交易日; 在settle()后才收到第一笔行情的 order 再判断是否在可交易时间段或成交/撤单
+            if order["insert_date_time"] > 0:
+                self._del_order(order, "交易日结束，自动撤销当日有效的委托单（GFD）")
         # 记录账户截面
         trade_log["account"] = self._account.copy()
         trade_log["positions"] = {k: v.copy() for k, v in self._positions.items()}
@@ -493,10 +500,8 @@ class TqSim(object):
             position["volume_short_his"] = position["volume_short"]
             position["position_price_long"] = position["last_price"]
             position["position_price_short"] = position["last_price"]
-            quote = self._quotes[position["exchange_id"] + "." + position["instrument_id"]]
             position["position_cost_long"] = position["open_cost_long"] + position["float_profit_long"]
-            position["position_cost_short"] = position["open_cost_short"] + position["float_profit_short"] * (
-                -1 if quote["ins_class"] in ["OPTION", "FUTURE_OPTION"] else 1)
+            position["position_cost_short"] = position["open_cost_short"] + position["float_profit_short"]
             position["position_profit_long"] = 0
             position["position_profit_short"] = 0
             position["position_profit"] = 0
@@ -747,7 +752,7 @@ class TqSim(object):
                 "last_price"]) * -volume_short * volume_multiple
             float_profit = 0 if volume_short > 0 else position["float_profit_short"] / position[
                 "volume_short"] * volume_short
-            # 期权: open_cost_short < 0, open_cost_long > 0
+            # 期权: open_cost_short > 0, open_cost_long > 0
             position["open_cost_short"] += volume_short * position[
                 "last_price"] * volume_multiple if volume_short > 0 else position["open_cost_short"] / position[
                 "volume_short"] * volume_short
