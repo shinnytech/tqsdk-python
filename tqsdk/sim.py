@@ -200,6 +200,14 @@ class TqSim(object):
                 if quote_diff is None:
                     continue
                 quote = self._ensure_quote(symbol)
+
+                # 在第一次接收到期权的标的行情后，对此期权合约match_orders()，避免因下一笔行情一直未收到而无法处理其order信息
+                quote_list = []  # 记录以本quote为标的的期权合约
+                if not quote["datetime"] and quote_diff.get("datetime"):  # 第一次收到行情
+                    for q in self._quotes.values():
+                        if q["datetime"] != "" and q["underlying_symbol"] == symbol and q["ins_class"] in ["OPTION",
+                                                                                                           "FUTURE_OPTION"]:
+                            quote_list.append(q)
                 quote["datetime"] = quote_diff.get("datetime", quote["datetime"])
                 # 若直接使用本地时间来判断下单时间是否在可交易时间段内 可能有较大误差,因此判断的方案为:(在接收到下单指令时判断 估计的交易所时间 是否在交易时间段内)
                 # 在更新最新行情时间(即self._current_datetime)时，记录当前本地时间(self._local_time_record)，
@@ -236,6 +244,8 @@ class TqSim(object):
                 quote["underlying_symbol"] = quote_diff.get("underlying_symbol", quote["underlying_symbol"])
                 quote["strike_price"] = quote_diff.get("strike_price", quote["strike_price"])
                 self._match_orders(quote)
+                for q in quote_list:
+                    self._match_orders(q)
                 if symbol in self._positions:
                     self._adjust_position(symbol, price=quote["last_price"])
 
