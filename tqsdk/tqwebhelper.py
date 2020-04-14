@@ -33,7 +33,7 @@ class TqWebHelper(object):
             # 运行模式下，账户参数冲突需要抛错，提示用户
             if isinstance(self._api._account, tqsdk.api.TqAccount) and \
                     (self._api._account._account_id != args["_account_id"] or self._api._account._broker_id != args["_broker_id"]):
-                raise Exception("策略代码与插件设置中的账户参数冲突。可尝试删去代码中的账户参数 TqAccount，以终端或者插件设置的账户参数运行。")
+                raise Exception("策略代码与插件设置中的账户参数冲突。可尝试删去代码中的账户参数 TqAccount，以插件设置的账户参数运行。")
             self._api._account = tqsdk.api.TqAccount(args["_broker_id"], args["_account_id"], args["_password"])
             self._api._backtest = None
             self._logger.info("正在使用账户 {bid}, {aid} 运行策略。".format(bid=args["_broker_id"], aid=args["_account_id"]))

@@ -29,6 +29,13 @@ class TqSim(object):
             init_balance (float): [可选]初始资金, 默认为一千万
 
             account_id (str): [可选]帐号, 默认为 "TQSIM"
+
+        Example::
+
+            # 修改TqSim模拟帐号的初始资金为100000
+            from tqsdk import TqApi, TqSim
+            api = TqApi(TqSim(init_balance=100000))
+
         """
         self.trade_log = {}  # 日期->交易记录及收盘时的权益及持仓
         self._account_id = account_id

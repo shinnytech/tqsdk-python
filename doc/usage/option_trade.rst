@@ -16,7 +16,7 @@ TqSdk 支持期权的模拟、实盘和回测功能，其中期权合约代码�
     from tqsdk import TqApi, TqAccount
     
     api = TqApi(TqAccount("快期模拟", "论坛邮箱账户", "论坛密码"), auth="论坛邮箱账户,论坛密码")
-    order = api.insert_order("DCE.i2005-C-720", "BUY", "OPEN", 1)
+    order = api.insert_order("DCE.i2009-C-590", "BUY", "OPEN", 1, limit_price=70)  # 期权交易只支持限价单
     while True:
         api.wait_update()
         if order.status == "FINISHED" and order.volume_left == 0:
@@ -25,7 +25,7 @@ TqSdk 支持期权的模拟、实盘和回测功能，其中期权合约代码�
 
     api.close()
 
-对于未使用 TqAccount 的策略程序，不需授权即可回测或模拟交易期权
+对于未使用 TqAccount 的策略程序，无需授权即可使用TqSim模拟交易期权或进行回测
 
 需要注意由于期权指标有使用 :py:meth:`~tqsdk.api.TqApi.get_kline_serial` 获取多合约k线，而回测暂不支持获取多合约k线，所以目前回测时如果要获取期权计算指标则会报错
 
