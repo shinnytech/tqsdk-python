@@ -11,7 +11,7 @@ TqSdk 要求在创建 TqApi 时指定交易账户。一旦TqApi创建成功，�
 
     api = TqApi(TqAccount("H海通期货", "320102", "123456"))
 
-:py:class:`~tqsdk.api.TqAccount` 的三个参数分别为 期货公司名, 用户名和密码. 目前TqSdk支持的期货公司列表请参见 :ref:`broker_list`
+:py:class:`~tqsdk.api.TqAccount` 的三个参数分别为 "期货公司名", "用户名" 和 "密码" (期货公司名前需加大写首字母). 目前TqSdk支持的期货公司列表请参见 :ref:`broker_list`
 
 如果您在期货公司的账户位于期货公司的其它席位上(非主席), 您可以在创建 TqAccount 时用 front_broker 和 front_url 参数指定次席服务器::
 

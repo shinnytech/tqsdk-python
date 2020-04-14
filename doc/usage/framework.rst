@@ -11,7 +11,7 @@ TqApi
 
 TqApi 实例负责:
 
-* 建立websocket连接到服务器(或天勤终端).
+* 建立websocket连接到服务器.
 * 在内存中建立数据存储区, 接收行情和交易业务数据包, 并自动维护数据更新.
 * 发出交易指令.
 * 管理协程任务.
@@ -19,7 +19,7 @@ TqApi 实例负责:
 
 TqApi 创建时, 需要提供一个account参数. 它可以是:
 
-* 一个 :py:class:`tqsdk.api.TqAccount` 实例: 使用实盘帐号, 直连行情和交易服务器(不通过天勤终端), 需提供期货公司/帐号/密码
+* 一个 :py:class:`tqsdk.api.TqAccount` 实例: 使用实盘帐号, 直连行情和交易服务器, 需提供期货公司/帐号/密码
 * 一个 :py:class:`tqsdk.sim.TqSim` 实例: 使用 Api 自带的模拟功能, 直连行情服务器接收行情数据
 * 如果未提供 account 参数, 或者 account == None, 则会自动创建并使用一个 :py:class:`tqsdk.sim.TqSim` 实例
 
