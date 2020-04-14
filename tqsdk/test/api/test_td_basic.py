@@ -328,9 +328,9 @@ class TestTdBasic(unittest.TestCase):
         TqApi.RD = random.Random(2)
         api = TqApi(_ins_url=self.ins_url_2020_04_02, _td_url=self.td_url, _md_url=self.md_url)
 
-        order1 = api.insert_order("SHFE.cu2006C47000", "BUY", "OPEN", 1, limit_price=160)
-        order2 = api.insert_order("CZCE.SR007C5600", "SELL", "OPEN", 2, limit_price=50)
-        order3 = api.insert_order("DCE.m2007-P-2900", "BUY", "OPEN", 3, limit_price=180)
+        order1 = api.insert_order("SHFE.cu2006C47000", "BUY", "OPEN", 1, limit_price=135)
+        order2 = api.insert_order("CZCE.SR007C5600", "SELL", "OPEN", 2, limit_price=30)
+        order3 = api.insert_order("DCE.m2007-P-2900", "BUY", "OPEN", 3, limit_price=192)
 
         while order1.status == "ALIVE" or order2.status == "ALIVE" or order3.status == "ALIVE":
             api.wait_update()
@@ -340,51 +340,51 @@ class TestTdBasic(unittest.TestCase):
         self.assertEqual(order1.offset, "OPEN")
         self.assertEqual(order1.volume_orign, 1)
         self.assertEqual(order1.volume_left, 0)
-        self.assertEqual(order1.limit_price, 160.0)
+        self.assertEqual(order1.limit_price, 135.0)
         self.assertEqual(order1.price_type, "LIMIT")
         self.assertEqual(order1.volume_condition, "ANY")
         self.assertEqual(order1.time_condition, "GFD")
-        self.assertAlmostEqual(1586498442550557000 / 1e9, order1.insert_date_time / 1e9, places=1)
+        self.assertAlmostEqual(1586829882005334000 / 1e9, order1.insert_date_time / 1e9, places=1)
         self.assertEqual(order1.status, "FINISHED")
         for k, v in order1.trade_records.items():  # 模拟交易为一次性全部成交，因此只有一条成交记录
-            self.assertAlmostEqual(1586498442550782000 / 1e9, v.trade_date_time / 1e9, places=1)
+            self.assertAlmostEqual(1586829882005979000 / 1e9, v.trade_date_time / 1e9, places=1)
             del v.trade_date_time
             self.assertEqual(str(v),
-                             "{'order_id': '5c6e433715ba2bdd177219d30e7a269f', 'trade_id': '5c6e433715ba2bdd177219d30e7a269f|1', 'exchange_trade_id': '5c6e433715ba2bdd177219d30e7a269f|1', 'exchange_id': 'SHFE', 'instrument_id': 'cu2006C47000', 'direction': 'BUY', 'offset': 'OPEN', 'price': 160.0, 'volume': 1, 'user_id': 'TQSIM', 'commission': 10}")
+                             "{'order_id': '5c6e433715ba2bdd177219d30e7a269f', 'trade_id': '5c6e433715ba2bdd177219d30e7a269f|1', 'exchange_trade_id': '5c6e433715ba2bdd177219d30e7a269f|1', 'exchange_id': 'SHFE', 'instrument_id': 'cu2006C47000', 'direction': 'BUY', 'offset': 'OPEN', 'price': 135.0, 'volume': 1, 'user_id': 'TQSIM', 'commission': 10}")
 
         self.assertEqual(order2.order_id, "cf1822ffbc6887782b491044d5e34124")
         self.assertEqual(order2.direction, "SELL")
         self.assertEqual(order2.offset, "OPEN")
         self.assertEqual(order2.volume_orign, 2)
         self.assertEqual(order2.volume_left, 0)
-        self.assertEqual(order2.limit_price, 50.0)
+        self.assertEqual(order2.limit_price, 30.0)
         self.assertEqual(order2.price_type, "LIMIT")
         self.assertEqual(order2.volume_condition, "ANY")
         self.assertEqual(order2.time_condition, "GFD")
-        self.assertAlmostEqual(1586498442279545000 / 1e9, order2.insert_date_time / 1e9, places=1)
+        self.assertAlmostEqual(1586829882236154000 / 1e9, order2.insert_date_time / 1e9, places=1)
         self.assertEqual(order2.status, "FINISHED")
         for k, v in order2.trade_records.items():  # 模拟交易为一次性全部成交，因此只有一条成交记录
-            self.assertAlmostEqual(1586498442279717000 / 1e9, v.trade_date_time / 1e9, places=1)
+            self.assertAlmostEqual(1586829882236518000 / 1e9, v.trade_date_time / 1e9, places=1)
             del v.trade_date_time
             self.assertEqual(str(v),
-                             "{'order_id': 'cf1822ffbc6887782b491044d5e34124', 'trade_id': 'cf1822ffbc6887782b491044d5e34124|2', 'exchange_trade_id': 'cf1822ffbc6887782b491044d5e34124|2', 'exchange_id': 'CZCE', 'instrument_id': 'SR007C5600', 'direction': 'SELL', 'offset': 'OPEN', 'price': 50.0, 'volume': 2, 'user_id': 'TQSIM', 'commission': 20}")
+                             "{'order_id': 'cf1822ffbc6887782b491044d5e34124', 'trade_id': 'cf1822ffbc6887782b491044d5e34124|2', 'exchange_trade_id': 'cf1822ffbc6887782b491044d5e34124|2', 'exchange_id': 'CZCE', 'instrument_id': 'SR007C5600', 'direction': 'SELL', 'offset': 'OPEN', 'price': 30.0, 'volume': 2, 'user_id': 'TQSIM', 'commission': 20}")
 
         self.assertEqual(order3.order_id, "4067c3584ee207f8da94e3e8ab73738f")
         self.assertEqual(order3.direction, "BUY")
         self.assertEqual(order3.offset, "OPEN")
         self.assertEqual(order3.volume_orign, 3)
         self.assertEqual(order3.volume_left, 0)
-        self.assertEqual(order3.limit_price, 180.0)
+        self.assertEqual(order3.limit_price, 192.0)
         self.assertEqual(order3.price_type, "LIMIT")
         self.assertEqual(order3.volume_condition, "ANY")
         self.assertEqual(order3.time_condition, "GFD")
-        self.assertAlmostEqual(1586498442279062000 / 1e9, order3.insert_date_time / 1e9, places=1)
+        self.assertAlmostEqual(1586829882228039000 / 1e9, order3.insert_date_time / 1e9, places=1)
         self.assertEqual(order3.status, "FINISHED")
         for k, v in order3.trade_records.items():  # 模拟交易为一次性全部成交，因此只有一条成交记录
-            self.assertAlmostEqual(1586498442279245000 / 1e9, v.trade_date_time / 1e9, places=1)
+            self.assertAlmostEqual(1586829882228603000 / 1e9, v.trade_date_time / 1e9, places=1)
             del v.trade_date_time
             self.assertEqual(str(v),
-                             "{'order_id': '4067c3584ee207f8da94e3e8ab73738f', 'trade_id': '4067c3584ee207f8da94e3e8ab73738f|3', 'exchange_trade_id': '4067c3584ee207f8da94e3e8ab73738f|3', 'exchange_id': 'DCE', 'instrument_id': 'm2007-P-2900', 'direction': 'BUY', 'offset': 'OPEN', 'price': 180.0, 'volume': 3, 'user_id': 'TQSIM', 'commission': 30}")
+                             "{'order_id': '4067c3584ee207f8da94e3e8ab73738f', 'trade_id': '4067c3584ee207f8da94e3e8ab73738f|3', 'exchange_trade_id': '4067c3584ee207f8da94e3e8ab73738f|3', 'exchange_id': 'DCE', 'instrument_id': 'm2007-P-2900', 'direction': 'BUY', 'offset': 'OPEN', 'price': 192.0, 'volume': 3, 'user_id': 'TQSIM', 'commission': 30}")
 
         api.close()
 
