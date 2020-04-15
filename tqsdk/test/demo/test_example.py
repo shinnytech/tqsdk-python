@@ -1,6 +1,7 @@
 import random
 import unittest
 from tqsdk import TqApi, TqSim, TargetPosTask, TqBacktest, BacktestFinished
+from tqsdk.test.api.helper import MockServer
 from tqsdk.tafunc import ma
 from contextlib import closing
 from datetime import date, datetime
@@ -21,6 +22,20 @@ class Unit_test(unittest.TestCase):
         回测时：self.assertEqual(1575291600000000000, order1.insert_date_time)
     '''
 
+    def setUp(self):
+        # self.ins = MockInsServer(5000)
+        self.mock = MockServer()
+        # self.tq = WebsocketServer(5300)
+        self.ins_url = "https://openmd.shinnytech.com/t/md/symbols/2019-07-03.json"
+        self.ins_url_2019_06_05 = "https://openmd.shinnytech.com/t/md/symbols/2019-06-05.json"
+        self.ins_url_2020_06_10 = "https://openmd.shinnytech.com/t/md/symbols/2019-06-10.json"
+        self.md_url = "ws://127.0.0.1:5100/"
+        self.td_url = "ws://127.0.0.1:5200/"
+
+    def tearDown(self):
+        # self.ins.close()
+        self.mock.close()
+
     # @unittest.skip("无条件跳过: test_doublema")
     def test_doublema(self):
         '''
@@ -29,15 +44,18 @@ class Unit_test(unittest.TestCase):
             合约代码: SHFE.bu1912
             合约文件: "https://openmd.shinnytech.com/t/md/symbols/2019-07-03.json"
         '''
+        # 预设服务器端响应
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        self.mock.run(os.path.join(dir_path, "examples_log_file", "test_example_doublema.script.lzma"))
+        # 测试
         SHORT = 30  # 短周期
         LONG = 60  # 长周期
         SYMBOL = "SHFE.bu1912"  # 合约代码
 
         TqApi.RD = random.Random(4)
         sim = TqSim()
-        os.environ["TQ_INS_URL"] = "https://openmd.shinnytech.com/t/md/symbols/2019-07-03.json"
-        api = TqApi(sim, backtest=TqBacktest(start_dt=datetime(2019, 6, 10), end_dt=datetime(2019, 6, 15)))
-
+        api = TqApi(sim, backtest=TqBacktest(start_dt=datetime(2019, 6, 10), end_dt=datetime(2019, 6, 15)),
+                    _ins_url=self.ins_url, _td_url=self.td_url, _md_url=self.md_url)
         data_length = LONG + 2  # k线数据长度
         klines = api.get_kline_serial(SYMBOL, duration_seconds=240, data_length=data_length)
         target_pos = TargetPosTask(api, SYMBOL)
@@ -73,14 +91,18 @@ class Unit_test(unittest.TestCase):
             合约代码: DCE.jd1909
             合约文件: "https://openmd.shinnytech.com/t/md/symbols/2019-07-03.json"
         '''
+        # 预设服务器端响应
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        self.mock.run(os.path.join(dir_path, "examples_log_file", "test_example_dualthrust.script.lzma"))
+        # 测试
         SYMBOL = "DCE.jd1909"  # 合约代码
         NDAY = 5  # 天数
         K1 = 0.2  # 上轨K值
         K2 = 0.2  # 下轨K值
         TqApi.RD = random.Random(4)
         sim = TqSim()
-        os.environ["TQ_INS_URL"] = "https://openmd.shinnytech.com/t/md/symbols/2019-07-03.json"
-        api = TqApi(sim, backtest=TqBacktest(start_dt=date(2019, 5, 1), end_dt=date(2019, 6, 10)))
+        api = TqApi(sim, backtest=TqBacktest(start_dt=date(2019, 5, 1), end_dt=date(2019, 6, 10)),
+                    _ins_url=self.ins_url, _td_url=self.td_url, _md_url=self.md_url)
 
         quote = api.get_quote(SYMBOL)
         klines = api.get_kline_serial(SYMBOL, 24 * 60 * 60)  # 86400使用日线
@@ -130,7 +152,10 @@ class Unit_test(unittest.TestCase):
             合约代码: SHFE.au1912
             合约文件: "https://openmd.shinnytech.com/t/md/symbols/2019-06-05.json"
         '''
-
+        # 预设服务器端响应
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        self.mock.run(os.path.join(dir_path, "examples_log_file", "test_example_rbreaker.script.lzma"))
+        # 测试
         SYMBOL = "SHFE.au1912"  # 合约代码
         STOP_LOSS_PRICE = 10  # 止损点(价格)
 
@@ -151,9 +176,9 @@ class Unit_test(unittest.TestCase):
             return pivot, b_break, s_setup, s_enter, b_enter, b_setup, s_break
 
         TqApi.RD = random.Random(4)
-        os.environ["TQ_INS_URL"] = "https://openmd.shinnytech.com/t/md/symbols/2019-06-05.json"
         sim = TqSim()
-        api = TqApi(sim, backtest=TqBacktest(start_dt=date(2019, 5, 1), end_dt=date(2019, 6, 20)))
+        api = TqApi(sim, backtest=TqBacktest(start_dt=date(2019, 5, 1), end_dt=date(2019, 6, 20)),
+                    _ins_url=self.ins_url_2019_06_05, _td_url=self.td_url, _md_url=self.md_url)
         quote = api.get_quote(SYMBOL)
         klines = api.get_kline_serial(SYMBOL, 24 * 60 * 60)  # 86400: 使用日线
         position = api.get_position(SYMBOL)
@@ -208,12 +233,16 @@ class Unit_test(unittest.TestCase):
             合约代码: SHFE.cu1905
             合约文件: "https://openmd.shinnytech.com/t/md/symbols/2019-06-10.json"
         '''
+        # 预设服务器端响应
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        self.mock.run(os.path.join(dir_path, "examples_log_file", "test_example_fairy_four_price.script.lzma"))
+        # # 测试
         symbol = "SHFE.cu1905"  # 合约代码
         close_hour, close_minute = 14, 50  # 平仓时间
-        os.environ["TQ_INS_URL"] = "https://openmd.shinnytech.com/t/md/symbols/2019-06-10.json"  # 合约文件
         TqApi.RD = random.Random(4)
         sim = TqSim()
-        api = TqApi(sim, backtest=TqBacktest(start_dt=datetime(2019, 4, 1), end_dt=datetime(2019, 4, 20)))
+        api = TqApi(sim, backtest=TqBacktest(start_dt=datetime(2019, 4, 1), end_dt=datetime(2019, 4, 20)),
+                    _ins_url=self.ins_url_2020_06_10, _td_url=self.td_url, _md_url=self.md_url)
         quote = api.get_quote(symbol)  # 获取指定合约的盘口行情
         klines = api.get_kline_serial(symbol, 24 * 60 * 60)  # 获取日线
         position = api.get_position(symbol)  # 持仓信息
