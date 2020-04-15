@@ -378,8 +378,8 @@ class TqSim(object):
                     self._del_order(order, "合约不存在")  # 除了期权外，主连、指数和组合没有这两个字段
                     return
                 if quote["ins_class"] in ["OPTION", "FUTURE_OPTION"]:
-                    if order["price_type"] == "ANY":
-                        self._del_order(order, "期权不支持市价单")
+                    if order["price_type"] == "ANY" and order["exchange_id"] != "CZCE":
+                        self._del_order(order, "此交易所（"+order["exchange_id"]+"不支持期权市价单")
                         return
                     elif order["direction"] == "SELL":  # 期权的SELL义务仓
                         if quote["option_class"] == "CALL":
