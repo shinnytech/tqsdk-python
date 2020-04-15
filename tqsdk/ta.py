@@ -8,8 +8,10 @@ tqsdk.ta 模块包含了一批常用的技术指标计算函数
 """
 
 import math
+
 import numpy as np
 import pandas as pd
+
 import tqsdk.tafunc
 
 
