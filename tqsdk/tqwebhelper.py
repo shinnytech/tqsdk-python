@@ -15,6 +15,7 @@ from aiohttp import web
 import tqsdk.api
 import tqsdk.sim
 import tqsdk.backtest
+from tqsdk.channel import TqChan
 from tqsdk.datetime import _get_trading_day_start_time
 
 
@@ -284,7 +285,7 @@ class TqWebHelper(object):
         await ws.prepare(request)
         send_msg = self.get_send_msg(self._data)
         await ws.send_str(send_msg)
-        conn_chan = tqsdk.api.TqChan(self._api, last_only=True)
+        conn_chan = TqChan(self._api, last_only=True)
         self._conn_diff_chans.add(conn_chan)
         try:
             async for msg in ws:

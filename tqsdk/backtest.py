@@ -11,6 +11,7 @@ from typing import Union
 import requests
 
 import tqsdk.api
+from tqsdk.channel import TqChan
 from tqsdk.datetime import _get_trading_day_start_time, _get_trading_day_end_time
 from tqsdk.exceptions import BacktestFinished
 from tqsdk.objs import Entity
@@ -138,7 +139,7 @@ class TqBacktest(object):
 
     async def _send_snapshot(self):
         """发送初始合约信息"""
-        async with tqsdk.api.TqChan(self._api, last_only=True) as update_chan:  # 等待与行情服务器连接成功
+        async with TqChan(self._api, last_only=True) as update_chan:  # 等待与行情服务器连接成功
             self._data["_listener"].add(update_chan)
             while self._data.get("mdhis_more_data", True):
                 await update_chan.recv()
@@ -289,7 +290,7 @@ class TqBacktest(object):
         chart = tqsdk.api.TqApi._get_obj(self._data, ["charts", chart_info["chart_id"]])
         current_id = None  # 当前数据指针
         serial = tqsdk.api.TqApi._get_obj(self._data, ["klines", ins, str(dur)] if dur != 0 else ["ticks", ins])
-        async with tqsdk.api.TqChan(self._api, last_only=True) as update_chan:
+        async with TqChan(self._api, last_only=True) as update_chan:
             serial["_listener"].add(update_chan)
             chart["_listener"].add(update_chan)
             await self._md_send_chan.send(chart_info.copy())

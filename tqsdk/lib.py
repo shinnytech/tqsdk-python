@@ -4,10 +4,13 @@ __author__ = 'chengzhi'
 
 import time
 from asyncio import gather
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
-from tqsdk.api import TqChan, TqApi
+from tqsdk.channel import TqChan
 from tqsdk.sim import TqSim
+
+if TYPE_CHECKING:
+    from tqsdk.api import TqApi
 
 
 class TargetPosTaskSingleton(type):
@@ -32,7 +35,7 @@ class TargetPosTaskSingleton(type):
 class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
     """目标持仓 task, 该 task 可以将指定合约调整到目标头寸"""
 
-    def __init__(self, api: TqApi, symbol: str, price: str = "ACTIVE", offset_priority: str = "今昨,开",
+    def __init__(self, api: 'TqApi', symbol: str, price: str = "ACTIVE", offset_priority: str = "今昨,开",
                  trade_chan: Optional[TqChan] = None) -> None:
         """
         创建目标持仓task实例，负责调整归属于该task的持仓 **(默认为整个账户的该合约净持仓)**.
