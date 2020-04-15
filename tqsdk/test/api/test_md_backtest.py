@@ -3,23 +3,44 @@
 __author__ = 'limin'
 
 import json
+import os
 import unittest
+import random
 from contextlib import closing
 from datetime import datetime
 from tqsdk import TqApi, TqBacktest, BacktestFinished
+from tqsdk.test.api.helper import MockServer
 
 
 class TestMdBacktest(unittest.TestCase):
     '''
      行情回测测试
     '''
-    def test_get_quote_normal_backtest(self):
+
+    def setUp(self):
+        # self.ins = MockInsServer(5000)
+        self.mock = MockServer()
+        # self.tq = WebsocketServer(5300)
+        self.ins_url = "https://openmd.shinnytech.com/t/md/symbols/2019-07-03.json"
+        self.md_url = "ws://127.0.0.1:5100/"
+        self.td_url = "ws://127.0.0.1:5200/"
+
+    def tearDown(self):
+        # self.ins.close()
+        self.mock.close()
+
+    def test_get_quote_backtest(self):
         """
         回测获取行情报价
         """
+        # 预设服务器端响应
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        self.mock.run(os.path.join(dir_path, "log_file", "test_md_backtest_get_quote.script.lzma"))
+        # 测试
         try:
-            api = TqApi(backtest=TqBacktest(datetime(2019, 10, 15), datetime(2019, 10, 16)),
-                        _ins_url="https://openmd.shinnytech.com/t/md/symbols/2019-07-03.json")
+            TqApi.RD = random.Random(1)
+            api = TqApi(backtest=TqBacktest(datetime(2019, 10, 15), datetime(2019, 10, 16)), _ins_url=self.ins_url,
+                        _td_url=self.td_url, _md_url=self.md_url)
             with closing(api):
                 quote = api.get_quote("SHFE.cu2001")
                 quote_data = {k: v for k, v in quote.items()}
