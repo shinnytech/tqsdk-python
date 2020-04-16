@@ -10,12 +10,12 @@ from typing import Union
 
 import requests
 
-import tqsdk.api
 from tqsdk.channel import TqChan
 from tqsdk.datetime import TqDatetime
 from tqsdk.exceptions import BacktestFinished
 from tqsdk.entity import Entity
 from tqsdk.diff import TqDiff
+from tqsdk.utils import _generate_uuid
 
 
 class TqBacktest(object):
@@ -281,7 +281,7 @@ class TqBacktest(object):
         # 因此将 view_width 和 focus_position 设置成一样，这样 focus_datetime 所对应的 k线刚好位于屏幕外
         chart_info = {
             "aid": "set_chart",
-            "chart_id": tqsdk.api.TqApi._generate_chart_id("backtest"),
+            "chart_id": _generate_uuid("PYSDK_backtest"),
             "ins_list": ins,
             "duration": dur,
             "view_width": 8964,  # 设为8964原因：可满足用户所有的订阅长度，并在backtest中将所有的 相同合约及周期 的K线用同一个serial存储
