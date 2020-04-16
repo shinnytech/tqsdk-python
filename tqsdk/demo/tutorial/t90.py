@@ -13,12 +13,10 @@ from tqsdk.ta import MA
 api = TqApi(web_gui=True)  # web_gui=True, 开启使用 web 界面查看绘图结果的功能
 klines = api.get_kline_serial("SHFE.au2006", 5)
 
+# 画一次指标线
 ma = MA(klines, 30)  # 使用 tqsdk 自带指标函数计算均线
 klines["ma_MAIN"] = ma.ma  # 在主图中画一根默认颜色（红色）的 ma 指标线
 
 # 由于需要在浏览器中查看绘图结果，因此程序不能退出
 while True:
     api.wait_update()
-    # 可以将指标计算函数及画图代码放在循环中，使指标线图像随着行情变化而更新
-    ma = MA(klines, 30)
-    klines["ma_MAIN"] = ma.ma
