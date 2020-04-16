@@ -27,7 +27,7 @@ class TestTdBacktest(unittest.TestCase):
         # self.ins = MockInsServer(5000)
         self.mock = MockServer()
         # self.tq = WebsocketServer(5300)
-        self.ins_url = "https://openmd.shinnytech.com/t/md/symbols/2019-07-03.json"
+        self.ins_url_2019_07_03 = "https://openmd.shinnytech.com/t/md/symbols/2019-07-03.json"
         self.ins_url_2019_12_04 = "https://openmd.shinnytech.com/t/md/symbols/2019-12-04.json"
         self.ins_url_2020_02_18 = "https://openmd.shinnytech.com/t/md/symbols/2020-02-18.json"
         self.md_url = "ws://127.0.0.1:5100/"
@@ -54,7 +54,7 @@ class TestTdBacktest(unittest.TestCase):
         TqApi.RD = random.Random(4)
         api = TqApi(
             backtest=TqBacktest(start_dt=datetime.datetime(2019, 12, 10, 9), end_dt=datetime.datetime(2019, 12, 11)),
-            _ins_url=self.ins_url, _td_url=self.td_url, _md_url=self.md_url)
+            _ins_url=self.ins_url_2019_07_03, _td_url=self.td_url, _md_url=self.md_url)
         symbol = "DCE.m2005"
         position = api.get_position(symbol)
 
@@ -87,7 +87,7 @@ class TestTdBacktest(unittest.TestCase):
         TqApi.RD = random.Random(4)
         api = TqApi(
             backtest=TqBacktest(start_dt=datetime.datetime(2019, 12, 10, 9), end_dt=datetime.datetime(2019, 12, 11)),
-            _ins_url=self.ins_url, _td_url=self.td_url, _md_url=self.md_url)
+            _ins_url=self.ins_url_2019_07_03, _td_url=self.td_url, _md_url=self.md_url)
         symbol = "DCE.m2005"
         position = api.get_position(symbol)
 
@@ -122,7 +122,7 @@ class TestTdBacktest(unittest.TestCase):
         TqApi.RD = random.Random(4)
         api = TqApi(
             backtest=TqBacktest(start_dt=datetime.datetime(2019, 12, 10, 9), end_dt=datetime.datetime(2019, 12, 11)),
-            _ins_url=self.ins_url, _td_url=self.td_url, _md_url=self.md_url)
+            _ins_url=self.ins_url_2019_07_03, _td_url=self.td_url, _md_url=self.md_url)
         symbol = "DCE.m2005"
         position = api.get_position(symbol)
 
@@ -158,7 +158,7 @@ class TestTdBacktest(unittest.TestCase):
         TqApi.RD = random.Random(4)
         api = TqApi(
             backtest=TqBacktest(start_dt=datetime.datetime(2019, 12, 10, 9), end_dt=datetime.datetime(2019, 12, 11)),
-            _ins_url=self.ins_url, _td_url=self.td_url, _md_url=self.md_url)
+            _ins_url=self.ins_url_2019_07_03, _td_url=self.td_url, _md_url=self.md_url)
         symbol = "DCE.m2005"
         position = api.get_position(symbol)
         trades = api.get_trade()

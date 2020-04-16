@@ -26,7 +26,7 @@ class TestMdBasic(unittest.TestCase):
         # self.ins = MockInsServer(5000)
         self.mock = MockServer()
         # self.tq = WebsocketServer(5300)
-        self.ins_url = "https://openmd.shinnytech.com/t/md/symbols/2019-07-03.json"
+        self.ins_url_2019_07_03 = "https://openmd.shinnytech.com/t/md/symbols/2019-07-03.json"
         self.md_url = "ws://127.0.0.1:5100/"
         self.td_url = "ws://127.0.0.1:5200/"
 
@@ -46,7 +46,7 @@ class TestMdBasic(unittest.TestCase):
         dir_path = os.path.dirname(os.path.realpath(__file__))
         self.mock.run(os.path.join(dir_path, "log_file", "test_md_basic_get_quote_normal.script.lzma"))
         # 获取行情
-        api = TqApi(_ins_url=self.ins_url, _td_url=self.td_url, _md_url=self.md_url)
+        api = TqApi(_ins_url=self.ins_url_2019_07_03, _td_url=self.td_url, _md_url=self.md_url)
         q = api.get_quote("SHFE.cu1909")
         self.assertEqual(q.datetime, "2019-09-16 14:59:59.999500")
         self.assertEqual(q.ask_price1, 47650.0)
@@ -129,7 +129,7 @@ class TestMdBasic(unittest.TestCase):
 
         # 测试: 获取K线数据
         TqApi.RD = random.Random(1)
-        api = TqApi(_ins_url=self.ins_url, _td_url=self.td_url, _md_url=self.md_url)
+        api = TqApi(_ins_url=self.ins_url_2019_07_03, _td_url=self.td_url, _md_url=self.md_url)
         klines = api.get_kline_serial("SHFE.cu1909", 10)
         self.assertEqual(klines.iloc[-1].close, 47580.0)
         self.assertEqual(klines.iloc[-1].id, 660788)
@@ -159,7 +159,7 @@ class TestMdBasic(unittest.TestCase):
 
         # 测试: 获取tick数据
         TqApi.RD = random.Random(2)
-        api = TqApi(_ins_url=self.ins_url, _td_url=self.td_url, _md_url=self.md_url)
+        api = TqApi(_ins_url=self.ins_url_2019_07_03, _td_url=self.td_url, _md_url=self.md_url)
         ticks = api.get_tick_serial("SHFE.cu1909")
         self.assertEqual(ticks.iloc[-1].id, 2822951.0)
         self.assertEqual(ticks.iloc[-1].datetime, 1.5686171999995e+18)

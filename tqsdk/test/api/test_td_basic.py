@@ -24,7 +24,7 @@ class TestTdBasic(unittest.TestCase):
         # self.ins = MockInsServer(5000)
         self.mock = MockServer()
         # self.tq = WebsocketServer(5300)
-        self.ins_url = "https://openmd.shinnytech.com/t/md/symbols/2019-07-03.json"
+        self.ins_url_2019_07_03 = "https://openmd.shinnytech.com/t/md/symbols/2019-07-03.json"
         self.ins_url_2020_04_02 = "https://openmd.shinnytech.com/t/md/symbols/2020-04-02.json"
         self.md_url = "ws://127.0.0.1:5100/"
         self.td_url = "ws://127.0.0.1:5200/"
@@ -46,7 +46,7 @@ class TestTdBasic(unittest.TestCase):
         # 测试: 模拟账户下单
         # 非回测, 则需在盘中生成测试脚本: 测试脚本重新生成后，数据根据实际情况有变化,因此需要修改assert语句的内容
         TqApi.RD = random.Random(2)
-        api = TqApi(_ins_url=self.ins_url, _td_url=self.td_url, _md_url=self.md_url)
+        api = TqApi(_ins_url=self.ins_url_2019_07_03, _td_url=self.td_url, _md_url=self.md_url)
         order1 = api.insert_order("DCE.jd2005", "BUY", "OPEN", 1)
         order2 = api.insert_order("SHFE.cu2004", "BUY", "OPEN", 2, limit_price=49200)
 
@@ -129,7 +129,7 @@ class TestTdBasic(unittest.TestCase):
         dir_path = os.path.dirname(os.path.realpath(__file__))
         self.mock.run(os.path.join(dir_path, "log_file", "test_td_basic_get_account_simulate.script.lzma"))
         # 测试: 获取数据
-        api = TqApi(_ins_url=self.ins_url, _td_url=self.td_url, _md_url=self.md_url)
+        api = TqApi(_ins_url=self.ins_url_2019_07_03, _td_url=self.td_url, _md_url=self.md_url)
         TqApi.RD = random.Random(4)
         order = api.insert_order("DCE.jd2005", "BUY", "OPEN", 1, limit_price=3340)
         while order.status == "ALIVE":
@@ -155,7 +155,7 @@ class TestTdBasic(unittest.TestCase):
         dir_path = os.path.dirname(os.path.realpath(__file__))
         self.mock.run(os.path.join(dir_path, "log_file", "test_td_basic_get_position_simulate.script.lzma"))
         # 测试: 获取数据
-        api = TqApi(_ins_url=self.ins_url, _td_url=self.td_url, _md_url=self.md_url)
+        api = TqApi(_ins_url=self.ins_url_2019_07_03, _td_url=self.td_url, _md_url=self.md_url)
         order1 = api.insert_order("DCE.jd2005", "BUY", "OPEN", 1, limit_price=3345)
         order2 = api.insert_order("DCE.jd2005", "BUY", "OPEN", 3)
         order3 = api.insert_order("DCE.jd2005", "SELL", "OPEN", 3)
@@ -228,7 +228,7 @@ class TestTdBasic(unittest.TestCase):
         self.mock.run(os.path.join(dir_path, "log_file", "test_td_basic_get_trade_simulate.script.lzma"))
         # 测试: 模拟账户
         TqApi.RD = random.Random(4)
-        api = TqApi(_ins_url=self.ins_url, _td_url=self.td_url, _md_url=self.md_url)
+        api = TqApi(_ins_url=self.ins_url_2019_07_03, _td_url=self.td_url, _md_url=self.md_url)
         order1 = api.insert_order("DCE.jd2005", "BUY", "OPEN", 1)
         order2 = api.insert_order("SHFE.cu2005", "BUY", "OPEN", 2, limit_price=40870)
         while order1.status == "ALIVE" or order2.status == "ALIVE":
@@ -266,7 +266,7 @@ class TestTdBasic(unittest.TestCase):
         self.mock.run(os.path.join(dir_path, "log_file", "test_td_basic_get_order_simulate.script.lzma"))
         # 测试: 模拟账户下单
         TqApi.RD = random.Random(4)
-        api = TqApi(_ins_url=self.ins_url, _td_url=self.td_url, _md_url=self.md_url)
+        api = TqApi(_ins_url=self.ins_url_2019_07_03, _td_url=self.td_url, _md_url=self.md_url)
         order1 = api.insert_order("DCE.jd2005", "BUY", "OPEN", 1)
         order2 = api.insert_order("SHFE.cu2005", "SELL", "OPEN", 2, limit_price=40750)
         while order1.status == "ALIVE" or order2.status == "ALIVE":

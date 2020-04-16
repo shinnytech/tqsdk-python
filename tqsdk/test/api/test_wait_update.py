@@ -25,7 +25,7 @@ class TestWaitUpdateFunction(unittest.TestCase):
     def setUp(self):
         # self.ins = MockInsServer(5000)
         self.mock = MockServer()
-        self.ins_url = "https://openmd.shinnytech.com/t/md/symbols/2019-07-03.json"
+        self.ins_url_2019_07_03 = "https://openmd.shinnytech.com/t/md/symbols/2019-07-03.json"
         self.md_url = "ws://127.0.0.1:5100/"
         self.td_url = "ws://127.0.0.1:5200/"
 
@@ -42,7 +42,7 @@ class TestWaitUpdateFunction(unittest.TestCase):
         dir_path = os.path.dirname(os.path.realpath(__file__))
         self.mock.run(os.path.join(dir_path, "log_file", "test_func_wait_update_1.script.lzma"))
         # 测试
-        api = TqApi(_ins_url=self.ins_url, _td_url=self.td_url, _md_url=self.md_url)
+        api = TqApi(_ins_url=self.ins_url_2019_07_03, _td_url=self.td_url, _md_url=self.md_url)
         TqApi.RD = random.Random(4)
         klines = api.get_kline_serial("SHFE.cu1911", 10)
         klines["ma"] = MA(klines, 15)  # 测试语句
