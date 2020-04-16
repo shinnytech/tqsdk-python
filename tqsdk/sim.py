@@ -379,7 +379,7 @@ class TqSim(object):
                     return
                 if quote["ins_class"] in ["OPTION", "FUTURE_OPTION"]:
                     if order["price_type"] == "ANY" and order["exchange_id"] != "CZCE":
-                        self._del_order(order, "此交易所（"+order["exchange_id"]+"不支持期权市价单")
+                        self._del_order(order, "此交易所（"+order["exchange_id"]+")不支持期权市价单")
                         return
                     elif order["direction"] == "SELL":  # 期权的SELL义务仓
                         if quote["option_class"] == "CALL":
