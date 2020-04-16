@@ -379,7 +379,7 @@ class TqSim(object):
                     return
                 if quote["ins_class"] in ["OPTION", "FUTURE_OPTION"]:
                     if order["price_type"] == "ANY" and order["exchange_id"] != "CZCE":
-                        self._del_order(order, "此交易所（"+order["exchange_id"]+")不支持期权市价单")
+                        self._del_order(order, "此交易所（" + order["exchange_id"] + ")不支持期权市价单")
                         return
                     elif order["direction"] == "SELL":  # 期权的SELL义务仓
                         if quote["option_class"] == "CALL":
@@ -396,7 +396,7 @@ class TqSim(object):
                                 0.12 * underlying_quote["last_price"] - max(
                                     underlying_quote["last_price"] - quote["strike_price"], 0),
                                 0.07 * quote["strike_price"]), quote["strike_price"]) * quote["volume_multiple"]
-                    else:  # 期权的BUY权利仓
+                    elif order["price_type"] != "ANY":  # 期权的BUY权利仓（市价单立即成交且没有limit_price字段,frozen_premium默认为0）
                         order["frozen_premium"] = order["volume_orign"] * quote["volume_multiple"] * order[
                             "limit_price"]
                 else:  # 期货
