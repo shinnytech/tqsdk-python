@@ -26,7 +26,7 @@ class Unit_test(unittest.TestCase):
         # self.ins = MockInsServer(5000)
         self.mock = MockServer()
         # self.tq = WebsocketServer(5300)
-        self.ins_url = "https://openmd.shinnytech.com/t/md/symbols/2019-07-03.json"
+        self.ins_url_2019_07_03 = "https://openmd.shinnytech.com/t/md/symbols/2019-07-03.json"
         self.ins_url_2019_06_05 = "https://openmd.shinnytech.com/t/md/symbols/2019-06-05.json"
         self.ins_url_2020_06_10 = "https://openmd.shinnytech.com/t/md/symbols/2019-06-10.json"
         self.md_url = "ws://127.0.0.1:5100/"
@@ -55,7 +55,7 @@ class Unit_test(unittest.TestCase):
         TqApi.RD = random.Random(4)
         sim = TqSim()
         api = TqApi(sim, backtest=TqBacktest(start_dt=datetime(2019, 6, 10), end_dt=datetime(2019, 6, 15)),
-                    _ins_url=self.ins_url, _td_url=self.td_url, _md_url=self.md_url)
+                    _ins_url=self.ins_url_2019_07_03, _td_url=self.td_url, _md_url=self.md_url)
         data_length = LONG + 2  # k线数据长度
         klines = api.get_kline_serial(SYMBOL, duration_seconds=240, data_length=data_length)
         target_pos = TargetPosTask(api, SYMBOL)
@@ -102,7 +102,7 @@ class Unit_test(unittest.TestCase):
         TqApi.RD = random.Random(4)
         sim = TqSim()
         api = TqApi(sim, backtest=TqBacktest(start_dt=date(2019, 5, 1), end_dt=date(2019, 6, 10)),
-                    _ins_url=self.ins_url, _td_url=self.td_url, _md_url=self.md_url)
+                    _ins_url=self.ins_url_2019_07_03, _td_url=self.td_url, _md_url=self.md_url)
 
         quote = api.get_quote(SYMBOL)
         klines = api.get_kline_serial(SYMBOL, 24 * 60 * 60)  # 86400使用日线

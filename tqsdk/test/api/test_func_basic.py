@@ -24,7 +24,7 @@ class TestFuncBasic(unittest.TestCase):
         # self.ins = MockInsServer(5000)
         self.mock = MockServer()
         # self.tq = WebsocketServer(5300)
-        self.ins_url = "https://openmd.shinnytech.com/t/md/symbols/2019-07-03.json"
+        self.ins_url_2019_07_03 = "https://openmd.shinnytech.com/t/md/symbols/2019-07-03.json"
         self.ins_url_2020_04_02 = "https://openmd.shinnytech.com/t/md/symbols/2020-04-02.json"
         self.md_url = "ws://127.0.0.1:5100/"
         self.td_url = "ws://127.0.0.1:5200/"

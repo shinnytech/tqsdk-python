@@ -21,7 +21,7 @@ class TestMdBacktest(unittest.TestCase):
         # self.ins = MockInsServer(5000)
         self.mock = MockServer()
         # self.tq = WebsocketServer(5300)
-        self.ins_url = "https://openmd.shinnytech.com/t/md/symbols/2019-07-03.json"
+        self.ins_url_2019_07_03 = "https://openmd.shinnytech.com/t/md/symbols/2019-07-03.json"
         self.md_url = "ws://127.0.0.1:5100/"
         self.td_url = "ws://127.0.0.1:5200/"
 
@@ -39,7 +39,7 @@ class TestMdBacktest(unittest.TestCase):
         # 测试
         try:
             TqApi.RD = random.Random(1)
-            api = TqApi(backtest=TqBacktest(datetime(2019, 10, 15), datetime(2019, 10, 16)), _ins_url=self.ins_url,
+            api = TqApi(backtest=TqBacktest(datetime(2019, 10, 15), datetime(2019, 10, 16)), _ins_url=self.ins_url_2019_07_03,
                         _td_url=self.td_url, _md_url=self.md_url)
             with closing(api):
                 quote = api.get_quote("SHFE.cu2001")
