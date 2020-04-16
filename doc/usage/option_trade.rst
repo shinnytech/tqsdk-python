@@ -16,7 +16,7 @@ TqSdk 支持期权的模拟、实盘和回测功能，其中期权合约代码�
     from tqsdk import TqApi, TqAccount
     
     api = TqApi(TqAccount("快期模拟", "论坛邮箱账户", "论坛密码"), auth="论坛邮箱账户,论坛密码")
-    order = api.insert_order("DCE.i2009-C-590", "BUY", "OPEN", 1, limit_price=70)  # 期权交易只支持限价单
+    order = api.insert_order("DCE.i2009-C-590", "BUY", "OPEN", 1, limit_price=70)  # 大商所只支持限价单
     while True:
         api.wait_update()
         if order.status == "FINISHED" and order.volume_left == 0:
