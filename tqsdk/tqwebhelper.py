@@ -15,6 +15,7 @@ from aiohttp import web
 import tqsdk.api
 import tqsdk.sim
 import tqsdk.backtest
+from tqsdk.account import TqAccount
 from tqsdk.channel import TqChan
 from tqsdk.datetime import _get_trading_day_start_time
 
@@ -32,10 +33,10 @@ class TqWebHelper(object):
         args = TqWebHelper.parser_env_arguments()
         if args["_action"] == "run":
             # 运行模式下，账户参数冲突需要抛错，提示用户
-            if isinstance(self._api._account, tqsdk.api.TqAccount) and \
+            if isinstance(self._api._account, TqAccount) and \
                     (self._api._account._account_id != args["_account_id"] or self._api._account._broker_id != args["_broker_id"]):
                 raise Exception("策略代码与插件设置中的账户参数冲突。可尝试删去代码中的账户参数 TqAccount，以插件设置的账户参数运行。")
-            self._api._account = tqsdk.api.TqAccount(args["_broker_id"], args["_account_id"], args["_password"])
+            self._api._account = TqAccount(args["_broker_id"], args["_account_id"], args["_password"])
             self._api._backtest = None
             self._logger.info("正在使用账户 {bid}, {aid} 运行策略。".format(bid=args["_broker_id"], aid=args["_account_id"]))
         elif args["_action"] == "backtest":
@@ -76,7 +77,7 @@ class TqWebHelper(object):
                     "md_url_status": '-',
                     "td_url_status": True if isinstance(self._api._account, tqsdk.sim.TqSim) else '-',
                     "account_id": self._api._account._account_id,
-                    "broker_id": self._api._account._broker_id if isinstance(self._api._account, tqsdk.api.TqAccount) else 'TQSIM',
+                    "broker_id": self._api._account._broker_id if isinstance(self._api._account, TqAccount) else 'TQSIM',
                     "file_path": file_path[0].upper() + file_path[1:],
                     "file_name": file_name
                 },
