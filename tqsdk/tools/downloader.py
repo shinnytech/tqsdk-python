@@ -3,10 +3,12 @@
 __author__ = 'yangyang'
 
 import csv
-from typing import Union, List
 from datetime import date, datetime
+from typing import Union, List
+
 from tqsdk.api import TqApi
 from tqsdk.datetime import TqDatetime
+from tqsdk.diff import TqDiff
 
 
 class DataDownloader:
@@ -112,7 +114,7 @@ class DataDownloader:
         }
         # 还没有发送过任何请求, 先请求定位左端点
         await self._api._send_chan.send(chart_info)
-        chart = self._api._get_obj(self._api._data, ["charts", chart_info["chart_id"]])
+        chart = TqDiff._get_obj(self._api._data, ["charts", chart_info["chart_id"]])
         current_id = None  # 当前数据指针
         csv_header = []
         data_cols = ["open", "high", "low", "close", "volume", "open_oi", "close_oi"] if self._dur_nano != 0 else \
@@ -121,14 +123,14 @@ class DataDownloader:
         serials = []
         for symbol in self._symbol_list:
             path = ["klines", symbol, str(self._dur_nano)] if self._dur_nano != 0 else ["ticks", symbol]
-            serial = self._api._get_obj(self._api._data, path)
+            serial = TqDiff._get_obj(self._api._data, path)
             serials.append(serial)
         try:
             with open(self._csv_file_name, 'w', newline='') as csvfile:
                 csv_writer = csv.writer(csvfile, dialect='excel')
                 async with self._api.register_update_notify() as update_chan:
                     async for _ in update_chan:
-                        if not (chart_info.items() <= self._api._get_obj(chart, ["state"]).items()):
+                        if not (chart_info.items() <= TqDiff._get_obj(chart, ["state"]).items()):
                             # 当前请求还没收齐回应, 不应继续处理
                             continue
                         left_id = chart.get("left_id", -1)

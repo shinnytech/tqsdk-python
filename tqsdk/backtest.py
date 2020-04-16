@@ -14,7 +14,8 @@ import tqsdk.api
 from tqsdk.channel import TqChan
 from tqsdk.datetime import TqDatetime
 from tqsdk.exceptions import BacktestFinished
-from tqsdk.objs import Entity
+from tqsdk.entity import Entity
+from tqsdk.diff import TqDiff
 
 
 class TqBacktest(object):
@@ -135,7 +136,7 @@ class TqBacktest(object):
                 "aid": "peek_message"
             })
             for d in pack.get("data", []):
-                tqsdk.api.TqApi._merge_diff(self._data, d, self._api._prototype, False)
+                TqDiff._merge_diff(self._data, d, self._api._prototype, False)
 
     async def _send_snapshot(self):
         """发送初始合约信息"""
@@ -287,16 +288,16 @@ class TqBacktest(object):
             "focus_datetime": int(self._current_dt),
             "focus_position": 8964,
         }
-        chart = tqsdk.api.TqApi._get_obj(self._data, ["charts", chart_info["chart_id"]])
+        chart = TqDiff._get_obj(self._data, ["charts", chart_info["chart_id"]])
         current_id = None  # 当前数据指针
-        serial = tqsdk.api.TqApi._get_obj(self._data, ["klines", ins, str(dur)] if dur != 0 else ["ticks", ins])
+        serial = TqDiff._get_obj(self._data, ["klines", ins, str(dur)] if dur != 0 else ["ticks", ins])
         async with TqChan(self._api, last_only=True) as update_chan:
             serial["_listener"].add(update_chan)
             chart["_listener"].add(update_chan)
             await self._md_send_chan.send(chart_info.copy())
             try:
                 async for _ in update_chan:
-                    if not (chart_info.items() <= tqsdk.api.TqApi._get_obj(chart, ["state"]).items()):
+                    if not (chart_info.items() <= TqDiff._get_obj(chart, ["state"]).items()):
                         # 当前请求还没收齐回应, 不应继续处理
                         continue
                     left_id = chart.get("left_id", -1)
