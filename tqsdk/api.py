@@ -41,7 +41,9 @@ import websockets
 from tqsdk.account import TqAccount
 from tqsdk.backtest import TqBacktest, TqReplay
 from tqsdk.channel import TqChan
-from tqsdk.objs import Entity, Quote, Kline, Tick, Account, Position, Order, Trade
+from tqsdk.entity import Entity
+from tqsdk.diff import TqDiff
+from tqsdk.objs import Quote, Kline, Tick, Account, Position, Order, Trade
 from tqsdk.sim import TqSim
 from tqsdk.tqwebhelper import TqWebHelper
 from .__version__ import __version__
@@ -266,7 +268,7 @@ class TqApi(object):
         # 将当前api的_data值复制到_copy_diff中, 然后merge到副本api的_data里
         _copy_diff = {}
         TqApi._deep_copy_dict(self._data, _copy_diff)
-        slave_api._merge_diff(slave_api._data, _copy_diff, slave_api._prototype, False)
+        TqDiff._merge_diff(slave_api._data, _copy_diff, slave_api._prototype, False)
         return slave_api
 
     def close(self) -> None:
@@ -336,7 +338,7 @@ class TqApi(object):
         """
         if symbol not in self._data.get("quotes", {}):
             raise Exception("代码 %s 不存在, 请检查合约代码是否填写正确" % (symbol))
-        quote = self._get_obj(self._data, ["quotes", symbol], self._prototype["quotes"]["#"])
+        quote = TqDiff._get_obj(self._data, ["quotes", symbol], self._prototype["quotes"]["#"])
         if symbol not in self._requests["quotes"]:
             self._requests["quotes"].add(symbol)
             self._send_pack({
@@ -471,9 +473,9 @@ class TqApi(object):
         if serial is None or chart_id is not None:  # 判断用户是否指定了 chart_id（参数）, 如果指定了，则一定会发送新的请求。
             self._send_pack(pack.copy())  # 注意：将数据权转移给TqChan时其所有权也随之转移，因pack还需要被用到，所以传入副本
         if serial is None:
-            serial = self._init_serial([self._get_obj(self._data, ["klines", s, str(dur_id)]) for s in symbol],
+            serial = self._init_serial([TqDiff._get_obj(self._data, ["klines", s, str(dur_id)]) for s in symbol],
                                        data_length, self._prototype["klines"]["*"]["*"]["data"]["@"])
-            serial["chart"] = self._get_obj(self._data, ["charts", pack["chart_id"]])  # 保存chart信息
+            serial["chart"] = TqDiff._get_obj(self._data, ["charts", pack["chart_id"]])  # 保存chart信息
             serial["chart"].update(pack)
             self._requests["klines"][request] = serial
             self._serials[id(serial["df"])] = serial
@@ -555,9 +557,9 @@ class TqApi(object):
         if serial is None or chart_id is not None:  # 判断用户是否指定了 chart_id（参数）, 如果指定了，则一定会发送新的请求。
             self._send_pack(pack.copy())  # pack 的副本数据和所有权转移给TqChan
         if serial is None:
-            serial = self._init_serial([self._get_obj(self._data, ["ticks", symbol])], data_length,
+            serial = self._init_serial([TqDiff._get_obj(self._data, ["ticks", symbol])], data_length,
                                        self._prototype["ticks"]["*"]["data"]["@"])
-            serial["chart"] = self._get_obj(self._data, ["charts", pack["chart_id"]])
+            serial["chart"] = TqDiff._get_obj(self._data, ["charts", pack["chart_id"]])
             serial["chart"].update(pack)
             self._requests["ticks"][request] = serial
             self._serials[id(serial["df"])] = serial
@@ -732,7 +734,7 @@ class TqApi(object):
             2080.0
             ...
         """
-        return self._get_obj(self._data, ["trade", self._account._account_id, "accounts", "CNY"],
+        return TqDiff._get_obj(self._data, ["trade", self._account._account_id, "accounts", "CNY"],
                              self._prototype["trade"]["*"]["accounts"]["@"])
 
     # ----------------------------------------------------------------------
@@ -771,9 +773,9 @@ class TqApi(object):
         if symbol:
             if symbol not in self._data.get("quotes", {}):
                 raise Exception("代码 %s 不存在, 请检查合约代码是否填写正确" % (symbol))
-            return self._get_obj(self._data, ["trade", self._account._account_id, "positions", symbol],
+            return TqDiff._get_obj(self._data, ["trade", self._account._account_id, "positions", symbol],
                                  self._prototype["trade"]["*"]["positions"]["@"])
-        return self._get_obj(self._data, ["trade", self._account._account_id, "positions"])
+        return TqDiff._get_obj(self._data, ["trade", self._account._account_id, "positions"])
 
     # ----------------------------------------------------------------------
     def get_order(self, order_id: Optional[str] = None) -> Union[Order, Entity]:
@@ -810,9 +812,9 @@ class TqApi(object):
             ...
         """
         if order_id:
-            return self._get_obj(self._data, ["trade", self._account._account_id, "orders", order_id],
+            return TqDiff._get_obj(self._data, ["trade", self._account._account_id, "orders", order_id],
                                  self._prototype["trade"]["*"]["orders"]["@"])
-        return self._get_obj(self._data, ["trade", self._account._account_id, "orders"])
+        return TqDiff._get_obj(self._data, ["trade", self._account._account_id, "orders"])
 
     # ----------------------------------------------------------------------
     def get_trade(self, trade_id: Optional[str] = None) -> Union[Trade, Entity]:
@@ -833,9 +835,9 @@ class TqApi(object):
 
         """
         if trade_id:
-            return self._get_obj(self._data, ["trade", self._account._account_id, "trades", trade_id],
+            return TqDiff._get_obj(self._data, ["trade", self._account._account_id, "trades", trade_id],
                                  self._prototype["trade"]["*"]["trades"]["@"])
-        return self._get_obj(self._data, ["trade", self._account._account_id, "trades"])
+        return TqDiff._get_obj(self._data, ["trade", self._account._account_id, "trades"])
 
     # ----------------------------------------------------------------------
     def wait_update(self, deadline: Optional[float] = None) -> None:
@@ -900,7 +902,7 @@ class TqApi(object):
             # 清空K线更新范围，避免在 wait_update 未更新K线时仍通过 is_changing 的判断
             self._klines_update_range = {}
             for d in self._diffs:
-                self._merge_diff(self._data, d, self._prototype, False)
+                TqDiff._merge_diff(self._data, d, self._prototype, False)
             for _, serial in self._serials.items():
                 # K线df的更新与原始数据、left_id、right_id、more_data、last_id相关，其中任何一个发生改变都应重新计算df
                 # 注：订阅某K线后再订阅合约代码、周期相同但长度更短的K线时, 服务器不会再发送已有数据到客户端，即chart发生改变但内存中原始数据未改变。
@@ -1011,11 +1013,11 @@ class TqApi(object):
                         m_k = int(m.group(2))
                         k_dict.setdefault(m_k, []).append(m.group(1))
                 for k_id, v in k_dict.items():
-                    if self._is_key_exist(diff, paths[k_id], v):
+                    if TqDiff._is_key_exist(diff, paths[k_id], v):
                         return True
             else:  # 如果没有传入key：遍历所有path
                 for path in paths:
-                    if self._is_key_exist(diff, path, key):
+                    if TqDiff._is_key_exist(diff, path, key):
                         return True
         return False
 
@@ -1318,7 +1320,7 @@ class TqApi(object):
 
         for i in range(serial["update_row"], serial["width"]):
             index = last_id - serial["width"] + 1 + i
-            item = serial["default"] if index < 0 else TqApi._get_obj(serial["root"][0], ["data", str(index)],
+            item = serial["default"] if index < 0 else TqDiff._get_obj(serial["root"][0], ["data", str(index)],
                                                                       serial["default"])
             array[i] = [item["datetime"]] + [index] + [item[k] for k in serial["default"].keys() if k != "datetime"]
 
@@ -1562,7 +1564,7 @@ class TqApi(object):
         """将从服务器收到的通知打印出来"""
         notify_logger = self._logger.getChild("Notify")
         processed_notify = set()
-        notify = self._get_obj(self._data, ["notify"])
+        notify = TqDiff._get_obj(self._data, ["notify"])
         async with self.register_update_notify(notify) as update_chan:
             async for _ in update_chan:
                 all_notifies = {k for k in notify if not k.startswith("_")}
@@ -1640,11 +1642,11 @@ class TqApi(object):
                                 pack_data = pack.get("data", [])
                                 t_pending_diffs.extend(pack_data)
                                 for d in pack_data:
-                                    self._merge_diff(t_data, d, self._prototype, False)
+                                    TqDiff._merge_diff(t_data, d, self._prototype, False)
                                 if url == self._md_url:  # 如果连接行情系统: 将断线前订阅的所有行情数据收集到一起后才同时发送给下游, 以保证数据完整
                                     # 处理seriesl(k线/tick)
                                     if not all(
-                                            [v.items() <= self._get_obj(t_data, ["charts", k, "state"]).items() for k, v
+                                            [v.items() <= TqDiff._get_obj(t_data, ["charts", k, "state"]).items() for k, v
                                              in set_chart_packs.items()]):
                                         await client.send(json.dumps({
                                             "aid": "peek_message"
@@ -1653,8 +1655,8 @@ class TqApi(object):
                                                            '{"aid": "peek_message"}')
                                         continue  # 如果当前请求还没收齐回应, 不应继续处理
                                     # 在接收并处理完成指令后, 此时发送给客户端的数据包中的 left_id或right_id 至少有一个不是-1 , 并且 mdhis_more_data是False；否则客户端需要继续等待数据完全发送
-                                    if not all([(self._get_obj(t_data, ["charts", k]).get("left_id",
-                                                                                          -1) != -1 or self._get_obj(
+                                    if not all([(TqDiff._get_obj(t_data, ["charts", k]).get("left_id",
+                                                                                          -1) != -1 or TqDiff._get_obj(
                                         t_data, ["charts", k]).get("right_id", -1) != -1) and not t_data.get(
                                         "mdhis_more_data", True) for k in set_chart_packs.keys()]):
                                         await client.send(json.dumps({
@@ -1671,7 +1673,7 @@ class TqApi(object):
                                                 path = ["klines", symbol, str(v["duration"])] if v[
                                                                                                      "duration"] != 0 else [
                                                     "ticks", symbol]
-                                                serial = self._get_obj(t_data, path)
+                                                serial = TqDiff._get_obj(t_data, path)
                                                 if serial.get("last_id", -1) == -1:
                                                     all_received = False
                                                     break
@@ -1800,87 +1802,6 @@ class TqApi(object):
             "Authorization": "Bearer %s" % self._access_token
         }
         return headers
-
-    @staticmethod
-    def _merge_diff(result, diff, prototype, persist):
-        """更新业务数据,并同步发送更新通知，保证业务数据的更新和通知是原子操作"""
-        for key in list(diff.keys()):
-            value_type = type(diff[key])
-            if value_type is str and key in prototype and not type(prototype[key]) is str:
-                diff[key] = prototype[key]
-            if diff[key] is None:
-                if persist or "#" in prototype:
-                    del diff[key]
-                else:
-                    dv = result.pop(key, None)
-                    TqApi._notify_update(dv, True)
-            elif value_type is dict or value_type is Entity:
-                default = None
-                tpersist = persist
-                if key in prototype:
-                    tpt = prototype[key]
-                elif "*" in prototype:
-                    tpt = prototype["*"]
-                elif "@" in prototype:
-                    tpt = prototype["@"]
-                    default = tpt
-                elif "#" in prototype:
-                    tpt = prototype["#"]
-                    default = tpt
-                    tpersist = True
-                else:
-                    tpt = {}
-                target = TqApi._get_obj(result, [key], default=default)
-                TqApi._merge_diff(target, diff[key], tpt, tpersist)
-                if len(diff[key]) == 0:
-                    del diff[key]
-            elif key in result and (
-                    result[key] == diff[key] or (diff[key] != diff[key] and result[key] != result[key])):
-                # 判断 diff[key] != diff[key] and result[key] != result[key] 以处理 value 为 nan 的情况
-                del diff[key]
-            else:
-                result[key] = diff[key]
-        if len(diff) != 0:
-            TqApi._notify_update(result, False)
-
-    @staticmethod
-    def _notify_update(target, recursive):
-        """同步通知业务数据更新"""
-        if isinstance(target, dict) or isinstance(target, Entity):
-            for q in target["_listener"]:
-                q.send_nowait(True)
-            if recursive:
-                for v in target.values():
-                    TqApi._notify_update(v, recursive)
-
-    @staticmethod
-    def _get_obj(root, path, default=None):
-        """获取业务数据"""
-        d = root
-        for i in range(len(path)):
-            if path[i] not in d:
-                if i != len(path) - 1 or default is None:
-                    dv = Entity()
-                else:
-                    dv = copy.copy(default)
-                dv._instance_entity(d["_path"] + [path[i]])
-                d[path[i]] = dv
-            d = d[path[i]]
-        return d
-
-    @staticmethod
-    def _is_key_exist(diff, path, key):
-        """判断指定数据是否存在"""
-        for p in path:
-            if not isinstance(diff, dict) or p not in diff:
-                return False
-            diff = diff[p]
-        if not isinstance(diff, dict):
-            return False
-        for k in key:
-            if k in diff:
-                return True
-        return len(key) == 0
 
     def _gen_prototype(self):
         """所有业务数据的原型"""
