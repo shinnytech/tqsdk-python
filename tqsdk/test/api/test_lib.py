@@ -6,7 +6,7 @@ import os
 import unittest
 import random
 import datetime
-from tqsdk import TqApi, TqBacktest, BacktestFinished, TargetPosTask
+from tqsdk import TqApi, TqBacktest, BacktestFinished, TargetPosTask, utils
 from tqsdk.test.api.helper import MockServer
 
 
@@ -17,7 +17,7 @@ class TestLib(unittest.TestCase):
     注：
     1. 在本地运行测试用例前需设置运行环境变量(Environment variables), 保证api中dict及set等类型的数据序列在每次运行时元素顺序一致: PYTHONHASHSEED=32
     2. 若测试用例中调用了会使用uuid的功能函数时（如insert_order()会使用uuid生成order_id）,
-        则：在生成script文件时及测试用例中都需设置 TqApi.RD = random.Random(x), 以保证两次生成的uuid一致, x取值范围为0-2^32
+        则：在生成script文件时及测试用例中都需设置 utils.RD = random.Random(x), 以保证两次生成的uuid一致, x取值范围为0-2^32
     3. 對盤中的測試用例（即非回測）：因为TqSim模拟交易 Order 的 insert_date_time 和 Trade 的 trade_date_time 不是固定值，所以改为判断范围。
         盘中时：self.assertAlmostEqual(1575292560005832000 / 1e9, order1.insert_date_time / 1e9, places=1)
         回测时：self.assertEqual(1575291600000000000, order1.insert_date_time)
@@ -52,7 +52,7 @@ class TestLib(unittest.TestCase):
         dir_path = os.path.dirname(os.path.realpath(__file__))
         self.mock.run(os.path.join(dir_path, "log_file", "test_lib_insert_order_time_check_1.script.lzma"))
 
-        TqApi.RD = random.Random(4)
+        utils.RD = random.Random(4)
         api = TqApi(
             backtest=TqBacktest(datetime.datetime(2019, 12, 2, 21, 0, 0), datetime.datetime(2019, 12, 3, 10, 0, 0)),
             _ins_url=self.ins_url_2019_12_04)  # 2019.12.2周一
@@ -122,7 +122,7 @@ class TestLib(unittest.TestCase):
         dir_path = os.path.dirname(os.path.realpath(__file__))
         self.mock.run(os.path.join(dir_path, "log_file", "test_lib_insert_order_time_check_2.script.lzma"))
 
-        TqApi.RD = random.Random(4)
+        utils.RD = random.Random(4)
         api = TqApi(
             backtest=TqBacktest(datetime.datetime(2020, 2, 17, 10, 15, 0), datetime.datetime(2020, 2, 17, 10, 45, 0)),
             _ins_url=self.ins_url_2020_02_18)
@@ -179,7 +179,7 @@ class TestLib(unittest.TestCase):
         dir_path = os.path.dirname(os.path.realpath(__file__))
         self.mock.run(os.path.join(dir_path, "log_file", "test_lib_insert_order_time_check_3.script.lzma"))
 
-        TqApi.RD = random.Random(4)
+        utils.RD = random.Random(4)
         api = TqApi(backtest=TqBacktest(datetime.datetime(2020, 2, 17, 11, 30), datetime.datetime(2020, 2, 18, 9, 40)),
                     _ins_url=self.ins_url_2020_02_18)
         symbol1 = "SHFE.cu2003"
@@ -281,7 +281,7 @@ class TestLib(unittest.TestCase):
         dir_path = os.path.dirname(os.path.realpath(__file__))
         self.mock.run(os.path.join(dir_path, "log_file", "test_lib_insert_order_time_check_4.script.lzma"))
 
-        TqApi.RD = random.Random(4)
+        utils.RD = random.Random(4)
         api = TqApi(backtest=TqBacktest(datetime.date(2019, 12, 2), datetime.date(2019, 12, 3)),
                     _ins_url=self.ins_url_2019_12_04)  # 2019.12.2:周一
         symbol1 = "SHFE.cu2002"  # 有夜盘,凌晨1点结束夜盘
@@ -373,7 +373,7 @@ class TestLib(unittest.TestCase):
         dir_path = os.path.dirname(os.path.realpath(__file__))
         self.mock.run(os.path.join(dir_path, "log_file", "test_lib_insert_order_time_check_5.script.lzma"))
 
-        TqApi.RD = random.Random(4)
+        utils.RD = random.Random(4)
         api = TqApi(backtest=TqBacktest(datetime.date(2019, 12, 3), datetime.date(2019, 12, 4)),
                     _ins_url=self.ins_url_2019_12_04)  # 2019, 12, 3:周二
         symbol1 = "SHFE.cu2002"  # 有夜盘,凌晨1点结束夜盘
@@ -424,7 +424,7 @@ class TestLib(unittest.TestCase):
         dir_path = os.path.dirname(os.path.realpath(__file__))
         self.mock.run(os.path.join(dir_path, "log_file", "test_lib_insert_order_time_check_6.script.lzma"))
 
-        TqApi.RD = random.Random(4)
+        utils.RD = random.Random(4)
         api = TqApi(
             backtest=TqBacktest(start_dt=datetime.datetime(2019, 7, 11, 10, 15), end_dt=datetime.date(2019, 7, 12)),
             _ins_url=self.ins_url_2019_12_04)
@@ -464,7 +464,7 @@ class TestLib(unittest.TestCase):
         dir_path = os.path.dirname(os.path.realpath(__file__))
         self.mock.run(os.path.join(dir_path, "log_file", "test_lib_insert_order_time_check_7.script.lzma"))
 
-        TqApi.RD = random.Random(4)
+        utils.RD = random.Random(4)
         api = TqApi(
             backtest=TqBacktest(datetime.datetime(2019, 11, 30, 0, 0, 0), datetime.datetime(2019, 12, 2, 9, 30)),
             _ins_url=self.ins_url_2019_12_04)

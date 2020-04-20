@@ -5,6 +5,7 @@ import random
 import unittest
 from tqsdk.test.api.helper import MockInsServer, MockServer
 from tqsdk import TqApi
+from tqsdk import utils
 
 
 class TestFuncBasic(unittest.TestCase):
@@ -43,7 +44,7 @@ class TestFuncBasic(unittest.TestCase):
         dir_path = os.path.dirname(os.path.realpath(__file__))
         self.mock.run(os.path.join(dir_path, "log_file", "test_func_basic_is_changing.script.lzma"))
         # 测试: 模拟账户下单
-        TqApi.RD = random.Random(4)
+        utils.RD = random.Random(4)
         api = TqApi(_ins_url=self.ins_url_2020_04_02, _td_url=self.td_url, _md_url=self.md_url)
         quote = api.get_quote("SHFE.rb2010")
         position = api.get_position("SHFE.rb2010")
