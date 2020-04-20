@@ -15,6 +15,7 @@ from aiohttp import web
 from tqsdk.backtest import TqBacktest, TqReplay
 from tqsdk.account import TqAccount
 from tqsdk.channel import TqChan
+from tqsdk.diff import TqSimpleDiff
 from tqsdk.sim import TqSim
 from tqsdk.datetime import TqDatetime
 
@@ -103,7 +104,7 @@ class TqWebHelper(object):
                             web_diff = {'draw_chart_datas': {}}
                             web_diff['draw_chart_datas'][pack['symbol']] = {}
                             web_diff['draw_chart_datas'][pack['symbol']][pack['dur_nano']] = diff_data
-                            TqWebHelper.merge_diff(self._data, web_diff)
+                            TqSimpleDiff._merge_diff(self._data, web_diff)
                             for chan in self._conn_diff_chans:
                                 self.send_to_conn_chan(chan, [web_diff])
                     else:
@@ -145,7 +146,7 @@ class TqWebHelper(object):
                     # 处理 trade
                     trade = d.get("trade")
                     if trade is not None:
-                        TqWebHelper.merge_diff(self._data["trade"], trade)
+                        TqSimpleDiff._merge_diff(self._data["trade"], trade)
                         web_diffs.append({"trade": trade})
                         # 账户是否有变化
                         static_balance_changed = d.get("trade", {}).get(self._api._account._account_id, {}).\
@@ -156,19 +157,19 @@ class TqWebHelper(object):
                             account_changed = True
                     # 处理 backtest replay
                     if d.get("_tqsdk_backtest") or d.get("_tqsdk_replay"):
-                        TqWebHelper.merge_diff(self._data, d)
+                        TqSimpleDiff._merge_diff(self._data, d)
                         web_diffs.append(d)
                     # 处理通知，行情和交易连接的状态
                     notify_diffs = self._notify_handler(d.get("notify", {}))
                     for diff in notify_diffs:
-                        TqWebHelper.merge_diff(self._data, diff)
+                        TqSimpleDiff._merge_diff(self._data, diff)
                     web_diffs.extend(notify_diffs)
                 if account_changed:
                     dt, snapshot = self.get_snapshot()
                     _snapshots = {"snapshots": {}}
                     _snapshots["snapshots"][dt] = snapshot
                     web_diffs.append(_snapshots)
-                    TqWebHelper.merge_diff(self._data, _snapshots)
+                    TqSimpleDiff._merge_diff(self._data, _snapshots)
                 for chan in self._conn_diff_chans:
                     self.send_to_conn_chan(chan, web_diffs)
             # 接收的数据转发给下游 api
@@ -211,7 +212,7 @@ class TqWebHelper(object):
     def send_to_conn_chan(self, chan, diffs):
         last_diff = chan.recv_latest({})
         for d in diffs:
-            TqWebHelper.merge_diff(last_diff, d, reduce_diff = False)
+            TqSimpleDiff._merge_diff(last_diff, d, reduce_diff = False)
         if last_diff != {}:
             chan.send_nowait(last_diff)
 
@@ -240,39 +241,6 @@ class TqWebHelper(object):
                           positions.items() if
                           not k.startswith("_")}
         }
-
-    @staticmethod
-    def get_obj(root, path, default=None):
-        """获取业务数据"""
-        d = root
-        for i in range(len(path)):
-            if path[i] not in d:
-                dv = {} if i != len(path) - 1 or default is None else default
-                d[path[i]] = dv
-            d = d[path[i]]
-        return d
-
-    @staticmethod
-    def merge_diff(result, diff, reduce_diff = True):
-        """
-        更新业务数据
-        :param result: 更新结果
-        :param diff: diff pack 
-        :param reduce_diff: 表示是否修改 diff 对象本身，因为如果 merge_diff 的 result 是 conn_chan 内部的 last_diff，那么 diff 会在循环中多次使用，这时候一定不能修改 diff 本身
-        :return: 
-        """
-        for key in list(diff.keys()):
-            if diff[key] is None:
-                result.pop(key, None)
-            elif isinstance(diff[key], dict):
-                target = TqWebHelper.get_obj(result, [key])
-                TqWebHelper.merge_diff(target, diff[key], reduce_diff = reduce_diff)
-                if len(diff[key]) == 0:
-                    del diff[key]
-            elif reduce_diff and key in result and result[key] == diff[key]:
-                del diff[key]
-            else:
-                result[key] = diff[key]
 
     def get_send_msg(self, data=None):
         return simplejson.dumps({
