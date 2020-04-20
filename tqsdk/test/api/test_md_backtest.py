@@ -8,7 +8,7 @@ import unittest
 import random
 from contextlib import closing
 from datetime import datetime
-from tqsdk import TqApi, TqBacktest, BacktestFinished
+from tqsdk import TqApi, TqBacktest, BacktestFinished, utils
 from tqsdk.test.api.helper import MockServer
 
 
@@ -38,7 +38,7 @@ class TestMdBacktest(unittest.TestCase):
         self.mock.run(os.path.join(dir_path, "log_file", "test_md_backtest_get_quote.script.lzma"))
         # 测试
         try:
-            TqApi.RD = random.Random(1)
+            utils.RD = random.Random(1)
             api = TqApi(backtest=TqBacktest(datetime(2019, 10, 15), datetime(2019, 10, 16)), _ins_url=self.ins_url_2019_07_03,
                         _td_url=self.td_url, _md_url=self.md_url)
             with closing(api):

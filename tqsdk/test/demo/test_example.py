@@ -1,6 +1,6 @@
 import random
 import unittest
-from tqsdk import TqApi, TqSim, TargetPosTask, TqBacktest, BacktestFinished
+from tqsdk import TqApi, TqSim, TargetPosTask, TqBacktest, BacktestFinished, utils
 from tqsdk.test.api.helper import MockServer
 from tqsdk.tafunc import ma
 from contextlib import closing
@@ -16,7 +16,7 @@ class Unit_test(unittest.TestCase):
      注：
     1. 在本地运行测试用例前需设置运行环境变量(Environment variables), 保证api中dict及set等类型的数据序列在每次运行时元素顺序一致: PYTHONHASHSEED=32
     2. 若测试用例中调用了会使用uuid的功能函数时（如insert_order()会使用uuid生成order_id）,
-        则：在生成script文件时及测试用例中都需设置 TqApi.RD = random.Random(x), 以保证两次生成的uuid一致, x取值范围为0-2^32
+        则：在生成script文件时及测试用例中都需设置 utils.RD = random.Random(x), 以保证两次生成的uuid一致, x取值范围为0-2^32
     3. 對盤中的測試用例（即非回測）：因为TqSim模拟交易 Order 的 insert_date_time 和 Trade 的 trade_date_time 不是固定值，所以改为判断范围。
         盘中时：self.assertAlmostEqual(1575292560005832000 / 1e9, order1.insert_date_time / 1e9, places=1)
         回测时：self.assertEqual(1575291600000000000, order1.insert_date_time)
@@ -52,7 +52,7 @@ class Unit_test(unittest.TestCase):
         LONG = 60  # 长周期
         SYMBOL = "SHFE.bu1912"  # 合约代码
 
-        TqApi.RD = random.Random(4)
+        utils.RD = random.Random(4)
         sim = TqSim()
         api = TqApi(sim, backtest=TqBacktest(start_dt=datetime(2019, 6, 10), end_dt=datetime(2019, 6, 15)),
                     _ins_url=self.ins_url_2019_07_03, _td_url=self.td_url, _md_url=self.md_url)
@@ -99,7 +99,7 @@ class Unit_test(unittest.TestCase):
         NDAY = 5  # 天数
         K1 = 0.2  # 上轨K值
         K2 = 0.2  # 下轨K值
-        TqApi.RD = random.Random(4)
+        utils.RD = random.Random(4)
         sim = TqSim()
         api = TqApi(sim, backtest=TqBacktest(start_dt=date(2019, 5, 1), end_dt=date(2019, 6, 10)),
                     _ins_url=self.ins_url_2019_07_03, _td_url=self.td_url, _md_url=self.md_url)
@@ -175,7 +175,7 @@ class Unit_test(unittest.TestCase):
 
             return pivot, b_break, s_setup, s_enter, b_enter, b_setup, s_break
 
-        TqApi.RD = random.Random(4)
+        utils.RD = random.Random(4)
         sim = TqSim()
         api = TqApi(sim, backtest=TqBacktest(start_dt=date(2019, 5, 1), end_dt=date(2019, 6, 20)),
                     _ins_url=self.ins_url_2019_06_05, _td_url=self.td_url, _md_url=self.md_url)
@@ -239,7 +239,7 @@ class Unit_test(unittest.TestCase):
         # # 测试
         symbol = "SHFE.cu1905"  # 合约代码
         close_hour, close_minute = 14, 50  # 平仓时间
-        TqApi.RD = random.Random(4)
+        utils.RD = random.Random(4)
         sim = TqSim()
         api = TqApi(sim, backtest=TqBacktest(start_dt=datetime(2019, 4, 1), end_dt=datetime(2019, 4, 20)),
                     _ins_url=self.ins_url_2020_06_10, _td_url=self.td_url, _md_url=self.md_url)
