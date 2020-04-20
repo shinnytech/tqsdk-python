@@ -90,3 +90,43 @@ class TqDiff(object):
                 return True
         return len(key) == 0
 
+
+class TqSimpleDiff(object):
+
+    @staticmethod
+    def _get_obj(root, path, default=None):
+        """获取业务数据"""
+        d = root
+        for i in range(len(path)):
+            if path[i] not in d:
+                dv = {} if i != len(path) - 1 or default is None else default
+                d[path[i]] = dv
+            d = d[path[i]]
+        return d
+
+    @staticmethod
+    def _merge_diff(result, diff, reduce_diff=True, persist=False):
+        """
+        更新业务数据
+        :param result: 更新结果
+        :param diff: diff pack
+        :param reduce_diff: 表示是否修改 diff 对象本身，因为如果 merge_diff 的 result 是 conn_chan 内部的 last_diff，那么 diff 会在循环中多次使用，这时候一定不能修改 diff 本身
+                如果为True 函数运行完成后，diff 会更新为与 result 真正的有区别的字段；如果为 False，diff 不会修改
+        :param persist: 是否一定存储当前 diff 涉及的字段，如果为 True，则 result 为 None 的对象不会删除；如果是 False，则 result 为 None 的对象会被删除
+        :return:
+        """
+        for key in list(diff.keys()):
+            if diff[key] is None:
+                if persist and reduce_diff:
+                    del diff[key]
+                if not persist:
+                    result.pop(key, None)
+            elif isinstance(diff[key], dict):
+                target = TqSimpleDiff._get_obj(result, [key])
+                TqSimpleDiff._merge_diff(target, diff[key], reduce_diff=reduce_diff)
+                if len(diff[key]) == 0:
+                    del diff[key]
+            elif reduce_diff and key in result and result[key] == diff[key]:
+                del diff[key]
+            else:
+                result[key] = diff[key]
