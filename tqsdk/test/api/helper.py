@@ -4,6 +4,7 @@
 
 import json
 import lzma
+import os
 import threading
 import asyncio
 import websockets
@@ -14,9 +15,10 @@ class MockInsServer():
     def __init__(self, port):
         self.loop = asyncio.new_event_loop()
         self.port = port
+        self.symbols_dir = os.path.join(os.path.dirname(__file__), 'symbols')
+        self.stop_signal = self.loop.create_future()
         self.thread = threading.Thread(target=self._run)
         self.thread.start()
-        self.stop_signal = self.loop.create_future()
 
     def close(self):
         self.loop.call_soon_threadsafe(lambda: self.stop_signal.set_result(0))
@@ -59,14 +61,18 @@ class MockInsServer():
         return web.json_response(data)
 
     async def task_serve(self):
-        app = web.Application()
-        app.add_routes([web.get('/{tail:.*}', self.handle)])
-        runner = web.AppRunner(app)
-        await runner.setup()
-        site = web.TCPSite(runner, '127.0.0.1', self.port)
-        await site.start()
-        await self.stop_signal
-        await runner.cleanup()
+        try:
+            app = web.Application()
+            app.router.add_static('/t/md/symbols', self.symbols_dir, show_index=True)
+            app.add_routes([web.get('/{tail:.*}', self.handle)])
+            runner = web.AppRunner(app)
+            await runner.setup()
+            site = web.TCPSite(runner, '127.0.0.1', self.port)
+            await site.start()
+            await self.stop_signal
+        finally:
+            await runner.shutdown()
+            await runner.cleanup()
 
     def _run(self):
         asyncio.set_event_loop(self.loop)
