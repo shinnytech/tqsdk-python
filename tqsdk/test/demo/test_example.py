@@ -1,7 +1,7 @@
 import random
 import unittest
 from tqsdk import TqApi, TqSim, TargetPosTask, TqBacktest, BacktestFinished, utils
-from tqsdk.test.api.helper import MockServer
+from tqsdk.test.api.helper import MockServer, MockInsServer
 from tqsdk.tafunc import ma
 from contextlib import closing
 from datetime import date, datetime
@@ -23,17 +23,17 @@ class Unit_test(unittest.TestCase):
     '''
 
     def setUp(self):
-        # self.ins = MockInsServer(5000)
+        self.ins = MockInsServer(5000)
         self.mock = MockServer()
         # self.tq = WebsocketServer(5300)
-        self.ins_url_2019_07_03 = "https://openmd.shinnytech.com/t/md/symbols/2019-07-03.json"
-        self.ins_url_2019_06_05 = "https://openmd.shinnytech.com/t/md/symbols/2019-06-05.json"
-        self.ins_url_2020_06_10 = "https://openmd.shinnytech.com/t/md/symbols/2019-06-10.json"
+        self.ins_url_2019_07_03 = "http://127.0.0.1:5000/t/md/symbols/2019-07-03.json"
+        self.ins_url_2019_06_05 = "http://127.0.0.1:5000/t/md/symbols/2019-06-05.json"
+        self.ins_url_2020_06_10 = "http://127.0.0.1:5000/t/md/symbols/2019-06-10.json"
         self.md_url = "ws://127.0.0.1:5100/"
         self.td_url = "ws://127.0.0.1:5200/"
 
     def tearDown(self):
-        # self.ins.close()
+        self.ins.close()
         self.mock.close()
 
     # @unittest.skip("无条件跳过: test_doublema")
@@ -42,7 +42,7 @@ class Unit_test(unittest.TestCase):
         设定：
             回测周期: 2019,6,10-2019,6,15
             合约代码: SHFE.bu1912
-            合约文件: "https://openmd.shinnytech.com/t/md/symbols/2019-07-03.json"
+            合约文件: "http://127.0.0.1:5000/t/md/symbols/2019-07-03.json"
         '''
         # 预设服务器端响应
         dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -89,7 +89,7 @@ class Unit_test(unittest.TestCase):
         设定：
             回测周期: 2019,5,1-2019,6,10
             合约代码: DCE.jd1909
-            合约文件: "https://openmd.shinnytech.com/t/md/symbols/2019-07-03.json"
+            合约文件: "http://127.0.0.1:5000/t/md/symbols/2019-07-03.json"
         '''
         # 预设服务器端响应
         dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -150,7 +150,7 @@ class Unit_test(unittest.TestCase):
         设定：
             回测周期: 2019,5,1-2019,5,20
             合约代码: SHFE.au1912
-            合约文件: "https://openmd.shinnytech.com/t/md/symbols/2019-06-05.json"
+            合约文件: "http://127.0.0.1:5000/t/md/symbols/2019-06-05.json"
         '''
         # 预设服务器端响应
         dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -231,7 +231,7 @@ class Unit_test(unittest.TestCase):
         设定：
             回测周期: 2019,4,1-2019,4,20
             合约代码: SHFE.cu1905
-            合约文件: "https://openmd.shinnytech.com/t/md/symbols/2019-06-10.json"
+            合约文件: "http://127.0.0.1:5000/t/md/symbols/2019-06-10.json"
         '''
         # 预设服务器端响应
         dir_path = os.path.dirname(os.path.realpath(__file__))

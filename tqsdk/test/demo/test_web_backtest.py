@@ -21,11 +21,16 @@ from tqsdk import TqApi, TqBacktest, TargetPosTask
 from tqsdk.exceptions import BacktestFinished
 
 # 子进程要执行的代码
-def run_tianqin_code(port):
+from tqsdk.test.api.helper import MockInsServer
+
+
+def run_tianqin_code(port, queue):
     try:
-        api = TqApi(backtest=TqBacktest(start_dt=date(2018, 5, 5), end_dt=date(2018, 5, 10)), web_gui="127.0.0.1:" + port)
-        klines = api.get_kline_serial("DCE.m1901", 5 * 60, data_length=15)
-        target_pos = TargetPosTask(api, "DCE.m1901")
+        ins_url= "http://127.0.0.1:5000/t/md/symbols/2019-07-03.json"
+        api = TqApi(backtest=TqBacktest(start_dt=date(2019, 7, 10), end_dt=date(2019, 7, 20)), _ins_url=ins_url, web_gui="127.0.0.1:" + port)
+        queue.put("webready")
+        klines = api.get_kline_serial("DCE.m1912", 5 * 60, data_length=15)
+        target_pos = TargetPosTask(api, "DCE.m1912")
         while True:
             api.wait_update()
             if api.is_changing(klines):
@@ -42,72 +47,73 @@ def run_tianqin_code(port):
 
 
 
-class WebBacktestTestOnChrome(unittest.TestCase):
-    def setUp(self):
+class WebTestOnChrome(unittest.TestCase):
+
+    def setUp(self) -> None:
+        self.ins = MockInsServer(5000)
+        self.chrome_options = ChromeOptions()
+        self.chrome_options.headless = True
         ctx = mp.get_context('spawn')
         self.port = "8082"
-        self.tq_process = ctx.Process(target=run_tianqin_code, args=(self.port,))
+        self.q = ctx.Queue()
+        self.tq_process = ctx.Process(target=run_tianqin_code, args=(self.port, self.q))
         self.tq_process.start()
-
+        self.q.get()
 
     def tearDown(self):
+        self.ins.close()
         self.tq_process.terminate()
-
 
     @unittest.skipIf(not sys.platform.startswith("win"), "test on win")
     def test_on_win(self):
         chromedriver_path = os.path.join(os.getenv("ChromeWebDriver"), "chromedriver.exe")
-        run_for_driver(webdriver.Chrome(executable_path=chromedriver_path), self)
-
+        run_for_driver(webdriver.Chrome(executable_path=chromedriver_path, options=self.chrome_options), self)
 
     @unittest.skipIf(not sys.platform.startswith("linux"), "test on linux")
     def test_on_linux(self):
         exe_path = os.path.join(os.getenv("CHROMEWEBDRIVER"), "chromedriver")
-        opts = ChromeOptions()
-        opts.headless = True
-        driver = webdriver.Chrome(executable_path=exe_path, options=opts)
+        driver = webdriver.Chrome(executable_path=exe_path, options=self.chrome_options)
         run_for_driver(driver, self)
-
 
     @unittest.skipIf(not sys.platform.startswith("darwin"), "test on macos")
     def test_on_macos(self):
-        run_for_driver(webdriver.Chrome(), self)
+        run_for_driver(webdriver.Chrome(options=self.chrome_options), self)
 
 
-class WebBacktestTestOnFirefox(unittest.TestCase):
-    def setUp(self):
+class WebTestOnFirefox(unittest.TestCase):
+
+    def setUp(self) -> None:
+        self.ins = MockInsServer(5000)
+        self.firefox_options = FirefoxOptions()
+        self.firefox_options.headless = True
         ctx = mp.get_context('spawn')
         self.port = "8081"
-        self.tq_process = ctx.Process(target=run_tianqin_code, args=(self.port,))
+        self.q = ctx.Queue()
+        self.tq_process = ctx.Process(target=run_tianqin_code, args=(self.port, self.q))
         self.tq_process.start()
-
+        self.q.get()
 
     def tearDown(self):
+        self.ins.close()
         self.tq_process.terminate()
-
 
     @unittest.skipIf(not sys.platform.startswith("win"), "test on win")
     def test_on_win(self):
         geckodriver_path = os.path.join(os.getenv("GeckoWebDriver"), "geckodriver.exe")
-        run_for_driver(webdriver.Firefox(executable_path=geckodriver_path), self)
-
+        run_for_driver(webdriver.Firefox(executable_path=geckodriver_path, options=self.firefox_options), self)
 
     @unittest.skipIf(not sys.platform.startswith("linux"), "test on linux")
     def test_on_linux(self):
         exe_path = os.path.join(os.getenv("GECKOWEBDRIVER"), "geckodriver")
-        opts = FirefoxOptions()
-        opts.headless = True
-        driver = webdriver.Firefox(executable_path=exe_path, options=opts)
+        driver = webdriver.Firefox(executable_path=exe_path, options=self.firefox_options)
         run_for_driver(driver, self)
-
 
     @unittest.skipIf(not sys.platform.startswith("darwin"), "test on macos")
     def test_on_macos(self):
-        run_for_driver(webdriver.Firefox(), self)
+        run_for_driver(webdriver.Firefox(options=self.firefox_options), self)
 
 
 def run_for_driver(driver, test):
-    time.sleep(10)
     driver.implicitly_wait(30)
     driver.get("http://127.0.0.1:" + test.port)
     wait = WebDriverWait(driver, 30)
@@ -133,7 +139,6 @@ class element_has_child(object):
 
     def __call__(self, driver):
         children = self.element.find_element_by_css_selector(self.css_selector)
-        print("children", children)
         if not children:
             return False
         return True

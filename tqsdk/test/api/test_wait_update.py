@@ -23,14 +23,14 @@ class TestWaitUpdateFunction(unittest.TestCase):
     """
 
     def setUp(self):
-        # self.ins = MockInsServer(5000)
+        self.ins = MockInsServer(5000)
         self.mock = MockServer()
-        self.ins_url_2019_07_03 = "https://openmd.shinnytech.com/t/md/symbols/2019-07-03.json"
+        self.ins_url_2019_07_03 = "http://127.0.0.1:5000/t/md/symbols/2019-07-03.json"
         self.md_url = "ws://127.0.0.1:5100/"
         self.td_url = "ws://127.0.0.1:5200/"
 
     def tearDown(self):
-        # self.ins.close()
+        self.ins.close()
         self.mock.close()
 
     def test_wait_update_1(self):
