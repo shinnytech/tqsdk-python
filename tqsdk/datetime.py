@@ -36,6 +36,54 @@ def _get_trading_day_from_timestamp(timestamp):
         days += 7 - week_day
     return begin_mark + days * 86400000000000
 
+night_trading_table = {
+    "DCE.a": ["21:00:00", "23:00:00"],
+    "DCE.b": ["21:00:00", "23:00:00"],
+    "DCE.c": ["21:00:00", "23:00:00"],
+    "DCE.cs": ["21:00:00", "23:00:00"],
+    "DCE.m": ["21:00:00", "23:00:00"],
+    "DCE.y": ["21:00:00", "23:00:00"],
+    "DCE.p": ["21:00:00", "23:00:00"],
+    "DCE.l": ["21:00:00", "23:00:00"],
+    "DCE.v": ["21:00:00", "23:00:00"],
+    "DCE.pp": ["21:00:00", "23:00:00"],
+    "DCE.j": ["21:00:00", "23:00:00"],
+    "DCE.jm": ["21:00:00", "23:00:00"],
+    "DCE.i": ["21:00:00", "23:00:00"],
+    "DCE.eg": ["21:00:00", "23:00:00"],
+    "DCE.eb": ["21:00:00", "23:00:00"],
+    "DCE.rr": ["21:00:00", "23:00:00"],
+    "DCE.pg": ["21:00:00", "23:00:00"],
+    "CZCE.CF": ["21:00:00", "23:00:00"],
+    "CZCE.CY": ["21:00:00", "23:00:00"],
+    "CZCE.SA": ["21:00:00", "23:00:00"],
+    "CZCE.SR": ["21:00:00", "23:00:00"],
+    "CZCE.TA": ["21:00:00", "23:00:00"],
+    "CZCE.OI": ["21:00:00", "23:00:00"],
+    "CZCE.MA": ["21:00:00", "23:00:00"],
+    "CZCE.FG": ["21:00:00", "23:00:00"],
+    "CZCE.RM": ["21:00:00", "23:00:00"],
+    "CZCE.ZC": ["21:00:00", "23:00:00"],
+    "CZCE.TC": ["21:00:00", "23:00:00"],
+    "SHFE.rb": ["21:00:00", "23:00:00"],
+    "SHFE.hc": ["21:00:00", "23:00:00"],
+    "SHFE.fu": ["21:00:00", "23:00:00"],
+    "SHFE.bu": ["21:00:00", "23:00:00"],
+    "SHFE.ru": ["21:00:00", "23:00:00"],
+    "SHFE.sp": ["21:00:00", "23:00:00"],
+    "INE.nr": ["21:00:00", "23:00:00"],
+    "SHFE.cu": ["21:00:00", "25:00:00"],
+    "SHFE.al": ["21:00:00", "25:00:00"],
+    "SHFE.zn": ["21:00:00", "25:00:00"],
+    "SHFE.pb": ["21:00:00", "25:00:00"],
+    "SHFE.ni": ["21:00:00", "25:00:00"],
+    "SHFE.sn": ["21:00:00", "25:00:00"],
+    "SHFE.ss": ["21:00:00", "25:00:00"],
+    "SHFE.au": ["21:00:00", "26:30:00"],
+    "SHFE.ag": ["21:00:00", "26:30:00"],
+    "INE.sc": ["21:00:00", "26:30:00"],
+}
+
 
 def _get_trading_timestamp(quote, current_datetime: str):
     """ 将 quote 在 current_datetime 所在交易日的所有可交易时间段转换为纳秒时间戳(tqsdk内部使用的时间戳统一为纳秒)并返回 """
@@ -45,9 +93,17 @@ def _get_trading_timestamp(quote, current_datetime: str):
     # 获取上一交易日时间戳
     last_trading_day_timestamp = _get_trading_day_from_timestamp(
         _get_trading_day_start_time(current_trading_day_timestamp) - 1)
+    night = quote["trading_time"].get("night", [])
+    # 针对没有夜盘，添加 20200123 之前的夜盘时间段, 0123 是假期之前一天，本身没有夜盘
+    if last_trading_day_timestamp < 1579708800000000000 and not night:
+        for product, trading_night in night_trading_table.items():
+            if quote["instrument_id"].startswith(product):
+                night.append(trading_night)
+                break
     trading_timestamp = {
-        "day": _get_period_timestamp(current_trading_day_timestamp, quote["trading_time"].get("day", [])),
-        "night": _get_period_timestamp(last_trading_day_timestamp, quote["trading_time"].get("night", []))
+        "day": _get_period_timestamp(current_trading_day_timestamp,
+                                                quote["trading_time"].get("day", [])),
+        "night": _get_period_timestamp(last_trading_day_timestamp, night)
     }
     return trading_timestamp
 
