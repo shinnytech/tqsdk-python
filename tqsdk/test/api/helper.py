@@ -19,6 +19,8 @@ class MockInsServer():
         self.stop_signal = self.loop.create_future()
         self.thread = threading.Thread(target=self._run)
         self.thread.start()
+        self.semaphore = threading.Semaphore(value=0)
+        self.semaphore.acquire()
 
     def close(self):
         self.loop.call_soon_threadsafe(lambda: self.stop_signal.set_result(0))
@@ -69,6 +71,7 @@ class MockInsServer():
             await runner.setup()
             site = web.TCPSite(runner, '127.0.0.1', self.port)
             await site.start()
+            self.semaphore.release()
             await self.stop_signal
         finally:
             await runner.shutdown()
@@ -89,6 +92,7 @@ class MockServer():
         self.td_port = 5200
         self._expecting = {}
         self.stop_signal = self.loop.create_future()
+        self.semaphore = threading.Semaphore(value=0)
 
     def close(self):
         assert not self._expecting
@@ -118,10 +122,12 @@ class MockServer():
         self.script_file_name = script_file_name
         self.thread = threading.Thread(target=self._run)
         self.thread.start()
+        self.semaphore.acquire()
 
     async def _server(self):
         async with websockets.serve(self._handler_md, "127.0.0.1", self.md_port) as self.server_md:
             async with websockets.serve(self._handler_td, "127.0.0.1", self.td_port) as self.server_td:
+                self.semaphore.release()
                 await self.stop_signal
 
     def _run(self):
