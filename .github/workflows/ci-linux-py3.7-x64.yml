@@ -1,0 +1,73 @@
+name: Test(Linux-py3.7-x64)
+
+on:
+  push:
+    branches:
+      - '*'
+    tags:
+      - '*'
+  pull_request:
+    branches:
+      - 'master'
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        envinfo:
+          - { name: 'linux-3.7-x64', os: ubuntu-latest, python-version: 3.7.x, python-arch: x64, TZ: 'Asia/Shanghai' }
+
+    env:
+        PYTHONIOENCODING: "utf-8"
+        PYTHONHASHSEED: 32
+        TZ: ${{ matrix.envinfo.TZ }}
+        TESTLOGPATH: "./log_archive/"
+        TESTLOGNAME: ${{ matrix.envinfo.name }}
+
+    runs-on: ${{ matrix.envinfo.os }}
+
+    steps: 
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Setup Node.js 12.x
+      uses: actions/setup-node@v1
+      with:
+        node-version: 12.x
+
+    - name: Package web
+      run: |
+        cd ./web/
+        yarn install --frozen-lockfile
+        yarn run build
+      env:
+        CI: true
+
+    - name: Set up Python
+      uses: actions/setup-python@v1
+      with:
+        python-version: ${{matrix.envinfo.python-version}}
+        architecture: ${{matrix.envinfo.python-arch}}
+        
+    - name: Install dependencies
+      run: |
+        git lfs install
+        git lfs pull
+        python -m pip install --upgrade pip wheel setuptools pytest
+        python -m pip install -r requirements.txt
+
+    - name: Run test case
+      timeout-minutes: 60
+      shell: bash
+      run: |
+        mkdir -p ${{ env.TESTLOGPATH }}
+        python -W ignore::DeprecationWarning -m pytest --no-print-logs \
+          --log-level=DEBUG \
+          --log-file=${{ env.TESTLOGPATH }}${{ env.TESTLOGNAME }}.log
+
+    - name: Upload log to artifact
+      if: always()
+      uses: actions/upload-artifact@v1
+      with:
+        name: ${{ env.TESTLOGNAME }}
+        path: ${{ env.TESTLOGPATH }}

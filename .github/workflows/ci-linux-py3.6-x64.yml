@@ -1,4 +1,4 @@
-name: Linux Build Test and Deploy
+name: Test and Deploy(Linux-py3.6-x64)
 
 on:
   push:
@@ -11,22 +11,24 @@ on:
       - 'master'
 
 jobs:
-  CI:
+  test:
     strategy:
       matrix:
-        python-version: [3.6.x, 3.7.x, 3.8.x]
-        python-arch: ["x64"]
+        envinfo:
+          - { name: 'linux-3.6-x64', os: ubuntu-latest, python-version: 3.6.x, python-arch: x64, TZ: 'Asia/Shanghai' }
 
     env:
         PYTHONIOENCODING: "utf-8"
         PYTHONHASHSEED: 32
-        TZ: 'Asia/Shanghai'
+        TZ: ${{ matrix.envinfo.TZ }}
+        TESTLOGPATH: "./log_archive/"
+        TESTLOGNAME: ${{ matrix.envinfo.name }}
 
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.envinfo.os }}
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v1
+      uses: actions/checkout@v2
 
     - name: Setup Node.js 12.x
       uses: actions/setup-node@v1
@@ -41,7 +43,65 @@ jobs:
       env:
         CI: true
 
-    - name: Set up Python ${{matrix.python-version}} ${{matrix.python-arch}}
+    - name: Set up Python
+      uses: actions/setup-python@v1
+      with:
+        python-version: ${{matrix.envinfo.python-version}}
+        architecture: ${{matrix.envinfo.python-arch}}
+        
+    - name: Install dependencies
+      run: |
+        git lfs install
+        git lfs pull
+        python -m pip install --upgrade pip wheel setuptools pytest
+        python -m pip install -r requirements.txt
+
+    - name: Run test case
+      timeout-minutes: 60
+      shell: bash
+      run: |
+        mkdir -p ${{ env.TESTLOGPATH }}
+        python -W ignore::DeprecationWarning -m pytest --no-print-logs \
+          --log-level=DEBUG \
+          --log-file=${{ env.TESTLOGPATH }}${{ env.TESTLOGNAME }}.log
+
+    - name: Upload log to artifact
+      if: always()
+      uses: actions/upload-artifact@v1
+      with:
+        name: ${{ env.TESTLOGNAME }}
+        path: ${{ env.TESTLOGPATH }}
+
+  deploy:
+    needs: test
+    strategy:
+      matrix:
+        python-version: [3.6.x]
+        python-arch: [x64]
+
+    env:
+        PYTHONIOENCODING: "utf-8"
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Setup Node.js 12.x
+      uses: actions/setup-node@v1
+      with:
+        node-version: 12.x
+
+    - name: Package web
+      run: |
+        cd ./web/
+        yarn install --frozen-lockfile
+        yarn run build
+      env:
+        CI: true
+
+    - name: Set up Python
       uses: actions/setup-python@v1
       with:
         python-version: ${{matrix.python-version}}
@@ -51,36 +111,13 @@ jobs:
       run: |
         git lfs install
         git lfs pull
-        python -m pip install --upgrade pip wheel setuptools pytest
+        python -m pip install --upgrade pip wheel setuptools
         python -m pip install -r requirements.txt
-        python -m pip install Sphinx==2.3.1
-        python -m pip install autodocsumm sphinx_rtd_theme jieba
-
-    - name: Format log path and name
-      id: log_info
-      run: |
-        echo "::set-output name=log_name::Linux_$(date -d today +%Y%m%d)_${{matrix.python-version}}_${{matrix.python-arch}}_$(echo ${GITHUB_SHA:0:7})"
-        echo "::set-output name=log_archive_path::./log_archive/"
-
-    - name: Run test case
-      timeout-minutes: 60
-      run: |
-        mkdir -p ${{steps.log_info.outputs.log_archive_path}}
-        python -W ignore::DeprecationWarning -m pytest --no-print-logs \
-          --log-level=DEBUG \
-          --log-file=${{steps.log_info.outputs.log_archive_path}}${{steps.log_info.outputs.log_name}}.log
-
-    - name: Upload log to artifact
-      if: always()
-      uses: actions/upload-artifact@v1
-      with:
-        name: ${{steps.log_info.outputs.log_name}}
-        path: ${{steps.log_info.outputs.log_archive_path}}
+        python -m pip install Sphinx==2.3.1 autodocsumm sphinx_rtd_theme jieba
 
     - name: Build wheel on linux platform
       run: |
         pip list
-        ## wheel包及源码包制作
         python setup.py sdist
         python setup.py bdist_wheel -p any
         rm -rf build
@@ -91,39 +128,41 @@ jobs:
         python setup.py bdist_wheel -p win_amd64
         rm -rf build
         sphinx-build doc build/doc
-    
+
     - name: Publish to pypi
-      if: matrix.python-version == '3.6.x' && startsWith(github.event.ref, 'refs/tags')
+      if: startsWith(github.event.ref, 'refs/tags')
       uses: pypa/gh-action-pypi-publish@master
       with:
         user: __token__
         password: ${{ secrets.PYPI_PASSWORD }}
 
     - name: Publish to github release
-      if: matrix.python-version == '3.6.x' && startsWith(github.event.ref, 'refs/tags')
+      if: startsWith(github.event.ref, 'refs/tags')
       uses: fnkr/github-action-ghr@v1
       env:
         GHR_PATH: dist/
         GITHUB_TOKEN: ${{ secrets.GITHUB_USER_TOKEN }}
 
     - name: Setup AWS S3 dist path
-      if: matrix.python-version == '3.6.x' && startsWith(github.event.ref, 'refs/heads')
+      if: startsWith(github.event.ref, 'refs/heads')
+      shell: bash
       run: |
-        echo "::set-env name=DEST_DIR::dist/tqsdk-python/\
-        $(echo ${GITHUB_REF#refs/heads/})/$(date -d today +%Y%m%d)_$(echo ${GITHUB_SHA:0:7})/"
+        echo "::set-env name=DIST_DIR::dist/tqsdk-python/$(echo ${GITHUB_REF#refs/heads/})/$(date -d today +%Y%m%d)_$(echo ${GITHUB_SHA:0:7})/"
+        echo "::set-env name=DOC_DIR::docs/tqsdk-python/$(echo ${GITHUB_REF#refs/heads/})/"
 
     - name: Setup AWS S3 dist path on tag
-      if: matrix.python-version == '3.6.x' && startsWith(github.event.ref, 'refs/tags')
+      if: startsWith(github.event.ref, 'refs/tags')
+      shell: bash
       run: |
-        echo "::set-env name=DEST_DIR::dist/tqsdk-python/$(echo ${GITHUB_REF#refs/tags/})/"
+        echo "::set-env name=DIST_DIR::dist/tqsdk-python/$(echo ${GITHUB_REF#refs/tags/})/"
+        echo "::set-env name=DOC_DIR::docs/tqsdk-python/$(echo ${GITHUB_REF#refs/tags/})/"
 
     - name: Setup AWS S3 dist path on pull_request
-      if: matrix.python-version == '3.6.x' && github.event_name == 'pull_request'
+      if: github.event_name == 'pull_request'
       run: |
-        echo "::set-env name=DEST_DIR::dist/tqsdk-python/pr-${{ github.event.number }}/"
+        echo "::set-env name=DIST_DIR::dist/tqsdk-python/pr-${{ github.event.number }}/"
 
     - name: Publish dist to AWS S3
-      if: matrix.python-version == '3.6.x'
       uses: jakejarvis/s3-sync-action@master
       env:
         AWS_S3_BUCKET: ${{ secrets.BUCKET_NAME }}
@@ -131,19 +170,10 @@ jobs:
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         AWS_REGION: ${{ secrets.AWS_REGION }}
         SOURCE_DIR: "dist"
-
-    - name: Setup branch AWS S3 docs path
-      if: matrix.python-version == '3.6.x' && startsWith(github.event.ref, 'refs/heads')
-      run: |
-        echo "::set-env name=DEST_DIR::docs/tqsdk-python/$(echo ${GITHUB_REF#refs/heads/})/"
-
-    - name: Setup branch AWS S3 docs path on Tag
-      if: matrix.python-version == '3.6.x' && startsWith(github.event.ref, 'refs/tags')
-      run: |
-        echo "::set-env name=DEST_DIR::docs/tqsdk-python/$(echo ${GITHUB_REF#refs/tags/})/"
+        DEST_DIR: ${{ env.DIST_DIR }}
 
     - name: Publish tag build/doc to AWS S3
-      if: matrix.python-version == '3.6.x' && github.event_name != 'pull_request'
+      if: github.event_name != 'pull_request'
       uses: jakejarvis/s3-sync-action@master
       with:
         args: --exclude '.doctrees/*'
@@ -153,3 +183,4 @@ jobs:
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         AWS_REGION: ${{ secrets.AWS_REGION }}
         SOURCE_DIR: "build/doc"
+        DEST_DIR: ${{ env.DOC_DIR }}
