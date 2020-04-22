@@ -873,7 +873,7 @@ class TqSim(object):
             self._quotes[symbol] = {
                 "ins_class": None,  # 合约信息初始化为None
                 "option_class": None,
-                "symbol": symbol,
+                "instrument_id": symbol,
                 "underlying_symbol": "",
                 "orders": {},
                 "datetime": "",
