@@ -15,7 +15,7 @@ from aiohttp import web
 from tqsdk.backtest import TqBacktest, TqReplay
 from tqsdk.account import TqAccount
 from tqsdk.channel import TqChan
-from tqsdk.diff import TqSimpleDiff
+from tqsdk.diff import _simple_merge_diff
 from tqsdk.sim import TqSim
 from tqsdk.datetime import TqDatetime
 
@@ -104,7 +104,7 @@ class TqWebHelper(object):
                             web_diff = {'draw_chart_datas': {}}
                             web_diff['draw_chart_datas'][pack['symbol']] = {}
                             web_diff['draw_chart_datas'][pack['symbol']][pack['dur_nano']] = diff_data
-                            TqSimpleDiff._merge_diff(self._data, web_diff)
+                            _simple_merge_diff(self._data, web_diff)
                             for chan in self._conn_diff_chans:
                                 self.send_to_conn_chan(chan, [web_diff])
                     else:
@@ -146,7 +146,7 @@ class TqWebHelper(object):
                     # 处理 trade
                     trade = d.get("trade")
                     if trade is not None:
-                        TqSimpleDiff._merge_diff(self._data["trade"], trade)
+                        _simple_merge_diff(self._data["trade"], trade)
                         web_diffs.append({"trade": trade})
                         # 账户是否有变化
                         static_balance_changed = d.get("trade", {}).get(self._api._account._account_id, {}).\
@@ -157,19 +157,19 @@ class TqWebHelper(object):
                             account_changed = True
                     # 处理 backtest replay
                     if d.get("_tqsdk_backtest") or d.get("_tqsdk_replay"):
-                        TqSimpleDiff._merge_diff(self._data, d)
+                        _simple_merge_diff(self._data, d)
                         web_diffs.append(d)
                     # 处理通知，行情和交易连接的状态
                     notify_diffs = self._notify_handler(d.get("notify", {}))
                     for diff in notify_diffs:
-                        TqSimpleDiff._merge_diff(self._data, diff)
+                        _simple_merge_diff(self._data, diff)
                     web_diffs.extend(notify_diffs)
                 if account_changed:
                     dt, snapshot = self.get_snapshot()
                     _snapshots = {"snapshots": {}}
                     _snapshots["snapshots"][dt] = snapshot
                     web_diffs.append(_snapshots)
-                    TqSimpleDiff._merge_diff(self._data, _snapshots)
+                    _simple_merge_diff(self._data, _snapshots)
                 for chan in self._conn_diff_chans:
                     self.send_to_conn_chan(chan, web_diffs)
             # 接收的数据转发给下游 api
@@ -212,7 +212,7 @@ class TqWebHelper(object):
     def send_to_conn_chan(self, chan, diffs):
         last_diff = chan.recv_latest({})
         for d in diffs:
-            TqSimpleDiff._merge_diff(last_diff, d, reduce_diff = False)
+            _simple_merge_diff(last_diff, d, reduce_diff = False)
         if last_diff != {}:
             chan.send_nowait(last_diff)
 
