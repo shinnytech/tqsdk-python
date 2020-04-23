@@ -4,8 +4,8 @@ __author__ = 'chengzhi'
 
 import copy
 
+from tqsdk.diff import _get_obj
 from tqsdk.entity import Entity
-from tqsdk.diff import TqDiff
 
 
 class Quote(Entity):
@@ -397,7 +397,7 @@ class Position(Entity):
 
         :return: dict, 其中每个元素的key为委托单ID, value为 :py:class:`~tqsdk.objs.Order`
         """
-        tdict = TqDiff._get_obj(self._api._data, ["trade", self._api._account._account_id, "orders"])
+        tdict = _get_obj(self._api._data, ["trade", self._api._account._account_id, "orders"])
         fts = {order_id: order for order_id, order in tdict.items() if (not order_id.startswith(
             "_")) and order.instrument_id == self.instrument_id and order.exchange_id == self.exchange_id and order.status == "ALIVE"}
         return fts
@@ -481,7 +481,7 @@ class Order(Entity):
 
         :return: 当委托单部分成交或全部成交时, 返回成交部分的平均成交价. 无任何成交时, 返回 nan
         """
-        tdict = TqDiff._get_obj(self._api._data, ["trade", self._api._account._account_id, "trades"])
+        tdict = _get_obj(self._api._data, ["trade", self._api._account._account_id, "trades"])
         sum_volume = sum([trade.volume for trade_id, trade in tdict.items() if
                           (not trade_id.startswith("_")) and trade.order_id == self.order_id])
         if sum_volume == 0:
@@ -497,7 +497,7 @@ class Order(Entity):
 
         :return: dict, 其中每个元素的key为成交ID, value为 :py:class:`~tqsdk.objs.Trade`
         """
-        tdict = TqDiff._get_obj(self._api._data, ["trade", self._api._account._account_id, "trades"])
+        tdict = _get_obj(self._api._data, ["trade", self._api._account._account_id, "trades"])
         fts = {trade_id: trade for trade_id, trade in tdict.items() if
                (not trade_id.startswith("_")) and trade.order_id == self.order_id}
         return fts
