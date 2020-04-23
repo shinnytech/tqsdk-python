@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-from tqsdk.datetime import TqDatetime
+from tqsdk.datetime import _get_period_timestamp
 
 
 def ref(series, n):
@@ -910,7 +910,7 @@ def _get_volatility(series: pd.Series, dur: Union[pd.Series, int] = 86400, tradi
     seconds_per_day = 24 * 60 * 60
     dur = dur[0] if isinstance(dur, pd.Series) else dur
     if dur < 24 * 60 * 60 and trading_time:
-        periods = TqDatetime._get_period_timestamp(0, trading_time.get("day", []) + trading_time.get("night", []))
+        periods = _get_period_timestamp(0, trading_time.get("day", []) + trading_time.get("night", []))
         seconds_per_day = sum([p[1] - p[0] for p in periods]) / 1e9
     return math.sqrt((250 * seconds_per_day / dur) * np.cov(series_u))
 
