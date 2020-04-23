@@ -7,7 +7,7 @@ from asyncio import gather
 from typing import Optional, TYPE_CHECKING
 
 from tqsdk.channel import TqChan
-from tqsdk.datetime import TqDatetime
+from tqsdk.datetime import _is_in_trading_time
 
 if TYPE_CHECKING:
     from tqsdk.api import TqApi
@@ -177,7 +177,7 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
                 #   行情更新（即下一交易时段开始）后：获取target_pos最新的目标仓位, 开始调整仓位
 
                 # 如果不在可交易时间段内: 等待更新
-                while not TqDatetime._is_in_trading_time(self._quote, self._quote["datetime"], self._local_time_record):
+                while not _is_in_trading_time(self._quote, self._quote["datetime"], self._local_time_record):
                     await self._local_time_record_update_chan.recv()
 
                 target_pos = self._pos_chan.recv_latest(target_pos)  # 获取最后一个target_pos目标仓位

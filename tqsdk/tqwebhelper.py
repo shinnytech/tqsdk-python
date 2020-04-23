@@ -12,12 +12,12 @@ from urllib.parse import urlparse
 import simplejson
 from aiohttp import web
 
-from tqsdk.backtest import TqBacktest, TqReplay
 from tqsdk.account import TqAccount
+from tqsdk.backtest import TqBacktest, TqReplay
 from tqsdk.channel import TqChan
+from tqsdk.datetime import _get_trading_day_start_time
 from tqsdk.diff import _simple_merge_diff
 from tqsdk.sim import TqSim
-from tqsdk.datetime import TqDatetime
 
 
 class TqWebHelper(object):
@@ -225,7 +225,7 @@ class TqWebHelper(object):
             tqsim_current_timestamp = self._api._account._get_current_timestamp()
             if tqsim_current_timestamp == 631123200000000000:
                 # 未收到任何行情, TqSim 时间没有更新
-                return TqDatetime._get_trading_day_start_time(self._data['_tqsdk_replay']['replay_dt'])
+                return _get_trading_day_start_time(self._data['_tqsdk_replay']['replay_dt'])
             else:
                 return tqsim_current_timestamp
         else:
