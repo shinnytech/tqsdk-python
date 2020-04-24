@@ -65,7 +65,7 @@ class TqApi(object):
             account (None/TqAccount/TqSim): [可选]交易账号:
                 * None: 账号将根据环境变量决定, 默认为 :py:class:`~tqsdk.sim.TqSim`
 
-                * :py:class:`~tqsdk.account.TqAccount` : 使用实盘账号, 直连行情和交易服务器(不通过天勤终端), 需提供期货公司/帐号/密码
+                * :py:class:`~tqsdk.account.TqAccount` : 使用实盘账号, 直连行情和交易服务器, 需提供期货公司/帐号/密码
 
                 * :py:class:`~tqsdk.sim.TqSim` : 使用 TqApi 自带的内部模拟账号
 

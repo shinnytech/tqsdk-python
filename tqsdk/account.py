@@ -19,7 +19,7 @@ class TqAccount(object):
         创建天勤实盘实例
 
         Args:
-            broker_id (str): 期货公司, 可以在天勤终端中查看期货公司名称
+            broker_id (str): 期货公司，支持的期货公司列表 https://www.shinnytech.com/blog/tq-support-broker/
 
             account_id (str): 帐号
 
