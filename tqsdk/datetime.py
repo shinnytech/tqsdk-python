@@ -97,7 +97,8 @@ def _get_trading_timestamp(quote, current_datetime: str):
     # 针对没有夜盘，添加 20200123 之前的夜盘时间段, 0123 是假期之前一天，本身没有夜盘
     if last_trading_day_timestamp < 1579708800000000000 and not night:
         for product, trading_night in night_trading_table.items():
-            if quote["instrument_id"].startswith(product):
+            match = quote["instrument_id"].split(product)
+            if len(match) > 1 and match[1][0].isdigit():
                 night.append(trading_night)
                 break
     trading_timestamp = {
