@@ -1138,18 +1138,6 @@ class TqApi(object):
         return chan
 
     # ----------------------------------------------------------------------
-    def set_replay_speed(self, speed: float = 10.0) -> None:
-        """
-        调整复盘服务器行情推进速度
-
-        Args:
-            speed (float): 复盘服务器行情推进速度, 默认为 10.0
-
-        """
-        if isinstance(self._backtest, TqReplay):
-            self._backtest._set_server_session({"aid": "ratio", "speed": speed})
-
-    # ----------------------------------------------------------------------
     def _call_soon(self, org_call_soon, callback, *args, **kargs):
         """ioloop.call_soon的补丁, 用来追踪是否有任务完成并等待执行"""
         self._event_rev += 1
