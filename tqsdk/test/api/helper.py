@@ -17,9 +17,9 @@ class MockInsServer():
         self.port = port
         self.symbols_dir = os.path.join(os.path.dirname(__file__), 'symbols')
         self.stop_signal = self.loop.create_future()
+        self.semaphore = threading.Semaphore(value=0)
         self.thread = threading.Thread(target=self._run)
         self.thread.start()
-        self.semaphore = threading.Semaphore(value=0)
         self.semaphore.acquire()
 
     def close(self):
