@@ -3,9 +3,9 @@
 __author__ = 'chengzhi'
 
 import asyncio
-import datetime
 import statistics
 import time
+from datetime import datetime
 
 from tqsdk.datetime import _get_trading_day_from_timestamp, _get_trading_day_end_time, _get_trade_timestamp, \
     _is_in_trading_time
@@ -196,7 +196,7 @@ class TqSim(object):
             if _tqsdk_backtest:
                 # 回测时，用 _tqsdk_backtest 对象中 current_dt 作为 TqSim 的 _current_datetime
                 self._tqsdk_backtest.update(_tqsdk_backtest)
-                self._current_datetime = datetime.datetime.fromtimestamp(
+                self._current_datetime = datetime.fromtimestamp(
                     self._tqsdk_backtest["current_dt"] / 1e9).strftime("%Y-%m-%d %H:%M:%S.%f")
                 self._local_time_record = float("nan")
                 # 1. 回测时不使用时间差来模拟交易所时间的原因(_local_time_record始终为初始值nan)：
@@ -236,7 +236,7 @@ class TqSim(object):
                     self._settle()
                     # 若当前行情时间大于交易日的结束时间(切换交易日)，则根据此行情时间更新交易日及交易日结束时间
                     trading_day = _get_trading_day_from_timestamp(self._get_current_timestamp())
-                    self._trading_day_end = datetime.datetime.fromtimestamp(
+                    self._trading_day_end = datetime.fromtimestamp(
                         (_get_trading_day_end_time(trading_day) - 999) / 1e9).strftime("%Y-%m-%d %H:%M:%S.%f")
                 if "ask_price1" in quote_diff:
                     quote["ask_price1"] = float("nan") if type(quote_diff["ask_price1"]) is str else quote_diff[
@@ -378,7 +378,7 @@ class TqSim(object):
             order["insert_date_time"] = _get_trade_timestamp(self._current_datetime, self._local_time_record)
             self._send_order(order)
             self._logger.info("模拟交易下单 %s: 时间:%s,合约:%s,开平:%s,方向:%s,手数:%s,价格:%s", order["order_id"],
-                              datetime.datetime.fromtimestamp(order["insert_date_time"] / 1e9).strftime(
+                              datetime.fromtimestamp(order["insert_date_time"] / 1e9).strftime(
                                   "%Y-%m-%d %H:%M:%S.%f"), symbol, order["offset"], order["direction"],
                               order["volume_left"], order.get("limit_price", "市价"))
             if not _is_in_trading_time(quote, self._current_datetime, self._local_time_record):
@@ -520,7 +520,7 @@ class TqSim(object):
             for t in self.trade_log[d]["trades"]:
                 symbol = t["exchange_id"] + "." + t["instrument_id"]
                 self._logger.warning("时间:%s,合约:%s,开平:%s,方向:%s,手数:%d,价格:%.3f,手续费:%.2f",
-                                     datetime.datetime.fromtimestamp(t["trade_date_time"] / 1e9).strftime(
+                                     datetime.fromtimestamp(t["trade_date_time"] / 1e9).strftime(
                                          "%Y-%m-%d %H:%M:%S.%f"), symbol, t["offset"], t["direction"], t["volume"],
                                      t["price"], t["commission"])
                 if symbol not in trades_logs:
@@ -933,4 +933,4 @@ class TqSim(object):
         })
 
     def _get_current_timestamp(self):
-        return int(datetime.datetime.strptime(self._current_datetime, "%Y-%m-%d %H:%M:%S.%f").timestamp() * 1e6) * 1000
+        return int(datetime.strptime(self._current_datetime, "%Y-%m-%d %H:%M:%S.%f").timestamp() * 1e6) * 1000
