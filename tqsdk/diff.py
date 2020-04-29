@@ -17,8 +17,10 @@ def _merge_diff(result, diff, prototype, persist):
             if persist or "#" in prototype:
                 del diff[key]
             else:
+                path = result["_path"].copy()
                 dv = result.pop(key, None)
-                _notify_update(dv, True)
+                path.append(key)
+                _notify_update(dv, True, _gen_diff_obj(None, path))
         elif value_type is dict or value_type is Entity:
             default = None
             tpersist = persist
@@ -46,17 +48,26 @@ def _merge_diff(result, diff, prototype, persist):
         else:
             result[key] = diff[key]
     if len(diff) != 0:
-        _notify_update(result, False)
+        diff_obj = _gen_diff_obj(diff, result["_path"])
+        _notify_update(result, False, diff_obj)
 
 
-def _notify_update(target, recursive):
+def _gen_diff_obj(diff, path):
+    """将 diff 根据 path 拼成一个完整的 diff 包"""
+    diff_obj = diff
+    for i in range(len(path)):
+        diff_obj = {path[len(path)-i-1]: diff_obj}
+    return diff_obj
+
+
+def _notify_update(target, recursive, content):
     """同步通知业务数据更新"""
     if isinstance(target, dict) or isinstance(target, Entity):
         for q in target["_listener"]:
-            q.send_nowait(True)
+            q.send_nowait(content)
         if recursive:
             for v in target.values():
-                _notify_update(v, recursive)
+                _notify_update(v, recursive, content)
 
 
 def _get_obj(root, path, default=None):
