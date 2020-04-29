@@ -74,6 +74,14 @@ def _get_obj(root, path, default=None):
     return d
 
 
+def _register_update_chan(objs, chan):
+    if not isinstance(objs, list):
+        objs = [objs]
+    for o in objs:
+        o["_listener"].add(chan)
+    return chan
+
+
 def _is_key_exist(diff, path, key):
     """判断指定数据是否存在"""
     for p in path:

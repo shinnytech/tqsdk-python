@@ -39,7 +39,7 @@ import websockets
 from tqsdk.account import TqAccount
 from tqsdk.backtest import TqBacktest, TqReplay
 from tqsdk.channel import TqChan
-from tqsdk.diff import _merge_diff, _get_obj, _is_key_exist
+from tqsdk.diff import _merge_diff, _get_obj, _is_key_exist, _register_update_chan
 from tqsdk.entity import Entity
 from tqsdk.objs import Quote, Kline, Tick, Account, Position, Order, Trade
 from tqsdk.sim import TqSim
@@ -1139,12 +1139,9 @@ class TqApi(object):
         for o in obj:
             if isinstance(o, pd.DataFrame):
                 for root in self._serials[id(o)]["root"]:
-                    listener = root["_listener"]
-                    listener.add(chan)
-            else:
-                listener = o["_listener"]
-                listener.add(chan)
-        return chan
+                    obj.append(root)
+        return _register_update_chan(obj, chan)
+
 
     # ----------------------------------------------------------------------
     def _call_soon(self, org_call_soon, callback, *args, **kargs):
