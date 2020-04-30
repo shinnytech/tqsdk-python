@@ -7,8 +7,12 @@ import copy
 from tqsdk.entity import Entity
 
 
-def _merge_diff(result, diff, prototype, persist):
-    """更新业务数据,并同步发送更新通知，保证业务数据的更新和通知是原子操作"""
+def _merge_diff(result, diff, prototype, persist, notify_update_diff=False):
+    """
+        更新业务数据,并同步发送更新通知，保证业务数据的更新和通知是原子操作
+        notify_update_diff=True 表示发送更新通知的发送的是包含diff的完整数据包，反之发送True
+        为了在 TqSim 中能每个合约的 task 可以单独维护自己的数据
+    """
     for key in list(diff.keys()):
         value_type = type(diff[key])
         if value_type is str and key in prototype and not type(prototype[key]) is str:
@@ -17,10 +21,14 @@ def _merge_diff(result, diff, prototype, persist):
             if persist or "#" in prototype:
                 del diff[key]
             else:
-                path = result["_path"].copy()
-                dv = result.pop(key, None)
-                path.append(key)
-                _notify_update(dv, True, _gen_diff_obj(None, path))
+                if notify_update_diff:
+                    path = result["_path"].copy()
+                    dv = result.pop(key, None)
+                    path.append(key)
+                    _notify_update(dv, True, _gen_diff_obj(None, path))
+                else:
+                    dv = result.pop(key, None)
+                    _notify_update(dv, True, True)
         elif value_type is dict or value_type is Entity:
             default = None
             tpersist = persist
@@ -38,7 +46,7 @@ def _merge_diff(result, diff, prototype, persist):
             else:
                 tpt = {}
             target = _get_obj(result, [key], default=default)
-            _merge_diff(target, diff[key], tpt, tpersist)
+            _merge_diff(target, diff[key], tpt, tpersist, notify_update_diff)
             if len(diff[key]) == 0:
                 del diff[key]
         elif key in result and (
@@ -48,7 +56,9 @@ def _merge_diff(result, diff, prototype, persist):
         else:
             result[key] = diff[key]
     if len(diff) != 0:
-        diff_obj = _gen_diff_obj(diff, result["_path"])
+        diff_obj = True
+        if notify_update_diff:
+            diff_obj = _gen_diff_obj(diff, result["_path"])
         _notify_update(result, False, diff_obj)
 
 
