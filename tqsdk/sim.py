@@ -7,8 +7,12 @@ import statistics
 import time
 from datetime import datetime
 
+from tqsdk.channel import TqChan
 from tqsdk.datetime import _get_trading_day_from_timestamp, _get_trading_day_end_time, _get_trade_timestamp, \
     _is_in_trading_time
+from tqsdk.diff import _get_obj, _register_update_chan, _simple_merge_diff, _merge_diff
+from tqsdk.entity import Entity
+from tqsdk.objs import Quote
 
 
 class TqSim(object):
@@ -82,9 +86,14 @@ class TqSim(object):
             "ctp_available": float("nan"),
         }
         self._positions = {}
-        self._orders = {}
-        self._quotes = {}  # 记下最新行情
-        self._client_subscribe = set()  # 客户端订阅的合约集合
+        self._data = Entity()
+        self._data._instance_entity([])
+        self._prototype = {
+            "quotes": {
+                "#": Quote(self),  # 行情的数据原型
+            }
+        }
+        self._quote_tasks = {}
         self._all_subscribe = set()  # 客户端+模拟交易模块订阅的合约集合
         # 是否已经发送初始账户信息
         self._has_send_init_account = False
@@ -97,24 +106,27 @@ class TqSim(object):
                         self._md_recv(pack)
                         await self._send_diff()
                 elif pack["aid"] == "subscribe_quote":
-                    self._client_subscribe = set(pack["ins_list"].split(","))
-                    await self._subscribe_quote()
+                    await self._subscribe_quote(pack["ins_list"].split(","))
                 elif pack["aid"] == "peek_message":
                     self._pending_peek = True
                     await self._send_diff()
                     if self._pending_peek:  # 控制"peek_message"发送: 当没有新的事件需要用户处理时才推进到下一个行情
                         await self._md_send_chan.send(pack)
                 elif pack["aid"] == "insert_order":
-                    self._insert_order(pack)
                     symbol = pack["exchange_id"] + "." + pack["instrument_id"]
-                    if symbol not in self._all_subscribe or (
-                            self._quotes[symbol]["ins_class"] in ["OPTION", "FUTURE_OPTION"] and self._quotes[symbol][
-                        "underlying_symbol"] not in self._all_subscribe):
-                        await self._subscribe_quote()
-                    await self._send_diff()
+                    if symbol not in self._quote_tasks:
+                        quote_chan = TqChan(self._api)
+                        order_chan = TqChan(self._api)
+                        self._quote_tasks[symbol] = {
+                            "quote_chan": quote_chan,
+                            "order_chan": order_chan,
+                            "task": self._api.create_task(self._quote_handler(symbol, quote_chan, order_chan))
+                        }
+                    await self._quote_tasks[symbol]["order_chan"].send(pack)
                 elif pack["aid"] == "cancel_order":
-                    self._cancel_order(pack)
-                    await self._send_diff()
+                    # pack 里只有 order_id 信息，发送到每一个合约的 order_chan, 交由 quote_task 判断是不是当前合约下的委托单
+                    for symbol in self._quote_tasks:
+                        await self._quote_tasks[symbol]["order_chan"].send(pack)
                 else:
                     await self._md_send_chan.send(pack)
                 if self._tqsdk_backtest != {} and self._tqsdk_backtest["current_dt"] >= self._tqsdk_backtest["end_dt"] \
@@ -125,7 +137,11 @@ class TqSim(object):
             if not self._tqsdk_stat:
                 await self._send_stat_report()
             md_task.cancel()
-            await asyncio.gather(md_task, return_exceptions=True)
+            tasks = [md_task]
+            for symbol in self._quote_tasks:
+                self._quote_tasks[symbol]["task"].cancel()
+                tasks.append(self._quote_tasks[symbol]["task"])
+            await asyncio.gather(*tasks, return_exceptions=True)
 
     async def _md_handler(self):
         async for pack in self._md_recv_chan:
@@ -143,18 +159,17 @@ class TqSim(object):
             self._logger.debug("TqSim message send: %s", rtn_data)
             await self._api_recv_chan.send(rtn_data)
 
-    async def _subscribe_quote(self):
-        underlying_symbol_list = set()
-        for o in self._orders.values():
-            if self._quotes[o["exchange_id"] + "." + o["instrument_id"]]["ins_class"] in ["OPTION", "FUTURE_OPTION"]:
-                underlying_symbol_list.add(
-                    self._quotes[o["exchange_id"] + "." + o["instrument_id"]]["underlying_symbol"])
-        self._all_subscribe = self._client_subscribe | {o["exchange_id"] + "." + o["instrument_id"] for o in
-                                                        self._orders.values()} | self._positions.keys() | underlying_symbol_list
-        await self._md_send_chan.send({
-            "aid": "subscribe_quote",
-            "ins_list": ",".join(self._all_subscribe)
-        })
+    async def _subscribe_quote(self, symbols):
+        """这里只会增加订阅合约，不会退订合约"""
+        symbols = symbols if isinstance(symbols, list) else [symbols]
+        length = len(self._all_subscribe)
+        for s in symbols:
+            self._all_subscribe.add(s)
+        if len(self._all_subscribe) > length:
+            await self._md_send_chan.send({
+                "aid": "subscribe_quote",
+                "ins_list": ",".join(self._all_subscribe)
+            })
 
     async def _send_stat_report(self):
         self._settle()
@@ -174,11 +189,95 @@ class TqSim(object):
             }]
         })
 
+    async def _ensure_quote(self, symbol, quote_chan):
+        """quote收到行情后返回"""
+        quote = _get_obj(self._data, ["quotes", symbol], Quote(self._api))
+        _register_update_chan(quote, quote_chan)
+        if quote.get("datetime", ""):
+            return quote.copy()
+        async for _ in quote_chan:
+            if quote.get("datetime", ""):
+                return quote.copy()
+
+    async def _quote_handler(self, symbol, quote_chan, order_chan):
+        try:
+            orders = {}
+            position = self._normalize_position(symbol)
+            self._positions[symbol] = position
+            await self._subscribe_quote(symbol)
+            quote = await self._ensure_quote(symbol, quote_chan)
+            underlying_quote = None
+            if quote["ins_class"] in ["FUTURE_OPTION", "OPTION"]:
+                # 如果是期权，订阅标的合约行情，确定收到期权标的合约行情
+                underlying_symbol = quote["underlying_symbol"]
+                await self._subscribe_quote(underlying_symbol)
+                underlying_quote = await self._ensure_quote(underlying_symbol, quote_chan)  # 订阅合约
+            task = self._api.create_task(self._forward_chan_handler(order_chan, quote_chan))
+            async for pack in quote_chan:
+                if "aid" not in pack:
+                    _simple_merge_diff(quote, pack.get("quotes", {}).get(symbol, {}))
+                    for order_id in list(orders.keys()):
+                        assert orders[order_id]["insert_date_time"] > 0
+                        match_msg = self._match_order(orders[order_id], symbol, quote, underlying_quote)
+                        if match_msg:
+                            self._del_order(symbol, orders[order_id], match_msg)
+                            del orders[order_id]
+                    # 按照合约最新价调整持仓
+                    self._adjust_position(symbol, price=quote["last_price"])
+                elif pack["aid"] == "insert_order":
+                    order = self._normalize_order(pack)  # 调整 pack 为 order 对象需要的字段
+                    orders[pack["order_id"]] = order  # 记录 order 在 orders 里
+                    insert_result = self._insert_order(order, symbol, quote, underlying_quote)
+                    if insert_result:
+                        self._del_order(symbol, order, insert_result)
+                        del orders[pack["order_id"]]
+                    else:
+                        match_msg = self._match_order(order, symbol, quote, underlying_quote)
+                        if match_msg:
+                            self._del_order(symbol, orders[pack["order_id"]], match_msg)
+                            del orders[pack["order_id"]]
+                    # 按照合约最新价调整持仓
+                    self._adjust_position(symbol, price=quote["last_price"])
+                elif pack["aid"] == "cancel_order":
+                    if pack["order_id"] in orders:
+                        self._del_order(symbol, orders[pack["order_id"]], "已撤单")
+                        del orders[pack["order_id"]]
+                elif pack["aid"] == "settle":
+                    for order in orders.values():
+                        self._del_order(symbol, order, "交易日结束，自动撤销当日有效的委托单（GFD）")
+                    orders = {}
+                    # 调整持仓
+                    position["pos_long_his"] = position["volume_long"]
+                    position["pos_long_today"] = 0
+                    position["pos_short_his"] = position["volume_short"]
+                    position["pos_short_today"] = 0
+                    position["volume_long_today"] = 0
+                    position["volume_long_his"] = position["volume_long"]
+                    position["volume_short_today"] = 0
+                    position["volume_short_his"] = position["volume_short"]
+                    position["position_price_long"] = position["last_price"]
+                    position["position_price_short"] = position["last_price"]
+                    position["position_cost_long"] = position["open_cost_long"] + position["float_profit_long"]
+                    position["position_cost_short"] = position["open_cost_short"] + position["float_profit_short"]
+                    position["position_profit_long"] = 0
+                    position["position_profit_short"] = 0
+                    position["position_profit"] = 0
+                    self._send_position(position)
+                await self._send_diff()
+        finally:
+            await quote_chan.close()
+            await order_chan.close()
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+
+    async def _forward_chan_handler(self, chan_from, chan_to):
+        async for pack in chan_from:
+            await chan_to.send(pack)
+
     def _md_recv(self, pack):
         for d in pack["data"]:
             d.pop("trade", None)
             self._diffs.append(d)
-
             # 在第一次收到 mdhis_more_data 为 False 的时候，发送账户初始截面信息，这样回测模式下，往后的模块才有正确的时间顺序
             if not self._has_send_init_account and not d.get("mdhis_more_data", True):
                 self._send_account()
@@ -204,19 +303,13 @@ class TqSim(object):
                 #   若处理时间过长，此时下单则在判断下单时间时与测试用例中的预期时间相差较大，导致测试用例无法通过。
                 # 2. 回测不使用时间差的方法来判断下单时间仍是可行的: 与使用了时间差的方法相比, 只对在每个交易时间段最后一笔行情时的下单时间判断有差异,
                 #   若不使用时间差, 则在最后一笔行情时下单仍判断为在可交易时间段内, 且可成交.
-            for symbol, quote_diff in d.get("quotes", {}).items():
+            quotes_diff = d.get("quotes", {})
+            if not quotes_diff:
+                continue
+            # 先根据 quotes_diff 里的 datetime, 确定出 _current_datetime，再 _merge_diff(同时会发送行情到 quote_chan)
+            for symbol, quote_diff in quotes_diff.items():
                 if quote_diff is None:
                     continue
-                quote = self._ensure_quote(symbol)
-
-                # 在第一次接收到期权的标的行情后，对此期权合约match_orders()，避免因下一笔行情一直未收到而无法处理其order信息
-                quote_list = []  # 记录以本quote为标的的期权合约
-                if not quote["datetime"] and quote_diff.get("datetime"):  # 第一次收到行情
-                    for q in self._quotes.values():
-                        if q["datetime"] != "" and q["underlying_symbol"] == symbol and q["ins_class"] in ["OPTION",
-                                                                                                           "FUTURE_OPTION"]:
-                            quote_list.append(q)
-                quote["datetime"] = quote_diff.get("datetime", quote["datetime"])
                 # 若直接使用本地时间来判断下单时间是否在可交易时间段内 可能有较大误差,因此判断的方案为:(在接收到下单指令时判断 估计的交易所时间 是否在交易时间段内)
                 # 在更新最新行情时间(即self._current_datetime)时，记录当前本地时间(self._local_time_record)，
                 # 在这之后若收到下单指令，则获取当前本地时间,判 "最新行情时间 + (当前本地时间 - 记录的本地时间)" 是否在交易时间段内。
@@ -224,45 +317,22 @@ class TqSim(object):
                 # 因为从_md_recv()中获取数据后立即判断下单时间则速度过快(两次time.time()的时间差小于最后一笔行情(14:59:9995)到15点的时间差),
                 # 则会立即成交,为处理此情况则将当前时间减去5毫秒（模拟发生5毫秒网络延迟，则两次time.time()的时间差增加了5毫秒）。
                 # todo: 按交易所来存储 _current_datetime(issue： #277)
-                if quote["datetime"] > self._current_datetime:
+                if quote_diff.get("datetime", "") > self._current_datetime:
                     # 回测时，当前时间更新即可以由 quote 行情更新，也可以由 _tqsdk_backtest.current_dt 更新，
                     # 在最外层的循环里，_tqsdk_backtest.current_dt 是在 rtn_data.data 中数组位置中的最后一个，会在循环最后一个才更新 self.current_datetime
                     # 导致前面处理 order 时的 _current_datetime 还是旧的行情时间
-                    self._current_datetime = quote["datetime"]  # 最新行情时间
+                    self._current_datetime = quote_diff["datetime"]  # 最新行情时间
                     # 更新最新行情时间时的本地时间，回测时不使用时间差
                     self._local_time_record = (time.time() - 0.005) if not self._tqsdk_backtest else float("nan")
-
                 if self._current_datetime > self._trading_day_end:  # 结算
                     self._settle()
                     # 若当前行情时间大于交易日的结束时间(切换交易日)，则根据此行情时间更新交易日及交易日结束时间
                     trading_day = _get_trading_day_from_timestamp(self._get_current_timestamp())
                     self._trading_day_end = datetime.fromtimestamp(
                         (_get_trading_day_end_time(trading_day) - 999) / 1e9).strftime("%Y-%m-%d %H:%M:%S.%f")
-                if "ask_price1" in quote_diff:
-                    quote["ask_price1"] = float("nan") if type(quote_diff["ask_price1"]) is str else quote_diff[
-                        "ask_price1"]
-                if "bid_price1" in quote_diff:
-                    quote["bid_price1"] = float("nan") if type(quote_diff["bid_price1"]) is str else quote_diff[
-                        "bid_price1"]
-                if "last_price" in quote_diff:
-                    quote["last_price"] = float("nan") if type(quote_diff["last_price"]) is str else quote_diff[
-                        "last_price"]
-                quote["volume_multiple"] = quote_diff.get("volume_multiple", quote["volume_multiple"])
-                quote["commission"] = quote_diff.get("commission", quote["commission"])
-                quote["margin"] = quote_diff.get("margin", quote["margin"])
-                quote["trading_time"] = quote_diff.get("trading_time", quote["trading_time"])
-                quote["ins_class"] = quote_diff.get("ins_class", quote["ins_class"])
-                quote["option_class"] = quote_diff.get("option_class", quote["option_class"])
-                quote["underlying_symbol"] = quote_diff.get("underlying_symbol", quote["underlying_symbol"])
-                quote["strike_price"] = quote_diff.get("strike_price", quote["strike_price"])
-                self._match_orders(quote)
-                for q in quote_list:
-                    self._match_orders(q)
-                if symbol in self._positions:
-                    self._adjust_position(symbol, price=quote["last_price"])
+            _merge_diff(self._data, {"quotes": quotes_diff}, self._prototype, False, True)
 
-    def _insert_order(self, order):
-        symbol = order["exchange_id"] + "." + order["instrument_id"]
+    def _normalize_order(self, order):
         order["exchange_order_id"] = order["order_id"]
         order["volume_orign"] = order["volume"]
         order["volume_left"] = order["volume"]
@@ -270,25 +340,56 @@ class TqSim(object):
         order["frozen_premium"] = 0.0
         order["last_msg"] = "报单成功"
         order["status"] = "ALIVE"
-        # order 的 insert_date_time 携带flag信息, <0:未收到行情但需要撤单，==0:未收到行情需撮合，>0:收到行情需撮合
         order["insert_date_time"] = 0  # 初始化为0：保持 order 的结构不变(所有字段都有，只是值不同)
         del order["aid"]
         del order["volume"]
-        quote = self._ensure_quote(symbol)
-        quote["orders"][order["order_id"]] = order  # 将挂单存入 self._quote 中对应 symbol 下 (挂单处理结束则从中删除)
-        self._orders[order["order_id"]] = order
-        self._match_order(quote, order)
+        return order
 
-    def _cancel_order(self, pack):
-        if pack["order_id"] in self._orders:
-            if self._orders[pack["order_id"]]["insert_date_time"] <= 0:  # 如果未收到行情或已经发过撤单指令
-                self._orders[pack["order_id"]]["insert_date_time"] = -1
-            else:
-                self._del_order(self._orders[pack["order_id"]], "已撤单")
+    def _normalize_position(self, symbol):
+        return {
+            "exchange_id": symbol.split(".", maxsplit=1)[0],
+            "instrument_id": symbol.split(".", maxsplit=1)[1],
+            "pos_long_his": 0,
+            "pos_long_today": 0,
+            "pos_short_his": 0,
+            "pos_short_today": 0,
+            "volume_long_today": 0,
+            "volume_long_his": 0,
+            "volume_long": 0,
+            "volume_long_frozen_today": 0,
+            "volume_long_frozen_his": 0,
+            "volume_long_frozen": 0,
+            "volume_short_today": 0,
+            "volume_short_his": 0,
+            "volume_short": 0,
+            "volume_short_frozen_today": 0,
+            "volume_short_frozen_his": 0,
+            "volume_short_frozen": 0,
+            "open_price_long": float("nan"),
+            "open_price_short": float("nan"),
+            "open_cost_long": 0.0,
+            "open_cost_short": 0.0,
+            "position_price_long": float("nan"),
+            "position_price_short": float("nan"),
+            "position_cost_long": 0.0,
+            "position_cost_short": 0.0,
+            "float_profit_long": 0.0,
+            "float_profit_short": 0.0,
+            "float_profit": 0.0,
+            "position_profit_long": 0.0,
+            "position_profit_short": 0.0,
+            "position_profit": 0.0,
+            "margin_long": 0.0,
+            "margin_short": 0.0,
+            "margin": 0.0,
+            "last_price": None,
+            "market_value_long": 0.0,  # 权利方市值(始终 >= 0)
+            "market_value_short": 0.0,  # 义务方市值(始终 <= 0)
+            "market_value": 0.0,
+        }
 
-    def _del_order(self, order, msg):
-        symbol = order["exchange_id"] + "." + order["instrument_id"]
-        self._logger.info("模拟交易委托单 %s: %s", order["order_id"], msg)
+    def _del_order(self, symbol, order, msg):
+        self._logger.info(f"模拟交易委托单 {order['order_id']}: {msg}")
         if order["offset"].startswith("CLOSE"):
             volume_long_frozen = 0 if order["direction"] == "BUY" else -order["volume_left"]
             volume_short_frozen = 0 if order["direction"] == "SELL" else -order["volume_left"]
@@ -305,86 +406,62 @@ class TqSim(object):
         order["last_msg"] = msg
         order["status"] = "FINISHED"
         self._send_order(order)
-        del self._orders[order["order_id"]]
-        del self._quotes[symbol]["orders"][order["order_id"]]  # 挂单处理结束，将其删除
+        return order
 
-    def _match_orders(self, quote):
-        for order in list(quote["orders"].values()):
-            self._match_order(quote, order)
-
-    def _match_order(self, quote, order):
-        underlying_quote = self._ensure_quote(quote["underlying_symbol"])
-        # 如果未收到行情，不处理
-        if quote["datetime"] == "" or (
-                quote["ins_class"] in ["OPTION", "FUTURE_OPTION"] and underlying_quote["datetime"] == ""):
-            return
-        symbol = order["exchange_id"] + "." + order["instrument_id"]
-
-        cancel_order_flag = False  # 是否需要在不能成交的时候撤掉该委托单，适用于连着发下单和撤单指令时
-        if order["insert_date_time"] <= 0:  # 此字段已在_insert_order()初始化为0，或在cancel_order置为-1
-            # order初始化时计算期权的frozen_margin需要使用行情数据，因此等待收到行情后再调整初始化字段的方案：
-            # 在_insert_order()只把order存在quote下的orders字典中，然后在match_order()判断收到行情后从根据insert_order_time来判断此委托单是否已初始化.
-            if order["offset"].startswith("CLOSE"):
-                volume_long_frozen = 0 if order["direction"] == "BUY" else order["volume_left"]
-                volume_short_frozen = 0 if order["direction"] == "SELL" else order["volume_left"]
-                if order["exchange_id"] == "SHFE" or order["exchange_id"] == "INE":
-                    priority = "H" if order["offset"] == "CLOSE" else "T"
-                else:
-                    priority = "TH"
-                if not self._adjust_position(symbol, volume_long_frozen=volume_long_frozen,
-                                             volume_short_frozen=volume_short_frozen, priority=priority):
-                    self._del_order(order, "平仓手数不足")
-                    return
+    def _insert_order(self, order, symbol, quote, underlying_quote=None):
+        if order["offset"].startswith("CLOSE"):
+            volume_long_frozen = 0 if order["direction"] == "BUY" else order["volume_left"]
+            volume_short_frozen = 0 if order["direction"] == "SELL" else order["volume_left"]
+            if order["exchange_id"] == "SHFE" or order["exchange_id"] == "INE":
+                priority = "H" if order["offset"] == "CLOSE" else "T"
             else:
-                if (quote["commission"] is None or quote["margin"] is None) and quote["ins_class"] not in ["OPTION",
-                                                                                                           "FUTURE_OPTION"]:
-                    self._del_order(order, "合约不存在")  # 除了期权外，主连、指数和组合没有这两个字段
-                    return
-                if quote["ins_class"] in ["OPTION", "FUTURE_OPTION"]:
-                    if order["price_type"] == "ANY" and order["exchange_id"] != "CZCE":
-                        self._del_order(order, "此交易所（" + order["exchange_id"] + ")不支持期权市价单")
-                        return
-                    elif order["direction"] == "SELL":  # 期权的SELL义务仓
-                        if quote["option_class"] == "CALL":
-                            # 认购期权义务仓开仓保证金＝[合约最新价 + Max（12% × 合约标的最新价 - 认购期权虚值， 7% × 合约标的前收盘价）] × 合约单位
-                            # 认购期权虚值＝Max（行权价 - 合约标的前收盘价，0）；
-                            order["frozen_margin"] = (quote["last_price"] + max(
-                                0.12 * underlying_quote["last_price"] - max(
-                                    quote["strike_price"] - underlying_quote["last_price"], 0),
-                                0.07 * underlying_quote["last_price"])) * quote["volume_multiple"]
-                        else:
-                            # 认沽期权义务仓开仓保证金＝Min[合约最新价+ Max（12% × 合约标的前收盘价 - 认沽期权虚值，7%×行权价），行权价] × 合约单位
-                            # 认沽期权虚值＝Max（合约标的前收盘价 - 行权价，0）
-                            order["frozen_margin"] = min(quote["last_price"] + max(
-                                0.12 * underlying_quote["last_price"] - max(
-                                    underlying_quote["last_price"] - quote["strike_price"], 0),
-                                0.07 * quote["strike_price"]), quote["strike_price"]) * quote["volume_multiple"]
-                    elif order["price_type"] != "ANY":  # 期权的BUY权利仓（市价单立即成交且没有limit_price字段,frozen_premium默认为0）
-                        order["frozen_premium"] = order["volume_orign"] * quote["volume_multiple"] * order[
-                            "limit_price"]
-                else:  # 期货
-                    # 市价单立即成交或不成, 对api来说普通市价单没有 冻结_xxx 数据存在的状态
-                    order["frozen_margin"] = quote["margin"] * order["volume_orign"]
-                if not self._adjust_account(frozen_margin=order["frozen_margin"],
-                                            frozen_premium=order["frozen_premium"]):
-                    self._del_order(order, "开仓资金不足")
-                    return
+                priority = "TH"
+            if not self._adjust_position(symbol, volume_long_frozen=volume_long_frozen,
+                                         volume_short_frozen=volume_short_frozen, priority=priority):
+                return "平仓手数不足"
+        else:
+            if ("commission" not in quote or "margin" not in quote) \
+                    and quote["ins_class"] not in ["OPTION", "FUTURE_OPTION"]:
+                # 除了期权外，主连、指数和组合没有这两个字段
+                return "合约不存在"
+            if quote["ins_class"] in ["OPTION", "FUTURE_OPTION"]:
+                if order["price_type"] == "ANY" and order["exchange_id"] != "CZCE":
+                    return f"此交易所（{order['exchange_id']}) 不支持期权市价单"
+                elif order["direction"] == "SELL":  # 期权的SELL义务仓
+                    if quote["option_class"] == "CALL":
+                        # 认购期权义务仓开仓保证金＝[合约最新价 + Max（12% × 合约标的最新价 - 认购期权虚值， 7% × 合约标的前收盘价）] × 合约单位
+                        # 认购期权虚值＝Max（行权价 - 合约标的前收盘价，0）；
+                        order["frozen_margin"] = (quote["last_price"] + max(
+                            0.12 * underlying_quote["last_price"] - max(
+                                quote["strike_price"] - underlying_quote["last_price"], 0),
+                            0.07 * underlying_quote["last_price"])) * quote["volume_multiple"]
+                    else:
+                        # 认沽期权义务仓开仓保证金＝Min[合约最新价+ Max（12% × 合约标的前收盘价 - 认沽期权虚值，7%×行权价），行权价] × 合约单位
+                        # 认沽期权虚值＝Max（合约标的前收盘价 - 行权价，0）
+                        order["frozen_margin"] = min(quote["last_price"] + max(
+                            0.12 * underlying_quote["last_price"] - max(
+                                underlying_quote["last_price"] - quote["strike_price"], 0),
+                            0.07 * quote["strike_price"]), quote["strike_price"]) * quote["volume_multiple"]
+                elif order["price_type"] != "ANY":  # 期权的BUY权利仓（市价单立即成交且没有limit_price字段,frozen_premium默认为0）
+                    order["frozen_premium"] = order["volume_orign"] * quote["volume_multiple"] * order[
+                        "limit_price"]
+            else:  # 期货
+                # 市价单立即成交或不成, 对api来说普通市价单没有 冻结_xxx 数据存在的状态
+                order["frozen_margin"] = quote["margin"] * order["volume_orign"]
+            if not self._adjust_account(frozen_margin=order["frozen_margin"],
+                                        frozen_premium=order["frozen_premium"]):
+                return "开仓资金不足"
+        # 可以模拟交易下单
+        order["insert_date_time"] = _get_trade_timestamp(self._current_datetime, self._local_time_record)
+        self._send_order(order)
+        self._logger.info("模拟交易下单 %s: 时间:%s,合约:%s,开平:%s,方向:%s,手数:%s,价格:%s", order["order_id"],
+                          datetime.fromtimestamp(order["insert_date_time"] / 1e9).strftime(
+                              "%Y-%m-%d %H:%M:%S.%f"), symbol, order["offset"], order["direction"],
+                          order["volume_left"], order.get("limit_price", "市价"))
+        if not _is_in_trading_time(quote, self._current_datetime, self._local_time_record):
+            return "下单失败, 不在可交易时间段内"
 
-            # 需在收到quote行情时, 才将其order的diff下发并将“模拟交易下单”logger发出（即可保证order的insert_date_time为正确的行情时间）
-            # 方案为：通过在 match_order() 中判断 “inster_datetime” 来处理：
-            # 则能判断收到了行情，又根据 “inster_datetime” 判断了是下单后还未处理（即diff下发和生成logger info）过的order.
-            if order["insert_date_time"] == -1:  # 如果等待撤单
-                cancel_order_flag = True
-            order["insert_date_time"] = _get_trade_timestamp(self._current_datetime, self._local_time_record)
-            self._send_order(order)
-            self._logger.info("模拟交易下单 %s: 时间:%s,合约:%s,开平:%s,方向:%s,手数:%s,价格:%s", order["order_id"],
-                              datetime.fromtimestamp(order["insert_date_time"] / 1e9).strftime(
-                                  "%Y-%m-%d %H:%M:%S.%f"), symbol, order["offset"], order["direction"],
-                              order["volume_left"], order.get("limit_price", "市价"))
-            if not _is_in_trading_time(quote, self._current_datetime, self._local_time_record):
-                self._del_order(order, "下单失败, 不在可交易时间段内")
-                return
-
+    def _match_order(self, order, symbol, quote, underlying_quote=None):
         ask_price = quote["ask_price1"]
         bid_price = quote["bid_price1"]
         if quote["ins_class"] == "FUTURE_INDEX":
@@ -397,17 +474,13 @@ class TqSim(object):
         if "limit_price" not in order:
             price = ask_price if order["direction"] == "BUY" else bid_price
             if price != price:
-                self._del_order(order, "市价指令剩余撤销")
-                return
+                return "市价指令剩余撤销"
         elif order["direction"] == "BUY" and order["limit_price"] >= ask_price:
             price = order["limit_price"]
         elif order["direction"] == "SELL" and order["limit_price"] <= bid_price:
             price = order["limit_price"]
-        elif cancel_order_flag:
-            self._del_order(order, "已撤单")
-            return
         else:
-            return
+            return ""
         trade = {
             "user_id": order["user_id"],
             "order_id": order["order_id"],
@@ -427,15 +500,7 @@ class TqSim(object):
         }
         trade_log = self._ensure_trade_log()
         trade_log["trades"].append(trade)
-        self._diffs.append({
-            "trade": {
-                self._account_id: {
-                    "trades": {
-                        trade["trade_id"]: trade.copy()
-                    }
-                }
-            }
-        })
+        self._send_trade(trade)
         if order["exchange_id"] == "SHFE" or order["exchange_id"] == "INE":
             priority = "H" if order["offset"] == "CLOSE" else "T"
         else:
@@ -453,18 +518,12 @@ class TqSim(object):
         premium = -order["frozen_premium"] if order["direction"] == "BUY" else order["frozen_premium"]
         self._adjust_account(commission=trade["commission"], premium=premium)
         order["volume_left"] = 0
-        self._del_order(order, "全部成交")
+        return "全部成交"
 
     def _settle(self):
         if self._trading_day_end[:10] == "1990-01-01":
             return
         trade_log = self._ensure_trade_log()
-        # 撤销所有委托单
-        for order in list(self._orders.values()):
-            # 在结算时只删除已有行情的order(它们已下单成功);
-            # 因为调用settle()一定是某合约的行情已经到了第二个交易日; 在settle()后才收到第一笔行情的 order 再判断是否在可交易时间段或成交/撤单
-            if order["insert_date_time"] > 0:
-                self._del_order(order, "交易日结束，自动撤销当日有效的委托单（GFD）")
         # 记录账户截面
         trade_log["account"] = self._account.copy()
         trade_log["positions"] = {k: v.copy() for k, v in self._positions.items()}
@@ -477,33 +536,18 @@ class TqSim(object):
         self._account["premium"] = 0
         self._send_account()
         self._adjust_account()
-        for symbol, position in self._positions.items():
-            position["pos_long_his"] = position["volume_long"]
-            position["pos_long_today"] = 0
-            position["pos_short_his"] = position["volume_short"]
-            position["pos_short_today"] = 0
-            position["volume_long_today"] = 0
-            position["volume_long_his"] = position["volume_long"]
-            position["volume_short_today"] = 0
-            position["volume_short_his"] = position["volume_short"]
-            position["position_price_long"] = position["last_price"]
-            position["position_price_short"] = position["last_price"]
-            position["position_cost_long"] = position["open_cost_long"] + position["float_profit_long"]
-            position["position_cost_short"] = position["open_cost_short"] + position["float_profit_short"]
-            position["position_profit_long"] = 0
-            position["position_profit_short"] = 0
-            position["position_profit"] = 0
-            self._send_position(position)
+        for symbol in self._quote_tasks.keys():
+            self._quote_tasks[symbol]["quote_chan"].send_nowait({"aid": "settle"})
 
     def _report(self):
         if not self.trade_log:
             return
+        self._logger.warning("模拟交易成交记录")
         self._tqsdk_stat["init_balance"] = self._init_balance  # 起始资金
         self._tqsdk_stat["balance"] = self._account["balance"]  # 结束资金
         self._tqsdk_stat["max_drawdown"] = 0  # 最大回撤
         max_balance = 0
         daily_yield = []
-        self._logger.warning("模拟交易成交记录")
         # 胜率 盈亏额比例
         trades_logs = {}
         profit_logs = []  # 盈利记录
@@ -529,13 +573,14 @@ class TqSim(object):
                         "SELL": [],
                     }
                 if t["offset"] == "OPEN":
+                    # 开仓成交 记录下买卖方向、价格、手数
                     trades_logs[symbol][t["direction"]].append({
                         "volume": t["volume"],
                         "price": t["price"]
                     })
                 else:
-                    opposite_dir = "BUY" if t["direction"] == "SELL" else "SELL"
-                    opposite_list = trades_logs[symbol][opposite_dir]
+                    opposite_dir = "BUY" if t["direction"] == "SELL" else "SELL"  # 开仓时的方向
+                    opposite_list = trades_logs[symbol][opposite_dir]  # 开仓方向对应 trade log
                     cur_close_volume = t["volume"]
                     cur_close_price = t["price"]
                     cur_close_dir = 1 if t["direction"] == "SELL" else -1
@@ -562,9 +607,9 @@ class TqSim(object):
         self._tqsdk_stat["profit_volumes"] = sum(p["volume"] for p in profit_logs)  # 盈利手数
         self._tqsdk_stat["loss_volumes"] = sum(l["volume"] for l in loss_logs)  # 亏损手数
         self._tqsdk_stat["profit_value"] = sum(
-            p["profit"] * p["volume"] * self._quotes[p["symbol"]]["volume_multiple"] for p in profit_logs)  # 盈利额
+            p["profit"] * p["volume"] * self._data["quotes"][p["symbol"]]["volume_multiple"] for p in profit_logs)  # 盈利额
         self._tqsdk_stat["loss_value"] = sum(
-            l["profit"] * l["volume"] * self._quotes[l["symbol"]]["volume_multiple"] for l in loss_logs)  # 亏损额
+            l["profit"] * l["volume"] * self._data["quotes"][l["symbol"]]["volume_multiple"] for l in loss_logs)  # 亏损额
 
         mean = statistics.mean(daily_yield)
         rf = 0.0001
@@ -608,10 +653,10 @@ class TqSim(object):
 
     def _adjust_position(self, symbol, volume_long_frozen=0, volume_short_frozen=0, volume_long=0, volume_short=0,
                          price=None, priority=None):
-        quote = self._quotes[symbol]
-        underlying_quote = self._quotes[quote["underlying_symbol"]]
-        position = self._ensure_position(symbol)
-        volume_multiple = self._quotes[symbol]["volume_multiple"]
+        quote = self._data.get("quotes", {}).get(symbol, {})
+        underlying_quote = self._data.get("quotes", {}).get(quote["underlying_symbol"], {}) if "underlying_symbol" in quote else None
+        position = self._positions[symbol]
+        volume_multiple = quote["volume_multiple"]
         if volume_long_frozen:
             position["volume_long_frozen"] += volume_long_frozen
             if priority[0] == "T":
@@ -693,7 +738,7 @@ class TqSim(object):
                 position["market_value_long"] += market_value
                 position["market_value"] += market_value
             else:
-                margin = volume_long * self._quotes[symbol]["margin"]
+                margin = volume_long * quote["margin"]
                 position["position_profit_long"] -= close_profit
                 position["position_profit"] -= close_profit
             position["volume_long"] += volume_long
@@ -764,7 +809,7 @@ class TqSim(object):
                             underlying_quote["last_price"] - quote["strike_price"], 0), 0.07 * quote["strike_price"]),
                                      quote["strike_price"]) * quote["volume_multiple"]
             else:
-                margin = volume_short * self._quotes[symbol]["margin"]
+                margin = volume_short * quote["margin"]
                 position["position_profit_short"] -= close_profit
                 position["position_profit"] -= close_profit
             position["volume_short"] += volume_short
@@ -834,70 +879,16 @@ class TqSim(object):
         self._send_account()
         return self._account["available"] >= 0
 
-    def _ensure_position(self, symbol):
-        if symbol not in self._positions:
-            self._positions[symbol] = {
-                "exchange_id": symbol.split(".", maxsplit=1)[0],
-                "instrument_id": symbol.split(".", maxsplit=1)[1],
-                "pos_long_his": 0,
-                "pos_long_today": 0,
-                "pos_short_his": 0,
-                "pos_short_today": 0,
-                "volume_long_today": 0,
-                "volume_long_his": 0,
-                "volume_long": 0,
-                "volume_long_frozen_today": 0,
-                "volume_long_frozen_his": 0,
-                "volume_long_frozen": 0,
-                "volume_short_today": 0,
-                "volume_short_his": 0,
-                "volume_short": 0,
-                "volume_short_frozen_today": 0,
-                "volume_short_frozen_his": 0,
-                "volume_short_frozen": 0,
-                "open_price_long": float("nan"),
-                "open_price_short": float("nan"),
-                "open_cost_long": 0.0,
-                "open_cost_short": 0.0,
-                "position_price_long": float("nan"),
-                "position_price_short": float("nan"),
-                "position_cost_long": 0.0,
-                "position_cost_short": 0.0,
-                "float_profit_long": 0.0,
-                "float_profit_short": 0.0,
-                "float_profit": 0.0,
-                "position_profit_long": 0.0,
-                "position_profit_short": 0.0,
-                "position_profit": 0.0,
-                "margin_long": 0.0,
-                "margin_short": 0.0,
-                "margin": 0.0,
-                "last_price": None,
-                "market_value_long": 0.0,  # 权利方市值(始终 >= 0)
-                "market_value_short": 0.0,  # 义务方市值(始终 <= 0)
-                "market_value": 0.0,
+    def _send_trade(self, trade):
+        self._diffs.append({
+            "trade": {
+                self._account_id: {
+                    "trades": {
+                        trade["trade_id"]: trade.copy()
+                    }
+                }
             }
-        return self._positions[symbol]
-
-    def _ensure_quote(self, symbol):
-        if symbol not in self._quotes:
-            self._quotes[symbol] = {
-                "ins_class": None,  # 合约信息初始化为None
-                "option_class": None,
-                "symbol": symbol,
-                "underlying_symbol": "",
-                "orders": {},
-                "datetime": "",
-                "trading_time": {},
-                "ask_price1": float("nan"),
-                "bid_price1": float("nan"),
-                "last_price": float("nan"),
-                "volume_multiple": None,
-                "strike_price": float("nan"),
-                "margin": None,
-                "commission": None,
-            }
-        return self._quotes[symbol]
+        })
 
     def _send_order(self, order):
         self._diffs.append({
