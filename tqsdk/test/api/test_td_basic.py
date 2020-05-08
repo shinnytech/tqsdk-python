@@ -26,6 +26,7 @@ class TestTdBasic(unittest.TestCase):
         # self.tq = WebsocketServer(5300)
         self.ins_url_2019_07_03 = "http://127.0.0.1:5000/t/md/symbols/2019-07-03.json"
         self.ins_url_2020_04_02 = "http://127.0.0.1:5000/t/md/symbols/2020-04-02.json"
+        self.ins_url_2020_05_07 = "http://127.0.0.1:5000/t/md/symbols/2020-05-07.json"
         self.md_url = "ws://127.0.0.1:5100/"
         self.td_url = "ws://127.0.0.1:5200/"
 
@@ -326,11 +327,11 @@ class TestTdBasic(unittest.TestCase):
         # 测试: 模拟账户下单
         # 非回测, 则需在盘中生成测试脚本: 测试脚本重新生成后，数据根据实际情况有变化,因此需要修改assert语句的内容
         utils.RD = random.Random(2)
-        api = TqApi(_ins_url=self.ins_url_2020_04_02, _td_url=self.td_url, _md_url=self.md_url)
+        api = TqApi(_ins_url=self.ins_url_2020_05_07, _td_url=self.td_url, _md_url=self.md_url)
 
-        order1 = api.insert_order("SHFE.cu2006C47000", "BUY", "OPEN", 1, limit_price=135)
-        order2 = api.insert_order("CZCE.SR007C5600", "SELL", "OPEN", 2, limit_price=30)
-        order3 = api.insert_order("DCE.m2007-P-2900", "BUY", "OPEN", 3, limit_price=192)
+        order1 = api.insert_order("SHFE.cu2006C47000", "BUY", "OPEN", 1, limit_price=50)
+        order2 = api.insert_order("CZCE.SR007C5600", "SELL", "OPEN", 2, limit_price=7)
+        order3 = api.insert_order("DCE.m2007-P-2900", "BUY", "OPEN", 3, limit_price=322)
 
         while order1.status == "ALIVE" or order2.status == "ALIVE" or order3.status == "ALIVE":
             api.wait_update()
@@ -340,51 +341,51 @@ class TestTdBasic(unittest.TestCase):
         self.assertEqual(order1.offset, "OPEN")
         self.assertEqual(order1.volume_orign, 1)
         self.assertEqual(order1.volume_left, 0)
-        self.assertEqual(order1.limit_price, 135.0)
+        self.assertEqual(order1.limit_price, 50.0)
         self.assertEqual(order1.price_type, "LIMIT")
         self.assertEqual(order1.volume_condition, "ANY")
         self.assertEqual(order1.time_condition, "GFD")
-        self.assertAlmostEqual(1586829882005334000 / 1e9, order1.insert_date_time / 1e9, places=1)
+        self.assertAlmostEqual(1588905683005552000 / 1e9, order1.insert_date_time / 1e9, places=1)
         self.assertEqual(order1.status, "FINISHED")
         for k, v in order1.trade_records.items():  # 模拟交易为一次性全部成交，因此只有一条成交记录
-            self.assertAlmostEqual(1586829882005979000 / 1e9, v.trade_date_time / 1e9, places=1)
+            self.assertAlmostEqual(1588905683009092000 / 1e9, v.trade_date_time / 1e9, places=1)
             del v.trade_date_time
             self.assertEqual(str(v),
-                             "{'order_id': 'PYSDK_insert_5c6e433715ba2bdd177219d30e7a269f', 'trade_id': 'PYSDK_insert_5c6e433715ba2bdd177219d30e7a269f|1', 'exchange_trade_id': 'PYSDK_insert_5c6e433715ba2bdd177219d30e7a269f|1', 'exchange_id': 'SHFE', 'instrument_id': 'cu2006C47000', 'direction': 'BUY', 'offset': 'OPEN', 'price': 135.0, 'volume': 1, 'user_id': 'TQSIM', 'commission': 10}")
+                             "{'order_id': 'PYSDK_insert_5c6e433715ba2bdd177219d30e7a269f', 'trade_id': 'PYSDK_insert_5c6e433715ba2bdd177219d30e7a269f|1', 'exchange_trade_id': 'PYSDK_insert_5c6e433715ba2bdd177219d30e7a269f|1', 'exchange_id': 'SHFE', 'instrument_id': 'cu2006C47000', 'direction': 'BUY', 'offset': 'OPEN', 'price': 50.0, 'volume': 1, 'user_id': 'TQSIM', 'commission': 10}")
 
         self.assertEqual(order2.order_id, "PYSDK_insert_cf1822ffbc6887782b491044d5e34124")
         self.assertEqual(order2.direction, "SELL")
         self.assertEqual(order2.offset, "OPEN")
         self.assertEqual(order2.volume_orign, 2)
         self.assertEqual(order2.volume_left, 0)
-        self.assertEqual(order2.limit_price, 30.0)
+        self.assertEqual(order2.limit_price, 7.0)
         self.assertEqual(order2.price_type, "LIMIT")
         self.assertEqual(order2.volume_condition, "ANY")
         self.assertEqual(order2.time_condition, "GFD")
-        self.assertAlmostEqual(1586829882236154000 / 1e9, order2.insert_date_time / 1e9, places=1)
+        self.assertAlmostEqual(1588905683006995000 / 1e9, order2.insert_date_time / 1e9, places=1)
         self.assertEqual(order2.status, "FINISHED")
         for k, v in order2.trade_records.items():  # 模拟交易为一次性全部成交，因此只有一条成交记录
-            self.assertAlmostEqual(1586829882236518000 / 1e9, v.trade_date_time / 1e9, places=1)
+            self.assertAlmostEqual(1588905683007079000 / 1e9, v.trade_date_time / 1e9, places=1)
             del v.trade_date_time
             self.assertEqual(str(v),
-                             "{'order_id': 'PYSDK_insert_cf1822ffbc6887782b491044d5e34124', 'trade_id': 'PYSDK_insert_cf1822ffbc6887782b491044d5e34124|2', 'exchange_trade_id': 'PYSDK_insert_cf1822ffbc6887782b491044d5e34124|2', 'exchange_id': 'CZCE', 'instrument_id': 'SR007C5600', 'direction': 'SELL', 'offset': 'OPEN', 'price': 30.0, 'volume': 2, 'user_id': 'TQSIM', 'commission': 20}")
+                             "{'order_id': 'PYSDK_insert_cf1822ffbc6887782b491044d5e34124', 'trade_id': 'PYSDK_insert_cf1822ffbc6887782b491044d5e34124|2', 'exchange_trade_id': 'PYSDK_insert_cf1822ffbc6887782b491044d5e34124|2', 'exchange_id': 'CZCE', 'instrument_id': 'SR007C5600', 'direction': 'SELL', 'offset': 'OPEN', 'price': 7.0, 'volume': 2, 'user_id': 'TQSIM', 'commission': 20}")
 
         self.assertEqual(order3.order_id, "PYSDK_insert_4067c3584ee207f8da94e3e8ab73738f")
         self.assertEqual(order3.direction, "BUY")
         self.assertEqual(order3.offset, "OPEN")
         self.assertEqual(order3.volume_orign, 3)
         self.assertEqual(order3.volume_left, 0)
-        self.assertEqual(order3.limit_price, 192.0)
+        self.assertEqual(order3.limit_price, 322.0)
         self.assertEqual(order3.price_type, "LIMIT")
         self.assertEqual(order3.volume_condition, "ANY")
         self.assertEqual(order3.time_condition, "GFD")
-        self.assertAlmostEqual(1586829882228039000 / 1e9, order3.insert_date_time / 1e9, places=1)
+        self.assertAlmostEqual(1588905683009486000 / 1e9, order3.insert_date_time / 1e9, places=1)
         self.assertEqual(order3.status, "FINISHED")
         for k, v in order3.trade_records.items():  # 模拟交易为一次性全部成交，因此只有一条成交记录
-            self.assertAlmostEqual(1586829882228603000 / 1e9, v.trade_date_time / 1e9, places=1)
+            self.assertAlmostEqual(1588905683008149000 / 1e9, v.trade_date_time / 1e9, places=1)
             del v.trade_date_time
             self.assertEqual(str(v),
-                             "{'order_id': 'PYSDK_insert_4067c3584ee207f8da94e3e8ab73738f', 'trade_id': 'PYSDK_insert_4067c3584ee207f8da94e3e8ab73738f|3', 'exchange_trade_id': 'PYSDK_insert_4067c3584ee207f8da94e3e8ab73738f|3', 'exchange_id': 'DCE', 'instrument_id': 'm2007-P-2900', 'direction': 'BUY', 'offset': 'OPEN', 'price': 192.0, 'volume': 3, 'user_id': 'TQSIM', 'commission': 30}")
+                             "{'order_id': 'PYSDK_insert_4067c3584ee207f8da94e3e8ab73738f', 'trade_id': 'PYSDK_insert_4067c3584ee207f8da94e3e8ab73738f|3', 'exchange_trade_id': 'PYSDK_insert_4067c3584ee207f8da94e3e8ab73738f|3', 'exchange_id': 'DCE', 'instrument_id': 'm2007-P-2900', 'direction': 'BUY', 'offset': 'OPEN', 'price': 322.0, 'volume': 3, 'user_id': 'TQSIM', 'commission': 30}")
 
         api.close()
 
@@ -398,10 +399,10 @@ class TestTdBasic(unittest.TestCase):
         self.mock.run(os.path.join(dir_path, "log_file", "test_td_basic_cancel_order_simulate_option.script.lzma"))
         # 测试: 模拟账户
         utils.RD = random.Random(2)
-        api = TqApi(_ins_url=self.ins_url_2020_04_02, _td_url=self.td_url, _md_url=self.md_url)
+        api = TqApi(_ins_url=self.ins_url_2020_05_07, _td_url=self.td_url, _md_url=self.md_url)
 
         order1 = api.insert_order("DCE.m2007-P-2900", "BUY", "OPEN", 1, limit_price=150)
-        order2 = api.insert_order("SHFE.cu2006C47000", "BUY", "OPEN", 2, limit_price=135)
+        order2 = api.insert_order("SHFE.cu2006C47000", "BUY", "OPEN", 2, limit_price=30)
         api.wait_update()
 
         self.assertEqual("ALIVE", order1.status)
@@ -427,11 +428,11 @@ class TestTdBasic(unittest.TestCase):
         dir_path = os.path.dirname(os.path.realpath(__file__))
         self.mock.run(os.path.join(dir_path, "log_file", "test_td_basic_get_account_simulate_option.script.lzma"))
         # 测试: 获取数据
-        api = TqApi(_ins_url=self.ins_url_2020_04_02, _td_url=self.td_url, _md_url=self.md_url)
+        api = TqApi(_ins_url=self.ins_url_2020_05_07, _td_url=self.td_url, _md_url=self.md_url)
         utils.RD = random.Random(4)
 
-        order1 = api.insert_order("CZCE.SR007C5600", "SELL", "OPEN", 2, limit_price=50)
-        order2 = api.insert_order("DCE.m2007-P-2900", "BUY", "OPEN", 3, limit_price=180)
+        order1 = api.insert_order("CZCE.SR007C5600", "SELL", "OPEN", 2, limit_price=7)
+        order2 = api.insert_order("DCE.m2007-P-2900", "BUY", "OPEN", 3, limit_price=332)
 
         while order1.status == "ALIVE" or order2.status == "ALIVE":
             api.wait_update()
@@ -440,22 +441,22 @@ class TestTdBasic(unittest.TestCase):
 
         # 测试脚本重新生成后，数据根据实际情况有变化
         self.assertEqual(str(account),
-                         "{'currency': 'CNY', 'pre_balance': 10000000.0, 'static_balance': 10000000.0, 'balance': 9998650.0, 'available': 9989752.8, 'ctp_balance': nan, 'ctp_available': nan, 'float_profit': -300.0, 'position_profit': 0.0, 'close_profit': 0.0, 'frozen_margin': 0.0, 'margin': 4797.200000000001, 'frozen_commission': 0.0, 'commission': 50.0, 'frozen_premium': 0.0, 'premium': -5400.0, 'deposit': 0.0, 'withdraw': 0.0, 'risk_ratio': 0.00047978477094407754, 'market_value': 4100.0}")
+                         "{'currency': 'CNY', 'pre_balance': 10000000.0, 'static_balance': 10000000.0, 'balance': 9999580.0, 'available': 9986097.8, 'ctp_balance': nan, 'ctp_available': nan, 'float_profit': -230.0, 'position_profit': 0.0, 'close_profit': 0.0, 'frozen_margin': 0.0, 'margin': 3892.2000000000003, 'frozen_commission': 0.0, 'commission': 50.0, 'frozen_premium': 0.0, 'premium': -9960.0, 'deposit': 0.0, 'withdraw': 0.0, 'risk_ratio': 0.0003892363479266129, 'market_value': 9590.0}")
         self.assertEqual(account.currency, "CNY")
         self.assertEqual(account.pre_balance, 10000000.0)
-        self.assertEqual(account.balance, 9998650.0)
+        self.assertEqual(account.balance, 9999580.0)
         self.assertEqual(account["commission"], 50.0)
-        self.assertEqual(account["margin"], 4797.200000000001)
+        self.assertEqual(account["margin"], 3892.2000000000003)
         self.assertEqual(account.position_profit, 0.0)
-        self.assertEqual(account.available, 9989752.8)
+        self.assertEqual(account.available, 9986097.8)
         self.assertNotEqual(account.ctp_balance, account.ctp_balance)  # nan
-        self.assertEqual(account.float_profit, -300.0)
+        self.assertEqual(account.float_profit, -230.0)
         self.assertEqual(account.position_profit, 0.0)
-        self.assertEqual(account.margin, 4797.200000000001)
+        self.assertEqual(account.margin, 3892.2000000000003)
         self.assertEqual(account.commission, 50.0)
-        self.assertEqual(account.premium, -5400.0)
-        self.assertEqual(account.risk_ratio, 0.00047978477094407754)
-        self.assertEqual(account.market_value, 4100.0)
+        self.assertEqual(account.premium, -9960.0)
+        self.assertEqual(account.risk_ratio, 0.0003892363479266129)
+        self.assertEqual(account.market_value, 9590.0)
         api.close()
 
     def test_get_position_option(self):
@@ -466,7 +467,7 @@ class TestTdBasic(unittest.TestCase):
         dir_path = os.path.dirname(os.path.realpath(__file__))
         self.mock.run(os.path.join(dir_path, "log_file", "test_td_basic_get_position_simulate_option.script.lzma"))
         # 测试: 获取数据
-        api = TqApi(_ins_url=self.ins_url_2020_04_02, _td_url=self.td_url, _md_url=self.md_url)
+        api = TqApi(_ins_url=self.ins_url_2020_05_07, _td_url=self.td_url, _md_url=self.md_url)
 
         order1 = api.insert_order("CZCE.SR007C5600", "BUY", "OPEN", 2, limit_price=55)
         order2 = api.insert_order("CZCE.SR007C5600", "BUY", "OPEN", 3, limit_price=55)
@@ -486,7 +487,7 @@ class TestTdBasic(unittest.TestCase):
 
         # 测试脚本重新生成后，数据根据实际情况有变化
         self.assertEqual(
-            "{'exchange_id': 'CZCE', 'instrument_id': 'SR007C5600', 'pos_long_his': 0, 'pos_long_today': 5, 'pos_short_his': 0, 'pos_short_today': 6, 'volume_long_today': 5, 'volume_long_his': 0, 'volume_long': 5, 'volume_long_frozen_today': 0, 'volume_long_frozen_his': 0, 'volume_long_frozen': 0, 'volume_short_today': 6, 'volume_short_his': 0, 'volume_short': 6, 'volume_short_frozen_today': 0, 'volume_short_frozen_his': 0, 'volume_short_frozen': 0, 'open_price_long': 55.0, 'open_price_short': 22.5, 'open_cost_long': 2750.0, 'open_cost_short': 1350.0, 'position_price_long': 55.0, 'position_price_short': 22.5, 'position_cost_long': 2750.0, 'position_cost_short': 1350.0, 'float_profit_long': -1000.0, 'float_profit_short': -750.0, 'float_profit': -1750.0, 'position_profit_long': 0.0, 'position_profit_short': 0.0, 'position_profit': 0.0, 'margin_long': 0.0, 'margin_short': 8156.4000000000015, 'margin': 8156.4000000000015, 'market_value_long': 1750.0, 'market_value_short': -2100.0, 'market_value': -350.0, 'last_price': 35.0}",
+            "{'exchange_id': 'CZCE', 'instrument_id': 'SR007C5600', 'pos_long_his': 0, 'pos_long_today': 5, 'pos_short_his': 0, 'pos_short_today': 6, 'volume_long_today': 5, 'volume_long_his': 0, 'volume_long': 5, 'volume_long_frozen_today': 0, 'volume_long_frozen_his': 0, 'volume_long_frozen': 0, 'volume_short_today': 6, 'volume_short_his': 0, 'volume_short': 6, 'volume_short_frozen_today': 0, 'volume_short_frozen_his': 0, 'volume_short_frozen': 0, 'open_price_long': 55.0, 'open_price_short': 13.5, 'open_cost_long': 2750.0, 'open_cost_short': 810.0, 'position_price_long': 55.0, 'position_price_short': 13.5, 'position_cost_long': 2750.0, 'position_cost_short': 810.0, 'float_profit_long': -1825.0, 'float_profit_short': -300.0, 'float_profit': -2125.0, 'position_profit_long': 0.0, 'position_profit_short': 0.0, 'position_profit': 0.0, 'margin_long': 0.0, 'margin_short': 7785.8, 'margin': 7785.8, 'market_value_long': 925.0, 'market_value_short': -1110.0, 'market_value': -185.0, 'last_price': 18.5}",
             str(position))
         self.assertEqual(-1, position.pos)
         self.assertEqual(5, position.pos_long)
@@ -510,26 +511,26 @@ class TestTdBasic(unittest.TestCase):
         self.assertEqual(position.volume_short_frozen_his, 0)
         self.assertEqual(position.volume_short_frozen, 0)
         self.assertEqual(position.open_price_long, 55.0)
-        self.assertEqual(position.open_price_short, 22.5)
+        self.assertEqual(position.open_price_short, 13.5)
         self.assertEqual(position.open_cost_long, 2750.0)
-        self.assertEqual(position.open_cost_short, 1350.0)
+        self.assertEqual(position.open_cost_short, 810.0)
         self.assertEqual(position.position_price_long, 55.0)
-        self.assertEqual(position.position_price_short, 22.5)
+        self.assertEqual(position.position_price_short, 13.5)
         self.assertEqual(position.position_cost_long, 2750.0)
-        self.assertEqual(position.position_cost_short, 1350.0)
-        self.assertEqual(position.float_profit_long, -1000.0)
-        self.assertEqual(position.float_profit_short, -750.0)
-        self.assertEqual(position.float_profit, -1750.0)
+        self.assertEqual(position.position_cost_short, 810.0)
+        self.assertEqual(position.float_profit_long, -1825.0)
+        self.assertEqual(position.float_profit_short, -300.0)
+        self.assertEqual(position.float_profit, -2125.0)
         self.assertEqual(position.position_profit_long, 0.0)
         self.assertEqual(position.position_profit_short, 0.0)
         self.assertEqual(position.position_profit, 0.0)
         self.assertEqual(position.margin_long, 0.0)
-        self.assertEqual(position.margin_short, 8156.4000000000015)
-        self.assertEqual(position.margin, 8156.4000000000015)
-        self.assertEqual(position.market_value_long, 1750.0)
-        self.assertEqual(position.market_value_short, -2100.0)
-        self.assertEqual(position.market_value, -350.0)
-        self.assertEqual(position.last_price, 35.0)
+        self.assertEqual(position.margin_short, 7785.8)
+        self.assertEqual(position.margin, 7785.8)
+        self.assertEqual(position.market_value_long, 925.0)
+        self.assertEqual(position.market_value_short, -1110.0)
+        self.assertEqual(position.market_value, -185.0)
+        self.assertEqual(position.last_price, 18.5)
 
         # 其他取值方式测试
         self.assertEqual(position["pos_long_today"], 5)
@@ -548,32 +549,32 @@ class TestTdBasic(unittest.TestCase):
         self.mock.run(os.path.join(dir_path, "log_file", "test_td_basic_get_trade_simulate_option.script.lzma"))
         # 测试: 模拟账户
         utils.RD = random.Random(4)
-        api = TqApi(_ins_url=self.ins_url_2020_04_02, _td_url=self.td_url, _md_url=self.md_url)
-        order1 = api.insert_order("CZCE.SR007C5600", "SELL", "OPEN", 1, limit_price=50)
-        order2 = api.insert_order("DCE.m2007-P-2900", "BUY", "OPEN", 2, limit_price=180)
+        api = TqApi(_ins_url=self.ins_url_2020_05_07, _td_url=self.td_url, _md_url=self.md_url)
+        order1 = api.insert_order("CZCE.SR007C5600", "SELL", "OPEN", 1, limit_price=7)
+        order2 = api.insert_order("DCE.m2007-P-2900", "BUY", "OPEN", 2, limit_price=332)
 
         while order1.status == "ALIVE" or order2.status == "ALIVE":
             api.wait_update()
 
         trade1 = api.get_trade("PYSDK_insert_1710cf5327ac435a7a97c643656412a9|1")
         trade2 = api.get_trade("PYSDK_insert_8ca5996666ceab360512bd1311072231|2")
-        self.assertAlmostEqual(1586501231007428000 / 1e9, trade1.trade_date_time / 1e9, places=1)
-        self.assertAlmostEqual(1586501233361505000 / 1e9, trade2.trade_date_time / 1e9, places=1)
+        self.assertAlmostEqual(1588916944010239000 / 1e9, trade1.trade_date_time / 1e9, places=1)
+        self.assertAlmostEqual(1588916944009612000 / 1e9, trade2.trade_date_time / 1e9, places=1)
         del trade1["trade_date_time"]
         del trade2["trade_date_time"]
         self.assertEqual(str(trade1),
-                         "{'order_id': 'PYSDK_insert_1710cf5327ac435a7a97c643656412a9', 'trade_id': 'PYSDK_insert_1710cf5327ac435a7a97c643656412a9|1', 'exchange_trade_id': 'PYSDK_insert_1710cf5327ac435a7a97c643656412a9|1', 'exchange_id': 'CZCE', 'instrument_id': 'SR007C5600', 'direction': 'SELL', 'offset': 'OPEN', 'price': 50.0, 'volume': 1, 'user_id': 'TQSIM', 'commission': 10}")
+                         "{'order_id': 'PYSDK_insert_1710cf5327ac435a7a97c643656412a9', 'trade_id': 'PYSDK_insert_1710cf5327ac435a7a97c643656412a9|1', 'exchange_trade_id': 'PYSDK_insert_1710cf5327ac435a7a97c643656412a9|1', 'exchange_id': 'CZCE', 'instrument_id': 'SR007C5600', 'direction': 'SELL', 'offset': 'OPEN', 'price': 7.0, 'volume': 1, 'user_id': 'TQSIM', 'commission': 10}")
         self.assertEqual(str(trade2),
-                         "{'order_id': 'PYSDK_insert_8ca5996666ceab360512bd1311072231', 'trade_id': 'PYSDK_insert_8ca5996666ceab360512bd1311072231|2', 'exchange_trade_id': 'PYSDK_insert_8ca5996666ceab360512bd1311072231|2', 'exchange_id': 'DCE', 'instrument_id': 'm2007-P-2900', 'direction': 'BUY', 'offset': 'OPEN', 'price': 180.0, 'volume': 2, 'user_id': 'TQSIM', 'commission': 20}")
+                         "{'order_id': 'PYSDK_insert_8ca5996666ceab360512bd1311072231', 'trade_id': 'PYSDK_insert_8ca5996666ceab360512bd1311072231|2', 'exchange_trade_id': 'PYSDK_insert_8ca5996666ceab360512bd1311072231|2', 'exchange_id': 'DCE', 'instrument_id': 'm2007-P-2900', 'direction': 'BUY', 'offset': 'OPEN', 'price': 332.0, 'volume': 2, 'user_id': 'TQSIM', 'commission': 20}")
         self.assertEqual(trade1.direction, "SELL")
         self.assertEqual(trade1.offset, "OPEN")
-        self.assertEqual(trade1.price, 50.0)
+        self.assertEqual(trade1.price, 7.0)
         self.assertEqual(trade1.volume, 1)
         self.assertEqual(trade1.commission, 10)
 
         self.assertEqual(trade2.direction, "BUY")
         self.assertEqual(trade2.offset, "OPEN")
-        self.assertEqual(trade2.price, 180.0)
+        self.assertEqual(trade2.price, 332.0)
         self.assertEqual(trade2.volume, 2)
         self.assertEqual(trade2.commission, 20)
         api.close()
