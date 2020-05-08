@@ -477,9 +477,7 @@ class TqReplay(object):
         self._md_url = "ws://%s:%d/t/rmd/front/mobile" % (session["ip"], session["gateway_web_port"])
 
         self._server_status = None
-        self._server_status = self._wait_server_status(["initializing", "running"], 30)
-        if self._server_status == "initializing":
-            self._server_status = self._wait_server_status("running", 30)
+        self._server_status = self._wait_server_status("running", 60)
         if self._server_status == "running":
             return self._ins_url, self._md_url
         else:
@@ -510,16 +508,16 @@ class TqReplay(object):
             raise Exception("创建复盘服务器失败，请检查复盘日期后重试。")
 
     def _wait_server_status(self, target_status, timeout):
-        '''同步函数，等待复盘服务状态改变，target_status 可以是 str / list, 最多等待 timeout 秒'''
-        target_status = [target_status] if isinstance(target_status, str) else target_status
+        """等服务器状态为 target_status，超时时间 timeout 秒"""
         deadline = time.time() + timeout
+        server_status = self._get_server_status()
         while deadline > time.time():
-            server_status = self._get_server_status()
-            if server_status in target_status:
-                return server_status
+            if target_status == server_status:
+                break
             else:
                 time.sleep(1)
-        return None
+                server_status = self._get_server_status()
+        return server_status
 
     def _get_server_status(self):
         try:
