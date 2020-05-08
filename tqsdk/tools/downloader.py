@@ -79,7 +79,7 @@ class DataDownloader:
         self._symbol_list = symbol_list if isinstance(symbol_list, list) else [symbol_list]
         # 检查合约代码是否存在
         for symbol in self._symbol_list:
-            if symbol not in self._api._data.get("quotes", {}):
+            if (not self._api._stock) and symbol not in self._api._data.get("quotes", {}):
                 raise Exception("代码 %s 不存在, 请检查合约代码是否填写正确" % (symbol))
         self._dur_nano = dur_sec * 1000000000
         if self._dur_nano == 0 and len(self._symbol_list) != 1:
