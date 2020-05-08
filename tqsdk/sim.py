@@ -246,23 +246,6 @@ class TqSim(object):
                     for order in orders.values():
                         self._del_order(symbol, order, "交易日结束，自动撤销当日有效的委托单（GFD）")
                     orders = {}
-                    # 调整持仓
-                    position["pos_long_his"] = position["volume_long"]
-                    position["pos_long_today"] = 0
-                    position["pos_short_his"] = position["volume_short"]
-                    position["pos_short_today"] = 0
-                    position["volume_long_today"] = 0
-                    position["volume_long_his"] = position["volume_long"]
-                    position["volume_short_today"] = 0
-                    position["volume_short_his"] = position["volume_short"]
-                    position["position_price_long"] = position["last_price"]
-                    position["position_price_short"] = position["last_price"]
-                    position["position_cost_long"] = position["open_cost_long"] + position["float_profit_long"]
-                    position["position_cost_short"] = position["open_cost_short"] + position["float_profit_short"]
-                    position["position_profit_long"] = 0
-                    position["position_profit_short"] = 0
-                    position["position_profit"] = 0
-                    self._send_position(position)
                 await self._send_diff()
         finally:
             await quote_chan.close()
@@ -536,6 +519,29 @@ class TqSim(object):
         self._account["premium"] = 0
         self._send_account()
         self._adjust_account()
+        # 对于持仓的结算放在这里，没有放在 quote_handler 里的原因：
+        # 1. 异步发送的话，会造成如果此时 sim 未收到 pending_peek, 就没法把结算的账户信息发送出去，此时用户代码中 api.get_postion 得到的持仓和 sim 里面的持仓是不一致的
+        # set_target_pos 下单时就会产生错单。而且结算时一定是已经收到过行情的数据包，在同步代码的最后一步，会发送出去这个行情包 peeding_peek，
+        # quote_handler 处理 settle 的时候, 所以在结算的时候 pending_peek 一定是 False, 要 api 处理过之后，才会收到 peek_message
+        # 2. 同步发送的话，就可以和产生切换交易日的数据包同时发送出去
+        # 对 order 的处理发生在下一次回复 peek_message
+        for position in self._positions.values():
+            position["pos_long_his"] = position["volume_long"]
+            position["pos_long_today"] = 0
+            position["pos_short_his"] = position["volume_short"]
+            position["pos_short_today"] = 0
+            position["volume_long_today"] = 0
+            position["volume_long_his"] = position["volume_long"]
+            position["volume_short_today"] = 0
+            position["volume_short_his"] = position["volume_short"]
+            position["position_price_long"] = position["last_price"]
+            position["position_price_short"] = position["last_price"]
+            position["position_cost_long"] = position["open_cost_long"] + position["float_profit_long"]
+            position["position_cost_short"] = position["open_cost_short"] + position["float_profit_short"]
+            position["position_profit_long"] = 0
+            position["position_profit_short"] = 0
+            position["position_profit"] = 0
+            self._send_position(position)
         for symbol in self._quote_tasks.keys():
             self._quote_tasks[symbol]["quote_chan"].send_nowait({"aid": "settle"})
 
