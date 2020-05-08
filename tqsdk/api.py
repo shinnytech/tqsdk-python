@@ -57,7 +57,7 @@ class TqApi(object):
 
     def __init__(self, account: Union[TqAccount, TqSim, None] = None, auth: Optional[str] = None, url: Optional[str] = None,
                  backtest: Union[TqBacktest, TqReplay, None] = None, web_gui: [bool, str] = False, debug: Optional[str] = None,
-                 loop: Optional[asyncio.AbstractEventLoop] = None, _ins_url=None, _md_url=None, _td_url=None) -> None:
+                 loop: Optional[asyncio.AbstractEventLoop] = None, _stock: bool = False, _ins_url=None, _md_url=None, _td_url=None) -> None:
         """
         创建天勤接口实例
 
@@ -159,6 +159,7 @@ class TqApi(object):
         # 记录参数
         self._account = TqSim() if account is None else account
         self._backtest = backtest
+        self._stock = _stock
 
         # 支持用户授权
         self._access_token = 'eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJobi1MZ3ZwbWlFTTJHZHAtRmlScjV5MUF5MnZrQmpLSFFyQVlnQ0UwR1JjIn0.eyJqdGkiOiIwY2UwOTM2Ny0xYjk2LTQ0NTktOGU2My1hYWM1ZTA3Mjc1ZTIiLCJleHAiOjE2MTU1Mzk1MTQsIm5iZiI6MCwiaWF0IjoxNTg0MDAzNTE0LCJpc3MiOiJodHRwczovL2F1dGguc2hpbm55dGVjaC5jb20vYXV0aC9yZWFsbXMvc2hpbm55dGVjaCIsInN1YiI6IjYzMzJhZmUwLWU5OWQtNDc1OC04MjIzLWY5OTBiN2RmOGY4NSIsInR5cCI6IkJlYXJlciIsImF6cCI6InNoaW5ueV90cSIsImF1dGhfdGltZSI6MCwic2Vzc2lvbl9zdGF0ZSI6IjUzYTEyYmNkLTc3M2EtNDcyZC1iZWVlLWZlMmQ1ODAzYjU0YyIsImFjciI6IjEiLCJzY29wZSI6ImF0dHJpYnV0ZXMiLCJncmFudHMiOnsiZmVhdHVyZXMiOlsiY21iIiwiYWR2Il0sImFjY291bnRzIjpbIioiXX19.BmqzmorwITPd2YLP9EbhlIxkTDNTAY-PNPfM9LwOkOc5XJlSK34nHZwW14mmIScYiohhN5iaVtPrPNsohFfPcH-FxhFmmr9M_xIJLDf4zw2ObcZwVGTQFnIExjdpj2ej82bPT0yoBBFoOH3NhFuK0agifE0WOp0lXf2kzQsQncZ-y9djCEuwbuZapNmdVhGsWWGt7gMd9ZJNrmViZifSWkOrpiowIQ4fOPp1L2DJju8QldwHtyPnYTZtN56x14Xd7v-4-VB3vWEoHB99r36bjhlXJsxuiZrQom0esahgtV_7gx_G95bN04XevriRXG9JzOSoHhpYQFKqjZlSQ4L7vw'
@@ -181,7 +182,7 @@ class TqApi(object):
                 self._logger.warning("用户权限认证失败 (%d,%s)" % (response.status_code, response.content))
 
         self._ins_url = os.getenv("TQ_INS_URL", "https://openmd.shinnytech.com/t/md/symbols/latest.json")
-        self._md_url = os.getenv("TQ_MD_URL", "wss://openmd.shinnytech.com/t/md/front/mobile")
+        self._md_url = os.getenv("TQ_MD_URL", "wss://xxxxx/t/md/front/mobile" if self._stock else "wss://openmd.shinnytech.com/t/md/front/mobile")
         self._td_url = os.getenv("TQ_TD_URL", None)
         if url and isinstance(self._account, TqSim):
             self._md_url = url
@@ -333,7 +334,7 @@ class TqApi(object):
             24575.0
             ...
         """
-        if symbol not in self._data.get("quotes", {}):
+        if (not self._stock) and symbol not in self._data.get("quotes", {}):
             raise Exception("代码 %s 不存在, 请检查合约代码是否填写正确" % (symbol))
         quote = _get_obj(self._data, ["quotes", symbol], self._prototype["quotes"]["#"])
         if symbol not in self._requests["quotes"]:
@@ -446,7 +447,7 @@ class TqApi(object):
         if not isinstance(symbol, list):
             symbol = [symbol]
         for s in symbol:
-            if s not in self._data.get("quotes", {}):
+            if (not self._stock) and s not in self._data.get("quotes", {}):
                 raise Exception("代码 %s 不存在, 请检查合约代码是否填写正确" % (s))
         duration_seconds = int(duration_seconds)  # 转成整数
         if duration_seconds <= 0 or duration_seconds > 86400 and duration_seconds % 86400 != 0:
@@ -535,7 +536,7 @@ class TqApi(object):
             50820.0 51580.0
             ...
         """
-        if symbol not in self._data.get("quotes", {}):
+        if (not self._stock) and symbol not in self._data.get("quotes", {}):
             raise Exception("代码 %s 不存在, 请检查合约代码是否填写正确" % (symbol))
         data_length = int(data_length)
         if data_length <= 0:
