@@ -1310,8 +1310,8 @@ def get_impv(series, series_option, k, r, init_v, t, option_class):
     diff_x = pd.Series(np.where(np.isnan(vega) | (vega < 1e-8), np.nan, (series_option - y) / vega))
     while not pd.DataFrame.all((np.abs(series_option - y) < 1e-8) | np.isnan(diff_x)):
         x = pd.Series(np.where(np.isnan(x) | np.isnan(diff_x), x,
-                                     np.where(x + diff_x < 0, x / 2,
-                                              np.where(diff_x > x / 2, x * 1.5, x + diff_x))))
+                               np.where(x + diff_x < 0, x / 2,
+                                        np.where(diff_x > x / 2, x * 1.5, x + diff_x))))
         y = pd.Series(np.where(np.isnan(x), np.nan, get_bs_price(series, k, r, x, t, option_class)))
         vega = get_vega(series, k, r, x, t)
         diff_x = pd.Series(np.where(np.isnan(vega) | (vega < 1e-8), np.nan, (series_option - y) / vega))
@@ -1336,8 +1336,7 @@ def get_ticks_info(df):
         ticks = api.get_tick_serial('SHFE.cu2006', 100)
         ticksinfo = tafunc.get_ticks_info(ticks)
         for i, v in ticksinfo.items():
-            if v:
-                print(f"{tafunc.time_to_str(ticks['datetime'][i])[5:21]}   {ticks['last_price'][i]}   {v}")
+            print(f"{tafunc.time_to_str(ticks['datetime'][i])[5:21]}  {ticks['last_price'][i]}  {v}")
         api.close()
 
         # 预计的输出是这样的:
@@ -1351,31 +1350,19 @@ def get_ticks_info(df):
     """
     if "open_interest" not in df.keys():  # df 不是 ticks 是 klines
         raise Exception(f"get_ticks_info 参数必须是 ticks，由 api.get_tick_serial 返回的对象。")
-
-    df_pre = df.copy().shift(1)[1:]
-    df_pre["price_diff"] = df["last_price"][1:] - df_pre["last_price"]
-    df_pre["oi_diff"] = df["open_interest"][1:] - df_pre["open_interest"]
-    df_pre["vol_diff"] = df["volume"][1:] - df_pre["volume"]
-    df_pre["pc"] = np.array(np.where(df["last_price"][1:] >= df_pre["ask_price1"], 1,
-                                     np.where(df["last_price"][1:] <= df_pre["bid_price1"], -1,
-                                              np.sign(df_pre["price_diff"]))))
-
-    def get_from_tick(t):
-        if not t["vol_diff"]:
-            return ""
-        elif t["oi_diff"] > 0 and t["oi_diff"] == t["vol_diff"]:
-            return "双开"
-        elif t["oi_diff"] < 0 and t["oi_diff"] + t["vol_diff"] == 0:
-            return "双平"
-        elif t["pc"] == 0:
-            return "换手"
-        elif t["oi_diff"] > 0:
-            return ("多" if t["pc"] > 0 else "空") + "开"
-        elif t["oi_diff"] < 0:
-            return ("多" if t["pc"] < 0 else "空") + "平"
-        else:
-            return ("多" if t["pc"] > 0 else "空") + "换"
-
-    ticksinfo = df_pre.apply(get_from_tick, axis=1)
-    ticksinfo.at[0] = ""
-    return ticksinfo.sort_index()
+    df_pre = df.copy().shift(1)
+    df_pre["price_diff"] = df["last_price"] - df_pre["last_price"]
+    df_pre["oi_diff"] = df["open_interest"] - df_pre["open_interest"]
+    df_pre["vol_diff"] = df["volume"] - df_pre["volume"]
+    df_pre["pc"] = np.where(df["last_price"] <= df_pre["bid_price1"], -1,
+                            np.where(df["last_price"] >= df_pre["ask_price1"], 1, np.sign(df_pre["price_diff"])))
+    pc_g = df_pre["pc"] > 0
+    df_pre["info"] = pd.Series(np.where(df_pre["oi_diff"] > 0, np.where(pc_g, "多开", "空开"),
+                                        np.where(df_pre["oi_diff"] < 0, np.where(pc_g, "空平", "多平"),
+                                                 np.where(df_pre["oi_diff"] == 0, np.where(pc_g, "多换", "空换"), ""))),
+                               dtype=pd.StringDtype())
+    df_pre.loc[df_pre["pc"] == 0, "info"] = "换手"
+    df_pre.loc[(df_pre["oi_diff"] < 0) & (df_pre["oi_diff"] + df_pre["vol_diff"] == 0), "info"] = "双平"
+    df_pre.loc[(df_pre["oi_diff"] > 0) & (df_pre["oi_diff"] == df_pre["vol_diff"]), "info"] = "双开"
+    df_pre.loc[df_pre["vol_diff"] == 0, "info"] = ""
+    return df_pre["info"]
