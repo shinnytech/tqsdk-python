@@ -2,7 +2,7 @@
 
 版本变更
 =============================
-1.8.0beta (2020-05-12)
+1.8.0 (2020/05/12)
 
 * 股票行情测试版发布，**_stock 参数设置为 True 可以连接测试行情服务器，提供股票数据** `详细说明请点击查看 <https://www.shinnytech.com/blog/%e5%a4%a9%e5%8b%a4%e9%87%8f%e5%8c%961-8-0_beta%ef%bc%8c%e6%94%af%e6%8c%81%e8%82%a1%e7%a5%a8%e8%a1%8c%e6%83%85%e8%8e%b7%e5%8f%96%ef%bc%81/>`_
 * 增加计算 ticks 开平方向函数(详见: :py:meth:`~tqsdk.tafunc.get_ticks_info` )
