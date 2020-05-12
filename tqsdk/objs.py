@@ -141,6 +141,9 @@ class TradingTime(Entity):
         #: 夜盘（注意：本字段中过了 24：00 的时间则在其基础往上加，如凌晨1点为 '25:00:00' ）
         self.night = []
 
+    def __repr__(self):
+        return f"{{day: {self.day}, night: {self.night}}}"
+
 
 class Kline(Entity):
     """ Kline 是一个K线对象 """
