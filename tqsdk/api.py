@@ -182,7 +182,7 @@ class TqApi(object):
                 self._logger.warning("用户权限认证失败 (%d,%s)" % (response.status_code, response.content))
 
         self._ins_url = os.getenv("TQ_INS_URL", "https://openmd.shinnytech.com/t/md/symbols/latest.json")
-        self._md_url = os.getenv("TQ_MD_URL", "wss://xxxxx/t/md/front/mobile" if self._stock else "wss://openmd.shinnytech.com/t/md/front/mobile")
+        self._md_url = os.getenv("TQ_MD_URL", "ws://nfmd.shinnytech.com/t/nfmd/front/mobile" if self._stock else "wss://openmd.shinnytech.com/t/md/front/mobile")
         self._td_url = os.getenv("TQ_TD_URL", None)
         if url and isinstance(self._account, TqSim):
             self._md_url = url
