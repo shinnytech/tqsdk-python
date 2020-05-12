@@ -121,6 +121,8 @@ class Quote(Entity):
         self.option_class = ""
         #: 品种代码
         self.product_id = ""
+        #: ETF实时单位基金净值
+        self.iopv = float("nan")
 
     def _instance_entity(self, path):
         super(Quote, self)._instance_entity(path)
