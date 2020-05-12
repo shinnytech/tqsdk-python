@@ -276,11 +276,11 @@ class TqSim(object):
         self._match_order(quote, order)
 
     def _cancel_order(self, pack):
-        if self._orders[pack["order_id"]]["insert_date_time"] <= 0:  # 如果未收到行情或已经发过撤单指令
-            self._orders[pack["order_id"]]["insert_date_time"] = -1
-            return
         if pack["order_id"] in self._orders:
-            self._del_order(self._orders[pack["order_id"]], "已撤单")
+            if self._orders[pack["order_id"]]["insert_date_time"] <= 0:  # 如果未收到行情或已经发过撤单指令
+                self._orders[pack["order_id"]]["insert_date_time"] = -1
+            else:
+                self._del_order(self._orders[pack["order_id"]], "已撤单")
 
     def _del_order(self, order, msg):
         symbol = order["exchange_id"] + "." + order["instrument_id"]
