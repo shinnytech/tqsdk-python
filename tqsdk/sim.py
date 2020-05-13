@@ -86,6 +86,7 @@ class TqSim(object):
             "ctp_available": float("nan"),
         }
         self._positions = {}
+        self._orders = {}
         self._data = Entity()
         self._data._instance_entity([])
         self._prototype = {
@@ -98,12 +99,16 @@ class TqSim(object):
         # 是否已经发送初始账户信息
         self._has_send_init_account = False
         md_task = self._api.create_task(self._md_handler())  # 将所有 md_recv_chan 上收到的包投递到 api_send_chan 上
+        self._result_chan = TqChan(self._api)  # quote_task 每次处理一个 quote_chan 中的数据，就发送一个 True 到这里
+        self._count_quote_chan = TqChan(self._api)  # 每次 quote 到 quote_chan 也发送一份到 self._count_quote_chan
         try:
             async for pack in self._api_send_chan:
                 self._logger.debug("TqSim message received: %s", pack)
                 if "_md_recv" in pack:
                     if pack["aid"] == "rtn_data":
-                        self._md_recv(pack)
+                        wait_count = self._md_recv(pack)  # md_recv 中会发送 wait_count 个 quotes 包给各个 quote_chan
+                        # 等待 wait_count 个处理结果，保证同一个 pack 包产生的交易数据一起发送给下游
+                        await self._wait_quotes_tasks(wait_count)
                         await self._send_diff()
                 elif pack["aid"] == "subscribe_quote":
                     await self._subscribe_quote(pack["ins_list"].split(","))
@@ -147,6 +152,14 @@ class TqSim(object):
         async for pack in self._md_recv_chan:
             pack["_md_recv"] = True
             await self._api_send_chan.send(pack)
+
+    async def _wait_quotes_tasks(self, count=0):
+        if count == 0:
+            return
+        async for _ in self._result_chan:
+            count -= 1
+            if count == 0:
+                return
 
     async def _send_diff(self):
         if self._pending_peek and self._diffs:
@@ -193,15 +206,17 @@ class TqSim(object):
         """quote收到行情后返回"""
         quote = _get_obj(self._data, ["quotes", symbol], Quote(self._api))
         _register_update_chan(quote, quote_chan)
+        _register_update_chan(quote, self._count_quote_chan)  # 统计发送 quote 的个数
         if quote.get("datetime", ""):
             return quote.copy()
         async for _ in quote_chan:
+            self._result_chan.send_nowait(True)
             if quote.get("datetime", ""):
                 return quote.copy()
 
     async def _quote_handler(self, symbol, quote_chan, order_chan):
         try:
-            orders = {}
+            orders = self._orders.setdefault(symbol, {})
             position = self._normalize_position(symbol)
             self._positions[symbol] = position
             await self._subscribe_quote(symbol)
@@ -222,8 +237,8 @@ class TqSim(object):
                         if match_msg:
                             self._del_order(symbol, orders[order_id], match_msg)
                             del orders[order_id]
-                    # 按照合约最新价调整持仓
-                    self._adjust_position(symbol, price=quote["last_price"])
+                    self._adjust_position(symbol, price=quote["last_price"])  # 按照合约最新价调整持仓
+                    self._result_chan.send_nowait(True)  # 处理过 quote_chan 发送 True 到 _result_chan
                 elif pack["aid"] == "insert_order":
                     order = self._normalize_order(pack)  # 调整 pack 为 order 对象需要的字段
                     orders[pack["order_id"]] = order  # 记录 order 在 orders 里
@@ -238,15 +253,12 @@ class TqSim(object):
                             del orders[pack["order_id"]]
                     # 按照合约最新价调整持仓
                     self._adjust_position(symbol, price=quote["last_price"])
+                    await self._send_diff()
                 elif pack["aid"] == "cancel_order":
                     if pack["order_id"] in orders:
                         self._del_order(symbol, orders[pack["order_id"]], "已撤单")
                         del orders[pack["order_id"]]
-                elif pack["aid"] == "settle":
-                    for order in orders.values():
-                        self._del_order(symbol, order, "交易日结束，自动撤销当日有效的委托单（GFD）")
-                    orders = {}
-                await self._send_diff()
+                    await self._send_diff()
         finally:
             await quote_chan.close()
             await order_chan.close()
@@ -314,6 +326,11 @@ class TqSim(object):
                     self._trading_day_end = datetime.fromtimestamp(
                         (_get_trading_day_end_time(trading_day) - 999) / 1e9).strftime("%Y-%m-%d %H:%M:%S.%f")
             _merge_diff(self._data, {"quotes": quotes_diff}, self._prototype, False, True)
+        wait_count = 0  # 处理数据包之后，发送到 _count_quote_chan 的总个数
+        while not self._count_quote_chan.empty():
+            self._count_quote_chan.recv_nowait()
+            wait_count += 1
+        return wait_count
 
     def _normalize_order(self, order):
         order["exchange_order_id"] = order["order_id"]
@@ -542,8 +559,11 @@ class TqSim(object):
             position["position_profit_short"] = 0
             position["position_profit"] = 0
             self._send_position(position)
-        for symbol in self._quote_tasks.keys():
-            self._quote_tasks[symbol]["quote_chan"].send_nowait({"aid": "settle"})
+        for symbol in self._orders.keys():
+            order_ids = list(self._orders[symbol].keys()).copy()
+            for order_id in order_ids:
+                self._del_order(symbol, self._orders[symbol][order_id], "交易日结束，自动撤销当日有效的委托单（GFD）")
+                del self._orders[symbol][order_id]
 
     def _report(self):
         if not self.trade_log:
