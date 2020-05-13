@@ -34,9 +34,10 @@ TqSdk 支持期权的模拟、实盘和回测功能，其中期权合约代码�
 ----------------------------------------------------
 TqSdk 内提供了丰富的期权指标计算&序列计算函数，参考如下：
 
-* :py:meth:`~tqsdk.ta.OPTION_GREEKS` - 期权希腊指标
+* :py:meth:`~tqsdk.ta.OPTION_GREEKS` - 计算期权希腊指标
 * :py:meth:`~tqsdk.ta.OPTION_IMPV` - 计算期权隐含波动率
-* :py:meth:`~tqsdk.ta.OPTION_VALUE` - 期权内在价值，期权时间价值
+* :py:meth:`~tqsdk.ta.BS_VALUE` - 计算期权 BS 模型理论价格
+* :py:meth:`~tqsdk.ta.OPTION_VALUE` - 计算期权内在价值，期权时间价值
 * :py:meth:`~tqsdk.tafunc.get_bs_price` - 计算期权 BS 模型理论价格
 * :py:meth:`~tqsdk.tafunc.get_delta` - 计算期权希腊指标 delta 值
 * :py:meth:`~tqsdk.tafunc.get_gamma` - 计算期权希腊指标 gamma 值
