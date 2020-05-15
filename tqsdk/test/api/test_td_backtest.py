@@ -360,8 +360,8 @@ class TestTdBacktest(unittest.TestCase):
                 api.wait_update()
             order1 = api.insert_order(symbol=symbol1, direction="BUY", offset="OPEN", volume=1,
                                       limit_price=quote1.last_price)
-            order2 = api.insert_order(symbol=symbol2, direction="BUY", offset="OPEN", volume=2)
-            order3 = api.insert_order(symbol=symbol3, direction="BUY", offset="OPEN", volume=3)
+            order2 = api.insert_order(symbol=symbol2, direction="BUY", offset="OPEN", volume=2, limit_price=quote2.last_price)
+            order3 = api.insert_order(symbol=symbol3, direction="BUY", offset="OPEN", volume=3, limit_price=quote3.last_price)
             while order1.status != "FINISHED" or order2.status != "FINISHED" or order3.status != "FINISHED":
                 api.wait_update()
             self.assertEqual(order1.volume_orign, 1)
@@ -380,8 +380,8 @@ class TestTdBacktest(unittest.TestCase):
                 api.wait_update()
             order1 = api.insert_order(symbol=symbol1, direction="BUY", offset="OPEN", volume=1,
                                       limit_price=quote1.last_price)
-            order2 = api.insert_order(symbol=symbol2, direction="BUY", offset="OPEN", volume=2)
-            order3 = api.insert_order(symbol=symbol3, direction="BUY", offset="OPEN", volume=3)
+            order2 = api.insert_order(symbol=symbol2, direction="BUY", offset="OPEN", volume=2, limit_price=quote2.last_price)
+            order3 = api.insert_order(symbol=symbol3, direction="BUY", offset="OPEN", volume=3, limit_price=quote3.last_price)
             while order1.status != "FINISHED" or order2.status != "FINISHED" or order3.status != "FINISHED":
                 api.wait_update()
             self.assertEqual(order1.volume_orign, 1)
@@ -567,8 +567,8 @@ class TestTdBacktest(unittest.TestCase):
                 api.wait_update()
             order1 = api.insert_order(symbol=symbol1, direction="SELL", offset="OPEN", volume=1,
                                       limit_price=quote1.last_price)
-            order2 = api.insert_order(symbol=symbol2, direction="BUY", offset="OPEN", volume=2)
-            order3 = api.insert_order(symbol=symbol3, direction="BUY", offset="OPEN", volume=3)
+            order2 = api.insert_order(symbol=symbol2, direction="BUY", offset="OPEN", volume=2, limit_price=101)
+            order3 = api.insert_order(symbol=symbol3, direction="BUY", offset="OPEN", volume=3, limit_price=4084)
             while order1.status != "FINISHED" or order2.status != "FINISHED" or order3.status != "FINISHED":
                 api.wait_update()
             self.assertEqual(order1.volume_orign, 1)
