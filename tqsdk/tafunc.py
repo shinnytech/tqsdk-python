@@ -1359,8 +1359,7 @@ def get_ticks_info(df):
     pc_g = df_pre["pc"] > 0
     df_pre["info"] = pd.Series(np.where(df_pre["oi_diff"] > 0, np.where(pc_g, "多开", "空开"),
                                         np.where(df_pre["oi_diff"] < 0, np.where(pc_g, "空平", "多平"),
-                                                 np.where(df_pre["oi_diff"] == 0, np.where(pc_g, "多换", "空换"), ""))),
-                               dtype=pd.StringDtype())
+                                                 np.where(df_pre["oi_diff"] == 0, np.where(pc_g, "多换", "空换"), ""))))
     df_pre.loc[df_pre["pc"] == 0, "info"] = "换手"
     df_pre.loc[(df_pre["oi_diff"] < 0) & (df_pre["oi_diff"] + df_pre["vol_diff"] == 0), "info"] = "双平"
     df_pre.loc[(df_pre["oi_diff"] > 0) & (df_pre["oi_diff"] == df_pre["vol_diff"]), "info"] = "双开"
