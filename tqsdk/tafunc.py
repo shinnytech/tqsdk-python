@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-from tqsdk.datetime import _get_period_timestamp
+from tqsdk.tqdatetime import _get_period_timestamp
 
 
 def ref(series, n):

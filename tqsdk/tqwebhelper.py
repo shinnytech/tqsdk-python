@@ -15,7 +15,7 @@ from aiohttp import web
 from tqsdk.account import TqAccount
 from tqsdk.backtest import TqBacktest, TqReplay
 from tqsdk.channel import TqChan
-from tqsdk.datetime import _get_trading_day_start_time
+from tqsdk.tqdatetime import _get_trading_day_start_time
 from tqsdk.diff import _simple_merge_diff
 from tqsdk.sim import TqSim
 

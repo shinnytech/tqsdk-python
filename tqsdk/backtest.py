@@ -12,7 +12,7 @@ import aiohttp
 import requests
 
 from tqsdk.channel import TqChan
-from tqsdk.datetime import _get_trading_day_start_time, _get_trading_day_end_time
+from tqsdk.tqdatetime import _get_trading_day_start_time, _get_trading_day_end_time
 from tqsdk.diff import _merge_diff, _get_obj
 from tqsdk.entity import Entity
 from tqsdk.exceptions import BacktestFinished

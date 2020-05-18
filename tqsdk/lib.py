@@ -8,7 +8,7 @@ from typing import Optional
 
 from tqsdk.api import TqApi
 from tqsdk.channel import TqChan
-from tqsdk.datetime import _is_in_trading_time
+from tqsdk.tqdatetime import _is_in_trading_time
 
 
 class TargetPosTaskSingleton(type):

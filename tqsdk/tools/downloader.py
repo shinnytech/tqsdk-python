@@ -7,7 +7,7 @@ from datetime import date, datetime
 from typing import Union, List
 
 from tqsdk.api import TqApi
-from tqsdk.datetime import _get_trading_day_start_time, _get_trading_day_end_time
+from tqsdk.tqdatetime import _get_trading_day_start_time, _get_trading_day_end_time
 from tqsdk.diff import _get_obj
 from tqsdk.utils import _generate_uuid
 

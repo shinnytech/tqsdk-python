@@ -7,7 +7,7 @@ import datetime
 import statistics
 import time
 
-from tqsdk.datetime import _get_trading_day_from_timestamp, _get_trading_day_end_time, _get_trade_timestamp, \
+from tqsdk.tqdatetime import _get_trading_day_from_timestamp, _get_trading_day_end_time, _get_trade_timestamp, \
     _is_in_trading_time
 
 
