@@ -12,7 +12,7 @@ TqSdk 天勤量化交易策略程序开发包
 ====================================
 TqSdk 是一个由[信易科技](https://www.shinnytech.com)发起并贡献主要代码的开源 python 库. 
 依托[快期多年积累成熟的交易及行情服务器体系](https://www.shinnytech.com/diff), TqSdk 支持用户使用极少的代码量构建各种类型的量化交易策略程序, 
-并提供包含 历史数据-实时数据-开发调试-策略回测-模拟交易-实盘交易-运行监控-风险管理 的全套解决方案.
+并提供包含期货、期权、股票的 历史数据-实时数据-开发调试-策略回测-模拟交易-实盘交易-运行监控-风险管理 全套解决方案.
 
 ``` {.sourceCode .python}
 from tqsdk import TqApi, TqAccount, TargetPosTask
