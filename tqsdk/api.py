@@ -619,7 +619,7 @@ class TqApi(object):
             raise Exception("下单手数(volume) %s 错误, 请检查 volume 是否填写正确" % (volume))
         limit_price = float(limit_price) if limit_price is not None else None
         if not order_id:
-            order_id = _generate_uuid()
+            order_id = _generate_uuid("PYSDK_insert")
         (exchange_id, instrument_id) = symbol.split(".", 1)
         msg = {
             "aid": "insert_order",
