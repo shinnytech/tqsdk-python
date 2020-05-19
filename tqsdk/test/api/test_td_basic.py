@@ -53,7 +53,7 @@ class TestTdBasic(unittest.TestCase):
         while order1.status == "ALIVE" or order2.status == "ALIVE":
             api.wait_update()
 
-        self.assertEqual(order1.order_id, "5c6e433715ba2bdd177219d30e7a269f")
+        self.assertEqual(order1.order_id, "PYSDK_insert_5c6e433715ba2bdd177219d30e7a269f")
         self.assertEqual(order1.direction, "BUY")
         self.assertEqual(order1.offset, "OPEN")
         self.assertEqual(order1.volume_orign, 1)
@@ -68,9 +68,9 @@ class TestTdBasic(unittest.TestCase):
             self.assertAlmostEqual(1584423143664478000 / 1e9, v.trade_date_time / 1e9, places=1)
             del v.trade_date_time
             self.assertEqual(str(v),
-                             "{'order_id': '5c6e433715ba2bdd177219d30e7a269f', 'trade_id': '5c6e433715ba2bdd177219d30e7a269f|1', 'exchange_trade_id': '5c6e433715ba2bdd177219d30e7a269f|1', 'exchange_id': 'DCE', 'instrument_id': 'jd2005', 'direction': 'BUY', 'offset': 'OPEN', 'price': 3205.0, 'volume': 1, 'user_id': 'TQSIM', 'commission': 6.122999999999999}")
+                             "{'order_id': 'PYSDK_insert_5c6e433715ba2bdd177219d30e7a269f', 'trade_id': 'PYSDK_insert_5c6e433715ba2bdd177219d30e7a269f|1', 'exchange_trade_id': 'PYSDK_insert_5c6e433715ba2bdd177219d30e7a269f|1', 'exchange_id': 'DCE', 'instrument_id': 'jd2005', 'direction': 'BUY', 'offset': 'OPEN', 'price': 3205.0, 'volume': 1, 'user_id': 'TQSIM', 'commission': 6.122999999999999}")
 
-        self.assertEqual(order2.order_id, "cf1822ffbc6887782b491044d5e34124")
+        self.assertEqual(order2.order_id, "PYSDK_insert_cf1822ffbc6887782b491044d5e34124")
         self.assertEqual(order2.direction, "BUY")
         self.assertEqual(order2.offset, "OPEN")
         self.assertEqual(order2.volume_orign, 2)
@@ -85,7 +85,7 @@ class TestTdBasic(unittest.TestCase):
             self.assertAlmostEqual(1584423143666130000 / 1e9, v.trade_date_time / 1e9, places=1)
             del v.trade_date_time
             self.assertEqual(str(v),
-                             "{'order_id': 'cf1822ffbc6887782b491044d5e34124', 'trade_id': 'cf1822ffbc6887782b491044d5e34124|2', 'exchange_trade_id': 'cf1822ffbc6887782b491044d5e34124|2', 'exchange_id': 'SHFE', 'instrument_id': 'cu2004', 'direction': 'BUY', 'offset': 'OPEN', 'price': 49200.0, 'volume': 2, 'user_id': 'TQSIM', 'commission': 23.189999999999998}")
+                             "{'order_id': 'PYSDK_insert_cf1822ffbc6887782b491044d5e34124', 'trade_id': 'PYSDK_insert_cf1822ffbc6887782b491044d5e34124|2', 'exchange_trade_id': 'PYSDK_insert_cf1822ffbc6887782b491044d5e34124|2', 'exchange_id': 'SHFE', 'instrument_id': 'cu2004', 'direction': 'BUY', 'offset': 'OPEN', 'price': 49200.0, 'volume': 2, 'user_id': 'TQSIM', 'commission': 23.189999999999998}")
 
         api.close()
 
@@ -234,16 +234,16 @@ class TestTdBasic(unittest.TestCase):
         while order1.status == "ALIVE" or order2.status == "ALIVE":
             api.wait_update()
 
-        trade1 = api.get_trade("1710cf5327ac435a7a97c643656412a9|1")
-        trade2 = api.get_trade("8ca5996666ceab360512bd1311072231|2")
+        trade1 = api.get_trade("PYSDK_insert_1710cf5327ac435a7a97c643656412a9|1")
+        trade2 = api.get_trade("PYSDK_insert_8ca5996666ceab360512bd1311072231|2")
         self.assertAlmostEqual(1586414355666978000 / 1e9, trade1.trade_date_time / 1e9, places=1)
         self.assertAlmostEqual(1586414355667884000 / 1e9, trade2.trade_date_time / 1e9, places=1)
         del trade1["trade_date_time"]
         del trade2["trade_date_time"]
         self.assertEqual(str(trade1),
-                         "{'order_id': '1710cf5327ac435a7a97c643656412a9', 'trade_id': '1710cf5327ac435a7a97c643656412a9|1', 'exchange_trade_id': '1710cf5327ac435a7a97c643656412a9|1', 'exchange_id': 'DCE', 'instrument_id': 'jd2005', 'direction': 'BUY', 'offset': 'OPEN', 'price': 3317.0, 'volume': 1, 'user_id': 'TQSIM', 'commission': 6.122999999999999}")
+                         "{'order_id': 'PYSDK_insert_1710cf5327ac435a7a97c643656412a9', 'trade_id': 'PYSDK_insert_1710cf5327ac435a7a97c643656412a9|1', 'exchange_trade_id': 'PYSDK_insert_1710cf5327ac435a7a97c643656412a9|1', 'exchange_id': 'DCE', 'instrument_id': 'jd2005', 'direction': 'BUY', 'offset': 'OPEN', 'price': 3317.0, 'volume': 1, 'user_id': 'TQSIM', 'commission': 6.122999999999999}")
         self.assertEqual(str(trade2),
-                         "{'order_id': '8ca5996666ceab360512bd1311072231', 'trade_id': '8ca5996666ceab360512bd1311072231|2', 'exchange_trade_id': '8ca5996666ceab360512bd1311072231|2', 'exchange_id': 'SHFE', 'instrument_id': 'cu2005', 'direction': 'BUY', 'offset': 'OPEN', 'price': 40870.0, 'volume': 2, 'user_id': 'TQSIM', 'commission': 23.189999999999998}")
+                         "{'order_id': 'PYSDK_insert_8ca5996666ceab360512bd1311072231', 'trade_id': 'PYSDK_insert_8ca5996666ceab360512bd1311072231|2', 'exchange_trade_id': 'PYSDK_insert_8ca5996666ceab360512bd1311072231|2', 'exchange_id': 'SHFE', 'instrument_id': 'cu2005', 'direction': 'BUY', 'offset': 'OPEN', 'price': 40870.0, 'volume': 2, 'user_id': 'TQSIM', 'commission': 23.189999999999998}")
         self.assertEqual(trade1.direction, "BUY")
         self.assertEqual(trade1.offset, "OPEN")
         self.assertEqual(trade1.price, 3317.0)
@@ -275,7 +275,7 @@ class TestTdBasic(unittest.TestCase):
         get_order1 = api.get_order(order1.order_id)
         get_order2 = api.get_order(order2.order_id)
 
-        self.assertEqual(get_order1.order_id, "1710cf5327ac435a7a97c643656412a9")
+        self.assertEqual(get_order1.order_id, "PYSDK_insert_1710cf5327ac435a7a97c643656412a9")
         self.assertEqual(get_order1.direction, "BUY")
         self.assertEqual(get_order1.offset, "OPEN")
         self.assertEqual(get_order1.volume_orign, 1)
@@ -290,7 +290,7 @@ class TestTdBasic(unittest.TestCase):
         self.assertEqual(get_order1.status, "FINISHED")
         self.assertEqual(get_order1.frozen_margin, 0)
 
-        self.assertEqual(get_order2.order_id, "8ca5996666ceab360512bd1311072231")
+        self.assertEqual(get_order2.order_id, "PYSDK_insert_8ca5996666ceab360512bd1311072231")
         self.assertEqual(get_order2.direction, "SELL")
         self.assertEqual(get_order2.offset, "OPEN")
         self.assertEqual(get_order2.volume_orign, 2)
@@ -307,9 +307,9 @@ class TestTdBasic(unittest.TestCase):
         del get_order1["insert_date_time"]
         del get_order2["insert_date_time"]
         self.assertEqual(str(get_order1),
-                         "{'order_id': '1710cf5327ac435a7a97c643656412a9', 'exchange_order_id': '1710cf5327ac435a7a97c643656412a9', 'exchange_id': 'DCE', 'instrument_id': 'jd2005', 'direction': 'BUY', 'offset': 'OPEN', 'volume_orign': 1, 'volume_left': 0, 'limit_price': nan, 'price_type': 'ANY', 'volume_condition': 'ANY', 'time_condition': 'IOC', 'last_msg': '全部成交', 'status': 'FINISHED', 'user_id': 'TQSIM', 'frozen_margin': 0.0, 'frozen_premium': 0.0}")
+                         "{'order_id': 'PYSDK_insert_1710cf5327ac435a7a97c643656412a9', 'exchange_order_id': 'PYSDK_insert_1710cf5327ac435a7a97c643656412a9', 'exchange_id': 'DCE', 'instrument_id': 'jd2005', 'direction': 'BUY', 'offset': 'OPEN', 'volume_orign': 1, 'volume_left': 0, 'limit_price': nan, 'price_type': 'ANY', 'volume_condition': 'ANY', 'time_condition': 'IOC', 'last_msg': '全部成交', 'status': 'FINISHED', 'user_id': 'TQSIM', 'frozen_margin': 0.0, 'frozen_premium': 0.0}")
         self.assertEqual(str(get_order2),
-                         "{'order_id': '8ca5996666ceab360512bd1311072231', 'exchange_order_id': '8ca5996666ceab360512bd1311072231', 'exchange_id': 'SHFE', 'instrument_id': 'cu2005', 'direction': 'SELL', 'offset': 'OPEN', 'volume_orign': 2, 'volume_left': 0, 'limit_price': 40750.0, 'price_type': 'LIMIT', 'volume_condition': 'ANY', 'time_condition': 'GFD', 'last_msg': '全部成交', 'status': 'FINISHED', 'user_id': 'TQSIM', 'frozen_margin': 0.0, 'frozen_premium': 0.0}")
+                         "{'order_id': 'PYSDK_insert_8ca5996666ceab360512bd1311072231', 'exchange_order_id': 'PYSDK_insert_8ca5996666ceab360512bd1311072231', 'exchange_id': 'SHFE', 'instrument_id': 'cu2005', 'direction': 'SELL', 'offset': 'OPEN', 'volume_orign': 2, 'volume_left': 0, 'limit_price': 40750.0, 'price_type': 'LIMIT', 'volume_condition': 'ANY', 'time_condition': 'GFD', 'last_msg': '全部成交', 'status': 'FINISHED', 'user_id': 'TQSIM', 'frozen_margin': 0.0, 'frozen_premium': 0.0}")
 
         api.close()
 
@@ -335,7 +335,7 @@ class TestTdBasic(unittest.TestCase):
         while order1.status == "ALIVE" or order2.status == "ALIVE" or order3.status == "ALIVE":
             api.wait_update()
 
-        self.assertEqual(order1.order_id, "5c6e433715ba2bdd177219d30e7a269f")
+        self.assertEqual(order1.order_id, "PYSDK_insert_5c6e433715ba2bdd177219d30e7a269f")
         self.assertEqual(order1.direction, "BUY")
         self.assertEqual(order1.offset, "OPEN")
         self.assertEqual(order1.volume_orign, 1)
@@ -350,9 +350,9 @@ class TestTdBasic(unittest.TestCase):
             self.assertAlmostEqual(1586829882005979000 / 1e9, v.trade_date_time / 1e9, places=1)
             del v.trade_date_time
             self.assertEqual(str(v),
-                             "{'order_id': '5c6e433715ba2bdd177219d30e7a269f', 'trade_id': '5c6e433715ba2bdd177219d30e7a269f|1', 'exchange_trade_id': '5c6e433715ba2bdd177219d30e7a269f|1', 'exchange_id': 'SHFE', 'instrument_id': 'cu2006C47000', 'direction': 'BUY', 'offset': 'OPEN', 'price': 135.0, 'volume': 1, 'user_id': 'TQSIM', 'commission': 10}")
+                             "{'order_id': 'PYSDK_insert_5c6e433715ba2bdd177219d30e7a269f', 'trade_id': 'PYSDK_insert_5c6e433715ba2bdd177219d30e7a269f|1', 'exchange_trade_id': 'PYSDK_insert_5c6e433715ba2bdd177219d30e7a269f|1', 'exchange_id': 'SHFE', 'instrument_id': 'cu2006C47000', 'direction': 'BUY', 'offset': 'OPEN', 'price': 135.0, 'volume': 1, 'user_id': 'TQSIM', 'commission': 10}")
 
-        self.assertEqual(order2.order_id, "cf1822ffbc6887782b491044d5e34124")
+        self.assertEqual(order2.order_id, "PYSDK_insert_cf1822ffbc6887782b491044d5e34124")
         self.assertEqual(order2.direction, "SELL")
         self.assertEqual(order2.offset, "OPEN")
         self.assertEqual(order2.volume_orign, 2)
@@ -367,9 +367,9 @@ class TestTdBasic(unittest.TestCase):
             self.assertAlmostEqual(1586829882236518000 / 1e9, v.trade_date_time / 1e9, places=1)
             del v.trade_date_time
             self.assertEqual(str(v),
-                             "{'order_id': 'cf1822ffbc6887782b491044d5e34124', 'trade_id': 'cf1822ffbc6887782b491044d5e34124|2', 'exchange_trade_id': 'cf1822ffbc6887782b491044d5e34124|2', 'exchange_id': 'CZCE', 'instrument_id': 'SR007C5600', 'direction': 'SELL', 'offset': 'OPEN', 'price': 30.0, 'volume': 2, 'user_id': 'TQSIM', 'commission': 20}")
+                             "{'order_id': 'PYSDK_insert_cf1822ffbc6887782b491044d5e34124', 'trade_id': 'PYSDK_insert_cf1822ffbc6887782b491044d5e34124|2', 'exchange_trade_id': 'PYSDK_insert_cf1822ffbc6887782b491044d5e34124|2', 'exchange_id': 'CZCE', 'instrument_id': 'SR007C5600', 'direction': 'SELL', 'offset': 'OPEN', 'price': 30.0, 'volume': 2, 'user_id': 'TQSIM', 'commission': 20}")
 
-        self.assertEqual(order3.order_id, "4067c3584ee207f8da94e3e8ab73738f")
+        self.assertEqual(order3.order_id, "PYSDK_insert_4067c3584ee207f8da94e3e8ab73738f")
         self.assertEqual(order3.direction, "BUY")
         self.assertEqual(order3.offset, "OPEN")
         self.assertEqual(order3.volume_orign, 3)
@@ -384,7 +384,7 @@ class TestTdBasic(unittest.TestCase):
             self.assertAlmostEqual(1586829882228603000 / 1e9, v.trade_date_time / 1e9, places=1)
             del v.trade_date_time
             self.assertEqual(str(v),
-                             "{'order_id': '4067c3584ee207f8da94e3e8ab73738f', 'trade_id': '4067c3584ee207f8da94e3e8ab73738f|3', 'exchange_trade_id': '4067c3584ee207f8da94e3e8ab73738f|3', 'exchange_id': 'DCE', 'instrument_id': 'm2007-P-2900', 'direction': 'BUY', 'offset': 'OPEN', 'price': 192.0, 'volume': 3, 'user_id': 'TQSIM', 'commission': 30}")
+                             "{'order_id': 'PYSDK_insert_4067c3584ee207f8da94e3e8ab73738f', 'trade_id': 'PYSDK_insert_4067c3584ee207f8da94e3e8ab73738f|3', 'exchange_trade_id': 'PYSDK_insert_4067c3584ee207f8da94e3e8ab73738f|3', 'exchange_id': 'DCE', 'instrument_id': 'm2007-P-2900', 'direction': 'BUY', 'offset': 'OPEN', 'price': 192.0, 'volume': 3, 'user_id': 'TQSIM', 'commission': 30}")
 
         api.close()
 
@@ -555,16 +555,16 @@ class TestTdBasic(unittest.TestCase):
         while order1.status == "ALIVE" or order2.status == "ALIVE":
             api.wait_update()
 
-        trade1 = api.get_trade("1710cf5327ac435a7a97c643656412a9|1")
-        trade2 = api.get_trade("8ca5996666ceab360512bd1311072231|2")
+        trade1 = api.get_trade("PYSDK_insert_1710cf5327ac435a7a97c643656412a9|1")
+        trade2 = api.get_trade("PYSDK_insert_8ca5996666ceab360512bd1311072231|2")
         self.assertAlmostEqual(1586501231007428000 / 1e9, trade1.trade_date_time / 1e9, places=1)
         self.assertAlmostEqual(1586501233361505000 / 1e9, trade2.trade_date_time / 1e9, places=1)
         del trade1["trade_date_time"]
         del trade2["trade_date_time"]
         self.assertEqual(str(trade1),
-                         "{'order_id': '1710cf5327ac435a7a97c643656412a9', 'trade_id': '1710cf5327ac435a7a97c643656412a9|1', 'exchange_trade_id': '1710cf5327ac435a7a97c643656412a9|1', 'exchange_id': 'CZCE', 'instrument_id': 'SR007C5600', 'direction': 'SELL', 'offset': 'OPEN', 'price': 50.0, 'volume': 1, 'user_id': 'TQSIM', 'commission': 10}")
+                         "{'order_id': 'PYSDK_insert_1710cf5327ac435a7a97c643656412a9', 'trade_id': 'PYSDK_insert_1710cf5327ac435a7a97c643656412a9|1', 'exchange_trade_id': 'PYSDK_insert_1710cf5327ac435a7a97c643656412a9|1', 'exchange_id': 'CZCE', 'instrument_id': 'SR007C5600', 'direction': 'SELL', 'offset': 'OPEN', 'price': 50.0, 'volume': 1, 'user_id': 'TQSIM', 'commission': 10}")
         self.assertEqual(str(trade2),
-                         "{'order_id': '8ca5996666ceab360512bd1311072231', 'trade_id': '8ca5996666ceab360512bd1311072231|2', 'exchange_trade_id': '8ca5996666ceab360512bd1311072231|2', 'exchange_id': 'DCE', 'instrument_id': 'm2007-P-2900', 'direction': 'BUY', 'offset': 'OPEN', 'price': 180.0, 'volume': 2, 'user_id': 'TQSIM', 'commission': 20}")
+                         "{'order_id': 'PYSDK_insert_8ca5996666ceab360512bd1311072231', 'trade_id': 'PYSDK_insert_8ca5996666ceab360512bd1311072231|2', 'exchange_trade_id': 'PYSDK_insert_8ca5996666ceab360512bd1311072231|2', 'exchange_id': 'DCE', 'instrument_id': 'm2007-P-2900', 'direction': 'BUY', 'offset': 'OPEN', 'price': 180.0, 'volume': 2, 'user_id': 'TQSIM', 'commission': 20}")
         self.assertEqual(trade1.direction, "SELL")
         self.assertEqual(trade1.offset, "OPEN")
         self.assertEqual(trade1.price, 50.0)
