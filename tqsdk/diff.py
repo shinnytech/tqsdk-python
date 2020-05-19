@@ -22,10 +22,8 @@ def _merge_diff(result, diff, prototype, persist, notify_update_diff=False):
                 del diff[key]
             else:
                 if notify_update_diff:
-                    path = result["_path"].copy()
                     dv = result.pop(key, None)
-                    path.append(key)
-                    _notify_update(dv, True, _gen_diff_obj(None, path))
+                    _notify_update(dv, True, _gen_diff_obj(None, result["_path"] + [key]))
                 else:
                     dv = result.pop(key, None)
                     _notify_update(dv, True, True)
