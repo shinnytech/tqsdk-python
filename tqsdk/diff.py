@@ -56,6 +56,9 @@ def _merge_diff(result, diff, prototype, persist, notify_update_diff=False):
     if len(diff) != 0:
         diff_obj = True
         if notify_update_diff:
+            # 这里发的数据目前是不需要 copy (浅拷贝会有坑，深拷贝的话性能不知道有多大影响)
+            # 因为这里现在会用到发送这个 diff 的只有 quote 对象，只有 sim 会收到使用，sim 收到之后是不会修改这个 diff
+            # 所以这里就约定接收方不能改 diff 中的值
             diff_obj = _gen_diff_obj(diff, result["_path"])
         _notify_update(result, False, diff_obj)
 
