@@ -1136,11 +1136,14 @@ class TqApi(object):
             chan = TqChan(self, last_only=True)
         if not isinstance(obj, list):
             obj = [obj] if obj is not None else [self._data]
+        registing_objs = []
         for o in obj:
             if isinstance(o, pd.DataFrame):
                 for root in self._serials[id(o)]["root"]:
-                    obj.append(root)
-        return _register_update_chan(obj, chan)
+                    registing_objs.append(root)
+            else:
+                registing_objs.append(o)
+        return _register_update_chan(registing_objs, chan)
 
 
     # ----------------------------------------------------------------------
