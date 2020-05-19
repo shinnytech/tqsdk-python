@@ -1,7 +1,0 @@
-.. _tutorial_t41:
-
-t41 - 开仓/平仓
-====================================================
-
-.. literalinclude:: ../../../tqsdk/demo/tutorial/t41.py
-  :language: python

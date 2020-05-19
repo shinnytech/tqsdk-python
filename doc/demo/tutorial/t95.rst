@@ -1,7 +1,0 @@
-.. _tutorial_t95:
-
-t95 - 附图中画K线、线段和方框
-====================================================
-
-.. literalinclude:: ../../../tqsdk/demo/tutorial/t95.py
-  :language: python

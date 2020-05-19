@@ -1,7 +1,0 @@
-.. _tutorial_t80:
-
-t80 - 价差回归策略
-====================================================
-
-.. literalinclude:: ../../../tqsdk/demo/tutorial/t80.py
-  :language: python

@@ -1,7 +1,0 @@
-.. _tutorial_t40:
-
-t40 - 下单/撤单
-====================================================
-
-.. literalinclude:: ../../../tqsdk/demo/tutorial/t40.py
-  :language: python

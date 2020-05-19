@@ -1,7 +1,0 @@
-.. _tutorial_t10:
-
-t10 - 获取实时行情
-====================================================
-
-.. literalinclude:: ../../../tqsdk/demo/tutorial/t10.py
-  :language: python
