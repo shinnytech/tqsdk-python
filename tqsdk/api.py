@@ -568,7 +568,7 @@ class TqApi(object):
         return serial["df"]
 
     # ----------------------------------------------------------------------
-    def insert_order(self, symbol: str, direction: str, offset: str, volume: int, limit_price: Union[str, int, None] = None,
+    def insert_order(self, symbol: str, direction: str, offset: str, volume: int, limit_price: Union[str, float, None] = None,
                     advanced: Optional[str] = None, order_id: Optional[str] = None) -> Order:
         """
         发送下单指令. **注意: 指令将在下次调用** :py:meth:`~tqsdk.api.TqApi.wait_update` **时发出**
@@ -585,12 +585,12 @@ class TqApi(object):
 
             limit_price (float | str): [可选] 下单价格, 默认为 None。
                 * 数字类型: 限价单，指定委托单价格
-                * None: 市价单，不需要填写此参数 (郑商所期货/期权、大商所期货支持)
+                * None: 市价单，默认值就是市价单 (郑商所期货/期权、大商所期货支持)
                 * "BEST": 最优市价单，与对手方最优一档价格报单尝试成交（仅中金所支持）
                 * "FIVELEVEL" 五档市价单，与对手方五档价格报单尝试成交（仅中金所支持）
 
             advanced (str): [可选] "FAK", "FOK"。默认为 None。
-                * None: 对于限价单，委托单当日有效，且可以任意手数成交，剩余委托为挂单；对于市价单、最优市价单、五档市价单(与 FAK 指令一致)，任意手数成交，剩余撤单。
+                * None: 对于限价单，任意手数成交，委托单当日有效；对于市价单、最优市价单、五档市价单(与 FAK 指令一致)，任意手数成交，剩余撤单。
                 * "FAK": 剩余即撤销，指在指定价位成交，剩余委托自动被系统撤销。(限价单、市价单、最优市价单、五档市价单有效)
                 * "FOK": 全成或全撤，指在指定价位要么全部成交，否则全部自动被系统撤销。(限价单、市价单有效，郑商所期货品种不支持 FOK)
 
@@ -642,22 +642,22 @@ class TqApi(object):
         }
         if limit_price == "BEST" or limit_price == "FIVELEVEL":
             if exchange_id != "CFFEX":
-                raise Exception("仅中金所支持 BEST / FIVELEVEL ")
+                raise Exception(f"{symbol} 不支持 {limit_price} 市价单，请修改 limit_price 参数。仅中金所支持 BEST / FIVELEVEL。")
             msg["price_type"] = limit_price
             msg["time_condition"] = "IOC"
             msg["volume_condition"] = "ANY"
             if advanced == "FOK":
-                raise Exception("中金所不支持 FOK")
+                raise Exception(f"{symbol} 不支持 advanced==\"FOK\"。中金所不支持 FOK")
         elif limit_price is None:
             if exchange_id in ["CFFEX", "SHFE", "INE"]:
-                raise Exception("中金所、上期所、原油交易所不支持市价单")
+                raise Exception(f"{symbol} 不支持市价单，请使用 limit_price 参数指定价格。中金所、上期所、原油交易所不支持市价单。")
             if exchange_id == "DCE" and quote.ins_class == "OPTION":
-                raise Exception("大商所期权不支持市价单")
+                raise Exception(f"{symbol} 不支持市价单，请使用 limit_price 参数指定价格。大商所期权不支持市价单。")
             msg["price_type"] = "ANY"
             msg["time_condition"] = "IOC"
             if advanced == "FOK":
                 if exchange_id == "CZCE" and quote.ins_class == "FUTURE":
-                    raise Exception("郑商所期货不支持 FOK")
+                    raise Exception(f"{symbol} 不支持 advanced==\"FOK\"。郑商所期货品种不支持 FOK。")
                 msg["volume_condition"] = "ALL"
             else:
                 msg["volume_condition"] = "ANY"
@@ -667,7 +667,7 @@ class TqApi(object):
             msg["time_condition"] = "IOC" if advanced else "GFD"
             if advanced == "FOK":
                 if exchange_id == "CZCE" and quote.ins_class == "FUTURE":
-                    raise Exception("郑商所期货不支持 FOK")
+                    raise Exception(f"{symbol} 不支持 advanced==\"FOK\"。郑商所期货品种不支持 FOK。")
                 msg["volume_condition"] = "ALL"
             else:
                 msg["volume_condition"] = "ANY"
@@ -683,7 +683,7 @@ class TqApi(object):
             "volume_left": volume,
             "status": "ALIVE",
             "_this_session": True,
-            "limit_price": msg["limit_price"] if "limit_price" in msg else float("nan"),
+            "limit_price": msg.get("limit_price", float("nan")),
             "price_type": msg["price_type"],
             "volume_condition": msg["volume_condition"],
             "time_condition": msg["time_condition"]
