@@ -253,7 +253,7 @@ class TqBacktest(object):
                 }
                 self._diffs = []
                 self._pending_peek = False
-                self._logger.debug("backtest message send: %s", rtn_data)
+                self._logger.debug("TqBacktest message send: %s", rtn_data)
                 await self._sim_recv_chan.send(rtn_data)
 
     async def _ensure_serial(self, ins, dur):
