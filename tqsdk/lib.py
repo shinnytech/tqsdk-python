@@ -3,12 +3,15 @@
 __author__ = 'chengzhi'
 
 import time
+from datetime import datetime
 from asyncio import gather
 from typing import Optional
 
 from tqsdk.api import TqApi
+from tqsdk.backtest import TqBacktest
 from tqsdk.channel import TqChan
 from tqsdk.datetime import _is_in_trading_time
+from tqsdk.diff import _get_obj
 from tqsdk.utils import _generate_uuid
 
 
@@ -175,8 +178,17 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
                 #   如果当前时间（模拟交易所时间）不在交易时间段内，则：等待直到行情更新
                 #   行情更新（即下一交易时段开始）后：获取target_pos最新的目标仓位, 开始调整仓位
 
-                # 如果不在可交易时间段内: 等待更新
-                while not _is_in_trading_time(self._quote, self._quote["datetime"], self._local_time_record):
+                # 如果不在可交易时间段内（回测时用 backtest 下发的时间判断，实盘使用 quote 行情判断）: 等待更新
+                while True:
+                    if isinstance(self._api._backtest, TqBacktest):
+                        cur_timestamp = self._api._data.get("_tqsdk_backtest", {}).get("current_dt", float("nan"))
+                        cur_dt = datetime.fromtimestamp(cur_timestamp / 1e9).strftime("%Y-%m-%d %H:%M:%S.%f")
+                        time_record = float("nan")
+                    else:
+                        cur_dt = self._quote["datetime"]
+                        time_record = self._local_time_record
+                    if _is_in_trading_time(self._quote, cur_dt, time_record):
+                        break
                     await self._local_time_record_update_chan.recv()
 
                 target_pos = self._pos_chan.recv_latest(target_pos)  # 获取最后一个target_pos目标仓位
