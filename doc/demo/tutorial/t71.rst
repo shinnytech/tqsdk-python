@@ -1,7 +1,0 @@
-.. _tutorial_t71:
-
-t71 - 简单趋势策略
-====================================================
-
-.. literalinclude:: ../../../tqsdk/demo/tutorial/t71.py
-  :language: python

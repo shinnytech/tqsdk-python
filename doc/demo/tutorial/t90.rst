@@ -1,7 +1,0 @@
-.. _tutorial_t90:
-
-t90 - 在主图中画指标线
-====================================================
-
-.. literalinclude:: ../../../tqsdk/demo/tutorial/t90.py
-  :language: python

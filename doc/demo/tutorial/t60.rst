@@ -1,7 +1,0 @@
-.. _tutorial_t60:
-
-t60 - 双均线策略
-====================================================
-
-.. literalinclude:: ../../../tqsdk/demo/tutorial/t60.py
-  :language: python

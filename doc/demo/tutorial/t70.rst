@@ -1,7 +1,0 @@
-.. _tutorial_t70:
-
-t70 - 简单均线策略(目标持仓模型)
-====================================================
-
-.. literalinclude:: ../../../tqsdk/demo/tutorial/t70.py
-  :language: python
