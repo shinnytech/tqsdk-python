@@ -9,6 +9,7 @@ from typing import Optional
 from tqsdk.api import TqApi
 from tqsdk.channel import TqChan
 from tqsdk.datetime import _is_in_trading_time
+from tqsdk.utils import _generate_uuid
 
 
 class TargetPosTaskSingleton(type):
@@ -341,7 +342,9 @@ class InsertOrderTask(object):
 
     async def _run(self):
         """负责下单的task"""
-        order = self._api.insert_order(self._symbol, self._direction, self._offset, self._volume, self._limit_price)
+        order_id = _generate_uuid("PYSDK_target")
+        order = self._api.insert_order(self._symbol, self._direction, self._offset, self._volume, self._limit_price,
+                                       order_id=order_id)
         last_order = order.copy()  # 保存当前 order 的状态
         last_left = self._volume
         async with self._api.register_update_notify() as update_chan:
