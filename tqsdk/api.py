@@ -44,7 +44,7 @@ from tqsdk.entity import Entity
 from tqsdk.objs import Quote, Kline, Tick, Account, Position, Order, Trade
 from tqsdk.sim import TqSim
 from tqsdk.tqwebhelper import TqWebHelper
-from tqsdk.utils import _generate_uuid
+from tqsdk.utils import _generate_uuid, _quotes_add_night
 from .__version__ import __version__
 
 
@@ -1155,10 +1155,13 @@ class TqApi(object):
 
         # 连接合约和行情服务器
         ws_md_send_chan, ws_md_recv_chan = TqChan(self), TqChan(self)
+        quotes = self._fetch_symbol_info(self._ins_url)
+        if isinstance(self._backtest, TqBacktest):
+            _quotes_add_night(quotes)  # 补丁：回测时添加合约服务中的夜盘
         ws_md_recv_chan.send_nowait({
             "aid": "rtn_data",
             "data": [{
-                "quotes": self._fetch_symbol_info(self._ins_url)
+                "quotes": quotes
             }]
         })  # 获取合约信息
         self.create_task(self._connect(self._md_url, ws_md_send_chan, ws_md_recv_chan))  # 启动行情websocket连接
