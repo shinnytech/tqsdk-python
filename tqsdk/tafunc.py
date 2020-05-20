@@ -1354,8 +1354,8 @@ def get_ticks_info(df):
     df_pre["price_diff"] = df["last_price"] - df_pre["last_price"]
     df_pre["oi_diff"] = df["open_interest"] - df_pre["open_interest"]
     df_pre["vol_diff"] = df["volume"] - df_pre["volume"]
-    df_pre["pc"] = np.where(df["last_price"] <= df_pre["bid_price1"], -1,
-                            np.where(df["last_price"] >= df_pre["ask_price1"], 1, np.sign(df_pre["price_diff"])))
+    df_pre["pc"] = np.where((df["last_price"] <= df_pre["bid_price1"]) | (df['last_price'] < df_pre["ask_price1"]) , -1 , 
+                        np.where((df["last_price"] >= df_pre["ask_price1"]) | (df['last_price'] > df_pre["bid_price1"]), 1, np.sign(df_pre["price_diff"])))
     pc_g = df_pre["pc"] > 0
     df_pre["info"] = pd.Series(np.where(df_pre["oi_diff"] > 0, np.where(pc_g, "多开", "空开"),
                                         np.where(df_pre["oi_diff"] < 0, np.where(pc_g, "空平", "多平"),
