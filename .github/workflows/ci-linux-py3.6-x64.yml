@@ -30,6 +30,18 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v2
 
+    - name: Giant Files List
+      id: giant-files-list
+      run: |
+        git ls-files | xargs ls -l | sort -nrk5 | awk '{if($5 > ${{ secrets.FILE_LIMIT_SIZE }}) print $9 }' | xargs ls -lrth
+        echo "::set-output name=GIANT-FILES-COUNT::$(git ls-files | xargs ls -l | sort -nrk5 | awk '{if($5 > ${{ secrets.FILE_LIMIT_SIZE }}) print $0}' | wc -l)"
+
+    - name: Giant Files Check
+      if: steps.giant-files-list.outputs.GIANT-FILES-COUNT != 0
+      run: |
+        echo "files size check failed"
+        exit 1
+
     - name: Setup Node.js 12.x
       uses: actions/setup-node@v1
       with:
