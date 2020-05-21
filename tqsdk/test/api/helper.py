@@ -27,46 +27,15 @@ class MockInsServer():
         self.thread.join()
 
     async def handle(self, request):
-        data = {
-            "SHFE.cu1901": {
-                "class": "FUTURE",
-                "instrument_id": "SHFE.cu1901",
-                "exchange_id": "SHFE",
-                "ins_id": "cu1901",
-                "ins_name": "\u6caa\u94dc1901",
-                "volume_multiple": 5,
-                "price_tick": 10,
-                "price_decs": 0,
-                "sort_key": 20,
-                "expired": True,
-                "py": "ht,hutong,yinjitong",
-                "product_id": "cu",
-                "product_short_name": "\u6caa\u94dc",
-                "delivery_year": 2019,
-                "delivery_month": 1,
-                "expire_datetime": 1547535600.0,
-                "last_price": 46940.0,
-                "pre_volume": 0,
-                "open_interest": 0,
-                "settlement_price": 46880.0,
-                "max_market_order_volume": 0,
-                "max_limit_order_volume": 500,
-                "margin": 16247.0,
-                "commission": 11.605,
-                "mmsa": 1,
-                "trading_time": {
-                    "day": [["09:00:00", "10:15:00"], ["10:30:00", "11:30:00"], ["13:30:00", "15:00:00"]],
-                    "night": [["21:00:00", "25:00:00"]]
-                }
-            }
-        }
-        return web.json_response(data)
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        file_path = os.path.join(dir_path, "symbols", request.url.name + ".lzma")
+        file = lzma.open(file_path, "rt", encoding="utf-8")
+        return web.json_response(json.loads(file.read()))
 
     async def task_serve(self):
         try:
             app = web.Application()
-            app.router.add_static('/t/md/symbols', self.symbols_dir, show_index=True)
-            app.add_routes([web.get('/{tail:.*}', self.handle)])
+            app.add_routes([web.get('/t/md/symbols/{tail:.*}', self.handle)])
             runner = web.AppRunner(app)
             await runner.setup()
             site = web.TCPSite(runner, '127.0.0.1', self.port)
