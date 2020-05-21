@@ -584,14 +584,14 @@ class TqApi(object):
             volume (int): 需要下单的手数
 
             limit_price (float | str): [可选] 下单价格, 默认为 None。
-                * 数字类型: 限价单，指定委托单价格
+                * 数字类型: 限价单，按照限定价格或者更优价格成交
                 * None: 市价单，默认值就是市价单 (郑商所期货/期权、大商所期货支持)
-                * "BEST": 最优市价单，与对手方最优一档价格报单尝试成交（仅中金所支持）
-                * "FIVELEVEL" 五档市价单，与对手方五档价格报单尝试成交（仅中金所支持）
+                * "BEST": 最优一档，以对手方实时最优一档价格为成交价格成交（仅中金所支持）
+                * "FIVELEVEL": 最优五档，在对手方实时最优五个价位内以对手方价格为成交价格依次成交（仅中金所支持）
 
             advanced (str): [可选] "FAK", "FOK"。默认为 None。
-                * None: 对于限价单，任意手数成交，委托单当日有效；对于市价单、最优市价单、五档市价单(与 FAK 指令一致)，任意手数成交，剩余撤单。
-                * "FAK": 剩余即撤销，指在指定价位成交，剩余委托自动被系统撤销。(限价单、市价单、最优市价单、五档市价单有效)
+                * None: 对于限价单，任意手数成交，委托单当日有效；对于市价单、最优一档、最优五档(与 FAK 指令一致)，任意手数成交，剩余撤单。
+                * "FAK": 剩余即撤销，指在指定价位成交，剩余委托自动被系统撤销。(限价单、市价单、最优一档、最优五档有效)
                 * "FOK": 全成或全撤，指在指定价位要么全部成交，否则全部自动被系统撤销。(限价单、市价单有效，郑商所期货品种不支持 FOK)
 
             order_id (str): [可选]指定下单单号, 默认由 api 自动生成
@@ -647,7 +647,7 @@ class TqApi(object):
             msg["time_condition"] = "IOC"
             msg["volume_condition"] = "ANY"
             if advanced == "FOK":
-                raise Exception(f"{symbol} 不支持 advanced==\"FOK\"。中金所不支持 FOK")
+                raise Exception(f"{symbol} 不支持 advanced 为 \"FOK\"。中金所不支持 FOK")
         elif limit_price is None:
             if exchange_id in ["CFFEX", "SHFE", "INE"]:
                 raise Exception(f"{symbol} 不支持市价单，请使用 limit_price 参数指定价格。中金所、上期所、原油交易所不支持市价单。")
@@ -657,7 +657,7 @@ class TqApi(object):
             msg["time_condition"] = "IOC"
             if advanced == "FOK":
                 if exchange_id == "CZCE" and quote.ins_class == "FUTURE":
-                    raise Exception(f"{symbol} 不支持 advanced==\"FOK\"。郑商所期货品种不支持 FOK。")
+                    raise Exception(f"{symbol} 不支持 advanced 为 \"FOK\"。郑商所期货品种不支持 FOK。")
                 msg["volume_condition"] = "ALL"
             else:
                 msg["volume_condition"] = "ANY"
@@ -667,7 +667,7 @@ class TqApi(object):
             msg["time_condition"] = "IOC" if advanced else "GFD"
             if advanced == "FOK":
                 if exchange_id == "CZCE" and quote.ins_class == "FUTURE":
-                    raise Exception(f"{symbol} 不支持 advanced==\"FOK\"。郑商所期货品种不支持 FOK。")
+                    raise Exception(f"{symbol} 不支持 advanced 为 \"FOK\"。郑商所期货品种不支持 FOK。")
                 msg["volume_condition"] = "ALL"
             else:
                 msg["volume_condition"] = "ANY"
