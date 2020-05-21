@@ -282,6 +282,8 @@ class TqApi(object):
             with closing(TqApi()) as api:
                 api.insert_order(symbol="DCE.m1901", direction="BUY", offset="OPEN", volume=3)
         """
+        if self._loop.is_closed():
+            return
         if self._loop.is_running():
             raise Exception("不能在协程中调用 close, 如需关闭 api 实例需在 wait_update 返回后再关闭")
         elif asyncio._get_running_loop():
@@ -298,6 +300,12 @@ class TqApi(object):
             self._run_once()
         self._loop.run_until_complete(self._loop.shutdown_asyncgens())
         self._loop.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
 
     # ----------------------------------------------------------------------
     def get_quote(self, symbol: str) -> Quote:
