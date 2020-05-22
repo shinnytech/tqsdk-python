@@ -373,7 +373,8 @@ class TqBacktest(object):
                                 "datetime"] if dur < 86400000000000 else _get_trading_day_start_time(item["datetime"])
                             if timestamp > self._end_dt:  # 超过结束时间
                                 return
-                            yield timestamp, diff, None  # K线刚生成时的数据都为开盘价
+                            yield timestamp, diff, self._get_quotes_from_kline_open(self._data["quotes"][ins], timestamp,
+                                                                               item)  # K线刚生成时的数据都为开盘价
                             diff = {
                                 "klines": {
                                     ins: {
@@ -403,6 +404,25 @@ class TqBacktest(object):
         quote = {k: v for k, v in tick.items()}
         quote["datetime"] = datetime.fromtimestamp(tick["datetime"] / 1e9).strftime("%Y-%m-%d %H:%M:%S.%f")
         return [quote]
+
+    @staticmethod
+    def _get_quotes_from_kline_open(info, timestamp, kline):
+        return [
+            {  # K线刚生成时的数据都为开盘价
+                "datetime": datetime.fromtimestamp(timestamp / 1e9).strftime("%Y-%m-%d %H:%M:%S.%f"),
+                "ask_price1": kline["open"] + info["price_tick"],
+                "ask_volume1": 1,
+                "bid_price1": kline["open"] - info["price_tick"],
+                "bid_volume1": 1,
+                "last_price": kline["open"],
+                "highest": float("nan"),
+                "lowest": float("nan"),
+                "average": float("nan"),
+                "volume": 0,
+                "amount": float("nan"),
+                "open_interest": kline["open_oi"],
+            },
+        ]
 
     @staticmethod
     def _get_quotes_from_kline(info, timestamp, kline):
