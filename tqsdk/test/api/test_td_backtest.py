@@ -427,7 +427,7 @@ class TestTdBacktest(unittest.TestCase):
         utils.RD = random.Random(4)
         api = TqApi(
             backtest=TqBacktest(datetime.datetime(2020, 2, 17, 10, 29, 29), datetime.datetime(2020, 2, 17, 15, 18, 0)),
-            _ins_url=self.ins_url_2020_02_18)  # 2019.12.2周一
+            _ins_url=self.ins_url_2020_02_18, _td_url=self.td_url, _md_url=self.md_url)  # 2019.12.2周一
         symbol1 = "SHFE.cu2003"
         symbol2 = "CFFEX.T2003"
         symbol3 = "CFFEX.IF2003"
@@ -610,7 +610,7 @@ class TestTdBacktest(unittest.TestCase):
 
         utils.RD = random.Random(4)
         api = TqApi(backtest=TqBacktest(datetime.date(2019, 12, 2), datetime.date(2019, 12, 3)),
-                    _ins_url=self.ins_url_2019_12_04)
+                    _ins_url=self.ins_url_2019_12_04, _td_url=self.td_url, _md_url=self.md_url)
         symbol1 = "SHFE.cu2002"  # 有夜盘,凌晨1点结束夜盘
         symbol2 = "SHFE.rb2002"  # 夜盘23点结束
         symbol3 = "DCE.jd2002"  # 无夜盘
@@ -751,7 +751,7 @@ class TestTdBacktest(unittest.TestCase):
 
         utils.RD = random.Random(4)
         api = TqApi(backtest=TqBacktest(datetime.date(2019, 12, 3), datetime.date(2019, 12, 4)),
-                    _ins_url=self.ins_url_2019_12_04)
+                    _ins_url=self.ins_url_2019_12_04, _td_url=self.td_url, _md_url=self.md_url)
         symbol1 = "SHFE.cu2002"  # 有夜盘,凌晨1点结束夜盘
         symbol2 = "SHFE.rb2002"  # 夜盘23点结束
         symbol3 = "DCE.jd2002"  # 无夜盘
@@ -844,7 +844,7 @@ class TestTdBacktest(unittest.TestCase):
         # 测试：
         utils.RD = random.Random(4)
         api = TqApi(backtest=TqBacktest(datetime.datetime(2019, 12, 2, 10, 31, 00), datetime.datetime(2019, 12, 3)),
-                    _ins_url=self.ins_url_2019_12_04)
+                    _ins_url=self.ins_url_2019_12_04, _td_url=self.td_url, _md_url=self.md_url)
         symbol = "DCE.m2009"
         order1 = api.insert_order(symbol=symbol, direction="BUY", offset="OPEN", volume=5,
                                   limit_price=2750)  # 到交易日结束都无法成交
@@ -880,7 +880,7 @@ class TestTdBacktest(unittest.TestCase):
         utils.RD = random.Random(4)
         api = TqApi(
             backtest=TqBacktest(datetime.datetime(2019, 11, 30, 0, 0, 0), datetime.datetime(2019, 12, 2, 9, 30)),
-            _ins_url=self.ins_url_2019_12_04)
+            _ins_url=self.ins_url_2019_12_04, _td_url=self.td_url, _md_url=self.md_url)
         symbol1 = "SHFE.cu2002"  # 有夜盘,凌晨1点结束夜盘
         symbol2 = "SHFE.rb2002"  # 夜盘23点结束
         symbol3 = "DCE.jd2002"  # 无夜盘
