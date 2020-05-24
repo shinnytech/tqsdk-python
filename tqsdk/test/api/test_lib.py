@@ -55,7 +55,7 @@ class TestLib(unittest.TestCase):
         utils.RD = random.Random(4)
         api = TqApi(
             backtest=TqBacktest(datetime.datetime(2019, 12, 2, 21, 0, 0), datetime.datetime(2019, 12, 3, 10, 0, 0)),
-            _ins_url=self.ins_url_2019_12_04)  # 2019.12.2周一
+            _ins_url=self.ins_url_2019_12_04, _td_url=self.td_url, _md_url=self.md_url)  # 2019.12.2周一
         symbol1 = "DCE.jd2002"  # 无夜盘
         symbol2 = "SHFE.rb2002"  # 夜盘23点结束
         symbol3 = "SHFE.cu2002"  # 夜盘凌晨1点结束
@@ -125,7 +125,7 @@ class TestLib(unittest.TestCase):
         utils.RD = random.Random(4)
         api = TqApi(
             backtest=TqBacktest(datetime.datetime(2020, 2, 17, 10, 15, 0), datetime.datetime(2020, 2, 17, 10, 45, 0)),
-            _ins_url=self.ins_url_2020_02_18)
+            _ins_url=self.ins_url_2020_02_18, _td_url=self.td_url, _md_url=self.md_url)
         symbol1 = "SHFE.cu2003"
         symbol2 = "CFFEX.T2003"
         symbol3 = "CFFEX.IF2003"
@@ -181,7 +181,7 @@ class TestLib(unittest.TestCase):
 
         utils.RD = random.Random(4)
         api = TqApi(backtest=TqBacktest(datetime.datetime(2020, 2, 17, 11, 30), datetime.datetime(2020, 2, 18, 9, 40)),
-                    _ins_url=self.ins_url_2020_02_18)
+                    _ins_url=self.ins_url_2020_02_18, _td_url=self.td_url, _md_url=self.md_url)
         symbol1 = "SHFE.cu2003"
         symbol2 = "CFFEX.T2003"
         symbol3 = "CFFEX.IF2003"
@@ -283,7 +283,7 @@ class TestLib(unittest.TestCase):
 
         utils.RD = random.Random(4)
         api = TqApi(backtest=TqBacktest(datetime.date(2019, 12, 2), datetime.date(2019, 12, 3)),
-                    _ins_url=self.ins_url_2019_12_04)  # 2019.12.2:周一
+                    _ins_url=self.ins_url_2019_12_04, _td_url=self.td_url, _md_url=self.md_url)  # 2019.12.2:周一
         symbol1 = "SHFE.cu2002"  # 有夜盘,凌晨1点结束夜盘
         symbol2 = "SHFE.rb2002"  # 夜盘23点结束
         symbol3 = "DCE.jd2002"  # 无夜盘
@@ -375,7 +375,7 @@ class TestLib(unittest.TestCase):
 
         utils.RD = random.Random(4)
         api = TqApi(backtest=TqBacktest(datetime.date(2019, 12, 3), datetime.date(2019, 12, 4)),
-                    _ins_url=self.ins_url_2019_12_04)  # 2019, 12, 3:周二
+                    _ins_url=self.ins_url_2019_12_04, _td_url=self.td_url, _md_url=self.md_url)  # 2019, 12, 3:周二
         symbol1 = "SHFE.cu2002"  # 有夜盘,凌晨1点结束夜盘
         symbol2 = "SHFE.rb2002"  # 夜盘23点结束
         symbol3 = "DCE.jd2002"  # 无夜盘
@@ -427,7 +427,7 @@ class TestLib(unittest.TestCase):
         utils.RD = random.Random(4)
         api = TqApi(
             backtest=TqBacktest(start_dt=datetime.datetime(2019, 7, 11, 10, 15), end_dt=datetime.date(2019, 7, 12)),
-            _ins_url=self.ins_url_2019_12_04)
+            _ins_url=self.ins_url_2019_12_04, _td_url=self.td_url, _md_url=self.md_url)
         symbol1 = "SHFE.cu1908"
         symbol2 = "CFFEX.IF1908"  # 用于行情推进，到10：20
         quote2 = api.get_quote(symbol2)
@@ -467,7 +467,7 @@ class TestLib(unittest.TestCase):
         utils.RD = random.Random(4)
         api = TqApi(
             backtest=TqBacktest(datetime.datetime(2019, 11, 30, 0, 0, 0), datetime.datetime(2019, 12, 2, 9, 30)),
-            _ins_url=self.ins_url_2019_12_04)
+            _ins_url=self.ins_url_2019_12_04, _td_url=self.td_url, _md_url=self.md_url)
         symbol1 = "SHFE.cu2002"  # 有夜盘,凌晨1点结束夜盘
         symbol2 = "SHFE.rb2002"  # 夜盘23点结束
         symbol3 = "DCE.jd2002"  # 无夜盘
