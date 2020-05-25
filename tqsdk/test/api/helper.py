@@ -64,6 +64,7 @@ class MockServer():
         self.semaphore = threading.Semaphore(value=0)
 
     def close(self):
+        self.script_file.close()
         assert not self._expecting
         self.loop.call_soon_threadsafe(lambda: self.stop_signal.set_result(0))
         self.thread.join()
