@@ -224,9 +224,13 @@ class TqSim(object):
                 # 因为从_md_recv()中获取数据后立即判断下单时间则速度过快(两次time.time()的时间差小于最后一笔行情(14:59:9995)到15点的时间差),
                 # 则会立即成交,为处理此情况则将当前时间减去5毫秒（模拟发生5毫秒网络延迟，则两次time.time()的时间差增加了5毫秒）。
                 # todo: 按交易所来存储 _current_datetime(issue： #277)
-                if quote["datetime"] > self._current_datetime and not self._tqsdk_backtest:
+                if quote["datetime"] > self._current_datetime:
+                    # 回测时，当前时间更新即可以由 quote 行情更新，也可以由 _tqsdk_backtest.current_dt 更新，
+                    # 在最外层的循环里，_tqsdk_backtest.current_dt 是在 rtn_data.data 中数组位置中的最后一个，会在循环最后一个才更新 self.current_datetime
+                    # 导致前面处理 order 时的 _current_datetime 还是旧的行情时间
                     self._current_datetime = quote["datetime"]  # 最新行情时间
-                    self._local_time_record = time.time() - 0.005  # 更新最新行情时间时的本地时间
+                    # 更新最新行情时间时的本地时间，回测时不使用时间差
+                    self._local_time_record = (time.time() - 0.005) if not self._tqsdk_backtest else float("nan")
 
                 if self._current_datetime > self._trading_day_end:  # 结算
                     self._settle()
