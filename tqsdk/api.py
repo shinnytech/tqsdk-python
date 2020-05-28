@@ -626,7 +626,6 @@ class TqApi(object):
         volume = int(volume)
         if volume <= 0:
             raise Exception("下单手数(volume) %s 错误, 请检查 volume 是否填写正确" % (volume))
-        limit_price = float(limit_price) if limit_price is not None else None
         if not order_id:
             order_id = _generate_uuid("PYSDK_insert")
         (exchange_id, instrument_id) = symbol.split(".", 1)
@@ -663,7 +662,7 @@ class TqApi(object):
                 msg["volume_condition"] = "ANY"
         else:
             msg["price_type"] = "LIMIT"
-            msg["limit_price"] = limit_price
+            msg["limit_price"] = float(limit_price)
             msg["time_condition"] = "IOC" if advanced else "GFD"
             if advanced == "FOK":
                 if exchange_id == "CZCE" and quote.ins_class == "FUTURE":
