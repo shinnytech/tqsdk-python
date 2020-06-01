@@ -83,7 +83,7 @@ class TqAccount(object):
         td_task = api.create_task(self._td_handler(api_recv_chan, td_send_chan, td_recv_chan))
         try:
             async for pack in api_send_chan:
-                if pack["aid"] == "subscribe_quote" or pack["aid"] == "set_chart":
+                if pack["aid"] == "subscribe_quote" or pack["aid"] == "set_chart" or pack["aid"] == "ins_query":
                     await md_send_chan.send(pack)
                 elif pack["aid"] != "peek_message":
                     await td_send_chan.send(pack)
