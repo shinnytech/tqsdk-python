@@ -44,7 +44,7 @@ from tqsdk.entity import Entity
 from tqsdk.objs import Quote, Kline, Tick, Account, Position, Order, Trade
 from tqsdk.sim import TqSim
 from tqsdk.tqwebhelper import TqWebHelper
-from tqsdk.utils import _generate_uuid
+from tqsdk.utils import _generate_uuid, _quotes_add_night
 from .__version__ import __version__
 
 
@@ -282,6 +282,8 @@ class TqApi(object):
             with closing(TqApi()) as api:
                 api.insert_order(symbol="DCE.m1901", direction="BUY", offset="OPEN", volume=3)
         """
+        if self._loop.is_closed():
+            return
         if self._loop.is_running():
             raise Exception("不能在协程中调用 close, 如需关闭 api 实例需在 wait_update 返回后再关闭")
         elif asyncio._get_running_loop():
@@ -298,6 +300,12 @@ class TqApi(object):
             self._run_once()
         self._loop.run_until_complete(self._loop.shutdown_asyncgens())
         self._loop.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
 
     # ----------------------------------------------------------------------
     def get_quote(self, symbol: str) -> Quote:
@@ -1155,10 +1163,13 @@ class TqApi(object):
 
         # 连接合约和行情服务器
         ws_md_send_chan, ws_md_recv_chan = TqChan(self), TqChan(self)
+        quotes = self._fetch_symbol_info(self._ins_url)
+        if isinstance(self._backtest, TqBacktest):
+            _quotes_add_night(quotes)  # 补丁：回测时添加合约服务中的夜盘
         ws_md_recv_chan.send_nowait({
             "aid": "rtn_data",
             "data": [{
-                "quotes": self._fetch_symbol_info(self._ins_url)
+                "quotes": quotes
             }]
         })  # 获取合约信息
         self.create_task(self._connect(self._md_url, ws_md_send_chan, ws_md_recv_chan))  # 启动行情websocket连接
