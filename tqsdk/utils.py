@@ -3,10 +3,11 @@
 __author__ = 'yanqiong'
 
 import random
+import secrets
 import uuid
 
 
-RD = random.Random()  # 初始化随机数引擎
+RD = random.Random(secrets.randbits(128))  # 初始化随机数引擎，使用随机数作为seed，防止用户同时拉起多个策略，产生同样的 seed
 
 
 def _generate_uuid(prefix=''):
