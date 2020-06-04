@@ -22,6 +22,11 @@ api setup_connection 需要修改的地方：
 self._auth is None
     |
     |--> Yes - self._access_token = ""
+    |        - self._account is TqKuaiqi
+    |            |
+    |            |--> Yes - raise Exception("需要快期账户认证")
+    |            |
+    |            |--> No
     |
     |--> No - request access_token with self._auth
                |
@@ -44,14 +49,14 @@ self._auth is None
 TQ_HTTP_SERVER_ADDRESS [option] 设置 web_gui address
 TQ_ACTION [option] 运行模式 (run, backtest, replay)
 **TQ_AUTH** [option] 用户认证信息
+TQ_INIT_BALANCE
 
 TQ_BROKER_ID (TQ_ACTION=run) 
 TQ_ACCOUNT_ID (TQ_ACTION=run) 
 TQ_PASSWORD (TQ_ACTION=run) 
 
 TQ_START_DT (TQ_ACTION=backtest) 
-TQ_END_DT (TQ_ACTION=backtest) 
-TQ_INIT_BALANCE (TQ_ACTION=backtest) 
+TQ_END_DT (TQ_ACTION=backtest)  
  
 TQ_REPLAY_DT (TQ_ACTION=replay)                                
 ```
@@ -63,6 +68,7 @@ TqWebHelper 参数处理流程
 api._auth = TQ_AUTH if TQ_AUTH else None
 
 if TQ_ACTION == "run":
+    api._backtest = None
     if TQ_BROKER_ID == "TQ_KQ":
         # 判断与构造 api 账户参数是否冲突，如果有则抛错
         api._account = TqKuaiqi()
@@ -71,16 +77,15 @@ if TQ_ACTION == "run":
         api._account = TqAccount(TQ_BROKER_ID, TQ_ACCOUNT_ID, TQ_PASSWORD)
     else:
         api._account = TqSim(TQ_INIT_BALANCE if TQ_INIT_BALANCE else 10000000)
-    
-elif TQ_ACTION == "backtest":
-    api._account = TqSim(TQ_INIT_BALANCE if TQ_INIT_BALANCE else 10000000)
-    if TQ_START_DT and TQ_END_DT:
-        api._backtest = TqBacktest(TQ_START_DT, TQ_END_DT)
 
-elif TQ_ACTION == "replay":
+else:
     api._account = TqSim(TQ_INIT_BALANCE if TQ_INIT_BALANCE else 10000000)
-    if TQ_REPLAY_DT:
+    if TQ_ACTION == "backtest" and TQ_START_DT and TQ_END_DT:
+        api._backtest = TqBacktest(TQ_START_DT, TQ_END_DT)
+    elif TQ_ACTION == "replay" and TQ_REPLAY_DT:
         api._backtest = TqReplay(TQ_REPLAY_DT)
+    else:
+        api._backtest = None
 ```
 * TQ_AUTH 一定有效，TQ_AUTH 与 api 构造参数中 auth 冲突时，抛错并提示用户
 * TQ_BROKER_ID, TQ_ACCOUNT_ID, TQ_PASSWORD 只在 TQ_ACTION=="run" 有效，当与 api 构造函数中的账户信息冲突时，抛错并提示用户
