@@ -31,12 +31,13 @@ from datetime import datetime
 from typing import Union, List, Any, Optional
 
 import certifi
+import jwt
 import numpy as np
 import pandas as pd
 import requests
 import websockets
 
-from tqsdk.account import TqAccount
+from tqsdk.account import TqAccount, TqKuaiqi
 from tqsdk.backtest import TqBacktest, TqReplay
 from tqsdk.channel import TqChan
 from tqsdk.diff import _merge_diff, _get_obj, _is_key_exist, _register_update_chan
@@ -67,6 +68,8 @@ class TqApi(object):
                 * None: 账号将根据环境变量决定, 默认为 :py:class:`~tqsdk.sim.TqSim`
 
                 * :py:class:`~tqsdk.account.TqAccount` : 使用实盘账号, 直连行情和交易服务器, 需提供期货公司/帐号/密码
+
+                * :py:class:`~tqsdk.account.TqKuaiqi` : 使用快期账号登录，直连行情和快期模拟交易服务器, 需提供 auth 参数
 
                 * :py:class:`~tqsdk.sim.TqSim` : 使用 TqApi 自带的内部模拟账号
 
@@ -1140,8 +1143,14 @@ class TqApi(object):
             if response.status_code == 200:
                 self._access_token = json.loads(response.content)["access_token"]
                 self._logger.info("用户权限认证成功")
+                if isinstance(self._account, TqKuaiqi):
+                    content = jwt.decode(self._access_token, verify=False)
+                    self._account._account_id = content["sub"]
+                    self._account._password = content["sub"]
             else:
-                self._logger.warning("用户权限认证失败 (%d,%s)" % (response.status_code, response.content))
+                raise Exception("用户权限认证失败 (%d,%s)" % (response.status_code, response.content))
+        elif isinstance(self._account, TqKuaiqi):
+            raise Exception("使用 TqKuaiqi，请添加 auth (天勤账户信息) 参数。")
 
 
     def _setup_connection(self):
