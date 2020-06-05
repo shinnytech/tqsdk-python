@@ -104,3 +104,9 @@ class TqAccount(object):
                 "aid": "peek_message"
             })
             await api_recv_chan.send(pack)
+
+
+class TqKuaiqi(TqAccount):
+
+    def __init__(self):
+        super().__init__("快期模拟", "", "")
