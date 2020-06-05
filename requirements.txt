@@ -10,3 +10,4 @@ mplcursors
 simplejson
 selenium
 scipy
+pyjwt
