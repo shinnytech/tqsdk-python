@@ -4,7 +4,7 @@ __author__ = 'chengzhi'
 name = "tqsdk"
 
 from tqsdk.api import TqApi
-from tqsdk.account import TqAccount
+from tqsdk.account import TqAccount, TqKuaiqi
 from tqsdk.channel import TqChan
 from tqsdk.backtest import TqBacktest, TqReplay
 from tqsdk.exceptions import BacktestFinished
