@@ -111,31 +111,37 @@ class TqApi(object):
 
         Example2::
 
+            # 使用快期模拟帐号连接行情服务器
+            from tqsdk import TqApi, TqKuaiqi
+            api = TqApi(TqKuaiqi(), auth="tianqin@shinnytech.com,123456")  # 此时必须填写 auth 参数
+
+        Example3::
+
             # 使用模拟帐号直连行情服务器
             from tqsdk import TqApi, TqSim
             api = TqApi(TqSim())  # 不填写参数则默认为 TqSim() 模拟账号
 
-        Example3::
+        Example4::
 
             # 进行策略回测
             from datetime import date
             from tqsdk import TqApi, TqBacktest
             api = TqApi(backtest=TqBacktest(start_dt=date(2018, 5, 1), end_dt=date(2018, 10, 1)))
 
-        Example4::
+        Example5::
 
             # 进行策略复盘
             from datetime import date
             from tqsdk import TqApi, TqReplay
             api = TqApi(backtest=TqReplay(replay_dt=date(2019, 12, 16)))
 
-        Example5::
+        Example6::
 
             # 开启 web_gui 功能，使用默认参数True
             from tqsdk import TqApi
             api = TqApi(web_gui=True)
 
-        Example6::
+        Example7::
 
             # 开启 web_gui 功能，使用本机IP端口固定网址生成
             from tqsdk import TqApi
