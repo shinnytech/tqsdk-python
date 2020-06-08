@@ -1,5 +1,5 @@
 #!usr/bin/env python3
-#-*- coding:utf-8 -*-
+# -*- coding:utf-8 -*-
 __author__ = 'yanqiong'
 
 import asyncio
@@ -12,7 +12,7 @@ from urllib.parse import urlparse
 import simplejson
 from aiohttp import web
 
-from tqsdk.account import TqAccount
+from tqsdk.account import TqAccount, TqKuaiqi
 from tqsdk.backtest import TqBacktest, TqReplay
 from tqsdk.channel import TqChan
 from tqsdk.datetime import _get_trading_day_start_time
@@ -33,20 +33,32 @@ class TqWebHelper(object):
         args = TqWebHelper.parser_env_arguments()
         if args["_action"] == "run":
             # 运行模式下，账户参数冲突需要抛错，提示用户
-            if isinstance(self._api._account, TqAccount) and \
-                    (self._api._account._account_id != args["_account_id"] or self._api._account._broker_id != args["_broker_id"]):
-                raise Exception("策略代码与插件设置中的账户参数冲突。可尝试删去代码中的账户参数 TqAccount，以插件设置的账户参数运行。")
-            self._api._account = TqAccount(args["_broker_id"], args["_account_id"], args["_password"])
+            if args["_broker_id"] == "TQ_KQ":
+                if isinstance(self._api._account, TqAccount) and not isinstance(self._api._account, TqKuaiqi):
+                    raise Exception("策略代码与插件设置中的账户参数冲突。可尝试删去代码中的账户参数 TqAccount，以插件设置的账户参数运行。")
+                self._api._account = TqKuaiqi()
+            elif args["_broker_id"] and args["_account_id"] and args["_password"]:
+                if isinstance(self._api._account, TqAccount) and \
+                        (self._api._account._account_id != args["_account_id"] or self._api._account._broker_id != args["_broker_id"]):
+                    raise Exception("策略代码与插件设置中的账户参数冲突。可尝试删去代码中的账户参数 TqAccount，以插件设置的账户参数运行。")
+                self._api._account = TqAccount(args["_broker_id"], args["_account_id"], args["_password"])
+            else:
+                self._api._account = TqSim(args["_init_balance"])
             self._api._backtest = None
-            self._logger.info("正在使用账户 {bid}, {aid} 运行策略。".format(bid=args["_broker_id"], aid=args["_account_id"]))
-        elif args["_action"] == "backtest":
+            self._logger.info(f"正在使用账户 {args['_broker_id']}, {args['_account_id']} 运行策略。")
+        elif args["_action"] is not None:
             self._api._account = TqSim(args["_init_balance"])
-            self._api._backtest = TqBacktest(start_dt=datetime.strptime(args["_start_dt"], '%Y%m%d'),
-                                        end_dt=datetime.strptime(args["_end_dt"], '%Y%m%d'))
-            self._logger.info("当前回测区间 {sdt} - {edt}。".format(sdt=args["_start_dt"], edt=args["_end_dt"]))
-        elif args["_action"] == "replay":
-            self._api._backtest = TqReplay(datetime.strptime(args["_replay_dt"], '%Y%m%d'))
-            self._logger.info("当前复盘日期 {rdt}。".format(rdt=args["_replay_dt"]))
+            if args["_action"] == "backtest":
+                self._api._backtest = TqBacktest(start_dt=datetime.strptime(args["_start_dt"], '%Y%m%d'),
+                                                 end_dt=datetime.strptime(args["_end_dt"], '%Y%m%d'))
+                self._logger.info(f"当前回测区间 {args['_start_dt']} - {args['_end_dt']}。")
+            elif args["_action"] == "replay":
+                self._api._backtest = TqReplay(datetime.strptime(args["_replay_dt"], '%Y%m%d'))
+                self._logger.info(f"当前复盘日期 {args['_replay_dt']}。")
+        if args["_auth"]:
+            if self._api._auth is not None and args["_auth"] != self._api._auth:
+                raise Exception("策略代码与插件设置中的 auth 参数冲突。可尝试删去代码中的 auth 参数，以插件设置的参数运行。")
+            self._api._auth = args["_auth"]
         if args["_http_server_address"]:
             self._api._web_gui = True  # 命令行 _http_server_address, 一定打开 _web_gui
             ip, port = TqWebHelper.parse_url(args["_http_server_address"])
@@ -315,21 +327,23 @@ class TqWebHelper(object):
     def parser_env_arguments():
         action = {
             "_action": os.getenv("TQ_ACTION"),
-            "_http_server_address": os.getenv("TQ_HTTP_SERVER_ADDRESS")
+            "_http_server_address": os.getenv("TQ_HTTP_SERVER_ADDRESS"),
+            "_auth": os.getenv("TQ_AUTH")
         }
+        try:
+            action["_init_balance"] = 10000000.0 if os.getenv("TQ_INIT_BALANCE") is None else float(
+                os.getenv("TQ_INIT_BALANCE"))
+        except ValueError:
+            action["_init_balance"] = 10000000.0
         if action["_action"] == "run":
             action["_broker_id"] = os.getenv("TQ_BROKER_ID")
             action["_account_id"] = os.getenv("TQ_ACCOUNT_ID")
             action["_password"] = os.getenv("TQ_PASSWORD")
-            if not action["_broker_id"] or not action["_account_id"] or not action["_password"]:
+            if not action["_broker_id"]:
                 action["_action"] = None
         elif action["_action"] == "backtest":
             action["_start_dt"] = os.getenv("TQ_START_DT")
             action["_end_dt"] = os.getenv("TQ_END_DT")
-            try:
-                action["_init_balance"] = 10000000.0 if os.getenv("TQ_INIT_BALANCE") is None else float(os.getenv("TQ_INIT_BALANCE"))
-            except ValueError:
-                action["_init_balance"] = 10000000.0
             if not action["_start_dt"] or not action["_end_dt"]:
                 action["_action"] = None
         elif action["_action"] == "replay":
