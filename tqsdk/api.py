@@ -1305,6 +1305,10 @@ class TqApi(object):
                         ext[serial["width"] - shift:] = 0
                     elif np.issubdtype(ext.dtype, np.bool_):
                         ext[serial["width"] - shift:] = False
+                    elif np.issubdtype(ext.dtype, np.datetime64):
+                        ext[serial["width"] - shift:] = np.datetime64('nat')
+                    elif np.issubdtype(ext.dtype, np.timedelta64):
+                        ext[serial["width"] - shift:] = np.timedelta64('nat')
                     else:
                         ext[serial["width"] - shift:] = np.nan
             serial["update_row"] = max(serial["width"] - shift - 1, 0)
@@ -1422,6 +1426,10 @@ class TqApi(object):
                         ext[remain:] = 0
                     elif ext.dtype == np.bool:
                         ext[remain:] = False
+                    elif ext.dtype == np.datetime64:
+                        ext[remain:] = np.datetime64('nat')
+                    elif ext.dtype == np.timedelta64:
+                        ext[remain:] = np.timedelta64('nat')
                     else:
                         ext[remain:] = np.nan
 
