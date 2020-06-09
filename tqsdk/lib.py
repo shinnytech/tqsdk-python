@@ -13,6 +13,7 @@ from tqsdk.channel import TqChan
 from tqsdk.datetime import _is_in_trading_time
 from tqsdk.diff import _get_obj
 from tqsdk.utils import _generate_uuid
+from tqsdk.log import _traced
 
 
 class TargetPosTaskSingleton(type):
@@ -34,6 +35,7 @@ class TargetPosTaskSingleton(type):
         return TargetPosTaskSingleton._instances[symbol]
 
 
+@_traced
 class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
     """目标持仓 task, 该 task 可以将指定合约调整到目标头寸"""
 
