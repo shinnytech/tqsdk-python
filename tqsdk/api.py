@@ -1162,6 +1162,7 @@ class TqApi(object):
                 fh = logging.FileHandler(filename=log_name)
                 fh.setFormatter(log_format)
                 self._logger.addHandler(fh)
+        self._logger.debug(f"tqsdk-python version: {__version__}")
         self._auth_account()  # 支持用户授权
 
         # 等待复盘服务器启动
