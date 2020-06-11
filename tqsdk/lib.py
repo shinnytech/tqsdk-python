@@ -165,10 +165,17 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
 
     async def _update_time_from_md(self):
         """监听行情更新并记录当时本地时间的task"""
-        async with self._api.register_update_notify(self._quote) as quote_update_chan:
-            async for _ in quote_update_chan:  # quote有更新时:更新记录的时间
+        try:
+            chan = TqChan(self._api, last_only=True)
+            self._api.register_update_notify(self._quote, chan)  # quote有更新时: 更新记录的时间
+            if isinstance(self._api._backtest, TqBacktest):
+                # 回测情况下，在收到回测时间有更新的时候，也需要更新记录的时间
+                self._api.register_update_notify(_get_obj(self._api._data, ["_tqsdk_backtest"]), chan)
+            async for _ in chan:
                 self._local_time_record = time.time() - 0.005  # 更新最新行情时间时的本地时间
                 self._local_time_record_update_chan.send_nowait(True)  # 通知记录的时间有更新
+        finally:
+            await chan.close()
 
     async def _target_pos_task(self):
         """负责调整目标持仓的task"""
