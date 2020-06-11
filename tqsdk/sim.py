@@ -218,10 +218,14 @@ class TqSim(object):
                 quote_chan.recv_nowait()
                 quote_chan.task_done()
             quote.update(self._data["quotes"][symbol])
+            if underlying_quote:
+                underlying_quote.update(self._data["quotes"][underlying_symbol])
             task = self._api.create_task(self._forward_chan_handler(order_chan, quote_chan))
             async for pack in quote_chan:
                 if "aid" not in pack:
                     _simple_merge_diff(quote, pack.get("quotes", {}).get(symbol, {}))
+                    if underlying_quote:
+                        _simple_merge_diff(underlying_quote, pack.get("quotes", {}).get(underlying_symbol, {}))
                     for order_id in list(orders.keys()):
                         assert orders[order_id]["insert_date_time"] > 0
                         match_msg = self._match_order(orders[order_id], symbol, quote, underlying_quote)
