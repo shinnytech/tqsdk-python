@@ -108,7 +108,7 @@ class TqSim(object):
                         await asyncio.gather(*[quote_task["quote_chan"].join() for quote_task in self._quote_tasks.values()])
                         await self._send_diff()
                 elif pack["aid"] == "subscribe_quote":
-                    await self._subscribe_quote(pack["ins_list"].split(","))
+                    await self._subscribe_quote(set(pack["ins_list"].split(",")))
                 elif pack["aid"] == "peek_message":
                     self._pending_peek = True
                     await self._send_diff()
@@ -161,13 +161,11 @@ class TqSim(object):
             self._logger.debug("TqSim message send: %s", rtn_data)
             await self._api_recv_chan.send(rtn_data)
 
-    async def _subscribe_quote(self, symbols):
+    async def _subscribe_quote(self, symbols: [set, str]):
         """这里只会增加订阅合约，不会退订合约"""
-        symbols = symbols if isinstance(symbols, list) else [symbols]
-        length = len(self._all_subscribe)
-        for s in symbols:
-            self._all_subscribe.add(s)
-        if len(self._all_subscribe) > length:
+        symbols = symbols if isinstance(symbols, set) else {symbols}
+        if symbols - self._all_subscribe:
+            self._all_subscribe |= symbols
             await self._md_send_chan.send({
                 "aid": "subscribe_quote",
                 "ins_list": ",".join(self._all_subscribe)
