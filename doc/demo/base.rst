@@ -141,6 +141,15 @@ t95 - 附图中画K线、线段和方框
   :language: python
 
 
+.. _underlying_symbol:
+
+underlying_symbol - 获取主连映射主力合约
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. literalinclude:: ../../tqsdk/demo/tutorial/underlying_symbol.py
+  :language: python
+
+
 .. _tutorial-backtest:
 
 backtest - 回测
@@ -193,3 +202,4 @@ ta_option - 期权指标计算
 
 .. literalinclude:: ../../tqsdk/demo/ta_option.py
   :language: python
+
