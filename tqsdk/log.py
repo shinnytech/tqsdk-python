@@ -38,8 +38,11 @@ def _clear_logs():
     dt = datetime.datetime.now() - datetime.timedelta(days=int(n))
     for log in os.listdir(DEBUG_DIR):
         path = os.path.join(DEBUG_DIR, log)
-        if datetime.datetime.fromtimestamp(os.stat(path).st_mtime) < dt:
-            os.remove(path)
+        try:
+            if datetime.datetime.fromtimestamp(os.stat(path).st_mtime) < dt:
+                os.remove(path)
+        except:
+            pass  # 忽略抛错
 
 
 def _traced(*args):
