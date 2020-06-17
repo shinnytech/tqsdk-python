@@ -81,12 +81,15 @@ class MockServer():
 
     async def _handler_td(self, connection, path):
         await self.on_connected("td", connection)
-        while True:
-            s = await self.connections["td"].recv()
-            pack = json.loads(s)
-            if pack["aid"] == "peek_message":
-                continue
-            await self.on_received("td", pack)
+        try:
+            while True:
+                s = await self.connections["td"].recv()
+                pack = json.loads(s)
+                if pack["aid"] == "peek_message":
+                    continue
+                await self.on_received("td", pack)
+        except websockets.exceptions.ConnectionClosedOK as e:
+            assert e.code == 1000
 
     def run(self, script_file_name):
         self.script_file_name = script_file_name
