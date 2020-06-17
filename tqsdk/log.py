@@ -116,6 +116,8 @@ def _make_traceable_staticmethod(method_descriptor, class_name=None):
 
 class _FunctionTracingProxy(object):
 
+    _logger = logging.getLogger("TqApi.Trace")
+
     def __init__(self, function, class_name=None):
         """
         :arg function: the function being traced
@@ -133,8 +135,8 @@ class _FunctionTracingProxy(object):
            the value returned by calling *function* with positional
            arguments *args* and keyword arguments *keywords*
         """
-        logging.getLogger("TqApi").handle(logging.LogRecord(
-            "TqApi",  # name
+        self._logger.handle(logging.LogRecord(
+            self._logger.name,  # name
             logging.DEBUG,  # level
             self._func_filename,  # pathname
             self._func_lineno,  # lineno
@@ -143,8 +145,8 @@ class _FunctionTracingProxy(object):
             None,  # exc_info
         ))
         value = function(*args, **keywords)
-        logging.getLogger("TqApi").handle(logging.LogRecord(
-            "TqApi",
+        self._logger.handle(logging.LogRecord(
+            self._logger.name,
             logging.DEBUG,
             self._func_filename,
             self._func_lineno,
