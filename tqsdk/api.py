@@ -1255,6 +1255,7 @@ class TqApi(object):
             k: {
                 "ins_class": v.get("class", ""),
                 'instrument_id': v.get("instrument_id", ""),
+                "exchange_id": v.get("exchange_id", ""),
                 "margin": v.get("margin"),  # 用于内部实现模拟交易, 不作为 api 对外可用数据（即 Quote 类中无此字段）
                 "commission": v.get("commission"),  # 用于内部实现模拟交易, 不作为 api 对外可用数据（即 Quote 类中无此字段）
                 "price_tick": v["price_tick"],
