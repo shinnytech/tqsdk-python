@@ -161,7 +161,7 @@ class TqBacktest(object):
                     "pre_settlement": None,
                     "pre_close": None,
                     "ins_class": quote.get("ins_class", ""),
-                    'instrument_id': quote.get("instrument_id", ""),
+                    "instrument_id": quote.get("instrument_id", ""),
                     "exchange_id": quote.get("exchange_id", ""),
                     "margin": quote.get("margin"),  # 用于内部实现模拟交易, 不作为api对外可用数据（即 Quote 类中无此字段）
                     "commission": quote.get("commission"),  # 用于内部实现模拟交易, 不作为api对外可用数据（即 Quote 类中无此字段）
