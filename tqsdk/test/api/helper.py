@@ -52,13 +52,14 @@ class MockInsServer():
 
 
 class MockServer():
-    def __init__(self):
+    def __init__(self, td_url_character="opentd"):
         self.loop = asyncio.new_event_loop()
         self.connections = {}
         self.server_md = None
         self.server_td = None
         self.md_port = 5100
         self.td_port = 5200
+        self.td_url_character = td_url_character
         self._expecting = {}
         self.stop_signal = self.loop.create_future()
         self.semaphore = threading.Semaphore(value=0)
@@ -125,7 +126,7 @@ class MockServer():
                 continue
             if "openmd" in line:
                 item["source"] = "md"
-            elif "opentd" in line:
+            elif self.td_url_character in line:
                 item["source"] = "td"
             else:
                 raise Exception()
