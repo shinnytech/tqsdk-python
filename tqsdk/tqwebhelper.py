@@ -34,10 +34,12 @@ class TqWebHelper(object):
         if args["_action"] == "run":
             # 运行模式下，账户参数冲突需要抛错，提示用户
             if args["_broker_id"] == "TQ_KQ":
-                if isinstance(self._api._account, TqAccount) and not isinstance(self._api._account, TqKuaiqi):
+                if type(self._api._account) is TqAccount:
                     raise Exception("策略代码与插件设置中的账户参数冲突。可尝试删去代码中的账户参数 TqAccount，以插件设置的账户参数运行。")
                 self._api._account = TqKuaiqi()
             elif args["_broker_id"] and args["_account_id"] and args["_password"]:
+                if isinstance(self._api._account, TqKuaiqi):
+                    raise Exception("策略代码与插件设置中的账户参数冲突。可尝试删去代码中的账户参数 TqKuaiqi，以插件设置的账户参数运行。")
                 if isinstance(self._api._account, TqAccount) and \
                         (self._api._account._account_id != args["_account_id"] or self._api._account._broker_id != args["_broker_id"]):
                     raise Exception("策略代码与插件设置中的账户参数冲突。可尝试删去代码中的账户参数 TqAccount，以插件设置的账户参数运行。")
