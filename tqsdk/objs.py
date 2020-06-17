@@ -107,6 +107,8 @@ class Quote(Entity):
         self.ins_class = ""
         #: 交易所内的合约代码
         self.instrument_id = ""
+        #: 交易所代码
+        self.exchange_id = ""
         #: 合约是否已下市
         self.expired = False
         #: 交易时间段
