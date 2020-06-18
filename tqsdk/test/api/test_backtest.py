@@ -3,6 +3,7 @@
 __author__ = 'yanqiong'
 
 import os
+import platform
 import unittest
 import random
 import datetime
@@ -38,7 +39,7 @@ class TestTdBacktest(unittest.TestCase):
         dir_path = os.path.dirname(os.path.realpath(__file__))
         log_path = os.path.join(dir_path, "log_file", "test_backtest.script.lzma")
         times = []
-        for i in range(10):
+        for i in range(1):
             mock = MockServer()
             md_url = "ws://127.0.0.1:5100/"
             td_url = "ws://127.0.0.1:5200/"
@@ -54,7 +55,7 @@ class TestTdBacktest(unittest.TestCase):
                     api.wait_update()
             except BacktestFinished:
                 delta = datetime.datetime.now() - start
-                self.assertLess(delta.seconds, 40)
+                self.assertLess(delta.seconds, 60)
                 times.append(delta.seconds + delta.microseconds * 1e-6)
                 # print(delta.seconds + delta.microseconds * 1e-6)
                 api.close()
