@@ -41,7 +41,7 @@ from tqsdk.backtest import TqBacktest, TqReplay
 from tqsdk.channel import TqChan
 from tqsdk.diff import _merge_diff, _get_obj, _is_key_exist, _register_update_chan
 from tqsdk.entity import Entity
-from tqsdk.log import _get_log_format, _get_log_name, _clear_logs, _fun_traced
+from tqsdk.log import _get_log_format, _get_log_name, _clear_logs
 from tqsdk.objs import Quote, Kline, Tick, Account, Position, Order, Trade
 from tqsdk.sim import TqSim
 from tqsdk.tqwebhelper import TqWebHelper
@@ -56,7 +56,6 @@ class TqApi(object):
     通常情况下, 一个线程中 **应该只有一个** TqApi的实例, 它负责维护网络连接, 接收行情及账户数据, 并在内存中维护业务数据截面
     """
 
-    @_fun_traced
     def __init__(self, account: Union[TqAccount, TqSim, None] = None, auth: Optional[str] = None, url: Optional[str] = None,
                  backtest: Union[TqBacktest, TqReplay, None] = None, web_gui: [bool, str] = False, debug: Optional[str] = None,
                  loop: Optional[asyncio.AbstractEventLoop] = None, _stock: bool = False, _ins_url=None, _md_url=None, _td_url=None) -> None:
@@ -225,7 +224,6 @@ class TqApi(object):
         self._diffs = [{}]
 
     # ----------------------------------------------------------------------
-    @_fun_traced
     def copy(self) -> 'TqApi':
         """
         创建当前TqApi的一个副本. 这个副本可以在另一个线程中使用
@@ -240,7 +238,6 @@ class TqApi(object):
         _merge_diff(slave_api._data, _copy_diff, slave_api._prototype, False)
         return slave_api
 
-    @_fun_traced
     def close(self) -> None:
         """
         关闭天勤接口实例并释放相应资源
@@ -281,7 +278,6 @@ class TqApi(object):
         self.close()
 
     # ----------------------------------------------------------------------
-    @_fun_traced
     def get_quote(self, symbol: str) -> Quote:
         """
         获取指定合约的盘口行情.
@@ -333,7 +329,6 @@ class TqApi(object):
         return quote
 
     # ----------------------------------------------------------------------
-    @_fun_traced
     def get_kline_serial(self, symbol: Union[str, List[str]], duration_seconds: int, data_length: int = 200,
                          chart_id: Optional[str] = None) -> pd.DataFrame:
         """
@@ -472,7 +467,6 @@ class TqApi(object):
         return serial["df"]
 
     # ----------------------------------------------------------------------
-    @_fun_traced
     def get_tick_serial(self, symbol: str, data_length: int = 200, chart_id: Optional[str] = None) -> pd.DataFrame:
         """
         获取tick序列数据
@@ -553,7 +547,6 @@ class TqApi(object):
         return serial["df"]
 
     # ----------------------------------------------------------------------
-    @_fun_traced
     def insert_order(self, symbol: str, direction: str, offset: str, volume: int, limit_price: Optional[float] = None,
                      order_id: Optional[str] = None) -> Order:
         """
@@ -644,7 +637,6 @@ class TqApi(object):
         return order
 
     # ----------------------------------------------------------------------
-    @_fun_traced
     def cancel_order(self, order_or_order_id: Union[str, Order]) -> None:
         """
         发送撤单指令. **注意: 指令将在下次调用** :py:meth:`~tqsdk.api.TqApi.wait_update` **时发出**
@@ -696,7 +688,6 @@ class TqApi(object):
         self._send_pack(msg)
 
     # ----------------------------------------------------------------------
-    @_fun_traced
     def get_account(self) -> Account:
         """
         获取用户账户资金信息
@@ -723,7 +714,6 @@ class TqApi(object):
                              self._prototype["trade"]["*"]["accounts"]["@"])
 
     # ----------------------------------------------------------------------
-    @_fun_traced
     def get_position(self, symbol: Optional[str] = None) -> Union[Position, Entity]:
         """
         获取用户持仓信息
@@ -764,7 +754,6 @@ class TqApi(object):
         return _get_obj(self._data, ["trade", self._account._account_id, "positions"])
 
     # ----------------------------------------------------------------------
-    @_fun_traced
     def get_order(self, order_id: Optional[str] = None) -> Union[Order, Entity]:
         """
         获取用户委托单信息
@@ -804,7 +793,6 @@ class TqApi(object):
         return _get_obj(self._data, ["trade", self._account._account_id, "orders"])
 
     # ----------------------------------------------------------------------
-    @_fun_traced
     def get_trade(self, trade_id: Optional[str] = None) -> Union[Trade, Entity]:
         """
         获取用户成交信息
@@ -828,7 +816,6 @@ class TqApi(object):
         return _get_obj(self._data, ["trade", self._account._account_id, "trades"])
 
     # ----------------------------------------------------------------------
-    @_fun_traced
     def wait_update(self, deadline: Optional[float] = None) -> None:
         """
         等待业务数据更新
@@ -906,7 +893,6 @@ class TqApi(object):
             update_task.cancel()
 
     # ----------------------------------------------------------------------
-    @_fun_traced
     def is_changing(self, obj: Any, key: Union[str, List[str], None] = None) -> bool:
         """
         判定obj最近是否有更新
@@ -1012,7 +998,6 @@ class TqApi(object):
         return False
 
     # ----------------------------------------------------------------------
-    @_fun_traced
     def is_serial_ready(self, obj: pd.DataFrame) -> bool:
         """
         判断是否已经从服务器收到了所有订阅的数据
@@ -1044,7 +1029,6 @@ class TqApi(object):
         return self._serials[id(obj)]["init"]
 
     # ----------------------------------------------------------------------
-    @_fun_traced
     def create_task(self, coro: asyncio.coroutine) -> asyncio.Task:
         """
         创建一个task
@@ -1079,7 +1063,6 @@ class TqApi(object):
         return task
 
     # ----------------------------------------------------------------------
-    @_fun_traced
     def register_update_notify(self, obj: Optional[Any] = None, chan: Optional[TqChan] = None) -> TqChan:
         """
         注册一个channel以便接受业务数据更新通知
@@ -1906,7 +1889,6 @@ class TqApi(object):
         else:
             self._master._slave_send_pack(pack)
 
-    @_fun_traced
     def draw_text(self, base_k_dataframe: pd.DataFrame, text: str, x: Optional[int] = None, y: Optional[float] = None,
                   id: Optional[str] = None, board: str = "MAIN", color: Union[str, int] = "red") -> None:
         """
@@ -1951,7 +1933,6 @@ class TqApi(object):
         }
         self._send_chart_data(base_k_dataframe, id, serial)
 
-    @_fun_traced
     def draw_line(self, base_k_dataframe: pd.DataFrame, x1: int, y1: float, x2: int, y2: float,
                   id: Optional[str] = None, board: str = "MAIN", line_type: str = "LINE", color: Union[str, int] = "red",
                   width: int = 1) -> None:
@@ -1995,7 +1976,6 @@ class TqApi(object):
         }
         self._send_chart_data(base_k_dataframe, id, serial)
 
-    @_fun_traced
     def draw_box(self, base_k_dataframe: pd.DataFrame, x1: int, y1: float, x2: int, y2: float, id: Optional[str] = None,
                  board: str = "MAIN", bg_color: Union[str, int] = "black", color: Union[str, int] = "red", width: int = 1) -> None:
         """
