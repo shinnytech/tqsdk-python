@@ -38,14 +38,3 @@ def _clear_logs():
                 os.remove(path)
         except:
             pass  # 忽略抛错
-
-
-def _fun_traced(function):
-    logger = logging.getLogger("TqApi.Trace")
-    @wraps(function)
-    def wrapper(*args, **kwds):
-        logger.debug(f'[{function.__module__}.{function.__name__}] CALL *({args}) **{{{kwds}}}')
-        value = function(*args, **kwds)
-        logger.debug(f'[{function.__module__}.{function.__name__}] RETURN {value}')
-        return value
-    return wrapper
