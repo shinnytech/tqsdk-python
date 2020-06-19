@@ -9,6 +9,8 @@ TqSdk 要求在创建 TqApi 时指定交易账户。一旦TqApi创建成功，�
 
 要使用实盘交易账户, 请使用 :py:class:`~tqsdk.account.TqAccount` (注：使用前请先 import TqAccount) . ::
 
+    from tqsdk import TqAccount, TqApi
+
     api = TqApi(TqAccount("H海通期货", "320102", "123456"))
 
 :py:class:`~tqsdk.account.TqAccount` 的三个参数分别为 <期货公司名>, <用户名> 和 <密码> (期货公司名前需加大写首字母). 目前TqSdk支持的期货公司列表请参见 :ref:`broker_list`
@@ -27,11 +29,13 @@ TqApi 创建成功即代表相应账户已登录成功. 如果在60秒内无法�
 
 设定快期模拟交易账户
 ----------------------------------------------------
-如果您需要使用快期模拟账户进行测试，只需在创建TqApi时传入一个 :py:class:`~tqsdk.account.TqKuaiqi` 的实例，同时需要传入 auth 参数，填入快期账户。
+如果您需要使用快期模拟账户进行测试，只需在创建TqApi时传入一个 :py:class:`~tqsdk.account.TqKq` 的实例，同时需要传入 auth 参数，填入快期账户。
 
-此账户类型与快期 APP 、天勤官网论坛使用相同账户系统::
+此账户类型与快期 APP 、天勤官网论坛、快期V3(待打通)使用相同账户系统::
 
-    api = TqApi(TqKuaiqi(), auth="tianqin@163.com,tianqin")
+    from tqsdk import TqApi. TqKq
+
+    api = TqApi(TqKq(), auth="tianqin@163.com,tianqin")
 
 
 设定模拟交易账户

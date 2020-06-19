@@ -239,6 +239,8 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 -------------------------------------------------
 要让策略程序在实盘账号运行, 请在创建TqApi时传入一个 :py:class:`~tqsdk.api.TqAccount` , 填入 期货公司, 账号, 密码 (使用前请先 import TqAccount)::
 
+  from tqsdk import TqApi, TqAccount
+
   api = TqApi(TqAccount("H海通期货", "412432343", "123456"))
 
 目前支持的期货公司列表, 请见 :ref:`broker_list` .
@@ -250,17 +252,19 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 
 模拟交易和论坛
 -------------------------------------------------
-请点击 `注册论坛账号 <https://www.shinnytech.com/register-intro/>`_ ，填写以下对应信息之后，并点击激活邮件后即可进入 `用户论坛 <https://www.shinnytech.com/qa>`_ .
+如果您需要使用能保存账户资金及持仓信息的模拟交易功能, 请点击 `注册论坛账号 <https://www.shinnytech.com/register-intro/>`_ ，填写完对应信息之后，并点击激活邮件后即可进入 `用户论坛 <https://www.shinnytech.com/qa>`_ .
 
 .. figure:: images/tq_register.png
 
-如果您需要使用 能保存账户资金及持仓信息的 模拟交易功能，可将注册好的论坛【邮箱地址】和【密码】作为模拟账号，通过 TqAccount 进行登录::
+同时刚刚注册完成的【邮箱地址】和【密码】可以作为 快期模拟 账号，通过 :py:class:`~tqsdk.api.TqKq` 对 auth 传入参数进行登录，这个 快期模拟 账户在快期APP和天勤量化上是互通的，快期V3正在打通::
 
-  api = TqApi(TqAccount("快期模拟", "test111@qq.com", "123456"))
+  from tqsdk import TqApi, TqKq
 
-(注：若使用 simnow 模拟账号，则 TqAccount 第一个参数填写 "simnow" )
+  api = TqApi(TqKq(), auth = "邮箱地址,密码")
 
-特别的，如果创建TqApi实例时没有提供任何 TqAcccount 账户，则每次会自动创建一个临时模拟账号，当程序运行结束时，临时账号内的记录将全部丢失::
+
+
+特别的，如果创建TqApi实例时没有提供任何 TqAcccount 账户或 TqKq 的快期模拟账户，则每次会自动创建一个临时模拟账号，当程序运行结束时，临时账号内的记录将全部丢失::
 
   api = TqApi()
 
