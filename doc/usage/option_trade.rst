@@ -11,11 +11,11 @@ TqSdk 支持期权的模拟、实盘和回测功能，其中期权合约代码�
 	CFFEX.IO2002-C-3550 - 中金所沪深300股指期权
 
 
-为了更好的服务不同需求客户，TqSdk 目前对期权交易权限做了限制，在 TqSdk 中使用 TqAccount 指定账户进行期权交易的用户需要申请 `TqSdk 期权交易权限 <https://www.shinnytech.com/tqsdk-apply-permission/>`_，开通完成之后即可以 快期模拟账户或实盘账户进行期权交易，参考代码如下::
+为了更好的服务不同需求客户，TqSdk 目前对期权交易权限做了限制，在 TqSdk 中使用 TqAccount 或者 TqKq 进行期权交易的用户需要申请 `TqSdk 期权交易权限 <https://www.shinnytech.com/tqsdk-apply-permission/>`_，开通完成之后即可以使用 快期模拟账户或实盘账户进行期权交易，参考代码如下::
 
-    from tqsdk import TqApi, TqAccount
+    from tqsdk import TqApi, TqKq
     
-    api = TqApi(TqAccount("快期模拟", "论坛邮箱账户", "论坛密码"), auth="论坛邮箱账户,论坛密码")
+    api = TqApi(TqKq(), auth="论坛邮箱账户,论坛密码")
     order = api.insert_order("DCE.i2009-C-590", "BUY", "OPEN", 1, limit_price=70)  # 大商所只支持限价单
     while True:
         api.wait_update()
@@ -25,7 +25,7 @@ TqSdk 支持期权的模拟、实盘和回测功能，其中期权合约代码�
 
     api.close()
 
-对于未使用 TqAccount 的策略程序，无需授权即可使用TqSim模拟交易期权或进行回测
+对于未使用实盘账户或快期模拟账户的策略程序，无需授权即可使用 TqSim 模拟交易期权或进行回测
 
 需要注意由于期权指标有使用 :py:meth:`~tqsdk.api.TqApi.get_kline_serial` 获取多合约k线，而回测暂不支持获取多合约k线，所以目前回测时如果要获取期权计算指标则会报错
 

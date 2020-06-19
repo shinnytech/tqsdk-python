@@ -4,7 +4,7 @@
 =============================
 1.8.1 (2020/06/19)
 
-* 增加 TqKq 账户类型，可以使用统一的快期模拟账户登录
+* 增加 :py:class:`~tqsdk.account.TqKq` 账户类型，可以使用统一的快期模拟账户登录，详情点击 :ref:`sim_trading`
 * 增加支持指数回测
 * 支持 `with TqApi() as api` 写法
 * quote 对象增加 exchange_id 字段，表示交易所代码
