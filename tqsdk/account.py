@@ -106,7 +106,7 @@ class TqAccount(object):
             await api_recv_chan.send(pack)
 
 
-class TqKuaiqi(TqAccount):
+class TqKq(TqAccount):
 
     def __init__(self):
         super().__init__("快期模拟", "", "")

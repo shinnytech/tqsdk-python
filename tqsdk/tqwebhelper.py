@@ -12,7 +12,7 @@ from urllib.parse import urlparse
 import simplejson
 from aiohttp import web
 
-from tqsdk.account import TqAccount, TqKuaiqi
+from tqsdk.account import TqAccount, TqKq
 from tqsdk.backtest import TqBacktest, TqReplay
 from tqsdk.channel import TqChan
 from tqsdk.datetime import _get_trading_day_start_time
@@ -36,10 +36,10 @@ class TqWebHelper(object):
             if args["_broker_id"] == "TQ_KQ":
                 if type(self._api._account) is TqAccount:
                     raise Exception("策略代码与插件设置中的账户参数冲突。可尝试删去代码中的账户参数 TqAccount，以插件设置的账户参数运行。")
-                self._api._account = TqKuaiqi()
+                self._api._account = TqKq()
             elif args["_broker_id"] and args["_account_id"] and args["_password"]:
-                if isinstance(self._api._account, TqKuaiqi):
-                    raise Exception("策略代码与插件设置中的账户参数冲突。可尝试删去代码中的账户参数 TqKuaiqi，以插件设置的账户参数运行。")
+                if isinstance(self._api._account, TqKq):
+                    raise Exception("策略代码与插件设置中的账户参数冲突。可尝试删去代码中的账户参数 TqKq，以插件设置的账户参数运行。")
                 if isinstance(self._api._account, TqAccount) and \
                         (self._api._account._account_id != args["_account_id"] or self._api._account._broker_id != args["_broker_id"]):
                     raise Exception("策略代码与插件设置中的账户参数冲突。可尝试删去代码中的账户参数 TqAccount，以插件设置的账户参数运行。")
