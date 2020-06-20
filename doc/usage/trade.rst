@@ -33,7 +33,7 @@ TqApi 创建成功即代表相应账户已登录成功. 如果在60秒内无法�
 
 此账户类型与快期 APP 、天勤官网论坛、快期V3(待打通)使用相同账户系统::
 
-    from tqsdk import TqApi. TqKq
+    from tqsdk import TqApi, TqKq
 
     api = TqApi(TqKq(), auth="tianqin@163.com,tianqin")
 
