@@ -7,6 +7,7 @@ import platform
 import unittest
 import random
 import datetime
+from memory_profiler import memory_usage
 from tqsdk import TqApi, TqBacktest, BacktestFinished, utils
 from tqsdk.test.api.helper import MockServer, MockInsServer
 
@@ -32,36 +33,41 @@ class TestTdBacktest(unittest.TestCase):
         self.ins.close()
 
     def test_backtest(self):
-        """
-        回测耗时测试
-        """
-        # 预设服务器端响应
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        log_path = os.path.join(dir_path, "log_file", "test_backtest.script.lzma")
-        times = []
-        for i in range(1):
-            mock = MockServer()
-            md_url = "ws://127.0.0.1:5100/"
-            td_url = "ws://127.0.0.1:5200/"
-            mock.run(log_path)
-            utils.RD = random.Random(4)
-            try:
-                start = datetime.datetime.now()
-                backtest = TqBacktest(start_dt=datetime.datetime(2019, 8, 10), end_dt=datetime.datetime(2019, 9, 11))
-                api = TqApi(backtest=backtest, _ins_url=self.ins_url_2019_07_03, _md_url=md_url, _td_url=td_url)
-                symbol = "DCE.m2005"
-                klines = api.get_kline_serial(symbol, duration_seconds=60)
-                while True:
-                    api.wait_update()
-            except BacktestFinished:
-                delta = datetime.datetime.now() - start
-                self.assertLess(delta.seconds, 60)
-                times.append(delta.seconds + delta.microseconds * 1e-6)
-                # print(delta.seconds + delta.microseconds * 1e-6)
-                api.close()
-                mock.close()
-        print(times)
-        print(sum(times))
+        def backtest():
+            """
+            回测耗时测试
+            """
+            # 预设服务器端响应
+            dir_path = os.path.dirname(os.path.realpath(__file__))
+            log_path = os.path.join(dir_path, "log_file", "test_backtest.script.lzma")
+            times = []
+            for i in range(20):
+                mock = MockServer()
+                md_url = "ws://127.0.0.1:5100/"
+                td_url = "ws://127.0.0.1:5200/"
+                mock.run(log_path)
+                utils.RD = random.Random(4)
+                try:
+                    start = datetime.datetime.now()
+                    backtest = TqBacktest(start_dt=datetime.datetime(2019, 8, 10), end_dt=datetime.datetime(2019, 9, 11))
+                    api = TqApi(backtest=backtest, _ins_url=self.ins_url_2019_07_03, _md_url=md_url, _td_url=td_url)
+                    symbol = "DCE.m2005"
+                    klines = api.get_kline_serial(symbol, duration_seconds=60)
+                    while True:
+                        api.wait_update()
+                except BacktestFinished:
+                    delta = datetime.datetime.now() - start
+                    self.assertLess(delta.seconds, 60)
+                    times.append(delta.seconds + delta.microseconds * 1e-6)
+                    # print(delta.seconds + delta.microseconds * 1e-6)
+                    api.close()
+                    mock.close()
+
+            print(times)
+            print(sum(times))
+        peakmemory = max(memory_usage(proc=backtest))
+        self.assertLess(peakmemory, 1.5 * 1024) #内存使用不超过 1.5 GB
+
         # ========== 修改前 ============
         # [20.058858, 18.350247, 19.814365, 19.169111, 18.58476, 18.734992, 18.637698, 18.527309, 18.654314, 18.652076]
         # 189.18373
