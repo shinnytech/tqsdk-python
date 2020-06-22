@@ -65,7 +65,7 @@ jobs:
       run: |
         git lfs install
         git lfs pull
-        python -m pip install --upgrade pip wheel setuptools pytest
+        python -m pip install --upgrade pip wheel setuptools pytest pytest-rerunfailures memory_profiler
         python -m pip install -r requirements.txt
 
     - name: Run test case
@@ -73,8 +73,8 @@ jobs:
       shell: bash
       run: |
         mkdir -p ${{ env.TESTLOGPATH }}
-        python -W ignore::DeprecationWarning -m pytest --no-print-logs \
-          --log-level=DEBUG \
+        python -W ignore::DeprecationWarning -m pytest --show-capture=no \
+          --log-level=ERROR \
           --log-file=${{ env.TESTLOGPATH }}${{ env.TESTLOGNAME }}.log
 
     - name: Upload log to artifact

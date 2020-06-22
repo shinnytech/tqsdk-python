@@ -10,7 +10,6 @@ import asyncio
 import websockets
 from aiohttp import web
 
-
 class MockInsServer():
     def __init__(self, port):
         self.loop = asyncio.new_event_loop()

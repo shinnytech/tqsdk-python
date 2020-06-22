@@ -12,6 +12,7 @@ import sys
 import threading
 import time
 import unittest
+import pytest
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options as ChromeOptions
@@ -37,6 +38,7 @@ def run_tianqin_code(port, queue):
     except Exception as e:
         api.close()
 
+@pytest.mark.flaky(reruns=3)
 class WebTestOnChrome(unittest.TestCase):
 
     def setUp(self) -> None:
@@ -69,7 +71,7 @@ class WebTestOnChrome(unittest.TestCase):
     def test_on_macos(self):
         run_for_driver(webdriver.Chrome(options=self.chrome_options), self)
 
-
+@pytest.mark.flaky(reruns=3)
 class WebTestOnFirefox(unittest.TestCase):
 
     def setUp(self) -> None:
