@@ -1235,13 +1235,13 @@ class TqApi(object):
             # _td_url 如果还是默认地址，即用户没有特别指定，换成期货公司交易地址，否则不做处理
             if self._td_url is None:
                 # 交易中继网关
-                response = requests.get("https://files.shinnytech.com/broker-list.json", headers=self._base_headers,
-                                        timeout=30)
+                url = f"https://files.shinnytech.com/{self._account._broker_id}.json?account_id={self._account._account_id}"
+                response = requests.get(url, headers=self._base_headers, timeout=30)
+                if response.status_code != 200:
+                    raise Exception(f"不支持该期货公司 - {self._account._broker_id}，请联系期货公司。")
                 broker_list = json.loads(response.content)
-                if self._account._broker_id not in broker_list:
-                    raise Exception("不支持该期货公司-%s，请联系期货公司。" % self._account._broker_id)
                 if "TQ" not in broker_list[self._account._broker_id]["category"]:
-                    raise Exception("不支持该期货公司-%s，请联系期货公司。" % self._account._broker_id)
+                    raise Exception(f"该期货公司 - {self._account._broker_id} 暂不支持 TqSdk 登录，请联系期货公司。")
                 self._td_url = broker_list[self._account._broker_id]["url"]
             ws_td_send_chan, ws_td_recv_chan = TqChan(self), TqChan(self)
             self.create_task(self._connect(self._td_url, ws_td_send_chan, ws_td_recv_chan))
