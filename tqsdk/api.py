@@ -58,7 +58,7 @@ class TqApi(object):
     """
 
     def __init__(self, account: Union[TqAccount, TqSim, None] = None, auth: Optional[str] = None, url: Optional[str] = None,
-                 backtest: Union[TqBacktest, TqReplay, None] = None, web_gui: [bool, str] = False, debug: Optional[str] = None,
+                 backtest: Union[TqBacktest, TqReplay, None] = None, web_gui: [bool, str] = False, debug: [bool, str] = None,
                  loop: Optional[asyncio.AbstractEventLoop] = None, _stock: bool = False, _ins_url=None, _md_url=None, _td_url=None) -> None:
         """
         创建天勤接口实例
@@ -85,7 +85,6 @@ class TqApi(object):
                 默认使用 wss://openmd.shinnytech.com/t/md/front/mobile
 
             backtest (TqBacktest/TqReplay): [可选] 进入时光机，此时强制要求 account 类型为 :py:class:`~tqsdk.sim.TqSim`
-
                 * :py:class:`~tqsdk.backtest.TqBacktest` : 传入 TqBacktest 对象，进入回测模式 \
                 在回测模式下, TqBacktest 连接 wss://openmd.shinnytech.com/t/md/front/mobile 接收行情数据, \
                 由 TqBacktest 内部完成回测时间段内的行情推进和 K 线、Tick 更新.
@@ -93,14 +92,27 @@ class TqApi(object):
                 * :py:class:`~tqsdk.backtest.TqReplay` : 传入 TqReplay 对象, 进入复盘模式 \
                 在复盘模式下, TqReplay 会在服务器申请复盘日期的行情资源, 由服务器推送复盘日期的行情.
 
-            debug(str): [可选] 指定一个日志文件名, 将调试信息输出到指定文件. 默认不输出.
+            debug(bool/str): [可选] 是否将调试信息输出到指定文件，默认值为 None。
+                * None [默认]: 根据账户情况不同，默认值的行为不同。
 
-            loop(asyncio.AbstractEventLoop): [可选]使用指定的 IOLoop, 默认创建一个新的.
+                    + 使用 :py:class:`~tqsdk.account.TqAccount` 或者 :py:class:`~tqsdk.account.TqKq` 实盘账户时，调试信息输出到指定文件夹 `~/.tqsdk/logs`。
+
+                    + 使用 :py:class:`~tqsdk.sim.TqSim` 模拟账户时，调试信息不输出。
+
+                * True: 调试信息会输出到指定文件夹 `~/.tqsdk/logs`。
+
+                * False: 不输出调试信息。
+
+                * str: 指定一个日志文件名, 调试信息输出到指定文件。
+
+            loop(asyncio.AbstractEventLoop): [可选] 使用指定的 IOLoop, 默认创建一个新的.
 
             web_gui(bool/str): [可选]是否启用图形化界面功能, 默认不启用.
                 * 启用图形化界面传入参数 web_gui=True 会每次以随机端口生成网页，也可以直接设置本机IP和端口 web_gui=[ip]:port 为网页地址，
                 ip 可选，默认为 0.0.0.0，参考example 6
+
                 * 为了图形化界面能够接收到程序传输的数据并且刷新，在程序中，需要循环调用 api.wait_update的形式去更新和获取数据
+
                 * 推荐打开图形化界面的浏览器为Google Chrome 或 Firefox
 
         Example1::
