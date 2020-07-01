@@ -152,5 +152,11 @@ class MockServer():
             await self._process_script()
         if pack["aid"] != "peek_message":
             assert self._expecting["source"] == source
-            assert self._expecting["content"] == pack
+            if self._expecting["content"]["aid"] == "req_login" and pack["aid"] == "req_login":
+                # 登录请求单独判断这几个字段，不同操作系统带的穿管信息的包内容不同
+                assert self._expecting["content"]["bid"] == pack["bid"]
+                assert self._expecting["content"]["user_name"] == pack["user_name"]
+                assert self._expecting["content"]["password"] == pack["password"]
+            else:
+                assert self._expecting["content"] == pack
             await self._process_script()
