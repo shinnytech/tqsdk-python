@@ -109,4 +109,7 @@ class TqAccount(object):
 class TqKq(TqAccount):
 
     def __init__(self):
+        """
+        创建快期模拟账户实例
+        """
         super().__init__("快期模拟", "", "")
