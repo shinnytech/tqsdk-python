@@ -90,6 +90,101 @@ class TestTdBasic(unittest.TestCase):
 
         api.close()
 
+    def test_insert_order_fok(self):
+        """
+        下单
+        """
+        # 预设服务器端响应
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        self.mock.run(os.path.join(dir_path, "log_file", "test_td_basic_insert_order_fok_simulate.script.lzma"))
+        # 测试: 模拟账户下单
+        # 非回测, 则需在盘中生成测试脚本: 测试脚本重新生成后，数据根据实际情况有变化,因此需要修改assert语句的内容
+
+        utils.RD = random.Random(2)
+        api = TqApi(_ins_url=self.ins_url_2020_05_07, _td_url=self.td_url, _md_url=self.md_url)
+        order1 = api.insert_order("SHFE.au2012", "BUY", "OPEN", 2, limit_price=419, advanced="FOK")
+        order2 = api.insert_order("SHFE.cu2010", "BUY", "OPEN", 2, limit_price=49100, advanced="FOK")
+        while order1.status == "ALIVE" or order2.status == "ALIVE":
+            api.wait_update()
+
+        self.assertEqual(order1.order_id, "PYSDK_insert_5c6e433715ba2bdd177219d30e7a269f")
+        self.assertEqual(order1.direction, "BUY")
+        self.assertEqual(order1.offset, "OPEN")
+        self.assertEqual(order1.volume_orign, 2)
+        self.assertEqual(order1.volume_left, 0)
+        self.assertEqual(order1.limit_price, 419.0)  # 判断nan
+        self.assertEqual(order1.price_type, "LIMIT")
+        self.assertEqual(order1.volume_condition, "ALL")
+        self.assertEqual(order1.time_condition, "IOC")
+        self.assertAlmostEqual(1593670966510162000 / 1e9, order1.insert_date_time / 1e9, places=1)
+        self.assertEqual(order1.status, "FINISHED")
+        for k, v in order1.trade_records.items():  # 模拟交易为一次性全部成交，因此只有一条成交记录
+            self.assertAlmostEqual(1593670966510477000 / 1e9, v.trade_date_time / 1e9, places=1)
+            del v.trade_date_time
+            self.assertEqual(str(v),
+                             "{'order_id': 'PYSDK_insert_5c6e433715ba2bdd177219d30e7a269f', 'trade_id': 'PYSDK_insert_5c6e433715ba2bdd177219d30e7a269f|2', 'exchange_trade_id': 'PYSDK_insert_5c6e433715ba2bdd177219d30e7a269f|2', 'exchange_id': 'SHFE', 'instrument_id': 'au2012', 'direction': 'BUY', 'offset': 'OPEN', 'price': 419.0, 'volume': 2, 'user_id': 'TQSIM', 'commission': 20.0}")
+
+        self.assertEqual(order2.order_id, "PYSDK_insert_cf1822ffbc6887782b491044d5e34124")
+        self.assertEqual(order2.direction, "BUY")
+        self.assertEqual(order2.offset, "OPEN")
+        self.assertEqual(order2.volume_orign, 2)
+        self.assertEqual(order2.volume_left, 2)
+        self.assertEqual(order2.limit_price, 49100.0)
+        self.assertEqual(order2.price_type, "LIMIT")
+        self.assertEqual(order2.volume_condition, "ALL")
+        self.assertEqual(order2.time_condition, "IOC")
+        self.assertAlmostEqual(1593670967006692000 / 1e9, order2.insert_date_time / 1e9, places=1)
+        self.assertEqual(order2.status, "FINISHED")
+        self.assertEqual(len(order2.trade_records.items()), 0)  # 没有成交记录
+        api.close()
+
+    def test_insert_order_fak(self):
+        """
+        下单
+        """
+        # 预设服务器端响应
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        self.mock.run(os.path.join(dir_path, "log_file", "test_td_basic_insert_order_fak_simulate.script.lzma"))
+        # 测试: 模拟账户下单
+        # 非回测, 则需在盘中生成测试脚本: 测试脚本重新生成后，数据根据实际情况有变化,因此需要修改assert语句的内容
+
+        utils.RD = random.Random(2)
+        api = TqApi(_ins_url=self.ins_url_2020_05_07, _td_url=self.td_url, _md_url=self.md_url)
+        order1 = api.insert_order("SHFE.au2012", "BUY", "OPEN", 2, limit_price=419, advanced="FAK")
+        order2 = api.insert_order("SHFE.cu2010", "BUY", "OPEN", 2, limit_price=49100, advanced="FAK")
+        while order1.status == "ALIVE" or order2.status == "ALIVE":
+            api.wait_update()
+        self.assertEqual(order1.order_id, "PYSDK_insert_5c6e433715ba2bdd177219d30e7a269f")
+        self.assertEqual(order1.direction, "BUY")
+        self.assertEqual(order1.offset, "OPEN")
+        self.assertEqual(order1.volume_orign, 2)
+        self.assertEqual(order1.volume_left, 0)
+        self.assertEqual(order1.limit_price, 419.0)  # 判断nan
+        self.assertEqual(order1.price_type, "LIMIT")
+        self.assertEqual(order1.volume_condition, "ANY")
+        self.assertEqual(order1.time_condition, "IOC")
+        self.assertAlmostEqual(1593671890008459000 / 1e9, order1.insert_date_time / 1e9, places=1)
+        self.assertEqual(order1.status, "FINISHED")
+        for k, v in order1.trade_records.items():  # 模拟交易为一次性全部成交，因此只有一条成交记录
+            self.assertAlmostEqual(1593671890008850000 / 1e9, v.trade_date_time / 1e9, places=1)
+            del v.trade_date_time
+            self.assertEqual(str(v),
+                             "{'order_id': 'PYSDK_insert_5c6e433715ba2bdd177219d30e7a269f', 'trade_id': 'PYSDK_insert_5c6e433715ba2bdd177219d30e7a269f|2', 'exchange_trade_id': 'PYSDK_insert_5c6e433715ba2bdd177219d30e7a269f|2', 'exchange_id': 'SHFE', 'instrument_id': 'au2012', 'direction': 'BUY', 'offset': 'OPEN', 'price': 419.0, 'volume': 2, 'user_id': 'TQSIM', 'commission': 20.0}")
+
+        self.assertEqual(order2.order_id, "PYSDK_insert_cf1822ffbc6887782b491044d5e34124")
+        self.assertEqual(order2.direction, "BUY")
+        self.assertEqual(order2.offset, "OPEN")
+        self.assertEqual(order2.volume_orign, 2)
+        self.assertEqual(order2.volume_left, 2)
+        self.assertEqual(order2.limit_price, 49100.0)
+        self.assertEqual(order2.price_type, "LIMIT")
+        self.assertEqual(order2.volume_condition, "ANY")
+        self.assertEqual(order2.time_condition, "IOC")
+        self.assertAlmostEqual(1593671890009772000 / 1e9, order2.insert_date_time / 1e9, places=1)
+        self.assertEqual(order2.status, "FINISHED")
+        self.assertEqual(len(order2.trade_records.items()), 0)  # 没有成交记录
+        api.close()
+
     def test_cancel_order(self):
         """
         撤单
