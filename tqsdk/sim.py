@@ -469,6 +469,8 @@ class TqSim(object):
             price = order["limit_price"]
         elif order["direction"] == "SELL" and order["limit_price"] <= bid_price:
             price = order["limit_price"]
+        elif order["time_condition"] == "IOC":  # IOC 立即成交，限价下单且不能成交的价格，直接撤单
+            return "已撤单报单已提交"
         else:
             return ""
         trade = {
