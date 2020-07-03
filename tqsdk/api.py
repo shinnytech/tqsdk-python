@@ -1267,8 +1267,11 @@ class TqApi(object):
             # _td_url 如果还是默认地址，即用户没有特别指定，换成期货公司交易地址，否则不做处理
             if self._td_url is None:
                 # 交易中继网关
-                url = f"https://files.shinnytech.com/{self._account._broker_id}.json?account_id={self._account._account_id}"
-                response = requests.get(url, headers=self._base_headers, timeout=30)
+                url = f"https://files.shinnytech.com/{self._account._broker_id}.json"
+                params = {"account_id": self._account._account_id}
+                if self._auth:
+                    params["auth"] = self._auth[:self._auth.find(',')]
+                response = requests.get(url, params=params, headers=self._base_headers, timeout=30)
                 if response.status_code != 200:
                     raise Exception(f"不支持该期货公司 - {self._account._broker_id}，请联系期货公司。")
                 broker_list = json.loads(response.content)
