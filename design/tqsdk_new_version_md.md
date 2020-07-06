@@ -30,7 +30,7 @@ ls = [v["underlying_symbol"] for k,v in api._data["quotes"].items() if k.startsw
 2. 在 get_quote 中，先检查 quote 是否有请求合约的合约服务中的字段，如果没有的话发送 query 请求合约的全部字段, id 为 PYSDK_api_quote_xxxxx，等待到 quote 收到合约服务中的某个字段才返回。
 3. recv_chan 中的数据包，需要过滤出 PYSDK_api_quote_xxxxx 的数据包，merge_diff 到 api._data.quotes。
 4. 不会再下载合约文件作为第一个数据包。
-5. 在用户使用 `api._data` 的时候，显示错误，并提供给用户推荐用法。加在 api._data.quotes.items(), keys(), value() 三个方法上提示用户。
+5. 在用户使用 `api._data` 的时候，显示错误，并提供给用户推荐用法。加在 api._data.quotes. `__iter__()` 方法上提示用户。
     为了同时支持用户原来的用法，在 tqsdk 初始化的时候，先请求到全部合约代码（期货、期权、期货指数、期货主连和旧版合约代码相同），以及他们的完整字段，作为第一个初始的行情包发到 `md_recv_chan`。
     （会在 2.0.0 版本取消这种做法，并且不再支持原来给用户提供的用法）
 6. 新增加几个接口提供给用户使用，能够完成 https://shinnytech.atlassian.net/browse/BE-247 https://shinnytech.atlassian.net/browse/BE-248
