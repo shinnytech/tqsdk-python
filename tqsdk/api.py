@@ -599,7 +599,7 @@ class TqApi(object):
         Returns:
             :py:class:`~tqsdk.objs.Order`: 返回一个委托单对象引用. 其内容将在 :py:meth:`~tqsdk.api.TqApi.wait_update` 时更新.
 
-        Example::
+        Example1::
 
             # 市价开3手 DCE.m1809 多仓
             from tqsdk import TqApi
@@ -615,6 +615,39 @@ class TqApi(object):
             单状态: ALIVE, 已成交: 0 手
             单状态: FINISHED, 已成交: 3 手
             ...
+
+        Example2::
+
+            # 限价开多3手 DCE.m1901
+            from tqsdk import TqApi
+            with TqApi() as api:
+                order = api.insert_order(symbol="DCE.m2009", direction="BUY", offset="OPEN", volume=3, limit_price=3000)
+                while True:
+                    api.wait_update()
+                    print("单状态: %s, 已成交: %d 手" % (order.status, order.volume_orign - order.volume_left))
+
+            # 预计的输出是这样的:
+            单状态: ALIVE, 已成交: 0 手
+            单状态: ALIVE, 已成交: 0 手
+            单状态: FINISHED, 已成交: 3 手
+            ...
+
+        Example3::
+
+            # 市价开多3手 DCE.m1901 FAK
+            from tqsdk import TqApi
+            with TqApi() as api:
+                order = api.insert_order(symbol="DCE.m2009", direction="BUY", offset="OPEN", volume=3, advanced="FAK")
+                while True:
+                    api.wait_update()
+                    print("单状态: %s, 已成交: %d 手" % (order.status, order.volume_orign - order.volume_left))
+
+            # 预计的输出是这样的:
+            单状态: ALIVE, 已成交: 0 手
+            单状态: ALIVE, 已成交: 0 手
+            单状态: FINISHED, 已成交: 3 手
+            ...
+
         """
         if symbol not in self._data.get("quotes", {}):
             raise Exception("合约代码 %s 不存在, 请检查合约代码是否填写正确" % (symbol))
