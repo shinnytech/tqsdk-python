@@ -43,18 +43,20 @@ def query_graphql(query_id: Option[str], query: str, variables: dict) => None (i
     for symbol_query in api._data["symbols"]:
         if symbol_query["query"] == query and symbol_query["variables"] == variables:
             return symbol_query
-    self.send_chan({
-        "aid": "ins_query",
-        "query_id": query_id if query_id else gen_uuid("PYSDK_api"),
+    query_id = query_id if query_id else gen_uuid("PYSDK_api")
+    pack = {
         "query": query,
         "variables": variables
-    })
+    }
+    self.send_chan(pack.update({
+        "aid": "ins_query",
+        "query_id": query_id
+    }))
     symbol_query = None
     deadline = time.time() + 30
     while not self._loop.is_running():
-        for symbol_query in api._data["symbols"]:
-            if symbol_query["query"] == query and symbol_query["variables"] == variables:
-                return symbol_query
+        if query_id in api._data["symbols"] and api._data["symbols"][query_id].items() >= pack.items():
+            continue
         if not self.wait_update(deadline=deadline):
             raise Exception("查询合约服务 %s 超时，请检查客户端及网络是否正常" % (symbol))
     return symbol_query
@@ -92,8 +94,9 @@ commisson margin trading_time ins_class price_tick option_class strike_price vol
 3. ensure_quote 需要先检查 quote 的 datetime，price_tick 等等字段，如果没有
     - 发送 id 是 PYSDK_sim_SHFE.au2001 的形式，query 请求为包括以上字段的请求的包
     - _register_update_chan(quote, quote_chan)，直到收到全部需要的数据才会继续执行后续的代码
-4. 在 md_recv_chan 中收到 aid="rtn_data", symhols[PYSDK_sim_SHFE.au2001] 数据，收到之后，merge_diff 到 tqsim._data。
-    - 这样对应 quote_handler 中的 quote_chan 就会收到对应的更新通知，并更新相应数据。
+4. 在 md_recv_chan 中收到 aid="rtn_data"
+    - symhols 中 id 为 PYSDK_sim_SHFE.au2001 的数据，收到之后，merge_diff 到 tqsim._data，这样对应 quote_handler 中的 quote_chan 就会收到对应的更新通知，并更新相应数据。
+    - 其他的数据应该全部发给 下游
 
 ### TqBacktest
 
@@ -105,13 +108,24 @@ price_tick
 3. 为每个合约在初始化 generator 的时候，请求一次合约信息，在 ensure_quote 先检查 quote 的 price_tick 字段，如果没有
     - 发送 id 是 PYSDK_backtest_SHFE.au2001 的形式，query 请求为包括以上字段的请求的包
     - 增加 `register_update_notify(quote)` 等到收到 quote["price_tick"] 再继续执行
-4. 在 md_recv_chan 中收到 aid="rtn_data", 要单数处理 symhols 数据，id 为 PYSDK_backtest_SHFE.au2001 的需要 merge_diff 到 tqsim._data。
+4. 在 md_recv_chan 中收到 aid="rtn_data", 要单数处理 symhols 数据
+    - symhols 中 id 为 PYSDK_backtest_SHFE.au2001 的需要 merge_diff 到 tqsim._data
+    - symhols 中 其他 id 需要转发给 下游
+5. 不再发送合约信息截面，而是等待收到全部合约列表的包之后，认为已经完成了初始化
 
 
-## utils
+### utils
 
 1. 需要函数生成 query 模板
 
+
+## 单元测试
+
+原来的测试用例脚本，全部都需要重新生成
+
+增加测试用例：
+
+* 测试新添加的几个接口
 
 
 相关文档：
