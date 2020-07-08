@@ -125,7 +125,6 @@ jobs:
         git lfs pull
         python -m pip install --upgrade pip wheel setuptools
         python -m pip install -r requirements.txt
-        python -m pip install Sphinx==2.3.1 autodocsumm sphinx_rtd_theme jieba
 
     - name: Build wheel on linux platform
       run: |
