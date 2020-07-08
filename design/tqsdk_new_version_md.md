@@ -20,45 +20,68 @@ ls = [k for k,v in api._data["quotes"].items() if k.startswith("KQ.m")]
 ls = [v["underlying_symbol"] for k,v in api._data["quotes"].items() if k.startswith("KQ.m")]
 ```
 
-## 各模块修改方案
+## 修改方案 - 版本2
 
+* `tqsdk` 发送的 `ins_query` 包有两种情况：
+
+1. 用户请求符合某种条件的合约列表，不知道会返回什么数据
+    - 发送的 query_id 以 `PYSDK_api` 开始
+2. 由 tqsdk 发出的请求某个指定合约的合约信息
+    - 发送的 query_id 为 `"PYSDK_quote_" + url_base64_encode(symbol)`
+        
 ### TqApi
 
-不需要合约信息
-
-1. 需要能够处理 `aid = "ins_query"` 的请求包
-2. 在 get_quote 中，先检查 quote 是否有请求合约的合约服务中的字段，如果没有的话发送 query 请求合约的全部字段, id 为 PYSDK_api_quote_xxxxx，等待到 quote 收到合约服务中的某个字段才返回。
-3. recv_chan 中的数据包，需要过滤出 PYSDK_api_quote_xxxxx 的数据包，merge_diff 到 api._data.quotes。
-4. 不会再下载合约文件作为第一个数据包。
-5. 在用户使用 `api._data` 的时候，显示错误，并提供给用户推荐用法。加在 api._data.quotes. `__iter__()` 方法上提示用户。
-    为了同时支持用户原来的用法，在 tqsdk 初始化的时候，先请求到全部合约代码（期货、期权、期货指数、期货主连和旧版合约代码相同），以及他们的完整字段，作为第一个初始的行情包发到 `md_recv_chan`。
-    （会在 2.0.0 版本取消这种做法，并且不再支持原来给用户提供的用法）
-6. 新增加几个接口提供给用户使用，能够完成 https://shinnytech.atlassian.net/browse/BE-247 https://shinnytech.atlassian.net/browse/BE-248
-7. tqsdk 初始化的时候，先请求发送 query (id=PYSDK_api_all_quotes) 请求到全部合约代码，用于判断合约是否存在, 只记在 api 中备用，不会更新到 _data
- 
+* 在 setup_connection 里修改，初始化行情链接之后，新增 _md_handler_task 处理 ws_md_recv_chan
+```python
+    self.create_task(self._connect(self._md_url, ws_md_send_chan, ws_md_recv_chan))  # 启动行情websocket连接
+    md_recv_handler_chan = TqChan(self)
+    self.create_task(self._md_handler(ws_md_recv_chan, md_recv_handler_chan))
+    ws_md_recv_chan = md_recv_handler_chan
 ```
-# graphgl
-def query_graphql(query_id: Option[str], query: str, variables: dict) => None (if api._loop.is_running())
-                                                => dict (else) # { "query": 用户请求的query, "variables": 用户请求的参数, "result": 查询返回结果, "error": 可能的错误}:
-    for symbol_query in api._data["symbols"]:
-        if symbol_query["query"] == query and symbol_query["variables"] == variables:
-            return symbol_query
-    query_id = query_id if query_id else gen_uuid("PYSDK_api")
+```python
+    # 将收到的 以 `PYSDK_quote` 开始的 query 请求的结果拼成 quotes，追加在 data 中发下去
+    async def _md_handler(self, origin_recv_chan, recv_chan):
+        async for pack in origin_recv_chan:
+            if pack["aid"] == "rtn_data":
+                # 过滤 symbols
+                quotes = {}
+                for d in pack["data"]:
+                    if d.get("symbols", None) is None:
+                        continue
+                    for q_id, query_result in d.get("symbols").items():
+                        if query_result.get("error", ""):
+                            raise Exception(f"查询合约服务报错 {query_result}")
+                        if q_id.startswith("PYSDK_quote"):
+                            quotes.update(_symbols_to_quotes(query_result))
+                pack["data"].append({"quotes": quotes})
+            await recv_chan.send(pack)
+```
+
+* 新增加几个接口提供给用户使用，能够完成 https://shinnytech.atlassian.net/browse/BE-247 https://shinnytech.atlassian.net/browse/BE-248
+
+```python
+# graphgl 这个方案里 query_graphql 也只给用户使用，tqsdk 代码不会用到这个函数
+def query_graphql(self, query: str, variables: str, query_id: Optional[str] = None):
     pack = {
         "query": query,
         "variables": variables
     }
-    self.send_chan(pack.update({
+    symbols = _get_obj(self._data, ["symbols"])
+    for symbol_query in symbols.values():
+        if symbol_query.items() >= pack.items():
+            return symbol_query
+
+    query_id = query_id if query_id else _generate_uuid("PYSDK_api")
+    self._send_pack({
         "aid": "ins_query",
         "query_id": query_id
-    }))
-    symbol_query = None
+    }.update(pack))
+    symbol_query = _get_obj(self._data, ["symbols", query_id])
     deadline = time.time() + 30
-    while not self._loop.is_running():
-        if query_id in api._data["symbols"] and api._data["symbols"][query_id].items() >= pack.items():
-            continue
-        if not self.wait_update(deadline=deadline):
-            raise Exception("查询合约服务 %s 超时，请检查客户端及网络是否正常" % (symbol))
+    if not self._loop.is_running():
+        while symbol_query.items() >= pack.items():
+            if not self.wait_update(deadline=deadline):
+                raise Exception("查询合约服务 %s 超时，请检查客户端及网络是否正常" % (query))
     return symbol_query
 
 以下三个接口，先拼出来请求的 query 和 variables，然后调用 query_graphql。
@@ -72,12 +95,26 @@ def query_options(underlying_symbol:str=None, option_class=None, option_month=No
 
 ```
 
+* 不会再下载合约文件作为第一个数据包
 
-## objs
+* 在用户使用 `api._data` 的时候，显示错误，并提供给用户推荐用法。加在 api._data.quotes. `__iter__()` 方法上提示用户。
+    为了同时支持用户原来的用法，在 tqsdk 初始化的时候，先请求到全部合约代码（期货、期权、期货指数、期货主连和旧版合约代码相同），以及他们的完整字段，作为第一个初始的行情包发到 `md_recv_chan`。
+    （会在 2.0.0 版本取消这种做法，并且不再支持原来给用户提供的用法）具体做法是：
+    
+```python
+    # 在 api 初始化完成之后，发送一个请求全行情的 query
+    def __init__(self):
+        # ......
+        # ......
+        # todo: 兼容旧版 sdk 所做的修改
+        q, v = _query_for_class(["future", "index", "combine", "cont"])
+        self.query_graphql(q, v, _generate_uuid("PYSDK_quote"))
+```
 
-quote 对象需要增加字段，underlying, 为其标的对象，默认值 None。
+* 检查合约是否存在，不能发送不存在的合约给服务器，get_quote get_tick_seriel get_kline_seriel get_position insert_order
+    - 在同步代码中，先请求合约信息，再订阅合约、请求kline
+    - 在协程中，使用 create_task, 保证发送请求的顺序依然是先请求合约信息，再订阅合约、请求kline
 
-期权和主连，需要手动添加 `underlying_symbol` 字段，因为新版合约服务只有 `underlying` 字段。
 
 ### TqAccount
 
@@ -86,32 +123,44 @@ quote 对象需要增加字段，underlying, 为其标的对象，默认值 None
 
 ### TqSim
 
-需要合约信息
-commisson margin trading_time ins_class price_tick option_class strike_price volume_multiple underling_symbol
+1. tqsim 会原样转发行情相关的请求包到 md，也会转发 ins_query, 不需要修改
+2.  `ensure_quote` 只需修改为等待合约的 datetime 和 price_tick 字段都收到有效值，原因：
+    + 对于 ensure_quote 来说，ensure_quote 只出现在 quote_handler_task 的第一步等待确认收到合约行情，
+    + tqsim 只有在收到 insert_order 请求才会新建一个 quote_handler_task
+    + api 在发送 `aid="insert_order"` 一定会请求合约信息，
+    + 所以在执行到 `ensure_quote` 函数时，一定发送过请求合约信息的包，只需要等待 datetime 和 price_tick 都收到有效值即可
 
-1. 需要正确转发 `aid = "ins_query"` 的请求包。
-2. tqsim 管理自己发送的 graphql
-3. ensure_quote 需要先检查 quote 的 datetime，price_tick 等等字段，如果没有
-    - 发送 id 是 PYSDK_sim_SHFE.au2001 的形式，query 请求为包括以上字段的请求的包
-    - _register_update_chan(quote, quote_chan)，直到收到全部需要的数据才会继续执行后续的代码
-4. 在 md_recv_chan 中收到 aid="rtn_data"
-    - symhols 中 id 为 PYSDK_sim_SHFE.au2001 的数据，收到之后，merge_diff 到 tqsim._data，这样对应 quote_handler 中的 quote_chan 就会收到对应的更新通知，并更新相应数据。
-    - 其他的数据应该全部发给 下游
 
 ### TqBacktest
 
-需要合约信息
-price_tick
+1. 需要正确转发 `aid = "ins_query"` 的请求包，并且等待收到回复 `query_id in self._data["symbols"]` 再继续执行
+2. 在 ensure_quote 先检查 quote 的 price_tick 字段，如果没有
+    - 发送 `query_id = PYSDK_quote_xxxxx` 的 query 包
+    - 增加 `register_update_notify()` 等到收到 `query_id in self._data["symbols"]` 再继续执行，这里的主要是为了保证不发不存在的合约给行情服务器。
+3. 在 md_recv_chan 中收到 aid="rtn_data", 要处理 symbols 和 quotes 数据，有 symbols 和 quotes 的数据包需要转发给下游
+4. 不再发送合约信息截面，而是初始时放一个数据包在 diff 中，用于发送 `mdhis_more_data = false`, 原因：
+    - sim 模块在收到 `mdhis_more_data = false` 数据包才会发送初始账户信息给客户端。
+    - api 会在一开始就发送 peek_message，这时候 backtest 中的这第一个数据包就会消耗掉这个 peek_message，否则 backtest 没有任何等待发送的数据，就会认为回测结束。
 
-1. 需要正确转发 `aid = "ins_query"` 的请求包。
-2. tqbacktest 管理自己发送的 graphql
-3. 为每个合约在初始化 generator 的时候，请求一次合约信息，在 ensure_quote 先检查 quote 的 price_tick 字段，如果没有
-    - 发送 id 是 PYSDK_backtest_SHFE.au2001 的形式，query 请求为包括以上字段的请求的包
-    - 增加 `register_update_notify(quote)` 等到收到 quote["price_tick"] 再继续执行
-4. 在 md_recv_chan 中收到 aid="rtn_data", 要单数处理 symhols 数据
-    - symhols 中 id 为 PYSDK_backtest_SHFE.au2001 的需要 merge_diff 到 tqsim._data
-    - symhols 中 其他 id 需要转发给 下游
-5. 不再发送合约信息截面，而是等待收到全部合约列表的包之后，认为已经完成了初始化
+
+### 其他需要注意的地方
+
+* 全文搜索 ins_class ，所有用到的地方，旧版合约服务的 class 和新版合约服务 class 注意不同的点
+    - FUTURE -> future
+    - FUTURE_INDEX -> index
+    - FUTURE_CONT -> cont
+    - FUTURE_COMBINE  -> cont
+    - FUTURE_OPTION -> option
+    - INDEX (CSI.000300) -> index
+    - OPTION (CFFEX.IO2003-C-3850) -> option
+    
+* 字段名称不一样的地方
+    - option_class -> call_or_put
+    - underlying_symbol -> underlying 需要调整
+
+* 请求期权合约的合约信息，同时会请求标的的合约信息，utils 处理时需要展开标的数据
+
+* 所有的测试用例都需要重新生成脚本
 
 
 ### utils
