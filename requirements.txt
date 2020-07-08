@@ -11,3 +11,7 @@ simplejson
 selenium
 scipy
 pyjwt
+Sphinx==2.3.1
+autodocsumm
+sphinx_rtd_theme
+jieba
