@@ -43,10 +43,10 @@ from tqsdk.channel import TqChan
 from tqsdk.diff import _merge_diff, _get_obj, _is_key_exist, _register_update_chan
 from tqsdk.entity import Entity
 from tqsdk.log import _get_log_format, _get_log_name, _clear_logs
-from tqsdk.objs import Quote, Kline, Tick, Account, Position, Order, Trade
+from tqsdk.objs import Quote, Kline, Tick, Account, Position, Order, Trade, QuotesEntity
 from tqsdk.sim import TqSim
 from tqsdk.tqwebhelper import TqWebHelper
-from tqsdk.utils import _generate_uuid, _quotes_add_night
+from tqsdk.utils import _generate_uuid, _query_for_quote, _symbols_to_quotes, _query_for_init
 from .__version__ import __version__
 
 
@@ -206,6 +206,8 @@ class TqApi(object):
         self._klines_update_range = {}
         self._data = Entity()  # 数据存储
         self._data._instance_entity([])
+        self._data["quotes"] = QuotesEntity(self)
+        self._data["quotes"]._instance_entity(["quotes"])
         self._diffs = []  # 自上次wait_update返回后收到更新数据的数组
         self._pending_diffs = []  # 从网络上收到的待处理的 diffs, 只在 wait_update 函数执行过程中才可能为非空
         self._prototype = self._gen_prototype()  # 各业务数据的原型, 用于决定默认值及将收到的数据转为特定的类型
@@ -242,6 +244,11 @@ class TqApi(object):
             raise
         # 使用非空list,使得wait_update()能正确发送peek_message; 使用空dict, 使得is_changing()返回false, 因为截面数据不算做更新数据.
         self._diffs = [{}]
+
+        # todo: 兼容旧版 tqsdk 所做的修改
+        if not isinstance(self._backtest, TqReplay):
+            q, v = _query_for_init()
+            self.query_graphql(q, v, _generate_uuid("PYSDK_quote"))
 
     # ----------------------------------------------------------------------
     def copy(self) -> 'TqApi':
@@ -332,21 +339,56 @@ class TqApi(object):
             24575.0
             ...
         """
-        if (not self._stock) and symbol not in self._data.get("quotes", {}):
+        if isinstance(self._backtest, TqReplay) and symbol not in self._data.get("quotes", {}):
             raise Exception("代码 %s 不存在, 请检查合约代码是否填写正确" % (symbol))
-        quote = _get_obj(self._data, ["quotes", symbol], self._prototype["quotes"]["#"])
+        elif self._loop.is_running() and symbol not in self._data.get("quotes", {}):
+            self.create_task(self._get_quote_async(symbol))  # 协程中需要等待合约信息，然后发送订阅请求
+            return _get_obj(self._data, ["quotes", symbol], self._prototype["quotes"]["#"])
+        else:
+            self._ensure_symbol(symbol)
+            quote = _get_obj(self._data, ["quotes", symbol], self._prototype["quotes"]["#"])
+            if symbol not in self._requests["quotes"]:
+                self._requests["quotes"].add(symbol)
+                self._send_pack({
+                    "aid": "subscribe_quote",
+                    "ins_list": ",".join(self._requests["quotes"]),
+                })
+                deadline = time.time() + 30
+                while not self._loop.is_running() and quote["datetime"] == "":
+                    # @todo: merge diffs
+                    if not self.wait_update(deadline=deadline):
+                        raise Exception(f"获取 {symbol} 的行情信息超时，请检查客户端及网络是否正常，且合约代码填写正确")
+            return quote
+
+    def _ensure_symbol(self, symbol):
+        # 已经收到收到合约信息之后返回，同步
+        if symbol not in self._data.get("quotes", {}):
+            query_pack = _query_for_quote(symbol)
+            self._send_pack(query_pack)
+            deadline = time.time() + 30
+            while query_pack["query_id"] not in self._data.get("symbols", {}):
+                if not self.wait_update(deadline=deadline):
+                    raise Exception(f"获取 {symbol} 的合约信息超时，请检查客户端及网络是否正常，且合约代码填写正确")
+
+    async def _ensure_symbol_async(self, symbol):
+        # 已经收到收到合约信息之后返回，异步
+        if symbol not in self._data.get("quotes", {}):
+            query_pack = _query_for_quote(symbol)
+            self._send_pack(query_pack)
+            async with self.register_update_notify() as update_chan:
+                async for _ in update_chan:
+                    if query_pack["query_id"] in self._data.get("symbols", {}):
+                        break
+
+    async def _get_quote_async(self, symbol):
+        # 协程中, 在收到合约信息之后再发送订阅行情请求，来保证，不会发送订阅请求去订阅不存在的合约
+        await self._ensure_symbol_async(symbol)
         if symbol not in self._requests["quotes"]:
             self._requests["quotes"].add(symbol)
             self._send_pack({
                 "aid": "subscribe_quote",
                 "ins_list": ",".join(self._requests["quotes"]),
             })
-        deadline = time.time() + 30
-        while not self._loop.is_running() and quote["datetime"] == "":
-            # @todo: merge diffs
-            if not self.wait_update(deadline=deadline):
-                raise Exception("获取 %s 的行情超时，请检查客户端及网络是否正常，且合约代码填写正确" % (symbol))
-        return quote
 
     # ----------------------------------------------------------------------
     def get_kline_serial(self, symbol: Union[str, List[str]], duration_seconds: int, data_length: int = 200,
@@ -444,9 +486,6 @@ class TqApi(object):
         """
         if not isinstance(symbol, list):
             symbol = [symbol]
-        for s in symbol:
-            if (not self._stock) and s not in self._data.get("quotes", {}):
-                raise Exception("代码 %s 不存在, 请检查合约代码是否填写正确" % (s))
         duration_seconds = int(duration_seconds)  # 转成整数
         if duration_seconds <= 0 or duration_seconds > 86400 and duration_seconds % 86400 != 0:
             raise Exception("K线数据周期 %d 错误, 请检查K线数据周期值是否填写正确" % (duration_seconds))
@@ -466,8 +505,17 @@ class TqApi(object):
             "view_width": data_length if len(symbol) == 1 else 8964,
             # 如果同时订阅了两个以上合约K线，初始化数据时默认获取 1w 根K线(初始化完成后修改指令为设定长度)
         }
-        if serial is None or chart_id is not None:  # 判断用户是否指定了 chart_id（参数）, 如果指定了，则一定会发送新的请求。
-            self._send_pack(pack.copy())  # 注意：将数据权转移给TqChan时其所有权也随之转移，因pack还需要被用到，所以传入副本
+        if isinstance(self._backtest, TqReplay):
+            for s in symbol:
+                if s not in self._data.get("quotes", {}):
+                    raise Exception(f"代码 {s} 不存在, 请检查合约代码是否填写正确")
+        if self._loop.is_running() and not isinstance(self._backtest, TqReplay):
+            self.create_task(self._get_kline_serial_async(symbol, chart_id, serial, pack.copy()))
+        else:
+            for s in symbol:
+                self._ensure_symbol(s)
+            if serial is None or chart_id is not None:  # 判断用户是否指定了 chart_id（参数）, 如果指定了，则一定会发送新的请求。
+                self._send_pack(pack.copy())  # 注意：将数据权转移给TqChan时其所有权也随之转移，因pack还需要被用到，所以传入副本
         if serial is None:
             serial = self._init_serial([_get_obj(self._data, ["klines", s, str(dur_id)]) for s in symbol],
                                        data_length, self._prototype["klines"]["*"]["*"]["data"]["@"])
@@ -485,6 +533,12 @@ class TqApi(object):
                 else:
                     raise Exception("获取 %s (%d) 的K线超时，请检查客户端及网络是否正常" % (symbol, duration_seconds))
         return serial["df"]
+
+    async def _get_kline_serial_async(self, symbol, chart_id, serial, pack):
+        for s in symbol:
+            await self._ensure_symbol_async(s)
+        if serial is None or chart_id is not None:
+            self._send_pack(pack)
 
     # ----------------------------------------------------------------------
     def get_tick_serial(self, symbol: str, data_length: int = 200, chart_id: Optional[str] = None) -> pd.DataFrame:
@@ -534,8 +588,6 @@ class TqApi(object):
             50820.0 51580.0
             ...
         """
-        if (not self._stock) and symbol not in self._data.get("quotes", {}):
-            raise Exception("代码 %s 不存在, 请检查合约代码是否填写正确" % (symbol))
         data_length = int(data_length)
         if data_length <= 0:
             raise Exception("K线数据序列长度 %d 错误, 请检查序列长度是否填写正确" % (data_length))
@@ -550,8 +602,13 @@ class TqApi(object):
             "duration": 0,
             "view_width": data_length,
         }
-        if serial is None or chart_id is not None:  # 判断用户是否指定了 chart_id（参数）, 如果指定了，则一定会发送新的请求。
-            self._send_pack(pack.copy())  # pack 的副本数据和所有权转移给TqChan
+        if isinstance(self._backtest, TqReplay) and symbol not in self._data.get("quotes", {}):
+            raise Exception("代码 %s 不存在, 请检查合约代码是否填写正确" % (symbol))
+        elif self._loop.is_running() and symbol not in self._data.get("quotes", {}):
+            self.create_task(self._get_tick_serial_async(symbol, chart_id, serial, pack.copy()))
+        else:
+            if serial is None or chart_id is not None:  # 判断用户是否指定了 chart_id（参数）, 如果指定了，则一定会发送新的请求。
+                self._send_pack(pack.copy())  # pack 的副本数据和所有权转移给TqChan
         if serial is None:
             serial = self._init_serial([_get_obj(self._data, ["ticks", symbol])], data_length,
                                        self._prototype["ticks"]["*"]["data"]["@"])
@@ -565,6 +622,11 @@ class TqApi(object):
             if not self.wait_update(deadline=deadline):
                 raise Exception("获取 %s 的Tick超时，请检查客户端及网络是否正常，且合约代码填写正确" % (symbol))
         return serial["df"]
+
+    async def _get_tick_serial_async(self, symbol, chart_id, serial, pack):
+        await self._ensure_symbol_async(symbol)
+        if serial is None or chart_id is not None:
+            self._send_pack(pack)
 
     # ----------------------------------------------------------------------
     def insert_order(self, symbol: str, direction: str, offset: str, volume: int, limit_price: Union[str, float, None] = None,
@@ -648,9 +710,6 @@ class TqApi(object):
             ...
 
         """
-        if symbol not in self._data.get("quotes", {}):
-            raise Exception("合约代码 %s 不存在, 请检查合约代码是否填写正确" % (symbol))
-        quote = self._data["quotes"][symbol]
         if direction not in ("BUY", "SELL"):
             raise Exception("下单方向(direction) %s 错误, 请检查 direction 参数是否填写正确" % (direction))
         if offset not in ("OPEN", "CLOSE", "CLOSETODAY"):
@@ -660,6 +719,50 @@ class TqApi(object):
             raise Exception("下单手数(volume) %s 错误, 请检查 volume 是否填写正确" % (volume))
         if not order_id:
             order_id = _generate_uuid("PYSDK_insert")
+        (exchange_id, instrument_id) = symbol.split(".", 1)
+
+        if isinstance(self._backtest, TqReplay) and symbol not in self._data.get("quotes", {}):
+            raise Exception("合约代码 %s 不存在, 请检查合约代码是否填写正确" % (symbol))
+        elif self._loop.is_running() and symbol not in self._data.get("quotes", {}):
+            # 需要在异步代码中发送合约信息请求和下单请求
+            self.create_task(self._insert_order_async(symbol, direction, offset, volume, limit_price, advanced, order_id))
+            order = self.get_order(order_id)
+            order.update({
+                "order_id": order_id,
+                "exchange_id": exchange_id,
+                "instrument_id": instrument_id,
+                "direction": direction,
+                "offset": offset,
+                "volume_orign": volume,
+                "volume_left": volume,
+                "status": "ALIVE",
+                "_this_session": True
+            })
+            return order
+        else:
+            self._ensure_symbol(symbol)
+            pack = self._get_insert_order_pack(symbol, direction, offset, volume, limit_price, advanced, order_id)
+            self._send_pack(pack)
+            order = self.get_order(order_id)
+            order.update({
+                "order_id": order_id,
+                "exchange_id": exchange_id,
+                "instrument_id": instrument_id,
+                "direction": direction,
+                "offset": offset,
+                "volume_orign": volume,
+                "volume_left": volume,
+                "status": "ALIVE",
+                "_this_session": True,
+                "limit_price": pack.get("limit_price", float("nan")),
+                "price_type": pack["price_type"],
+                "volume_condition": pack["volume_condition"],
+                "time_condition": pack["time_condition"]
+            })
+            return order
+
+    def _get_insert_order_pack(self, symbol, direction, offset, volume, limit_price, advanced, order_id):
+        quote = self._data["quotes"][symbol]
         (exchange_id, instrument_id) = symbol.split(".", 1)
         msg = {
             "aid": "insert_order",
@@ -702,24 +805,12 @@ class TqApi(object):
                 msg["volume_condition"] = "ALL"
             else:
                 msg["volume_condition"] = "ANY"
-        self._send_pack(msg)
-        order = self.get_order(order_id)
-        order.update({
-            "order_id": order_id,
-            "exchange_id": exchange_id,
-            "instrument_id": instrument_id,
-            "direction": direction,
-            "offset": offset,
-            "volume_orign": volume,
-            "volume_left": volume,
-            "status": "ALIVE",
-            "_this_session": True,
-            "limit_price": msg.get("limit_price", float("nan")),
-            "price_type": msg["price_type"],
-            "volume_condition": msg["volume_condition"],
-            "time_condition": msg["time_condition"]
-        })
-        return order
+        return msg
+
+    async def _insert_order_async(self, symbol, direction, offset, volume, limit_price, advanced, order_id):
+        await self._ensure_symbol_async(symbol)
+        pack = self._get_insert_order_pack(symbol, direction, offset, volume, limit_price, advanced, order_id)
+        self._send_pack(pack)
 
     # ----------------------------------------------------------------------
     def cancel_order(self, order_or_order_id: Union[str, Order]) -> None:
@@ -832,11 +923,18 @@ class TqApi(object):
             ...
         """
         if symbol:
-            if symbol not in self._data.get("quotes", {}):
+            if isinstance(self._backtest, TqReplay) and symbol not in self._data.get("quotes", {}):
                 raise Exception("代码 %s 不存在, 请检查合约代码是否填写正确" % (symbol))
+            elif self._loop.is_running() and symbol not in self._data.get("quotes", {}):
+                self.create_task(self._get_position_async(symbol))
+            else:
+                self._ensure_symbol(symbol)
             return _get_obj(self._data, ["trade", self._account._account_id, "positions", symbol],
                                  self._prototype["trade"]["*"]["positions"]["@"])
         return _get_obj(self._data, ["trade", self._account._account_id, "positions"])
+
+    async def _get_position_async(self, symbol):
+        await self._ensure_symbol_async(symbol)
 
     # ----------------------------------------------------------------------
     def get_order(self, order_id: Optional[str] = None) -> Union[Order, Entity]:
@@ -1200,6 +1298,125 @@ class TqApi(object):
                 registing_objs.append(o)
         return _register_update_chan(registing_objs, chan)
 
+    # ----------------------------------------------------------------------
+    def query_graphql(self, query: str, variables: str, query_id: Optional[str] = None):
+        if isinstance(self._backtest, TqReplay):
+            raise Exception("复盘服务器不支持当前接口")
+        pack = {
+            "query": query,
+            "variables": variables
+        }
+        symbols = _get_obj(self._data, ["symbols"])
+        for symbol_query in symbols.values():
+            if symbol_query.items() >= pack.items():  # 检查是否发送过相同的请求
+                return symbol_query
+
+        query_id = _generate_uuid("PYSDK_api") if query_id is None else query_id
+        self._send_pack({
+            "aid": "ins_query",
+            "query_id": query_id,
+            "query": query,
+            "variables": variables
+        })
+        deadline = time.time() + 30
+        if not self._loop.is_running():
+            while query_id not in symbols:
+                if not self.wait_update(deadline=deadline):
+                    raise Exception("查询合约服务 %s 超时，请检查客户端及网络是否正常" % (query))
+        return _get_obj(self._data, ["symbols", query_id])
+
+    def query_quotes(self, ins_class: str = None, exchange_id: str = None, product_id: str = None, expired: bool = None,
+                     has_night: bool = None):
+        """
+        发送合约服务请求查询，并返回查询结果
+
+        Args:
+            ins_class (str): [可选] 合约类型
+
+            exchange_id (str): [可选] 交易所
+
+            product_id (str): [可选] 品种
+
+            expired (bool): [可选] 是否已下市
+
+            has_night (bool): [可选] 是否有夜盘
+        """
+        if self._loop.is_running():
+            raise Exception("协程不支持当前接口调用")
+        variables = {}
+        if not ins_class is None:
+            variables["class"] = ins_class
+        if not exchange_id is None:
+            variables["exchange_id"] = exchange_id
+        if not product_id is None:
+            variables["product_id"] = product_id
+        if not expired is None:
+            variables["expired"] = expired
+        if not has_night is None:
+            variables["has_night"] = has_night
+        types = {
+            "class": "Class",
+            "exchange_id": "String",
+            "product_id": "String",
+            "expired": "Boolean",
+            "has_night": "Boolean"
+        }
+        query_cond = ",".join([f"${v}:{types[v]}" for v in variables])
+        query_cond = f"({query_cond})" if query_cond else ''
+        symbol_info_cond = ",".join([f"{v}:${v}" for v in variables])
+        symbol_info_cond = f"({symbol_info_cond})" if symbol_info_cond else ''
+        query = f"query{query_cond}{{symbol_info{symbol_info_cond}{{ ... on basic {{instrument_id }} }}}}"
+        query_result = self.query_graphql(query, json.dumps(variables))
+        quotes = _symbols_to_quotes(query_result)
+        return [q["instrument_id"] for q in quotes.values()]
+
+    def query_cont_quotes(self):
+        """
+        返回主力连续合约对应的标的合约列表
+        """
+        if self._loop.is_running():
+            raise Exception("协程不支持当前接口调用")
+        variables = {"class": "cont"}
+        on_cont = "... on derivative{ underlying { edges {node{ ... on basic{ instrument_id exchange_id } ... on future {product_id} }}}}"
+        query = f"query($class:Class){{symbol_info(class:$class){{ ... on basic {{instrument_id }} {on_cont} }}}}"
+        query_result = self.query_graphql(query, json.dumps(variables))
+        quotes = _symbols_to_quotes(query_result)
+        return [q["underlying_symbol"] for q in quotes.values() if q.get("underlying_symbol")]
+
+    def query_options(self, underlying_symbol: str = None, option_class=None, option_month=None, strike_price=None,
+                      has_A=None):
+        """
+        发送合约服务请求查询，查询符合条件的期权列表，并返回查询结果
+
+        Args:
+            underlying_symbol (str): [可选] 标的合约
+
+            option_class (str): [可选] 期权类型 CALL or PUL
+
+            option_month (str): [可选] 行权月份
+
+            strike_price (bool): [可选] 行权价格
+
+            has_A (bool): [可选] 是否含有A
+
+            expired (bool): [可选] 是否已下市
+        """
+        if self._loop.is_running():
+            raise Exception("协程不支持当前接口调用")
+        variables = {"derivative_class": "option"}
+        if not underlying_symbol is None:
+            variables["underlying_symbol"] = underlying_symbol
+        query_cond = f"($derivative_class:Class {',$underlying_symbol:String' if underlying_symbol else ''})"
+        symbol_info_cond = f"(instrument_id:$underlying_symbol)" if underlying_symbol else ''
+        query = f"query{query_cond}{{symbol_info{symbol_info_cond}{{ ... on basic {{instrument_id derivative(class: $derivative_class) {{ {_query_for_derivative()} }} }} }} }}"
+        query_result = self.query_graphql(query, json.dumps(variables))
+        quotes = _symbols_to_quotes(query_result)
+        options = []
+        for q in quotes.values():
+            for node in q["derivative"]["edges"]:
+                option = node["node"]
+                options.append(option["instrument_id"])
+        return options
 
     # ----------------------------------------------------------------------
     def _call_soon(self, org_call_soon, callback, *args, **kargs):
@@ -1262,16 +1479,18 @@ class TqApi(object):
 
         # 连接合约和行情服务器
         ws_md_send_chan, ws_md_recv_chan = TqChan(self), TqChan(self)
-        quotes = self._fetch_symbol_info(self._ins_url)
-        if isinstance(self._backtest, TqBacktest):
-            _quotes_add_night(quotes)  # 补丁：回测时添加合约服务中的夜盘
-        ws_md_recv_chan.send_nowait({
-            "aid": "rtn_data",
-            "data": [{
-                "quotes": quotes
-            }]
-        })  # 获取合约信息
+        if isinstance(self._backtest, TqReplay):  # 复盘需要旧版的合约服务文件
+            quotes = self._fetch_symbol_info(self._ins_url)
+            ws_md_recv_chan.send_nowait({
+                "aid": "rtn_data",
+                "data": [{
+                    "quotes": quotes
+                }]
+            })  # 获取合约信息
         self.create_task(self._connect(self._md_url, ws_md_send_chan, ws_md_recv_chan))  # 启动行情websocket连接
+        md_recv_handler_chan = TqChan(self)
+        self.create_task(self._md_handler(ws_md_recv_chan, md_recv_handler_chan))
+        ws_md_recv_chan = md_recv_handler_chan
 
         # 复盘模式，定时发送心跳包, 并将复盘日期发在行情的 recv_chan
         if isinstance(self._backtest, TqReplay):
@@ -1326,35 +1545,22 @@ class TqApi(object):
             "aid": "peek_message"
         })
 
-    def _fetch_symbol_info(self, url):
-        """获取合约信息"""
-        rsp = requests.get(url, headers=self._base_headers, timeout=30)
-        rsp.raise_for_status()
-        return {
-            k: {
-                "ins_class": v.get("class", ""),
-                "instrument_id": v.get("instrument_id", ""),
-                "exchange_id": v.get("exchange_id", ""),
-                "margin": v.get("margin"),  # 用于内部实现模拟交易, 不作为 api 对外可用数据（即 Quote 类中无此字段）
-                "commission": v.get("commission"),  # 用于内部实现模拟交易, 不作为 api 对外可用数据（即 Quote 类中无此字段）
-                "price_tick": v["price_tick"],
-                "price_decs": v["price_decs"],
-                "volume_multiple": v["volume_multiple"],
-                "max_limit_order_volume": v.get("max_limit_order_volume", 0),
-                "max_market_order_volume": v.get("max_market_order_volume", 0),
-                "min_limit_order_volume": v.get("min_limit_order_volume", 0),
-                "min_market_order_volume": v.get("min_market_order_volume", 0),
-                "underlying_symbol": v.get("underlying_symbol", ""),
-                "strike_price": v.get("strike_price", float("nan")),
-                "expired": v["expired"],
-                "trading_time": v.get("trading_time"),
-                "expire_datetime": v.get("expire_datetime"),
-                "delivery_month": v.get("delivery_month"),
-                "delivery_year": v.get("delivery_year"),
-                "option_class": v.get("option_class", ""),
-                "product_id": v.get("product_id", ""),
-            } for k, v in rsp.json().items()
-        }
+    async def _md_handler(self, origin_recv_chan, recv_chan):
+        async for pack in origin_recv_chan:
+            if pack["aid"] == "rtn_data":
+                # 过滤 symbols
+                quotes = {}
+                for d in pack["data"]:
+                    if d.get("symbols", None) is None:
+                        continue
+                    for q_id, query_result in d.get("symbols").items():
+                        if query_result.get("error", ""):
+                            # 这里包含了合约不存在的错误
+                            raise Exception(f"查询合约服务报错 {query_result['error']}")
+                        if q_id.startswith("PYSDK_quote"):
+                            quotes.update(_symbols_to_quotes(query_result))
+                pack["data"].append({"quotes": quotes})
+            await recv_chan.send(pack)
 
     def _init_serial(self, root_list, width, default):
         last_id_list = [root.get("last_id", -1) for root in root_list]
