@@ -4,6 +4,7 @@ __author__ = 'chengzhi'
 
 import asyncio
 import json
+import math
 import time
 from datetime import date, datetime
 from typing import Union
@@ -16,7 +17,7 @@ from tqsdk.datetime import _get_trading_day_start_time, _get_trading_day_end_tim
 from tqsdk.diff import _merge_diff, _get_obj
 from tqsdk.entity import Entity
 from tqsdk.exceptions import BacktestFinished
-from tqsdk.utils import _generate_uuid
+from tqsdk.utils import _generate_uuid, _query_for_quote
 
 
 class TqBacktest(object):
@@ -91,10 +92,17 @@ class TqBacktest(object):
         self._is_first_send = True
         md_task = self._api.create_task(self._md_handler())
         try:
-            await self._send_snapshot()
+            self._diffs.append({
+                "quotes": {},
+                "ins_list": "",
+                "mdhis_more_data": False,
+            })
             async for pack in self._sim_send_chan:
                 self._logger.debug("TqBacktest message received: %s", pack)
-                if pack["aid"] == "subscribe_quote":
+                if pack["aid"] == "ins_query":
+                    await self._md_send_chan.send(pack)
+                    await self._ensure_query(pack["query_id"])
+                elif pack["aid"] == "subscribe_quote":
                     self._diffs.append({
                         "ins_list": pack["ins_list"]
                     })
@@ -140,53 +148,12 @@ class TqBacktest(object):
             })
             for d in pack.get("data", []):
                 _merge_diff(self._data, d, self._api._prototype, False)
-
-    async def _send_snapshot(self):
-        """发送初始合约信息"""
-        async with TqChan(self._api, last_only=True) as update_chan:  # 等待与行情服务器连接成功
-            self._data["_listener"].add(update_chan)
-            while self._data.get("mdhis_more_data", True):
-                await update_chan.recv()
-        # 发送合约信息截面
-        quotes = {}
-        for ins, quote in self._data["quotes"].items():
-            if not ins.startswith("_"):
-                quotes[ins] = {
-                    "open": None,  # 填写None: 删除api中的这个字段
-                    "close": None,
-                    "settlement": None,
-                    "lower_limit": None,
-                    "upper_limit": None,
-                    "pre_open_interest": None,
-                    "pre_settlement": None,
-                    "pre_close": None,
-                    "ins_class": quote.get("ins_class", ""),
-                    "instrument_id": quote.get("instrument_id", ""),
-                    "exchange_id": quote.get("exchange_id", ""),
-                    "margin": quote.get("margin"),  # 用于内部实现模拟交易, 不作为api对外可用数据（即 Quote 类中无此字段）
-                    "commission": quote.get("commission"),  # 用于内部实现模拟交易, 不作为api对外可用数据（即 Quote 类中无此字段）
-                    "price_tick": quote["price_tick"],
-                    "price_decs": quote["price_decs"],
-                    "volume_multiple": quote["volume_multiple"],
-                    "max_limit_order_volume": quote["max_limit_order_volume"],
-                    "max_market_order_volume": quote["max_market_order_volume"],
-                    "min_limit_order_volume": quote["min_limit_order_volume"],
-                    "min_market_order_volume": quote["min_market_order_volume"],
-                    "underlying_symbol": quote["underlying_symbol"],
-                    "strike_price": quote["strike_price"],
-                    "expired": None,
-                    "trading_time": quote.get("trading_time"),
-                    "expire_datetime": quote.get("expire_datetime"),
-                    "delivery_month": quote.get("delivery_month"),
-                    "delivery_year": quote.get("delivery_year"),
-                    "option_class": quote.get("option_class", ""),
-                    "product_id": quote.get("product_id", ""),
-                }
-        self._diffs.append({
-            "quotes": quotes,
-            "ins_list": "",
-            "mdhis_more_data": False,
-        })
+                # 收到的 symbols 应该转发给下游
+                if d.get("symbols", None):
+                    self._diffs.append({"symbols": d["symbols"]})
+                # 收到的 quotes 应该转发给下游，回测其实不会发送 subscribe_quote, 所以收到的 quotes 都是合约信息的回复
+                if d.get("quotes", None):
+                    self._diffs.append({"quotes": d["quotes"]})
 
     async def _send_diff(self):
         """发送数据到 api, 如果 self._diffs 不为空则发送 self._diffs, 不推进行情时间, 否则将时间推进一格, 并发送对应的行情"""
@@ -268,7 +235,21 @@ class TqBacktest(object):
             }
             await self._fetch_serial((ins, dur))
 
+    async def _ensure_query(self, query_id):
+        async with TqChan(self._api, last_only=True) as update_chan:
+            self._data["_listener"].add(update_chan)
+            while query_id not in self._data.get("symbols", {}):
+                await update_chan.recv()
+
     async def _ensure_quote(self, ins):
+        quote = _get_obj(self._data, ["quotes", ins])
+        if math.isnan(quote.get("price_tick")):
+            query_pack = _query_for_quote(ins)
+            await self._md_send_chan.send(query_pack)
+            async with TqChan(self._api, last_only=True) as update_chan:
+                quote["_listener"].add(update_chan)
+                while query_pack["query_id"] in self._data.get("symbols", {}):  # 等到确实收到 quote 的合约信息之后再继续执行
+                    await update_chan.recv()
         if ins not in self._quotes or self._quotes[ins]["min_duration"] > 60000000000:
             await self._ensure_serial(ins, 60000000000)
 
