@@ -193,11 +193,11 @@ class TqSim(object):
         """quote收到行情后返回"""
         quote = _get_obj(self._data, ["quotes", symbol], Quote(self._api))
         _register_update_chan(quote, quote_chan)
-        if quote.get("datetime", ""):
+        if quote.get("datetime", "") and quote.get("price_tick") == quote.get("price_tick"):
             return quote.copy()
         async for _ in quote_chan:
             quote_chan.task_done()
-            if quote.get("datetime", ""):
+            if quote.get("datetime", "") and quote.get("price_tick") == quote.get("price_tick"):
                 return quote.copy()
 
     async def _quote_handler(self, symbol, quote_chan, order_chan):
