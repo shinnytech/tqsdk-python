@@ -683,12 +683,12 @@ class TqApi(object):
         elif limit_price is None:
             if exchange_id in ["CFFEX", "SHFE", "INE"]:
                 raise Exception(f"{symbol} 不支持市价单，请使用 limit_price 参数指定价格。中金所、上期所、原油交易所不支持市价单。")
-            if exchange_id == "DCE" and quote.ins_class == "OPTION":
+            if exchange_id == "DCE" and quote.ins_class == "option":
                 raise Exception(f"{symbol} 不支持市价单，请使用 limit_price 参数指定价格。大商所期权不支持市价单。")
             msg["price_type"] = "ANY"
             msg["time_condition"] = "IOC"
             if advanced == "FOK":
-                if exchange_id == "CZCE" and quote.ins_class == "FUTURE":
+                if exchange_id == "CZCE" and quote.ins_class == "future":
                     raise Exception(f"{symbol} 不支持 advanced 为 \"FOK\"。郑商所期货品种不支持 FOK。")
                 msg["volume_condition"] = "ALL"
             else:
@@ -698,7 +698,7 @@ class TqApi(object):
             msg["limit_price"] = float(limit_price)
             msg["time_condition"] = "IOC" if advanced else "GFD"
             if advanced == "FOK":
-                if exchange_id == "CZCE" and quote.ins_class == "FUTURE":
+                if exchange_id == "CZCE" and quote.ins_class == "future":
                     raise Exception(f"{symbol} 不支持 advanced 为 \"FOK\"。郑商所期货品种不支持 FOK。")
                 msg["volume_condition"] = "ALL"
             else:

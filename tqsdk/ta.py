@@ -2547,7 +2547,7 @@ def BS_VALUE(df, quote, r=0.025, v=None):
         # 预计的输出是这样的:
         [..., 3036.698780158862, 2393.333388624822, 2872.607833620801]
     """
-    if not (quote.ins_class.endswith("OPTION") and quote.underlying_symbol == df["symbol"][0]):
+    if not (quote.ins_class == "option" and quote.underlying_symbol == df["symbol"][0]):
         return pd.DataFrame(np.full_like(df["close"], float('nan')), columns=["bs_price"])
     if v is None:
         v = tqsdk.tafunc._get_volatility(df["close"], df["duration"], quote.trading_time)
@@ -2605,8 +2605,7 @@ def OPTION_GREEKS(df, quote, r=0.025, v=None):
 
     """
     new_df = pd.DataFrame()
-    if not (quote.ins_class.endswith("OPTION") and quote.instrument_id == df["symbol"][0]
-            and quote.underlying_symbol == df["symbol1"][0]):
+    if not (quote.ins_class == "option" and quote.instrument_id == df["symbol"][0] and quote.underlying_symbol == df["symbol1"][0]):
         new_df["delta"] = pd.Series(np.full_like(df["close1"], float('nan')))
         new_df["theta"] = pd.Series(np.full_like(df["close1"], float('nan')))
         new_df["gamma"] = pd.Series(np.full_like(df["close1"], float('nan')))
@@ -2658,7 +2657,7 @@ def OPTION_VALUE(df, quote):
         api.close()
     """
     new_df = pd.DataFrame()
-    if not (quote.ins_class.endswith("OPTION") and quote.instrument_id == df["symbol"][0]
+    if not (quote.ins_class == "option"and quote.instrument_id == df["symbol"][0]
             and quote.underlying_symbol == df["symbol1"][0]):
         new_df["intrins"] = pd.Series(np.full_like(df["close1"], float('nan')))
         new_df["time"] = pd.Series(np.full_like(df["close1"], float('nan')))
@@ -2703,8 +2702,7 @@ def OPTION_IMPV(df, quote, r=0.025):
         print(list(impv["impv"] * 100))
         api.close()
     """
-    if not (quote.ins_class.endswith("OPTION") and quote.instrument_id == df["symbol"][0]
-            and quote.underlying_symbol == df["symbol1"][0]):
+    if not (quote.ins_class == "option" and quote.instrument_id == df["symbol"][0] and quote.underlying_symbol == df["symbol1"][0]):
         return pd.DataFrame(np.full_like(df["close1"], float('nan')), columns=["impv"])
     his_v = tqsdk.tafunc._get_volatility(df["close1"], df["duration"], quote.trading_time)
     his_v = 0.3 if math.isnan(his_v) else his_v

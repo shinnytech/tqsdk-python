@@ -208,7 +208,7 @@ class TqSim(object):
             await self._subscribe_quote(symbol)
             quote = await self._ensure_quote(symbol, quote_chan)
             underlying_quote = None
-            if quote["ins_class"] in ["FUTURE_OPTION", "OPTION"]:
+            if quote["ins_class"] == "option":
                 # 如果是期权，订阅标的合约行情，确定收到期权标的合约行情
                 underlying_symbol = quote["underlying_symbol"]
                 await self._subscribe_quote(underlying_symbol)
@@ -410,11 +410,10 @@ class TqSim(object):
                                          volume_short_frozen=volume_short_frozen, priority=priority):
                 return "平仓手数不足"
         else:
-            if ("commission" not in quote or "margin" not in quote) \
-                    and quote["ins_class"] not in ["OPTION", "FUTURE_OPTION"]:
+            if ("commission" not in quote or "margin" not in quote) and quote["ins_class"] != "option":
                 # 除了期权外，主连、指数和组合没有这两个字段
                 return "合约不存在"
-            if quote["ins_class"] in ["OPTION", "FUTURE_OPTION"]:
+            if quote["ins_class"] == "option":
                 if order["price_type"] == "ANY" and order["exchange_id"] != "CZCE":
                     return f"此交易所（{order['exchange_id']}) 不支持期权市价单"
                 elif order["direction"] == "SELL":  # 期权的SELL义务仓
@@ -454,7 +453,7 @@ class TqSim(object):
     def _match_order(self, order, symbol, quote, underlying_quote=None):
         ask_price = quote["ask_price1"]
         bid_price = quote["bid_price1"]
-        if quote["ins_class"] == "FUTURE_INDEX":
+        if quote["ins_class"] == "index":
             # 在指数交易时，使用 tick 进行回测时，backtest 发的 quote 没有买一卖一价；或者在实时行情中，指数的 quote 也没有买一卖一价
             if ask_price != ask_price:
                 ask_price = quote["last_price"] + quote["price_tick"]
@@ -487,8 +486,7 @@ class TqSim(object):
             # todo: 可能导致测试结果不确定
             "trade_date_time": _get_trade_timestamp(self._current_datetime, self._local_time_record),
             # 期权quote没有commission字段, 设为固定10元一张
-            "commission": (quote["commission"] if quote["ins_class"] not in ["OPTION", "FUTURE_OPTION"] else 10) *
-                          order["volume_left"],
+            "commission": (quote["commission"] if quote["ins_class"] != "option" else 10) * order["volume_left"]
         }
         trade_log = self._ensure_trade_log()
         trade_log["trades"].append(trade)
@@ -727,7 +725,7 @@ class TqSim(object):
                 position["float_profit_long"] += float_profit_long
                 position["float_profit_short"] += float_profit_short
                 position["float_profit"] += float_profit
-                if quote["ins_class"] in ["OPTION", "FUTURE_OPTION"]:  # 期权市值 = 权利金 + 期权持仓盈亏
+                if quote["ins_class"] == "option":  # 期权市值 = 权利金 + 期权持仓盈亏
                     position["market_value_long"] += float_profit_long  # 权利方市值(始终 >= 0)
                     position["market_value_short"] += float_profit_short  # 义务方市值(始终 <= 0)
                     position["market_value"] += float_profit
@@ -750,7 +748,7 @@ class TqSim(object):
                 "volume_long"] * volume_long
             market_value = 0
             margin = 0.0
-            if quote["ins_class"] in ["OPTION", "FUTURE_OPTION"]:
+            if quote["ins_class"] == "option":
                 # 期权市值 = 权利金 + 期权持仓盈亏
                 market_value = position["last_price"] * volume_long * volume_multiple
                 position["market_value_long"] += market_value
@@ -795,8 +793,7 @@ class TqSim(object):
                         position["pos_long_his"] = 0
 
             self._adjust_account(float_profit=float_profit,
-                                 position_profit=-close_profit if quote["ins_class"] not in ["OPTION",
-                                                                                             "FUTURE_OPTION"] else 0,
+                                 position_profit=-close_profit if quote["ins_class"] != "option" else 0,
                                  close_profit=close_profit, margin=margin, market_value=market_value)
         if volume_short:  # volume_short > 0: 卖开,  < 0:买平
             close_profit = 0 if volume_short > 0 else (position["position_price_short"] - position[
@@ -812,7 +809,7 @@ class TqSim(object):
                 "volume_short"] * volume_short
             market_value = 0
             margin = 0
-            if quote["ins_class"] in ["OPTION", "FUTURE_OPTION"]:
+            if quote["ins_class"] == "option":
                 market_value = -(position["last_price"] * volume_short * volume_multiple)
                 position["market_value_short"] += market_value
                 position["market_value"] += market_value
@@ -865,8 +862,7 @@ class TqSim(object):
                         position["pos_short_today"] += position["pos_short_his"]
                         position["pos_short_his"] = 0
             self._adjust_account(float_profit=float_profit,
-                                 position_profit=-close_profit if quote["ins_class"] not in ["OPTION",
-                                                                                             "FUTURE_OPTION"] else 0,
+                                 position_profit=-close_profit if quote["ins_class"] != "option" else 0,
                                  close_profit=close_profit,
                                  margin=margin, market_value=market_value)
         self._send_position(position)
