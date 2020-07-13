@@ -51,13 +51,14 @@ class MockInsServer():
 
 
 class MockServer():
-    def __init__(self, td_url_character="opentd"):
+    def __init__(self, td_url_character="opentd", md_url_character="openmd"):
         self.loop = asyncio.new_event_loop()
         self.connections = {}
         self.server_md = None
         self.server_td = None
         self.md_port = 5100
         self.td_port = 5200
+        self.md_url_character = md_url_character
         self.td_url_character = td_url_character
         self._expecting = {}
         self.stop_signal = self.loop.create_future()
@@ -123,7 +124,7 @@ class MockServer():
                 item["type"] = "received"
             else:
                 continue
-            if "openmd" in line:
+            if self.md_url_character in line:
                 item["source"] = "md"
             elif self.td_url_character in line:
                 item["source"] = "td"
