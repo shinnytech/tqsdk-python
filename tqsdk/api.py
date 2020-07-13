@@ -59,7 +59,7 @@ class TqApi(object):
 
     def __init__(self, account: Union[TqAccount, TqSim, None] = None, auth: Optional[str] = None, url: Optional[str] = None,
                  backtest: Union[TqBacktest, TqReplay, None] = None, web_gui: [bool, str] = False, debug: [bool, str] = None,
-                 loop: Optional[asyncio.AbstractEventLoop] = None, _stock: bool = False, _ins_url=None, _md_url=None, _td_url=None) -> None:
+                 loop: Optional[asyncio.AbstractEventLoop] = None, _ins_url=None, _md_url=None, _td_url=None) -> None:
         """
         创建天勤接口实例
 
@@ -170,9 +170,8 @@ class TqApi(object):
         self._auth = auth  # 支持用户授权
         self._account = TqSim() if account is None else account
         self._backtest = backtest
-        self._stock = False if isinstance(self._backtest, TqReplay) else _stock
         self._ins_url = os.getenv("TQ_INS_URL", "https://openmd.shinnytech.com/t/md/symbols/latest.json")
-        self._md_url = os.getenv("TQ_MD_URL", "ws://nfmd.shinnytech.com/t/nfmd/front/mobile" if self._stock else "wss://openmd.shinnytech.com/t/md/front/mobile")
+        self._md_url = os.getenv("TQ_MD_URL", "wss://openmd.shinnytech.com/t/md/front/mobile")
         self._td_url = os.getenv("TQ_TD_URL", None)
         if url and isinstance(self._account, TqSim):
             self._md_url = url
