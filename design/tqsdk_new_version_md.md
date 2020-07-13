@@ -3,6 +3,7 @@
 ## 目标效果
 
 1. tqsdk 完全替换旧版合约服务
+    注意：复盘服务器还是使用旧版的合约服务和行情服务，需要兼容复盘的情况
 
 2. 用户使用体验不降级, 兼容支持之前官网提供的以下功能
 
@@ -33,6 +34,9 @@ ls = [v["underlying_symbol"] for k,v in api._data["quotes"].items() if k.startsw
 
 * 在 setup_connection 里修改，初始化行情链接之后，新增 _md_handler_task 处理 ws_md_recv_chan
 ```python
+    # 在复盘情况下，还需要初始化合约服务信息
+    if isinstance(self._backtest, TqReplay):
+        
     self.create_task(self._connect(self._md_url, ws_md_send_chan, ws_md_recv_chan))  # 启动行情websocket连接
     md_recv_handler_chan = TqChan(self)
     self.create_task(self._md_handler(ws_md_recv_chan, md_recv_handler_chan))
@@ -60,40 +64,47 @@ ls = [v["underlying_symbol"] for k,v in api._data["quotes"].items() if k.startsw
 * 新增加几个接口提供给用户使用，能够完成 https://shinnytech.atlassian.net/browse/BE-247 https://shinnytech.atlassian.net/browse/BE-248
 
 ```python
-# graphgl 这个方案里 query_graphql 也只给用户使用，tqsdk 代码不会用到这个函数
-def query_graphql(self, query: str, variables: str, query_id: Optional[str] = None):
-    pack = {
-        "query": query,
-        "variables": variables
-    }
-    symbols = _get_obj(self._data, ["symbols"])
-    for symbol_query in symbols.values():
-        if symbol_query.items() >= pack.items():
-            return symbol_query
-
-    query_id = query_id if query_id else _generate_uuid("PYSDK_api")
-    self._send_pack({
-        "aid": "ins_query",
-        "query_id": query_id
-    }.update(pack))
-    symbol_query = _get_obj(self._data, ["symbols", query_id])
-    deadline = time.time() + 30
-    if not self._loop.is_running():
-        while symbol_query.items() >= pack.items():
-            if not self.wait_update(deadline=deadline):
-                raise Exception("查询合约服务 %s 超时，请检查客户端及网络是否正常" % (query))
-    return symbol_query
-
-以下三个接口，先拼出来请求的 query 和 variables，然后调用 query_graphql。
-
-# 全部 期货 期权 指数 主力连续 组合
-def query_quotes(ins_class: str = None, exchange_id: str = None, product_id: str = None, expired: bool = None, has_night: bool = None) => if api._loop.is_running() None else list[str]:
-# 主连对应的标的合约
-def query_cont_quotes(exchange_id: str = None, product_id: str = None) => if api._loop.is_running() None else list[str]:
-# 查询符合条件的期权
-def query_options(underlying_symbol:str=None, option_class=None, option_month=None, strike_price=None, has_A=None) => if api._loop.is_running() None else list[str]:
-
+    # graphgl 这个方案里 query_graphql 也只给用户使用，tqsdk 代码不会用到这个函数
+    def query_graphql(self, query: str, variables: str, query_id: Optional[str] = None):
+        if isinstance(self._backtest, TqReplay):
+            raise Exception("复盘服务器不支持当前接口")
+        pack = {
+            "query": query,
+            "variables": variables
+        }
+        symbols = _get_obj(self._data, ["symbols"])
+        for symbol_query in symbols.values():
+            if symbol_query.items() >= pack.items():
+                return symbol_query
+    
+        query_id = query_id if query_id else _generate_uuid("PYSDK_api")
+        self._send_pack({
+            "aid": "ins_query",
+            "query_id": query_id
+        }.update(pack))
+        symbol_query = _get_obj(self._data, ["symbols", query_id])
+        deadline = time.time() + 30
+        if not self._loop.is_running():
+            while symbol_query.items() >= pack.items():
+                if not self.wait_update(deadline=deadline):
+                    raise Exception("查询合约服务 %s 超时，请检查客户端及网络是否正常" % (query))
+        return symbol_query
+    
+    # 以下三个接口，先拼出来请求的 query 和 variables，然后调用 query_graphql。
+    # 只能在同步代码中使用，不能在协程中使用。如果要支持协程，需要再增加接口。
+    
+    # 全部 期货 期权 指数 主力连续 组合
+    def query_quotes(ins_class: str = None, exchange_id: str = None, product_id: str = None, expired: bool = None, has_night: bool = None):
+        if self._loop.is_running():
+            raise Exception("协程不支持当前接口调用")
+        pass
+    # 主连对应的标的合约
+    def query_cont_quotes(exchange_id: str = None, product_id: str = None) => if api._loop.is_running() None else list[str]:
+    # 查询符合条件的期权
+    def query_options(underlying_symbol:str=None, option_class=None, option_month=None, strike_price=None, has_A=None) => if api._loop.is_running() None else list[str]:
 ```
+
+* 去掉之前临时添加的  _stock 参数
 
 * 不会再下载合约文件作为第一个数据包
 
@@ -107,14 +118,126 @@ def query_options(underlying_symbol:str=None, option_class=None, option_month=No
         # ......
         # ......
         # todo: 兼容旧版 sdk 所做的修改
-        q, v = _query_for_class(["future", "index", "combine", "cont"])
-        self.query_graphql(q, v, _generate_uuid("PYSDK_quote"))
+        if not isinstance(self._backtest, TqReplay):
+            q, v = _query_for_class(["future", "index", "combine", "cont"])
+            self.query_graphql(q, v, _generate_uuid("PYSDK_quote"))
 ```
 
 * 检查合约是否存在，不能发送不存在的合约给服务器，get_quote get_tick_seriel get_kline_seriel get_position insert_order
     - 在同步代码中，先请求合约信息，再订阅合约、请求kline
     - 在协程中，使用 create_task, 保证发送请求的顺序依然是先请求合约信息，再订阅合约、请求kline
 
+```python
+    """
+    以 get_quote 为例的处理流程，一共有八种情况：
+    1. md--ioloop--symbol_in_quotes
+    2. md--ioloop--symbol_not_in_quotes
+    3. md--sync--symbol_in_quotes
+    4. md--sync--symbol_not_in_quotes
+    5. tqreplay--ioloop--symbol_in_quotes
+    6. tqreplay--ioloop--symbol_not_in_quotes
+    7. tqreplay--sync--symbol_in_quotes
+    8. tqreplay--sync--symbol_not_in_quotes
+    """
+
+    def get_quote(symbol):
+        if isinstance(self._backtest, TqReplay) and symbol not in self._data.get("quotes", {}):
+            # 6. tqreplay--ioloop--symbol_not_in_quotes
+            # 8. tqreplay--sync--symbol_not_in_quotes
+            raise Exception("合约不存在")
+        elif self._loop.is_running() and symbol not in self._data.get("quotes", {}):
+            # 2. md--ioloop--symbol_not_in_quotes
+            self.create_task(self._get_quote_async(symbol))  # 协程中需要等待合约信息，然后发送订阅请求
+            return _get_obj(self._data, ["quotes", symbol], self._prototype["quotes"]["#"])
+        else:
+            # 1. md--ioloop--symbol_in_quotes
+            # 3. md--sync--symbol_in_quotes
+            # 4. md--sync--symbol_not_in_quotes
+            # 5. tqreplay--ioloop--symbol_in_quotes
+            # 7. tqreplay--sync--symbol_in_quotes
+            self._ensure_symbol(symbol)  # 对于 1.3.5.7. 都是直接返回，对于 4. 会先请求合约信息
+            quote = _get_obj(self._data, ["quotes", symbol], self._prototype["quotes"]["#"])
+            if symbol not in self._requests["quotes"]:
+                self._requests["quotes"].add(symbol)
+                self._send_pack({
+                    "aid": "subscribe_quote",
+                    "ins_list": ",".join(self._requests["quotes"]),
+                })
+                deadline = time.time() + 30
+                while not self._loop.is_running() and quote["datetime"] == "":
+                    if not self.wait_update(deadline=deadline):
+                        raise Exception(f"获取 {symbol} 的行情信息超时，请检查客户端及网络是否正常，且合约代码填写正确")
+            return quote
+
+    def _ensure_symbol(self, symbol):
+        # 已经收到收到合约信息之后返回，同步
+        if symbol not in self._data.get("quotes", {}):
+            query_pack = _query_for_quote(symbol)
+            self._send_pack(query_pack)
+            deadline = time.time() + 30
+            while query_pack["query_id"] not in self._data.get("symbols", {}):
+                if not self.wait_update(deadline=deadline):
+                    raise Exception(f"获取 {symbol} 的合约信息超时，请检查客户端及网络是否正常，且合约代码填写正确")
+
+    async def _ensure_symbol_async(self, symbol):
+        # 已经收到收到合约信息之后返回，异步
+        if symbol not in self._data.get("quotes", {}):
+            query_pack = _query_for_quote(symbol)
+            self._send_pack(query_pack)
+            async with self.register_update_notify() as update_chan:
+                async for _ in update_chan:
+                    if query_pack["query_id"] in self._data.get("symbols", {}):
+                        break
+
+    async def _get_quote_async(self, symbol):
+        # 协程中, 在收到合约信息之后再发送订阅行情请求，来保证，不会发送订阅请求去订阅不存在的合约
+        await self._ensure_symbol_async(symbol)
+        if symbol not in self._requests["quotes"]:
+            self._requests["quotes"].add(symbol)
+            self._send_pack({
+                "aid": "subscribe_quote",
+                "ins_list": ",".join(self._requests["quotes"]),
+            })
+```
+
+```python
+    """
+    以 get_kline_serial 为例的处理流程，一共有八种情况：
+    1. md--ioloop--symbol_in_quotes
+    2. md--ioloop--symbol_not_in_quotes
+    3. md--sync--symbol_in_quotes
+    4. md--sync--symbol_not_in_quotes
+    5. tqreplay--ioloop--symbol_in_quotes
+    6. tqreplay--ioloop--symbol_not_in_quotes
+    7. tqreplay--sync--symbol_in_quotes
+    8. tqreplay--sync--symbol_not_in_quotes
+    """
+
+    def get_quote(symbol):
+        # ... 检查参数
+        
+        if isinstance(self._backtest, TqReplay):
+            # 5. tqreplay--ioloop--symbol_in_quotes
+            # 7. tqreplay--sync--symbol_in_quotes
+            for s in symbol:
+                if s not in self._data.get("quotes", {}):
+                    # 6. tqreplay--ioloop--symbol_not_in_quotes
+                    # 8. tqreplay--sync--symbol_not_in_quotes
+                    raise Exception(f"代码 {s} 不存在, 请检查合约代码是否填写正确")
+        if self._loop.is_running() and not isinstance(self._backtest, TqReplay):
+            # 1. md--ioloop--symbol_in_quotes
+            # 2. md--ioloop--symbol_not_in_quotes
+            self.create_task(self._get_kline_serial_async(symbol, chart_id, serial, pack.copy()))
+        else:
+            # 3. md--sync--symbol_in_quotes
+            # 4. md--sync--symbol_not_in_quotes
+            # 5. tqreplay--ioloop--symbol_in_quotes
+            # 7. tqreplay--sync--symbol_in_quotes
+            for s in symbol:
+                self._ensure_symbol(s)
+            if serial is None or chart_id is not None:  # 判断用户是否指定了 chart_id（参数）, 如果指定了，则一定会发送新的请求。
+                self._send_pack(pack.copy())  
+```
 
 ### TqAccount
 
