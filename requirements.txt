@@ -1,5 +1,5 @@
 certifi
-websockets>=8.1
+websockets>=8.0
 requests
 numpy
 pandas>=0.24.0
