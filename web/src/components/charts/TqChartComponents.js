@@ -214,15 +214,19 @@ export default {
         chartInstance.setMainSeries(this.instrumentId, this.duration, klines, this.mainType)
         chartInstance.price_decs = quote.price_decs
         this.$nextTick(function () {
-          this.updateTqSdkChartData()
+          this.updateTqSdkChartData(true)
           this.updateTrades(true)
           this.updatePositionRect(true)
         })
       }
     },
-    updateTqSdkChartData () {
+    updateTqSdkChartData (updateAll) {
       let chartDatas = this.$tqsdk.get_by_path(['draw_chart_datas', chartInstance.symbol, chartInstance.duration])
-      if (chartDatas && chartDatas._epoch === this.$tqsdk.dm._epoch) {
+      if (updateAll) {
+        for (let seriesId in chartDatas) {
+          chartInstance.addSeries(seriesId, chartDatas[seriesId])
+        }
+      } else if (chartDatas && chartDatas._epoch === this.$tqsdk.dm._epoch) {
         for (let seriesId in chartDatas) {
           chartInstance.addSeries(seriesId, chartDatas[seriesId])
         }
