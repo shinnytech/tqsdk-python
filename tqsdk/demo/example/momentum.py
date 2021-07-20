@@ -8,13 +8,13 @@ __author__ = "Ringo"
 注: 该示例策略仅用于功能示范, 实盘时请根据自己的策略/经验进行修改
 '''
 
-from tqsdk import TqApi, TargetPosTask
+from tqsdk import TqApi, TqAuth, TargetPosTask
 
 # 设置指定合约,获取N条K线计算价格动量
-SYMBOL = "SHFE.au2006"
+SYMBOL = "SHFE.au2012"
 N = 15
 
-api = TqApi()
+api = TqApi(auth=TqAuth("信易账户", "账户密码"))
 klines = api.get_kline_serial(SYMBOL, 60 * 60 * 24, N)
 quote = api.get_quote(SYMBOL)
 target_pos = TargetPosTask(api, SYMBOL)

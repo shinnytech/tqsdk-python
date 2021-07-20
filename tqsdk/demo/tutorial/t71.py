@@ -2,19 +2,19 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'yanqiong'
 
-from tqsdk import TqApi, TargetPosTask
+from tqsdk import TqApi, TqAuth, TargetPosTask
 
 '''
 连续3根阴线就做空，连续3根阳线就做多，否则空仓
 '''
 
-api = TqApi()
+api = TqApi(auth=TqAuth("信易账户", "账户密码"))
 # 设定连续多少根阳线/阴线
 length = 3
-# 获得 rb2005 10秒K线的引用, 长度为 length+1
-klines = api.get_kline_serial("SHFE.rb2005", 10, data_length=length + 1)
-# 创建 rb2005 的目标持仓 task，该 task 负责调整 rb2005 的仓位到指定的目标仓位, offset_priority的用法详见文档
-target_pos = TargetPosTask(api, "SHFE.rb2005", offset_priority="今昨开")
+# 获得 ni2105 10秒K线的引用, 长度为 length+1
+klines = api.get_kline_serial("SHFE.ni2105", 10, data_length=length + 1)
+# 创建 ni2105 的目标持仓 task，该 task 负责调整 ni2105 的仓位到指定的目标仓位, offset_priority的用法详见文档
+target_pos = TargetPosTask(api, "SHFE.ni2105", offset_priority="今昨开")
 
 while True:
     api.wait_update()

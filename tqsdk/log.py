@@ -3,19 +3,10 @@
 __author__ = 'yanqiong'
 
 import datetime
-import logging
 import os
-from functools import wraps
+
 
 DEBUG_DIR = os.path.join(os.path.expanduser('~'), ".tqsdk/logs")
-
-
-def _get_log_format(is_backtest=None):
-    """返回日志格式"""
-    if is_backtest:
-        return logging.Formatter(f'%(levelname)6s - %(message)s')
-    else:
-        return logging.Formatter(f'%(asctime)s - %(levelname)6s - %(message)s')
 
 
 def _get_log_name():

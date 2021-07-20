@@ -8,14 +8,14 @@ Dual Thrust策略 (难度：中级)
 注: 该示例策略仅用于功能示范, 实盘时请根据自己的策略/经验进行修改
 '''
 
-from tqsdk import TqApi, TargetPosTask
+from tqsdk import TqApi, TqAuth, TargetPosTask
 
-SYMBOL = "DCE.jd2005"  # 合约代码
+SYMBOL = "DCE.jd2011"  # 合约代码
 NDAY = 5  # 天数
 K1 = 0.2  # 上轨K值
 K2 = 0.2  # 下轨K值
 
-api = TqApi()
+api = TqApi(auth=TqAuth("信易账户", "账户密码"))
 print("策略开始运行")
 
 quote = api.get_quote(SYMBOL)

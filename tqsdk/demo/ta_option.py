@@ -1,10 +1,10 @@
 #!usr/bin/env python3
 #-*- coding:utf-8 -*-
 
-from tqsdk import TqApi, tafunc
+from tqsdk import TqApi, TqAuth, tafunc
 from tqsdk.ta import *
 
-api = TqApi()
+api = TqApi(auth=TqAuth("信易账户", "账户密码"))
 
 underlying_quote = api.get_quote("SHFE.cu2009")
 klines = api.get_kline_serial('SHFE.cu2009', 24 * 60 * 60, 20)

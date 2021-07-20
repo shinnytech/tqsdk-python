@@ -8,7 +8,7 @@ R-Breaker策略(隔夜留仓) (难度：初级)
 注: 该示例策略仅用于功能示范, 实盘时请根据自己的策略/经验进行修改
 '''
 
-from tqsdk import TqApi, TargetPosTask
+from tqsdk import TqApi, TqAuth, TargetPosTask
 
 SYMBOL = "SHFE.au2006"  # 合约代码
 STOP_LOSS_PRICE = 10  # 止损点(价格)
@@ -33,7 +33,7 @@ def get_index_line(klines):
     return pivot, b_break, s_setup, s_enter, b_enter, b_setup, s_break
 
 
-api = TqApi()
+api = TqApi(auth=TqAuth("信易账户", "账户密码"))
 quote = api.get_quote(SYMBOL)
 klines = api.get_kline_serial(SYMBOL, 24 * 60 * 60)  # 86400: 使用日线
 position = api.get_position(SYMBOL)

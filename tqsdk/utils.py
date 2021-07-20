@@ -1,17 +1,77 @@
 #!usr/bin/env python3
-#-*- coding:utf-8 -*-
+# -*- coding:utf-8 -*-
 __author__ = 'yanqiong'
+
 
 import random
 import secrets
-import uuid
+from bisect import bisect_right
+
+from pandas.core.internals import BlockManager
 
 
 RD = random.Random(secrets.randbits(128))  # 初始化随机数引擎，使用随机数作为seed，防止用户同时拉起多个策略，产生同样的 seed
 
 
 def _generate_uuid(prefix=''):
-    return f"{prefix + '_' if prefix else ''}{uuid.UUID(int=RD.getrandbits(128)).hex}"
+    return f"{prefix + '_' if prefix else ''}{RD.getrandbits(128):032x}"
+
+
+query_all_fields = """
+    ... on basic{ class trading_time{day night} trading_day instrument_id instrument_name price_tick price_decs exchange_id english_name}
+    ... on stock{ stock_dividend_ratio cash_dividend_ratio}
+    ... on fund{ cash_dividend_ratio}
+    ... on bond{ maturity_datetime }
+    ... on tradeable{ volume_multiple quote_multiple}
+    ... on index{ index_multiple}
+    ... on securities{ currency face_value first_trading_datetime buy_volume_unit sell_volume_unit status public_float_share_quantity}
+    ... on future{ expired product_id product_short_name delivery_year delivery_month expire_datetime settlement_price max_market_order_volume max_limit_order_volume margin commission mmsa}
+    ... on option{ expired product_short_name expire_datetime last_exercise_datetime settlement_price max_market_order_volume max_limit_order_volume strike_price call_or_put exercise_type}
+    ... on combine{ expired product_id expire_datetime max_market_order_volume max_limit_order_volume leg1{ ... on basic{instrument_id}} leg2{ ... on basic{instrument_id}} }
+    ... on derivative{ 
+        underlying{ 
+            count edges{ underlying_multiple node{
+                ... on basic{ class trading_time{day night} trading_day instrument_id instrument_name price_tick price_decs exchange_id english_name }
+                ... on stock{ stock_dividend_ratio cash_dividend_ratio }
+                ... on fund{ cash_dividend_ratio }
+                ... on bond{ maturity_datetime }
+                ... on tradeable{ volume_multiple quote_multiple}
+                ... on index{ index_multiple}
+                ... on securities{ currency face_value first_trading_datetime buy_volume_unit sell_volume_unit public_float_share_quantity }
+                ... on future{ expired product_id product_short_name delivery_year delivery_month expire_datetime settlement_price max_market_order_volume max_limit_order_volume margin commission mmsa}
+                }
+            }
+        }
+    }
+"""
+
+
+def _query_for_quote(symbol):
+    """返回请求某个合约的合约信息的 query_pack"""
+    symbol_list = symbol if isinstance(symbol, list) else [symbol]
+    if any([s == "" for s in symbol_list]) or len(symbol_list) == 0:
+        raise Exception("发送的 ins_query 请求合约代码不支持空字符串、空列表或者列表中包括空字符串。")
+    query = "query ($instrument_id:[String]) {"
+    query += "multi_symbol_info(instrument_id:$instrument_id) {" + query_all_fields + "}}"
+    return {
+        "aid": "ins_query",
+        "query_id": _generate_uuid(prefix='PYSDK_quote_'),
+        "query": query,
+        "variables": {"instrument_id": symbol_list}
+    }
+
+
+def _query_for_init():
+    """
+    返回某些类型合约的 query 和 variables
+    todo: 为了兼容旧版提供给用户的 api._data["quote"].items() 类似用法，应该限制交易所 ["SHFE", "DCE", "CZCE", "INE", "CFFEX", "KQ"]
+    """
+    query = "query ($class_list:[Class], $exchange_list:[String]) {"
+    query += "multi_symbol_info(class:$class_list, exchange_id:$exchange_list) {" + query_all_fields + "}}"
+    return query, {
+        "class_list": ["FUTURE", "INDEX", "OPTION", "COMBINE", "CONT"],
+        "exchange_list": ["SHFE", "DCE", "CZCE", "INE", "CFFEX", "KQ"]
+    }
 
 
 night_trading_table = {
@@ -66,6 +126,35 @@ night_trading_table = {
 def _quotes_add_night(quotes):
     """为 quotes 中应该有夜盘但是市价合约文件中没有夜盘的品种，添加夜盘时间"""
     for symbol in quotes:
-        product_id = quotes[symbol]["product_id"]
-        if quotes[symbol].get("trading_time") and product_id in night_trading_table:
-            quotes[symbol]["trading_time"].setdefault("night", [night_trading_table[product_id]])
+        product_id = quotes[symbol].get("product_id")
+        if quotes[symbol].get("trading_time") and product_id:
+            key = f"{quotes[symbol].get('exchange_id')}.{product_id}"
+            if key in night_trading_table and (not quotes[symbol]["trading_time"].get("night")):
+                quotes[symbol]["trading_time"]["night"] = [night_trading_table[key]]
+
+
+def _bisect_right_value(a, x):
+    """
+    返回 bisect_right() 取得下标对应的值，当插入点距离前后元素距离相等，返回后一个元素的值
+
+    bisect_right : Return the index where to insert item x in list a, assuming a is sorted.
+    """
+    insert_index = bisect_right(a, x)
+    if 0 < insert_index < len(a):
+        left_dis = x - a[insert_index - 1]
+        right_dis = a[insert_index] - x
+        mid_index = insert_index - (1 if left_dis < right_dis else 0)
+    else:
+        assert insert_index == 0 or insert_index == len(a)
+        mid_index = 0 if insert_index == 0 else (len(a) - 1)
+    return a[mid_index]
+
+
+class BlockManagerUnconsolidated(BlockManager):
+    """mock BlockManager for unconsolidated, 不会因为自动合并同类型的 blocks 而导致 k 线数据不更新"""
+    def __init__(self, *args, **kwargs):
+        BlockManager.__init__(self, *args, **kwargs)
+        self._is_consolidated = False
+        self._known_consolidated = False
+
+    def _consolidate_inplace(self): pass

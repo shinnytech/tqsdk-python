@@ -10,10 +10,10 @@ __author__ = 'chengzhi'
 
 from functools import reduce
 from contextlib import closing
-from tqsdk import TqApi, TargetPosTask
+from tqsdk import TqApi, TqAuth, TargetPosTask
 
 # 网格计划参数:
-symbol = "DCE.jd2001"  # 合约代码
+symbol = "DCE.jd2011"  # 合约代码
 start_price = 4247  # 起始价位
 grid_amount = 10  # 网格在多头、空头方向的格子(档位)数量
 grid_region_long = [0.005] * grid_amount  # 多头每格价格跌幅(网格密度)
@@ -28,7 +28,7 @@ print("多头每格交易量:", grid_volume_long)
 print("多头每格的价位:", grid_prices_long)
 print("空头每格的价位:", grid_prices_short)
 
-api = TqApi()
+api = TqApi(auth=TqAuth("信易账户", "账户密码"))
 quote = api.get_quote(symbol)  # 行情数据
 target_pos = TargetPosTask(api, symbol)
 target_volume = 0  # 目标持仓手数

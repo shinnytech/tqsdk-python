@@ -9,13 +9,13 @@ R-Breaker策略(非隔夜留仓: 在每日收盘前，对所持合约进行平�
 '''
 
 from datetime import datetime
-from tqsdk import TqApi, TargetPosTask
+from tqsdk import TqApi, TqAuth, TargetPosTask
 
 SYMBOL = "SHFE.au2006"  # 合约代码
 CLOSE_HOUR, CLOSE_MINUTE = 14, 50  # 平仓时间
 STOP_LOSS_PRICE = 10  # 止损点(价格)
 
-api = TqApi()
+api = TqApi(auth=TqAuth("信易账户", "账户密码"))
 print("策略开始运行")
 
 

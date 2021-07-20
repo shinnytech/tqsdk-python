@@ -8,12 +8,12 @@ Aberration策略 (难度：初级)
 注: 该示例策略仅用于功能示范, 实盘时请根据自己的策略/经验进行修改
 '''
 
-from tqsdk import TqApi, TargetPosTask
+from tqsdk import TqApi, TqAuth, TargetPosTask
 from tqsdk.ta import BOLL
 
 # 设置合约代码
-SYMBOL = "DCE.i2005"
-api = TqApi()
+SYMBOL = "DCE.m2105"
+api = TqApi(auth=TqAuth("信易账户", "账户密码"))
 quote = api.get_quote(SYMBOL)
 klines = api.get_kline_serial(SYMBOL, 60 * 60 * 24)
 position = api.get_position(SYMBOL)

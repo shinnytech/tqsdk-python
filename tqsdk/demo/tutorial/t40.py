@@ -2,15 +2,15 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'chengzhi'
 
-from tqsdk import TqApi
+from tqsdk import TqApi, TqAuth
 
-api = TqApi()
-# 获得 m2005 的持仓引用，当持仓有变化时 position 中的字段会对应更新
-position = api.get_position("DCE.m2005")
+api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+# 获得 m2105 的持仓引用，当持仓有变化时 position 中的字段会对应更新
+position = api.get_position("DCE.m2105")
 # 获得资金账户引用，当账户有变化时 account 中的字段会对应更新
 account = api.get_account()
 # 下单并返回委托单的引用，当该委托单有变化时 order 中的字段会对应更新
-order = api.insert_order(symbol="DCE.m2005", direction="BUY", offset="OPEN", volume=5, limit_price=2750)
+order = api.insert_order(symbol="DCE.m2105", direction="BUY", offset="OPEN", volume=5, limit_price=2750)
 
 while True:
     api.wait_update()

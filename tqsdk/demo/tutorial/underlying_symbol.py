@@ -2,9 +2,9 @@
 #  -*- coding: utf-8 -*-
 __author__ = "Ringo"
 
-from tqsdk import TqApi
+from tqsdk import TqApi, TqAuth
 
-api = TqApi()
+api = TqApi(auth=TqAuth("信易账户", "账户密码"))
 
 # 订阅螺纹钢主连
 quote = api.get_quote("KQ.m@SHFE.rb")

@@ -8,15 +8,15 @@ __author__ = "Ringo"
 注: 该示例策略仅用于功能示范, 实盘时请根据自己的策略/经验进行修改
 '''
 
-from tqsdk import TqApi, TargetPosTask
+from tqsdk import TqApi, TqAuth, TargetPosTask
 from tqsdk.ta import MA
 
 # 设置合约
-SYMBOL = "SHFE.au2006"
+SYMBOL = "SHFE.rb2012"
 # 设置均线长短周期
 MA_SLOW, MA_FAST = 8, 40
 
-api = TqApi()
+api = TqApi(auth=TqAuth("信易账户", "账户密码"))
 klines = api.get_kline_serial(SYMBOL, 60 * 60 * 24)
 quote = api.get_quote(SYMBOL)
 position = api.get_position(SYMBOL)

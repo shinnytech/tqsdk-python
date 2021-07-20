@@ -2,14 +2,14 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'chengzhi'
 
-from tqsdk import TqApi
+from tqsdk import TqApi, TqAuth
 import datetime
 
-api = TqApi()
-# 获得 cu2003 tick序列的引用
-ticks = api.get_tick_serial("SHFE.cu2003")
-# 获得 cu2003 10秒K线的引用
-klines = api.get_kline_serial("SHFE.cu2003", 10)
+api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+# 获得 ni2011 tick序列的引用
+ticks = api.get_tick_serial("SHFE.ni2011")
+# 获得 ni2011 10秒K线的引用
+klines = api.get_kline_serial("SHFE.ni2011", 10)
 print(datetime.datetime.fromtimestamp(klines.iloc[-1]["datetime"] / 1e9))
 
 while True:

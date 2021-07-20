@@ -2,7 +2,7 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'limin'
 
-from tqsdk import TqApi
+from tqsdk import TqApi, TqAuth
 from tqsdk.ta import MA
 
 '''
@@ -10,16 +10,16 @@ from tqsdk.ta import MA
 注意: 画图示例中用到的数据不含有实际意义，请根据自己的实际策略情况进行修改
 '''
 
-api = TqApi(web_gui=True)
-klines = api.get_kline_serial("CFFEX.T2003", 10)
-klines2 = api.get_kline_serial("CFFEX.T2006", 10)
+api = TqApi(web_gui=True, auth=TqAuth("信易账户", "账户密码"))
+klines = api.get_kline_serial("CFFEX.T2103", 10)
+klines2 = api.get_kline_serial("CFFEX.T2012", 10)
 
-# 示例1 : 在附图画出 T2006 的K线: 需要将open、high、log、close的数据都设置正确
-klines["T2006.open"] = klines2["open"]
-klines["T2006.high"] = klines2["high"]
-klines["T2006.low"] = klines2["low"]
-klines["T2006.close"] = klines2["close"]
-klines["T2006.board"] = "B2"
+# 示例1 : 在附图画出 T2012 的K线: 需要将open、high、log、close的数据都设置正确
+klines["T2012.open"] = klines2["open"]
+klines["T2012.high"] = klines2["high"]
+klines["T2012.low"] = klines2["low"]
+klines["T2012.close"] = klines2["close"]
+klines["T2012.board"] = "B2"
 ma = MA(klines, 30)
 klines["ma_MAIN"] = ma.ma
 

@@ -2,7 +2,7 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'limin'
 
-from tqsdk import TqApi
+from tqsdk import TqApi, TqAuth
 from tqsdk.ta import MA
 
 '''
@@ -11,8 +11,8 @@ from tqsdk.ta import MA
 注意: 画图示例中用到的数据不含有实际意义，请根据自己的实际策略情况进行修改
 '''
 
-api = TqApi(web_gui=":9878")  # web_gui="[ip]:port", 指定 web 界面地址的 ip 和 port
-klines = api.get_kline_serial("SHFE.au1910", 24 * 60 * 60)
+api = TqApi(web_gui=":9878", auth=TqAuth("信易账户", "账户密码"))  # web_gui="[ip]:port", 指定 web 界面地址的 ip 和 port
+klines = api.get_kline_serial("SHFE.rb2105", 24 * 60 * 60)
 
 while True:
     # 将画图代码放在循环中即可使图像随着行情推进而更新
