@@ -2,20 +2,20 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'chengzhi'
 
-from tqsdk import TqApi, TargetPosTask
+from tqsdk import TqApi, TqAuth, TargetPosTask
 
 '''
 价差回归
-当近月-远月的价差大于200时做空近月，做多远月
-当价差小于150时平仓
+当近月-远月的价差大于250时做空近月，做多远月
+当价差小于200时平仓
 '''
-api = TqApi()
-quote_near = api.get_quote("SHFE.rb2003")
-quote_deferred = api.get_quote("SHFE.rb2005")
-# 创建 rb2003 的目标持仓 task，该 task 负责调整 rb2003 的仓位到指定的目标仓位
-target_pos_near = TargetPosTask(api, "SHFE.rb2003")
-# 创建 rb2005 的目标持仓 task，该 task 负责调整 rb2005 的仓位到指定的目标仓位
-target_pos_deferred = TargetPosTask(api, "SHFE.rb2005")
+api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+quote_near = api.get_quote("SHFE.rb2104")
+quote_deferred = api.get_quote("SHFE.rb2105")
+# 创建 rb2104 的目标持仓 task，该 task 负责调整 rb2104 的仓位到指定的目标仓位
+target_pos_near = TargetPosTask(api, "SHFE.rb2104")
+# 创建 rb2105 的目标持仓 task，该 task 负责调整 rb2105 的仓位到指定的目标仓位
+target_pos_deferred = TargetPosTask(api, "SHFE.rb2105")
 
 while True:
     api.wait_update()

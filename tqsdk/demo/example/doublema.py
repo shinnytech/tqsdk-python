@@ -6,14 +6,14 @@ __author__ = 'limin'
 双均线策略
 注: 该示例策略仅用于功能示范, 实盘时请根据自己的策略/经验进行修改
 '''
-from tqsdk import TqApi, TargetPosTask
+from tqsdk import TqApi, TqAuth, TargetPosTask
 from tqsdk.tafunc import ma
 
 SHORT = 30  # 短周期
 LONG = 60  # 长周期
-SYMBOL = "SHFE.bu2006"  # 合约代码
+SYMBOL = "SHFE.bu2012"  # 合约代码
 
-api = TqApi()
+api = TqApi(auth=TqAuth("信易账户", "账户密码"))
 print("策略开始运行")
 
 data_length = LONG + 2  # k线数据长度

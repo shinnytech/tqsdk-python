@@ -10,14 +10,16 @@ __author__ = 'limin'
 
 import json
 import time
-from tqsdk import TqApi, TargetPosTask
+from tqsdk import TqApi, TqAuth, TargetPosTask
 from tqsdk.ta import ATR
 
 
 class Turtle:
-    def __init__(self, symbol, account=None, donchian_channel_open_position=20, donchian_channel_stop_profit=10,
+    def __init__(self, symbol, account=None, auth=None, donchian_channel_open_position=20,
+                 donchian_channel_stop_profit=10,
                  atr_day_length=20, max_risk_ratio=0.5):
         self.account = account  # 交易账号
+        self.auth = auth  # 信易账户
         self.symbol = symbol  # 合约代码
         self.donchian_channel_open_position = donchian_channel_open_position  # 唐奇安通道的天数周期(开仓)
         self.donchian_channel_stop_profit = donchian_channel_stop_profit  # 唐奇安通道的天数周期(止盈)
@@ -33,7 +35,7 @@ class Turtle:
         self.donchian_channel_high = 0  # 唐奇安通道上轨
         self.donchian_channel_low = 0  # 唐奇安通道下轨
 
-        self.api = TqApi(self.account)
+        self.api = TqApi(self.account, auth=self.auth)
         self.quote = self.api.get_quote(self.symbol)
         # 由于ATR是路径依赖函数，因此使用更长的数据序列进行计算以便使其值稳定下来
         kline_length = max(donchian_channel_open_position + 1, donchian_channel_stop_profit + 1, atr_day_length * 5)

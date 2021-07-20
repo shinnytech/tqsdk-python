@@ -8,14 +8,14 @@ __author__ = 'limin'
 注: 该示例策略仅用于功能示范, 实盘时请根据自己的策略/经验进行修改
 '''
 
-from tqsdk import TqApi, TargetPosTask
+from tqsdk import TqApi, TqAuth, TargetPosTask
 from datetime import datetime
 import time
 
-symbol = "SHFE.cu2002"  # 合约代码
+symbol = "SHFE.ni2012"  # 合约代码
 close_hour, close_minute = 14, 50  # 平仓时间
 
-api = TqApi()  # 使用模拟帐号直连行情和交易服务器
+api = TqApi(auth=TqAuth("信易账户", "账户密码"))  # 使用模拟帐号直连行情和交易服务器
 quote = api.get_quote(symbol)  # 获取指定合约的盘口行情
 klines = api.get_kline_serial(symbol, 24 * 60 * 60)  # 获取日线
 position = api.get_position(symbol)  # 持仓信息

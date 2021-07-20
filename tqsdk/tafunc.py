@@ -2,6 +2,8 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'limin'
 
+from pandas import Series
+
 """
 tqsdk.tafunc 模块包含了一批用于技术指标计算的函数
 (函数基本保持 参数为pandas.Series类型则返回值为pandas.Series类型)
@@ -12,7 +14,19 @@ import math
 from typing import Union
 
 import numpy as np
-import pandas as pd
+try:
+    import pandas as pd
+except ImportError as e:
+    err_msg = f"执行 import pandas 时发生错误： {e}。\n"
+    err_msg += """
+    当遇到此问题时，如果您是 windows 用户，并且安装的 pandas 版本大于等于 1.0.2，可以尝试以下解决方案之一，再重新运行程序即可。
+    （您使用的机器缺少 pandas 需要的运行时环境）
+    1. 到微软官网下载您机器上安装 python 对应版本的 vc_redist 文件运行安装即可。https://www.microsoft.com/en-us/download/details.aspx?id=48145 
+       vc_redist.x64.exe（64 位 python）、 vc_redist.x86.exe（32 位 python）
+    2. 卸载当前的 pandas (pip uninstall pandas)
+       安装 pandas 1.0.1 版本 (pip install pandas==1.0.1)
+    """
+    raise Exception(err_msg)
 from scipy import stats
 
 from tqsdk.datetime import _get_period_timestamp
@@ -34,9 +48,9 @@ def ref(series, n):
 
     Example::
 
-        from tqsdk import TqApi, TqSim, tafunc
+        from tqsdk import TqApi, TqAuth, TqSim, tafunc
 
-        api = TqApi(TqSim())
+        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1908", 24 * 60 * 60)
         pre_close = tafunc.ref(klines.close, 1)  # 将收盘价序列右移一位, 得到昨收盘序列
         change = klines.close - pre_close        # 收盘价序列 - 昨收盘序列, 得到涨跌序列
@@ -62,9 +76,9 @@ def std(series, n):
 
     Example::
 
-        from tqsdk import TqApi, TqSim, tafunc
+        from tqsdk import TqApi, TqAuth, TqSim, tafunc
 
-        api = TqApi(TqSim())
+        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1908", 24 * 60 * 60)
         std = tafunc.std(klines.close, 5)  # 收盘价序列每5项计算一个标准差
         print(list(std))
@@ -94,9 +108,9 @@ def ma(series, n):
 
     Example::
 
-        from tqsdk import TqApi, TqSim, tafunc
+        from tqsdk import TqApi, TqAuth, TqSim, tafunc
 
-        api = TqApi(TqSim())
+        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1908", 24 * 60 * 60)
         ma = tafunc.ma(klines.close, 5)
         print(list(ma))
@@ -126,9 +140,9 @@ def sma(series, n, m):
 
     Example::
 
-        from tqsdk import TqApi, TqSim, tafunc
+        from tqsdk import TqApi, TqAuth, TqSim, tafunc
 
-        api = TqApi(TqSim())
+        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1908", 24 * 60 * 60)
         sma = tafunc.sma(klines.close, 5, 2)  # 收盘价序列每5项计算一个扩展指数加权移动平均值
         print(list(sma))
@@ -158,9 +172,9 @@ def ema(series, n):
 
     Example::
 
-        from tqsdk import TqApi, TqSim, tafunc
+        from tqsdk import TqApi, TqAuth, TqSim, tafunc
 
-        api = TqApi(TqSim())
+        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1908", 24 * 60 * 60)
         ema = tafunc.ema(klines.close, 5)
         print(list(ema))
@@ -188,9 +202,9 @@ def ema2(series, n):
 
     Example::
 
-        from tqsdk import TqApi, TqSim, tafunc
+        from tqsdk import TqApi, TqAuth, TqSim, tafunc
 
-        api = TqApi(TqSim())
+        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1908", 24 * 60 * 60)
         ema2 = tafunc.ema2(klines.close, 5)  # 求收盘价在5个周期的线性加权移动平均值
         print(list(ema2))
@@ -218,9 +232,9 @@ def crossup(a, b):
 
     Example::
 
-        from tqsdk import TqApi, TqSim, tafunc
+        from tqsdk import TqApi, TqAuth, TqSim, tafunc
 
-        api = TqApi(TqSim())
+        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1908", 24 * 60 * 60)
         crossup = tafunc.crossup(tafunc.ma(klines.close, 5), tafunc.ma(klines.close, 10))
         print(list(crossup))
@@ -243,9 +257,9 @@ def crossdown(a, b):
 
     Example::
 
-        from tqsdk import TqApi, TqSim, tafunc
+        from tqsdk import TqApi, TqAuth, TqSim, tafunc
         
-        api = TqApi(TqSim())
+        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1908", 24 * 60 * 60)
         crossdown = tafunc.crossdown(tafunc.ma(klines.close, 5), tafunc.ma(klines.close, 10))
         print(list(crossdown))
@@ -270,9 +284,9 @@ def count(cond, n):
 
     Example::
 
-        from tqsdk import TqApi, TqSim, tafunc
+        from tqsdk import TqApi, TqAuth, TqSim, tafunc
 
-        api = TqApi(TqSim())
+        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1908", 24 * 60 * 60)
         # 统计从申请到的行情数据以来到当前这段时间内, 5周期均线上穿10周期均线的次数:
         count = tafunc.count(tafunc.crossup(tafunc.ma(klines.close, 5), tafunc.ma(klines.close, 10)), 0)
@@ -304,9 +318,9 @@ def trma(series, n):
 
     Example::
 
-        from tqsdk import TqApi, TqSim, tafunc
+        from tqsdk import TqApi, TqAuth, TqSim, tafunc
 
-        api = TqApi(TqSim())
+        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1908", 24 * 60 * 60)
         trma = tafunc.trma(klines.close, 10)
         print(list(trma))
@@ -342,9 +356,9 @@ def harmean(series, n):
 
     Example::
 
-        from tqsdk import TqApi, TqSim, tafunc
+        from tqsdk import TqApi, TqAuth, TqSim, tafunc
 
-        api = TqApi(TqSim())
+        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1908", 24 * 60 * 60)
         harmean = tafunc.harmean(klines.close, 5)  # 求5周期收盘价的调和平均值
         print(list(harmean))
@@ -374,9 +388,9 @@ def numpow(series, n, m):
 
     Example::
 
-        from tqsdk import TqApi, TqSim, tafunc
+        from tqsdk import TqApi, TqAuth, TqSim, tafunc
 
-        api = TqApi(TqSim())
+        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1908", 24 * 60 * 60)
         numpow = tafunc.numpow(klines.close, 5, 2)
         print(list(numpow))
@@ -399,9 +413,9 @@ def abs(series):
 
     Example::
 
-        from tqsdk import TqApi, TqSim, tafunc
+        from tqsdk import TqApi, TqAuth, TqSim, tafunc
 
-        api = TqApi(TqSim())
+        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1908", 24 * 60 * 60)
         abs = tafunc.abs(klines.close)
         print(list(abs))
@@ -424,9 +438,9 @@ def min(series1, series2):
 
     Example::
 
-        from tqsdk import TqApi, TqSim, tafunc
+        from tqsdk import TqApi, TqAuth, TqSim, tafunc
 
-        api = TqApi(TqSim())
+        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1908", 24 * 60 * 60)
         min = tafunc.min(klines.close, klines.open)
         print(list(min))
@@ -449,9 +463,9 @@ def max(series1, series2):
 
     Example::
 
-        from tqsdk import TqApi, TqSim, tafunc
+        from tqsdk import TqApi, TqAuth, TqSim, tafunc
 
-        api = TqApi(TqSim())
+        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1908", 24 * 60 * 60)
         max = tafunc.max(klines.close, klines.open)
         print(list(max))
@@ -504,9 +518,9 @@ def exist(cond, n):
 
     Example::
 
-        from tqsdk import TqApi, TqSim, tafunc
+        from tqsdk import TqApi, TqAuth, TqSim, tafunc
 
-        api = TqApi(TqSim())
+        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1908", 24 * 60 * 60)
         # 判断4个周期中是否存在收盘价大于前一个周期的最高价, 存在返回1, 不存在则返回0
         exist = tafunc.exist(klines.close > klines.high.shift(1), 4)
@@ -530,9 +544,9 @@ def every(cond, n):
 
     Example::
 
-        from tqsdk import TqApi, TqSim, tafunc
+        from tqsdk import TqApi, TqAuth, TqSim, tafunc
 
-        api = TqApi(TqSim())
+        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1908", 24 * 60 * 60)
         # 判断在4周期内, 3周期的简单移动平均是否一直大于5周期的简单移动平均
         every = tafunc.every(tafunc.ma(klines.close, 3) > tafunc.ma(klines.close, 5), 4)
@@ -558,9 +572,9 @@ def hhv(series, n):
 
     Example::
 
-        from tqsdk import TqApi, TqSim, tafunc
+        from tqsdk import TqApi, TqAuth, TqSim, tafunc
 
-        api = TqApi(TqSim())
+        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1908", 24 * 60 * 60)
         hhv = tafunc.hhv(klines.high, 4)  # 求4个周期最高价的最大值, 即4周期高点(包含当前k线)
         print(list(hhv))
@@ -585,9 +599,9 @@ def llv(series, n):
 
     Example::
 
-        from tqsdk import TqApi, TqSim, tafunc
+        from tqsdk import TqApi, TqAuth, TqSim, tafunc
 
-        api = TqApi(TqSim())
+        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1908", 24 * 60 * 60)
         llv = tafunc.llv(klines.low, 5)  # 求5根k线最低点(包含当前k线)
         print(list(llv))
@@ -618,9 +632,9 @@ def avedev(series, n):
 
     Example::
 
-        from tqsdk import TqApi, TqSim, tafunc
+        from tqsdk import TqApi, TqAuth, TqSim, tafunc
 
-        api = TqApi(TqSim())
+        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1908", 24 * 60 * 60)
         # 计算收盘价在5周期内的平均绝对偏差, 表示5个周期内每个周期的收盘价与5周期收盘价的平均值的差的绝对值的平均值, 判断收盘价与其均值的偏离程度:
         avedev = tafunc.avedev(klines.close, 5)
@@ -799,10 +813,10 @@ def barlast(cond):
 
     Example::
 
-        from tqsdk import TqApi
+        from tqsdk import TqApi, TqAuth
         from tqsdk.tafunc import barlast
 
-        api = TqApi()
+        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
         klines = api.get_kline_serial("SHFE.cu1912", 60)
         # print(list(klines.close))
         # print(list(klines.open))
@@ -860,9 +874,9 @@ def get_t(df, expire_datetime):
 
     Example::
 
-        from tqsdk import TqApi, tafunc
+        from tqsdk import TqApi, TqAuth, tafunc
 
-        api = TqApi()
+        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
         quote = api.get_quote('SHFE.cu2006C45000')
         klines = api.get_kline_serial(['SHFE.cu2006C45000', 'SHFE.cu2006'], 24 * 60 * 60, 50)
         t = tafunc.get_t(klines, quote.expire_datetime)
@@ -886,9 +900,9 @@ def get_his_volatility(df, quote):
 
     Example::
 
-        from tqsdk import TqApi, tafunc
+        from tqsdk import TqApi, TqAuth, tafunc
 
-        api = TqApi()
+        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
         quote = api.get_quote('SHFE.cu2006')
         klines = api.get_kline_serial('SHFE.cu2006', 24 * 60 * 60, 50)
         v = tafunc.get_his_volatility(klines, quote)
@@ -946,9 +960,9 @@ def get_bs_price(series, k, r, v, t, option_class):
     Example::
 
         import pandas as pd
-        from tqsdk import TqApi, tafunc
+        from tqsdk import TqApi, TqAuth, tafunc
 
-        api = TqApi()
+        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
         quote = api.get_quote("SHFE.cu2006")
         ks = api.get_kline_serial("SHFE.cu2006", 24 * 60 * 60, 10)
         v = tafunc.get_his_volatility(ks, quote)  # 历史波动率
@@ -1003,9 +1017,9 @@ def get_delta(series, k, r, v, t, option_class, d1=None):
     Example::
 
         import pandas as pd
-        from tqsdk import TqApi, tafunc
+        from tqsdk import TqApi, TqAuth, tafunc
 
-        api = TqApi()
+        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
         quote = api.get_quote("SHFE.cu2006")
         ks = api.get_kline_serial("SHFE.cu2006", 24 * 60 * 60, 10)
         v = tafunc.get_his_volatility(ks, quote)  # 历史波动率
@@ -1059,9 +1073,9 @@ def get_gamma(series, k, r, v, t, d1=None):
     Example::
 
         import pandas as pd
-        from tqsdk import TqApi, tafunc
+        from tqsdk import TqApi, TqAuth, tafunc
 
-        api = TqApi()
+        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
         quote = api.get_quote("SHFE.cu2006")
         ks = api.get_kline_serial("SHFE.cu2006", 24 * 60 * 60, 10)
         v = tafunc.get_his_volatility(ks, quote)  # 历史波动率
@@ -1114,9 +1128,9 @@ def get_theta(series, k, r, v, t, option_class, d1=None):
     Example::
 
         import pandas as pd
-        from tqsdk import TqApi, tafunc
+        from tqsdk import TqApi, TqAuth, tafunc
 
-        api = TqApi()
+        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
         quote = api.get_quote("SHFE.cu2006")
         ks = api.get_kline_serial("SHFE.cu2006", 24 * 60 * 60, 10)
         v = tafunc.get_his_volatility(ks, quote)  # 历史波动率
@@ -1172,9 +1186,9 @@ def get_vega(series, k, r, v, t, d1=None):
     Example::
 
         import pandas as pd
-        from tqsdk import TqApi, tafunc
+        from tqsdk import TqApi, TqAuth, tafunc
 
-        api = TqApi()
+        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
         quote = api.get_quote("SHFE.cu2006")
         ks = api.get_kline_serial("SHFE.cu2006", 24 * 60 * 60, 10)
         v = tafunc.get_his_volatility(ks, quote)  # 历史波动率
@@ -1227,9 +1241,9 @@ def get_rho(series, k, r, v, t, option_class, d1=None):
     Example::
 
         import pandas as pd
-        from tqsdk import TqApi, tafunc
+        from tqsdk import TqApi, TqAuth, tafunc
 
-        api = TqApi()
+        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
         quote = api.get_quote("SHFE.cu2006")
         ks = api.get_kline_serial("SHFE.cu2006", 24 * 60 * 60, 10)
         v = tafunc.get_his_volatility(ks, quote)  # 历史波动率
@@ -1286,9 +1300,9 @@ def get_impv(series, series_option, k, r, init_v, t, option_class):
     Example::
 
         import pandas as pd
-        from tqsdk import TqApi, tafunc
+        from tqsdk import TqApi, TqAuth, tafunc
 
-        api = TqApi()
+        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
         quote = api.get_quote("SHFE.cu2006")
         ks = api.get_kline_serial("SHFE.cu2006", 24 * 60 * 60, 10)
         v = tafunc.get_his_volatility(ks, quote)  # 历史波动率
@@ -1330,9 +1344,9 @@ def get_ticks_info(df):
 
     Example::
 
-        from tqsdk import TqApi, tafunc
+        from tqsdk import TqApi, TqAuth, tafunc
 
-        api = TqApi()
+        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
         ticks = api.get_tick_serial('SHFE.cu2006', 100)
         ticksinfo = tafunc.get_ticks_info(ticks)
         for i, v in ticksinfo.items():
@@ -1365,3 +1379,149 @@ def get_ticks_info(df):
     df_pre.loc[(df_pre["oi_diff"] > 0) & (df_pre["oi_diff"] == df_pre["vol_diff"]), "info"] = "双开"
     df_pre.loc[df_pre["vol_diff"] == 0, "info"] = ""
     return df_pre["info"]
+
+
+def get_dividend_df(stock_dividend_ratio, cash_dividend_ratio):
+    """
+    计算复权系数矩阵
+
+    Args:
+        stock_dividend_ratio (list): 除权表（可以由 quote.stock_dividend_ratio 取得）
+
+        cash_dividend_ratio (list): 除息表（可以由 quote.cash_dividend_ratio 取得）
+
+    Returns:
+        pandas.Dataframe: 复权系数矩阵， Dataframe 对象有 ["datetime", "stock_dividend", "cash_dividend"] 三列。
+    """
+    # 除权矩阵
+    stock_dividend_df = pd.DataFrame({
+        "datetime": [datetime.datetime.strptime(s.split(",")[0], "%Y%m%d").timestamp() * 1e9 for s in
+                     stock_dividend_ratio],
+        "stock_dividend": np.array([float(s.split(",")[1]) for s in stock_dividend_ratio])
+    })
+    # 除息矩阵
+    cash_dividend_df = pd.DataFrame({
+        "datetime": [datetime.datetime.strptime(s.split(",")[0], "%Y%m%d").timestamp() * 1e9 for s in
+                     cash_dividend_ratio],
+        "cash_dividend": [float(s.split(",")[1]) for s in cash_dividend_ratio]
+    })
+    # 除权除息矩阵
+    dividend_df = pd.merge(stock_dividend_df, cash_dividend_df, on=['datetime'], how="outer", sort=True)
+    dividend_df.fillna(0.0, inplace=True)
+    return dividend_df
+
+
+def get_dividend_factor(dividend_df, last_item, item):
+    """
+    返回 item 项对应的复权因子。
+
+    Args:
+        dividend_df (pandas.Dataframe): 除权除息矩阵表
+
+        last_item (dict): 前一个 tickItem / klineItem
+
+        item (dict): 当前 tickItem / klineItem
+
+    Returns:
+        float: 复权因子
+
+    """
+    last_dt = last_item['datetime']
+    dt = item['datetime']
+    if last_dt and dt:
+        gt = dividend_df['datetime'].gt(last_dt)
+        if gt.any():
+            dividend_first = dividend_df[gt].iloc[0]
+            if dt >= dividend_first['datetime']:
+                c = last_item['close'] if last_item['close'] else last_item['last_price']
+                return (1 - dividend_first['cash_dividend'] / c) / (1 + dividend_first['stock_dividend'])
+    return 1
+
+
+def _tq_pstdev(data: Series, mu: float):
+    """
+    计算标准差
+    标准库提供的方法 statistics.pstdev 在 py3.6,py3.7 版本下参数 mean 不能设定为指定值，所以这里另外计算。
+    """
+    n = data.shape[0]
+    assert n >= 1
+    return math.sqrt(sum((data - mu)**2) / n)
+
+
+def get_sharp(series, trading_days_of_year=250, r=0.025):
+    """
+    年化夏普率
+
+    Args:
+        series (pandas.Series): 每日收益率序列
+
+        trading_days_of_year (int): 年化交易日数量
+
+        r (float): 无风险利率
+
+    Returns:
+        float: 年化夏普率
+    """
+    rf = _get_daily_risk_free(trading_days_of_year, r)
+    mean = series.mean()
+    stddev = _tq_pstdev(series, mu=mean)
+    return trading_days_of_year ** (1 / 2) * (mean - rf) / stddev if stddev else float("inf")
+
+
+def get_sortino(series, trading_days_of_year=250, r=0.025):
+    """
+    年化索提诺比率
+
+    Args:
+        series (pandas.Series): 每日收益率序列
+
+        trading_days_of_year (int): 年化交易日数量
+
+        r (float): 无风险利率
+
+    Returns:
+        float: 年化索提诺比率
+    """
+    rf = _get_daily_risk_free(trading_days_of_year, r)
+    mean = series.mean()
+    left_daily_yield = series.loc[series < rf]
+    stddev = _tq_pstdev(left_daily_yield, mu=rf) if left_daily_yield.shape[0] > 0 else 0
+    return (trading_days_of_year * left_daily_yield.shape[0] / series.shape[0]) ** (1 / 2) * (mean - rf) / stddev if stddev else float("inf")
+
+
+def get_calmar(series, max_drawdown, trading_days_of_year=250, r=0.025):
+    """
+    年化卡玛比率
+
+    Args:
+        series (pandas.Series): 每日收益率序列
+
+        max_drawdown (float): 最大回撤
+
+        trading_days_of_year (int): 年化交易日数量
+
+        r (float): 无风险利率
+
+    Returns:
+        float: 年化夏普率
+    """
+    rf = _get_daily_risk_free(trading_days_of_year, r)
+    if max_drawdown and max_drawdown == max_drawdown:
+        mean = series.mean()
+        return trading_days_of_year ** (1 / 2) * (mean - rf) / max_drawdown
+    return float("inf")
+
+
+def _get_daily_risk_free(trading_days_of_year, r):
+    """日化无风险利率"""
+    return pow(r + 1, 1 / trading_days_of_year) - 1
+
+
+def _cum_counts(s: Series):
+    """
+    统计连续为1的个数, 用于计算最大连续盈利/亏损天数
+    input:  [0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 0]
+    output: [0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 2, 0, 1, 0, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 0, 0]
+    """
+    return s * (s.groupby((s != s.shift()).cumsum()).cumcount() + 1)
+

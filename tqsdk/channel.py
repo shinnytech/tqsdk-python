@@ -3,16 +3,31 @@
 __author__ = 'yanqiong'
 
 import asyncio
-from typing import Any, TYPE_CHECKING
+from logging import Logger
+from typing import Any, TYPE_CHECKING, Union
+
+from shinny_structlog import ShinnyLoggerAdapter
 
 if TYPE_CHECKING:
     from tqsdk.api import TqApi
 
 
 class TqChan(asyncio.Queue):
-    """用于协程间通讯的channel"""
+    """
+    用于协程间通讯的channel
+    默认 TqChan._level = 0 ，打印日志时，tqsdk 内部 chan 发送的数据不会打印在日志文件中；
+    测试或开发需要打印 chan 内部数据，可以在代码开始增加
+    ```
+    from tqsdk import TqChan
+    TqChan._level = 10
+    ```
+    """
 
-    def __init__(self, api: 'TqApi', last_only: bool = False) -> None:
+    _chan_id: int = 0
+    _level: int = 0
+
+    def __init__(self, api: 'TqApi', last_only: bool = False, logger: Union[Logger, ShinnyLoggerAdapter, None] = None,
+                 chan_name: str = "") -> None:
         """
         创建channel实例
 
@@ -21,9 +36,18 @@ class TqChan(asyncio.Queue):
 
             last_only (bool): 为True时只存储最后一个发送到channel的对象
         """
+        logger = logger if logger else api._logger
+        if isinstance(logger, Logger):
+            self._logger = ShinnyLoggerAdapter(logger, chan_id=TqChan._chan_id, chan_name=chan_name)
+        elif isinstance(logger, ShinnyLoggerAdapter):
+            self._logger = logger.bind(chan_id=TqChan._chan_id, chan_name=chan_name)
+        TqChan._chan_id += 1
         asyncio.Queue.__init__(self, loop=api._loop)
         self._last_only = last_only
         self._closed = False
+
+    def _logger_bind(self, **kwargs):
+        self._logger = self._logger.bind(**kwargs)
 
     async def close(self) -> None:
         """
@@ -47,6 +71,7 @@ class TqChan(asyncio.Queue):
                 while not self.empty():
                     asyncio.Queue.get_nowait(self)
             await asyncio.Queue.put(self, item)
+            self._logger.log(TqChan._level, "tqchan send", item=item)
 
     def send_nowait(self, item: Any) -> None:
         """
@@ -63,6 +88,7 @@ class TqChan(asyncio.Queue):
                 while not self.empty():
                     asyncio.Queue.get_nowait(self)
             asyncio.Queue.put_nowait(self, item)
+            self._logger.log(TqChan._level, "tqchan send_nowait", item=item)
 
     async def recv(self) -> Any:
         """
@@ -73,7 +99,9 @@ class TqChan(asyncio.Queue):
         """
         if self._closed and self.empty():
             return None
-        return await asyncio.Queue.get(self)
+        item = await asyncio.Queue.get(self)
+        self._logger.log(TqChan._level, "tqchan recv", item=item)
+        return item
 
     def recv_nowait(self) -> Any:
         """
@@ -87,7 +115,9 @@ class TqChan(asyncio.Queue):
         """
         if self._closed and self.empty():
             return None
-        return asyncio.Queue.get_nowait(self)
+        item = asyncio.Queue.get_nowait(self)
+        self._logger.log(TqChan._level, "tqchan recv_nowait", item=item)
+        return item
 
     def recv_latest(self, latest: Any) -> Any:
         """
@@ -101,6 +131,7 @@ class TqChan(asyncio.Queue):
         """
         while (self._closed and self.qsize() > 1) or (not self._closed and not self.empty()):
             latest = asyncio.Queue.get_nowait(self)
+        self._logger.log(TqChan._level, "tqchan recv_latest", item=latest)
         return latest
 
     def __aiter__(self):
@@ -110,6 +141,7 @@ class TqChan(asyncio.Queue):
         value = await asyncio.Queue.get(self)
         if self._closed and self.empty():
             raise StopAsyncIteration
+        self._logger.log(TqChan._level, "tqchan recv_next", item=value)
         return value
 
     async def __aenter__(self):

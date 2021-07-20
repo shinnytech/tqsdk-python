@@ -3,7 +3,7 @@
 __author__ = 'chengzhi'
 
 from datetime import date
-from tqsdk import TqApi, TqBacktest, TargetPosTask
+from tqsdk import TqApi, TqAuth, TqBacktest, TargetPosTask
 
 '''
 如果当前价格大于5分钟K线的MA15则开多仓
@@ -11,7 +11,7 @@ from tqsdk import TqApi, TqBacktest, TargetPosTask
 回测从 2018-05-01 到 2018-10-01
 '''
 # 在创建 api 实例时传入 TqBacktest 就会进入回测模式
-api = TqApi(backtest=TqBacktest(start_dt=date(2018, 5, 1), end_dt=date(2018, 10, 1)))
+api = TqApi(backtest=TqBacktest(start_dt=date(2018, 5, 1), end_dt=date(2018, 10, 1)), auth=TqAuth("信易账户", "账户密码"))
 # 获得 m1901 5分钟K线的引用
 klines = api.get_kline_serial("DCE.m1901", 5 * 60, data_length=15)
 # 创建 m1901 的目标持仓 task，该 task 负责调整 m1901 的仓位到指定的目标仓位

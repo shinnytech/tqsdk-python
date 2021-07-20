@@ -2,7 +2,7 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'limin'
 
-from tqsdk import TqApi
+from tqsdk import TqApi, TqAuth
 from tqsdk.ta import MA
 
 '''
@@ -10,8 +10,8 @@ from tqsdk.ta import MA
 注意: 画图示例中用到的数据不含有实际意义，请根据自己的实际策略情况进行修改
 '''
 
-api = TqApi(web_gui=True)  # web_gui=True, 开启使用 web 界面查看绘图结果的功能
-klines = api.get_kline_serial("SHFE.au2006", 5)
+api = TqApi(web_gui=True, auth=TqAuth("信易账户", "账户密码"))  # web_gui=True, 开启使用 web 界面查看绘图结果的功能
+klines = api.get_kline_serial("SHFE.rb2105", 5)
 
 # 画一次指标线
 ma = MA(klines, 30)  # 使用 tqsdk 自带指标函数计算均线
