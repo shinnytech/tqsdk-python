@@ -16,6 +16,7 @@ downloads/
 eggs/
 .eggs/
 lib/
+!tqsdk/lib/
 lib64/
 parts/
 sdist/
@@ -106,7 +107,6 @@ ENV/
 .vscode/
 .reports/
 .DS_Store
-tqsdk/web/
 
 #node js dir
 node_modules/
