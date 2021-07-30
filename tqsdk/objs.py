@@ -186,6 +186,12 @@ class Quote(Entity):
         self.trading_time = copy.copy(self.trading_time)
         self.trading_time._instance_entity(path + ["trading_time"])
 
+    @property
+    def underlying_quote(self):
+        if self.underlying_symbol:
+            return _get_obj(self._api._data, ["quotes", self.underlying_symbol], self._api._prototype["quotes"]["#"])
+        return None
+
     def __await__(self):
         assert self._task
         return self._task.__await__()

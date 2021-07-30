@@ -164,8 +164,8 @@ class TqMultiAccount(object):
             _recv_chan._logger_bind(chan_name=f"recv from account_{index}")
             if isinstance(account, TqSim):
                 # 启动模拟账户实例
-                ws_md_send_chan._logger_bind(chan_from=f"tq_sim_{account._account_id}")
-                ws_md_recv_chan._logger_bind(chan_to=f"tq_sim_{account._account_id}")
+                ws_md_send_chan._logger_bind(chan_from=f"account_{index}")
+                ws_md_recv_chan._logger_bind(chan_to=f"account_{index}")
                 self._api.create_task(
                     account._run(self._api, _send_chan, _recv_chan, ws_md_send_chan, ws_md_recv_chan))
             else:
@@ -176,13 +176,13 @@ class TqMultiAccount(object):
                 elif not self._api._auth._has_account(account._account_id):
                     self._api._auth._add_account(account._account_id)
 
-                ws_md_send_chan._logger_bind(chan_from=f"tq_account_{account._account_id}")
-                ws_md_recv_chan._logger_bind(chan_to=f"tq_account_{account._account_id}")
+                ws_md_send_chan._logger_bind(chan_from=f"account_{index}")
+                ws_md_recv_chan._logger_bind(chan_to=f"account_{index}")
 
                 # 连接交易服务器
                 ws_td_send_chan, ws_td_recv_chan = self._connect_td(self._api, account, index)
-                ws_td_send_chan._logger_bind(chan_from=f"tq_account_{account._account_id}")
-                ws_td_recv_chan._logger_bind(chan_to=f"tq_account_{account._account_id}")
+                ws_td_send_chan._logger_bind(chan_from=f"account_{index}")
+                ws_td_recv_chan._logger_bind(chan_to=f"account_{index}")
 
                 # 账户处理消息
                 self._api.create_task(

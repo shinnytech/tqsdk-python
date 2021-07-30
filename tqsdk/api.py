@@ -73,8 +73,8 @@ from tqsdk.sim import TqSim
 from tqsdk.symbols import TqSymbols
 from tqsdk.tqwebhelper import TqWebHelper
 from tqsdk.stockprofit import TqStockProfit
-from tqsdk.utils import _generate_uuid, _query_for_quote, BlockManagerUnconsolidated, _quotes_add_night, \
-    _bisect_right_value
+from tqsdk.utils import _generate_uuid, _query_for_quote, BlockManagerUnconsolidated, _quotes_add_night, _bisect_value, \
+    _get_query_args
 from tqsdk.utils_symbols import _symbols_to_quotes
 from tqsdk.tafunc import get_dividend_df, get_dividend_factor
 from .__version__ import __version__
@@ -487,8 +487,10 @@ class TqApi(object):
             self._auth._has_md_grants(symbols)
             quote_list = [_get_obj(self._data, ["quotes", symbol], self._prototype["quotes"]["#"])
                           for symbol in symbols]
-            if set(symbols) - self._requests["quotes"]:
-                self._requests["quotes"] = self._requests["quotes"].union(set(symbols))
+            underlying_symbols = set([q.underlying_symbol for q in quote_list if q.underlying_symbol])  # 标的的合约信息
+            need_quotes = set(symbols).union(underlying_symbols)
+            if need_quotes - self._requests["quotes"]:
+                self._requests["quotes"] = self._requests["quotes"].union(set(need_quotes))
                 self._send_pack({
                     "aid": "subscribe_quote",
                     "ins_list": ",".join(self._requests["quotes"]),
@@ -498,7 +500,8 @@ class TqApi(object):
                     if len(quote_list) > 100:
                         raise Exception("get_quote_list 请求合约长度超过限制。回测中最多支持长度为 100。")
                     deadline = time.time() + 25 + 3 * len(quote_list)  # 回测时的行情需要下载 klines，加长超时时间
-                while any([quote["datetime"] == "" for quote in quote_list]):
+                all_quotes = quote_list + [_get_obj(self._data, ["quotes", s], self._prototype["quotes"]["#"]) for s in underlying_symbols]
+                while any([quote["datetime"] == "" for quote in all_quotes]):
                     # @todo: merge diffs
                     if not self.wait_update(deadline=deadline):
                         raise TqTimeoutError(f"获取 {symbols} 的行情信息超时，请检查客户端及网络是否正常")
@@ -2082,6 +2085,13 @@ class TqApi(object):
             while query_id not in symbols:
                 if not self.wait_update(deadline=deadline):
                     raise TqTimeoutError("查询合约服务 %s 超时，请检查客户端及网络是否正常 %s" % (query, query_id))
+            if isinstance(self._backtest, TqBacktest):
+                self._send_pack({
+                    "aid": "ins_query",
+                    "query_id": query_id,
+                    "query": "",
+                    "variables": {}
+                })
         return _get_obj(self._data, ["symbols", query_id])
 
     def query_quotes(self, ins_class: str = None, exchange_id: str = None, product_id: str = None, expired: bool = None,
@@ -2174,18 +2184,10 @@ class TqApi(object):
             variables["expired"] = expired
         if has_night is not None:
             variables["has_night"] = has_night
-        types = {
-            "class": "[Class]",
-            "exchange_id": "[String]",
-            "product_id": "[String]",
-            "expired": "Boolean",
-            "has_night": "Boolean"
-        }
-        query_cond = ",".join([f"${v}:{types[v]}" for v in variables])
-        query_cond = f"({query_cond})" if query_cond else ''
-        symbol_info_cond = ",".join([f"{v}:${v}" for v in variables])
-        symbol_info_cond = f"({symbol_info_cond})" if symbol_info_cond else ''
-        query = f"query{query_cond}{{multi_symbol_info{symbol_info_cond}{{ ... on basic {{instrument_id }} }}}}"
+        if isinstance(self._backtest, TqBacktest):
+            variables["timestamp"] = int(self._get_current_datetime().timestamp() * 1e9)
+        args_definitions, args = _get_query_args(variables)
+        query = f"query({args_definitions}){{multi_symbol_info({args}){{ ... on basic {{instrument_id }} }}}}"
         query_result = self.query_graphql(query, variables)
         result = []
         for quote in query_result.get("result", {}).get("multi_symbol_info", []):
@@ -2252,13 +2254,15 @@ class TqApi(object):
         if self._stock is False or self._loop.is_running():
             raise Exception("不支持（_stock is False 或者在协程中）当前接口调用")
         variables = {"class": ["CONT"]}
-        on_cont = "... on derivative{ underlying { edges {node{ ... on basic{ instrument_id exchange_id } ... on future {product_id} }}}}"
         if has_night is not None:
             variables["has_night"] = has_night
-            query = f"query($class:[Class],$has_night:Boolean){{multi_symbol_info(class:$class,has_night:$has_night){{ ... on basic {{instrument_id }} {on_cont} }}}}"
-        else:
-            query = f"query($class:[Class]){{multi_symbol_info(class:$class){{ ... on basic {{instrument_id }} {on_cont} }}}}"
-        query_result = self.query_graphql(query, variables)
+        if isinstance(self._backtest, TqBacktest):
+            variables["timestamp"] = int(self._get_current_datetime().timestamp() * 1e9)
+        args_definitions, args = _get_query_args(variables)
+        query = f"query( {args_definitions} ){{multi_symbol_info( {args} ){{...basic ...cont}}}}"
+        fragments = "fragment basic on basic {instrument_id}" \
+                    "fragment cont on derivative{underlying{edges{node{...on basic{instrument_id exchange_id}...on future {product_id}}}}}"
+        query_result = self.query_graphql(query + fragments, variables)
         result = []
         for quote in query_result.get("result", {}).get("multi_symbol_info", []):
             if quote.get("underlying"):
@@ -2432,16 +2436,19 @@ class TqApi(object):
             raise Exception("不支持（_stock is False 或者在协程中）当前接口调用")
         query_result = self._query_options_by_underlying(underlying_symbol)
         options = self._convert_query_result_to_list(query_result)
-        options = self._get_options_filtered(options, option_class=option_class, exercise_year=exercise_year, exercise_month=exercise_month, has_A=has_A)
-        options, option_0_index = self._get_options_sorted(options, underlying_price, option_class)
-        rst_options = []
-        for pl in price_level:
-            option_index = option_0_index - pl
-            if 0 <= option_index < len(options):
-                rst_options.append(options[option_index]["instrument_id"])
-            else:
-                rst_options.append(None)
-        return rst_options
+        if options:
+            options = self._get_options_filtered(options, option_class=option_class, exercise_year=exercise_year, exercise_month=exercise_month, has_A=has_A)
+            options, option_0_index = self._get_options_sorted(options, underlying_price, option_class)
+            rst_options = []
+            for pl in price_level:
+                option_index = option_0_index - pl
+                if 0 <= option_index < len(options):
+                    rst_options.append(options[option_index]["instrument_id"])
+                else:
+                    rst_options.append(None)
+            return rst_options
+        else:
+            return []
 
     def query_symbol_info(self, symbol: Union[str, List[str]]):
         """
@@ -2512,8 +2519,10 @@ class TqApi(object):
         symbol_list = [symbol] if isinstance(symbol, str) else symbol
         if any([s == "" for s in symbol_list]):
             raise Exception(f"symbol 参数 {symbol} 中不能有空字符串。")
-        df = TqSymbolDataFrame(self, [_get_obj(self._data, ["quotes", s], self._prototype["quotes"]["#"])
-                                      for s in symbol_list])
+        backtest_timestamp = None
+        if isinstance(self._backtest, TqBacktest):
+            backtest_timestamp = int(self._get_current_datetime().timestamp() * 1e9)
+        df = TqSymbolDataFrame(self, symbol_list, backtest_timestamp=backtest_timestamp)
         if not self._loop.is_running():
             deadline = time.time() + 30
             """
@@ -2524,7 +2533,7 @@ class TqApi(object):
             3. 修改 TqSymbolDataFrame, 增加 ready 字段表示是否有数据
             4. 修改 TqSymbolDataFrame, 每次都一定发送请求
             """
-            while not df.__dict__["_ready"]:
+            while not df.__dict__["_task"].done():
                 # todo: merge diffs
                 if not self.wait_update(deadline=deadline):
                     raise TqTimeoutError(f"获取 {symbol} 的行情信息超时，请检查客户端及网络是否正常")
@@ -2584,15 +2593,18 @@ class TqApi(object):
             raise Exception("不支持（_stock is False 或者在协程中）当前接口调用")
         query_result = self._query_options_by_underlying(underlying_symbol)
         options = self._convert_query_result_to_list(query_result)
-        options = self._get_options_filtered(options, option_class=option_class, exercise_year=exercise_year, exercise_month=exercise_month, has_A=has_A)
-        options, option_0_index = self._get_options_sorted(options, underlying_price, option_class)
-        # 实值期权
-        in_money_options = [o['instrument_id'] for o in options[:option_0_index]]
-        # 平值期权
-        at_money_options = [options[option_0_index]['instrument_id']]
-        # 虚值期权
-        out_of_money_options = [o['instrument_id'] for o in options[option_0_index+1:]]
-        return in_money_options, at_money_options, out_of_money_options
+        if options:
+            options = self._get_options_filtered(options, option_class=option_class, exercise_year=exercise_year, exercise_month=exercise_month, has_A=has_A)
+            options, option_0_index = self._get_options_sorted(options, underlying_price, option_class)
+            # 实值期权
+            in_money_options = [o['instrument_id'] for o in options[:option_0_index]]
+            # 平值期权
+            at_money_options = [options[option_0_index]['instrument_id']]
+            # 虚值期权
+            out_of_money_options = [o['instrument_id'] for o in options[option_0_index+1:]]
+            return in_money_options, at_money_options, out_of_money_options
+        else:
+            return [], [], []
 
     def query_all_level_finance_options(self, underlying_symbol, underlying_price, option_class,
                                         nearbys: Union[int, List[int]], has_A: bool = None):
@@ -2674,12 +2686,15 @@ class TqApi(object):
                 raise Exception(f"ETF 期权标的为：{underlying_symbol}，exercise_date 参数应该是在 [0, 1, 2, 3] 之间。")
         query_result = self._query_options_by_underlying(underlying_symbol)
         options = self._convert_query_result_to_list(query_result)
-        options = self._get_options_filtered(options, option_class=option_class, has_A=has_A, nearbys=nearbys)
-        options, option_0_index = self._get_options_sorted(options, underlying_price, option_class)
-        in_money_options = [o['instrument_id'] for o in options[:option_0_index]]  # 实值期权
-        at_money_options = [options[option_0_index]['instrument_id']]  # 平值期权
-        out_of_money_options = [o['instrument_id'] for o in options[option_0_index + 1:]]  # 虚值期权
-        return in_money_options, at_money_options, out_of_money_options
+        if options:
+            options = self._get_options_filtered(options, option_class=option_class, has_A=has_A, nearbys=nearbys)
+            options, option_0_index = self._get_options_sorted(options, underlying_price, option_class)
+            in_money_options = [o['instrument_id'] for o in options[:option_0_index]]  # 实值期权
+            at_money_options = [options[option_0_index]['instrument_id']]  # 平值期权
+            out_of_money_options = [o['instrument_id'] for o in options[option_0_index + 1:]]  # 虚值期权
+            return in_money_options, at_money_options, out_of_money_options
+        else:
+            return [], [], []
 
     def _query_options_by_underlying(self, underlying_symbol):
         """返回标的为 underlying_symbol 的全部期权"""
@@ -2689,23 +2704,28 @@ class TqApi(object):
             "derivative_class": ["OPTION"],
             "underlying_symbol": [underlying_symbol]
         }
-        query = """
+        if isinstance(self._backtest, TqBacktest):
+            variables['timestamp'] = int(self._get_current_datetime().timestamp() * 1e9)
+            query = """
+                query($derivative_class:[Class], $underlying_symbol:[String], $timestamp:Int64){
+                    multi_symbol_info(instrument_id:$underlying_symbol, timestamp:$timestamp){ 
+                        ... on basic { instrument_id derivatives (class: $derivative_class, timestamp:$timestamp) { 
+                            edges { node { ...basic ...option } }
+                        } }
+                    }
+                }"""
+        else:
+            query = """
                 query($derivative_class:[Class], $underlying_symbol:[String]){
                     multi_symbol_info(instrument_id:$underlying_symbol){ 
-                        ... on basic { instrument_id
-                            derivatives (class: $derivative_class) { 
-                                edges {
-                                    node {
-                                        ... on basic{ class instrument_id exchange_id english_name}
-                                        ... on option{ expired expire_datetime last_exercise_datetime strike_price call_or_put}
-                                    }
-                                }
-                            } 
-                        } 
-                    } 
-                }
-                """
-        return self.query_graphql(query, variables)
+                        ... on basic { instrument_id derivatives (class: $derivative_class) { 
+                            edges { node { ...basic ...option } }
+                        } }
+                    }
+                }"""
+        fragments = "fragment basic on basic{class instrument_id exchange_id english_name}" +\
+                    "fragment option on option{expired expire_datetime last_exercise_datetime strike_price call_or_put}"
+        return self.query_graphql(query + fragments, variables)
 
     def _convert_query_result_to_list(self, query_result):
         options = []
@@ -2745,10 +2765,13 @@ class TqApi(object):
     def _get_options_sorted(self, options, underlying_price, option_class):
         """返回排序的期权列表（实值在前虚值在后），以及平值期权的下标"""
         options.sort(key=lambda x: x["last_exercise_datetime"])  # 先按照行权日排序，可能有多个行权日
-        options.sort(key=lambda x: x['strike_price'], reverse=option_class == "PUT")  # 按照行权价排序, 实值在前虚值在后
+        options.sort(key=lambda x: x['strike_price'])  # 按照行权价排序
         price_list = [o['strike_price'] for o in options]
-        mid_price = _bisect_right_value(price_list, underlying_price)
-        return options, price_list.index(mid_price)
+        mid_price = _bisect_value(price_list, underlying_price, priority="right" if option_class == "CALL" else "left")
+        mid_option = options[price_list.index(mid_price)]
+        if option_class == "PUT":
+            options.sort(key=lambda x: x['strike_price'], reverse=True)  # 看跌期权按照行权价倒序排序, 保证实值在前虚值在后
+        return options, options.index(mid_option)
 
     # ----------------------------------------------------------------------
     def _call_soon(self, org_call_soon, callback, *args, **kargs):
@@ -2792,7 +2815,7 @@ class TqApi(object):
 
         # 连接合约和行情服务器
         if self._md_url is None:
-            self._md_url = self._auth._get_md_url(self._stock)  # 如果用户未指定行情地址，则使用名称服务获取行情地址
+            self._md_url = self._auth._get_md_url(self._stock, backtest=isinstance(self._backtest, TqBacktest))  # 如果用户未指定行情地址，则使用名称服务获取行情地址
         md_logger = ShinnyLoggerAdapter(self._logger.getChild("TqConnect"), url=self._md_url)
         ws_md_send_chan = TqChan(self, chan_name="send to md", logger=md_logger)
         ws_md_recv_chan = TqChan(self, chan_name="recv from md", logger=md_logger)
@@ -2871,7 +2894,9 @@ class TqApi(object):
         self._account._run(self, self._send_chan, self._recv_chan, ws_md_send_chan, ws_md_recv_chan)
 
         # 与 web 配合, 在 tq_web_helper 内部中处理 web_gui 选项
-        web_send_chan, web_recv_chan = TqChan(self, chan_name="send to web_helper"), TqChan(self, chan_name="send to web_helper")
+        web_send_chan, web_recv_chan = TqChan(self, chan_name="send to web_helper"), TqChan(self, chan_name="recv from web_helper")
+        self._send_chan._logger_bind(chan_from="web_helper")
+        self._recv_chan._logger_bind(chan_to="web_helper")
         self.create_task(tq_web_helper._run(web_send_chan, web_recv_chan, self._send_chan, self._recv_chan))
         self._send_chan, self._recv_chan = web_send_chan, web_recv_chan
 

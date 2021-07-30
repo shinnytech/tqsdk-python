@@ -47,7 +47,11 @@ query_all_fields = """
 
 
 def _query_for_quote(symbol):
-    """返回请求某个合约的合约信息的 query_pack"""
+    """
+    返回请求某个合约的合约信息的 query_pack
+    调用次函数应该全部都是sdk的代码主动请求合约信息
+    用户请求合约信息一定是 PYSDK_api 开头的请求，因为用户请求的合约信息在回测时带有 timestamp 参数，是不应该调用此函数的
+    """
     symbol_list = symbol if isinstance(symbol, list) else [symbol]
     if any([s == "" for s in symbol_list]) or len(symbol_list) == 0:
         raise Exception("发送的 ins_query 请求合约代码不支持空字符串、空列表或者列表中包括空字符串。")
@@ -59,6 +63,21 @@ def _query_for_quote(symbol):
         "query": query,
         "variables": {"instrument_id": symbol_list}
     }
+
+
+def _get_query_args(variables):
+    types = {
+        "instrument_id": "[String]",
+        "class": "[Class]",
+        "exchange_id": "[String]",
+        "product_id": "[String]",
+        "expired": "Boolean",
+        "has_night": "Boolean",
+        "timestamp": "Int64"
+    }
+    args_definitions = ",".join([f"${v}:{types[v]}" for v in variables])
+    args = ",".join([f"{v}:${v}" for v in variables])
+    return args_definitions, args
 
 
 def _query_for_init():
@@ -133,17 +152,23 @@ def _quotes_add_night(quotes):
                 quotes[symbol]["trading_time"]["night"] = [night_trading_table[key]]
 
 
-def _bisect_right_value(a, x):
+def _bisect_value(a, x, priority="right"):
     """
-    返回 bisect_right() 取得下标对应的值，当插入点距离前后元素距离相等，返回后一个元素的值
-
+    返回 bisect_right() 取得下标对应的值，当插入点距离前后元素距离相等，priority 表示优先返回右边的值还是左边的值
+    a: 必须是已经排序好（升序排列）的 list
     bisect_right : Return the index where to insert item x in list a, assuming a is sorted.
     """
+    assert priority in ['left', 'right']
     insert_index = bisect_right(a, x)
     if 0 < insert_index < len(a):
         left_dis = x - a[insert_index - 1]
         right_dis = a[insert_index] - x
-        mid_index = insert_index - (1 if left_dis < right_dis else 0)
+        if left_dis == right_dis:
+            mid_index = insert_index - 1 if priority == "left" else insert_index
+        elif left_dis < right_dis:
+            mid_index = insert_index - 1
+        else:
+            mid_index = insert_index
     else:
         assert insert_index == 0 or insert_index == len(a)
         mid_index = 0 if insert_index == 0 else (len(a) - 1)
