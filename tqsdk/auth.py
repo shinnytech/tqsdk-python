@@ -115,10 +115,10 @@ class TqAuth(object):
 
         return broker_list[broker_id]["url"], broker_list[broker_id].get('broker_type', 'FUTURE')
 
-    def _get_md_url(self, stock):
+    def _get_md_url(self, stock, backtest):
         """获取行情网关地址"""
         url = f"https://api.shinnytech.com/ns"
-        params = {"stock": str(stock).lower()}
+        params = {"stock": str(stock).lower(), "backtest": str(backtest).lower()}
         self._logger.debug("request md url", url=url, params=params, method="POST")
         response = requests.get(url=url, params=params, headers=self._base_headers, timeout=30)
         self._logger.debug("request md url result", url=response.url, status_code=response.status_code,

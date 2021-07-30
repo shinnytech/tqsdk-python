@@ -14,7 +14,7 @@
 importScripts("https://storage.googleapis.com/workbox-cdn/releases/4.3.1/workbox-sw.js");
 
 importScripts(
-  "web/precache-manifest.a2c58877a96a88c48d5e273a15e008c1.js"
+  "web/precache-manifest.1f4dd8e7baba14f0858de9c5a10cb57c.js"
 );
 
 workbox.core.setCacheNameDetails({prefix: "tqsdk-python-web"});

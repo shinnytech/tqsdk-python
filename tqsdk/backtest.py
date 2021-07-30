@@ -136,6 +136,7 @@ class TqBacktest(object):
         self._serials = {}  # 所有用户请求的 chart 序列，如果用户订阅行情，默认请求 1 分钟 Kline
         # gc 是会循环 self._serials，来计算用户需要的数据，self._serials 不应该被删除，
         self._generators = {}  # 所有用户请求的 chart 序列相应的 generator 对象，创建时与 self._serials 一一对应，会在一个序列计算到最后一根 kline 时被删除
+        self._had_any_generator = False  # 回测过程中是否有过 generator 对象
         self._sim_recv_chan_send_count = 0  # 统计向下游发送的 diff 的次数，每 1w 次执行一次 gc
         self._quotes = {}  # 记录 min_duration 记录某一合约的最小duration； sended_init_quote 是否已经过这个合约的初始行情
         self._diffs = []
@@ -146,8 +147,12 @@ class TqBacktest(object):
             async for pack in self._sim_send_chan:
                 if pack["aid"] == "ins_query":
                     await self._md_send_chan.send(pack)
-                    # 回测需要ensure_query，在api初始化时会发送初始化请求，接着会发送peek_message，如果这里没有等到结果，那么在收到 peek_message 的时候，会发现没有数据需要发送，回测结束
-                    await self._ensure_query(pack)
+                    # 回测 query 不为空时需要ensure_query
+                    # 1. 在api初始化时会发送初始化请求（2.5.0版本开始已经不再发送初始化请求），接着会发送peek_message，如果这里没有等到结果，那么在收到 peek_message 的时候，会发现没有数据需要发送，回测结束
+                    # 2. api在发送请求后，会调用 wait_update 更新数据，如果这里没有等到结果，行情可能会被推进
+                    # query 为空时，表示清空数据的请求，这个可以直接发出去，不需要等到收到回复
+                    if pack["query"] != "":
+                        await self._ensure_query(pack)
                     await self._send_diff()
                 elif pack["aid"] == "subscribe_quote":
                     # todo: 回测时，用户如果先订阅日线，再订阅行情，会直接返回以日线 datetime 标识的行情信息，而不是当前真正的行情时间
@@ -220,7 +225,7 @@ class TqBacktest(object):
                 quote.pop("underlying_symbol", None)
             if quote.get('expire_datetime'):
                 # 先删除所有的 quote 的 expired 字段，只在有 expire_datetime 字段时才会添加 expired 字段
-                quote['expired'] = quote.get('expire_datetime') <= self._trading_day_start
+                quote['expired'] = quote.get('expire_datetime') * 1e9 <= self._trading_day_start
         return quotes
 
     async def _send_snapshot(self):
@@ -315,7 +320,7 @@ class TqBacktest(object):
                     if quotes_diff and (quote_info["min_duration"] != 0 or min_request_key[1] == 0):
                         quotes[min_request_key[0]] = quotes_diff
                     await self._fetch_serial(min_request_key)
-                if not self._generators and not self._diffs:  # 当无可发送数据时则抛出BacktestFinished例外,包括未订阅任何行情 或 所有已订阅行情的最后一笔行情获取完成
+                if self._had_any_generator and not self._generators and not self._diffs:  # 当无可发送数据时则抛出BacktestFinished例外,包括未订阅任何行情 或 所有已订阅行情的最后一笔行情获取完成
                     self._api._print("回测结束")
                     self._logger.debug("backtest finished")
                     if self._current_dt < self._end_dt:
@@ -403,6 +408,7 @@ class TqBacktest(object):
                 "chart_id_set": {chart_id} if chart_id else set()  # 记录当前 serial 对应的 chart_id
             }
             self._generators[(ins, dur)] = self._gen_serial(ins, dur)
+            self._had_any_generator = True
             await self._fetch_serial((ins, dur))
         elif chart_id:
             self._serials[(ins, dur)]["chart_id_set"].add(chart_id)
