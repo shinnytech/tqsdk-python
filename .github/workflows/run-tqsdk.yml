@@ -8,7 +8,6 @@ on:
 jobs:
 
   deploy:
-    needs: test
     strategy:
       matrix:
         python-version: [3.6.x]
