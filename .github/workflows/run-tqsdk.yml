@@ -1,0 +1,29 @@
+name: Deploy Release
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+
+  deploy:
+    needs: test
+    strategy:
+      matrix:
+        python-version: [3.6.x]
+        python-arch: [x64]
+
+    env:
+        PYTHONIOENCODING: "utf-8"
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - name: Publish to github release
+      if: startsWith(github.event.ref, 'refs/tags')
+      uses: fnkr/github-action-ghr@v1
+      env:
+        GHR_PATH: tqsdk/
+        GITHUB_TOKEN: ${{ secrets.GITHUB_USER_TOKEN }}
