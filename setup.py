@@ -36,7 +36,7 @@ with open("README.md", mode="r", encoding='utf-8') as fh:
 
 setuptools.setup(
     name='tqsdk',
-    version="2.7.2",
+    version="2.8.0",
     description='TianQin SDK',
     author='TianQin',
     author_email='tianqincn@gmail.com',

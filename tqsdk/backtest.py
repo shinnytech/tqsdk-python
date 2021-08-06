@@ -92,9 +92,6 @@ class TqBacktest(object):
     async def _run(self, api, sim_send_chan, sim_recv_chan, md_send_chan, md_recv_chan):
         """回测task"""
         self._api = api
-        if not self._api._auth._has_feature("tq_bt"):
-            raise Exception("您的账户不支持回测功能，需要购买专业版本后使用。升级网址：https://account.shinnytech.com")
-
         # 下载历史主连合约信息
         rsp = requests.get(os.getenv("TQ_CONT_TABLE_URL", "https://files.shinnytech.com/continuous_table.json"),
                            headers=self._api._base_headers,

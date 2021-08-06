@@ -95,3 +95,13 @@ class TqTimeoutError(Exception):
     def __init__(self, message):
         super().__init__(message)
         self.message = message
+
+
+class TqBacktestPermissionError(Exception):
+    """
+    没有回测权限报错
+    """
+
+    def __init__(self, message):
+        super().__init__(message)
+        self.message = message

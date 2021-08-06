@@ -33,7 +33,7 @@ TqSdk 中大部分功能是供用户免费使用的, 同时我们也提供了 Tq
 
 .. figure:: images/web_gui_backtest.png
 
-对于 TqSdk 免费版本的用户如果想检验自己策略可以使用 :ref:`replay` 或申请模拟账户后模拟运行来检验 :ref:`sim_trading`
+对于 TqSdk 免费版本的用户,每天可以进行3次回测，同时也可以使用 :ref:`replay` 或申请模拟账户后模拟运行来检验策略 :ref:`sim_trading`
 
 股票行情
 -------------------------------------------------
