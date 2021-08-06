@@ -1,0 +1,5 @@
+recursive-exclude * __pycache__
+recursive-exclude tqsdk/test *
+recursive-include tqsdk/web *
+exclude tqsdk/*.c tqsdk/tools/*.c
+include tqsdk/tools/dead_ins.lzma
