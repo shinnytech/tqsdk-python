@@ -6,7 +6,7 @@
 
 如果想使用策略回测该功能，可以点击 `天勤量化专业版 <https://www.shinnytech.com/tqsdk_professional/>`_ 申请使用或购买
 
-对于 TqSdk 免费版本的用户如果想检验自己策略可以使用 :ref:`replay` 或申请模拟账户后模拟运行来检验 :ref:`sim_trading`
+对于 TqSdk 免费版本的用户,每天可以进行3次回测，同时也可以使用 :ref:`replay` 或申请模拟账户后模拟运行来检验策略 :ref:`sim_trading`
 
 执行策略回测
 -------------------------------------------------

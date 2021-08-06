@@ -17,6 +17,7 @@ import websockets
 
 from tqsdk.diff import _merge_diff, _get_obj
 from tqsdk.entity import Entity
+from tqsdk.exceptions import TqBacktestPermissionError
 from tqsdk.utils import _generate_uuid
 
 """
@@ -66,6 +67,16 @@ class TqWebSocketClientProtocol(websockets.WebSocketClientProtocol):
     def __init__(self, *args, **kwargs):
         super(TqWebSocketClientProtocol, self).__init__(*args, **kwargs)
         self.reader = TqStreamReader(limit=self.read_limit // 2, loop=self.loop)
+
+    async def handshake(self, *args, **kwargs) -> None:
+        try:
+            await super(TqWebSocketClientProtocol, self).handshake(*args, **kwargs)
+        except websockets.exceptions.InvalidStatusCode as e:
+            for h_key, h_value in self.response_headers.items():
+                if h_key == 'x-shinny-auth-check' and h_value == 'Backtest Permission Denied':
+                    raise TqBacktestPermissionError(
+                        "免费账户每日可以回测3次，今日暂无回测权限，需要购买专业版本后使用。升级网址：https://account.shinnytech.com") from None
+            raise
 
     async def read_message(self):
         message = await super().read_message()
@@ -164,7 +175,8 @@ class TqConnect(object):
             # 希望做到的效果是遇到网络问题可以断线重连, 但是可能抛出的例外太多了(TimeoutError,socket.gaierror等), 又没有文档或工具可以理出 try 代码中所有可能遇到的例外
             # 而这里的 except 又需要处理所有子函数及子函数的子函数等等可能抛出的例外, 因此这里只能遇到问题之后再补, 并且无法避免 false positive 和 false negative
             except (websockets.exceptions.ConnectionClosed, websockets.exceptions.InvalidStatusCode,
-                    websockets.exceptions.InvalidState, websockets.exceptions.ProtocolError, OSError) as e:
+                    websockets.exceptions.InvalidState, websockets.exceptions.ProtocolError, OSError,
+                    TqBacktestPermissionError) as e:
                 # 发送网络连接断开的通知，code = 2019112911
                 notify_id = _generate_uuid()
                 notify = {
@@ -183,6 +195,9 @@ class TqConnect(object):
                         }
                     }]
                 })
+                if isinstance(e, TqBacktestPermissionError):
+                    # 如果错误类型是用户无回测权限，直接返回
+                    raise
             finally:
                 if self._first_connect:
                     self._first_connect = False
