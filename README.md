@@ -1,5 +1,5 @@
 <p align="center">
-  <img src ="https://raw.githubusercontent.com/shinnytech/tqsdk-python/master/doc/tqsdk_new_logo.png"/>
+  <img src ="https://raw.githubusercontent.com/shinnytech/tqsdk-python/master/doc/logo.png"/>
 </p>
 <p align="center">
     <img src ="https://img.shields.io/pypi/v/tqsdk?color=blueviolet">
