@@ -252,7 +252,7 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
 
         """
         if self._task.done():
-            return
+            raise Exception("已经结束的 TargetPosTask 实例不可以再设置手数。")
         self._pos_chan.send_nowait(int(volume))
 
     def _get_order(self, offset, vol, pending_frozen):
@@ -378,7 +378,7 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
 
     def cancel(self):
         """
-        取消当前 TargetPosTask 实例，会将该实例已经发出但还是未成交的委托单撤单，并且此实例的 set_target_volume 函数不会再生效。
+        取消当前 TargetPosTask 实例，会将该实例已经发出但还是未成交的委托单撤单，并且如果后续调用此实例的 set_target_volume 函数会报错。
 
         任何时刻，每个账户下一个合约只能有一个 TargetPosTask 实例，并且其构造参数不能修改。
 
@@ -418,7 +418,7 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
 
     def is_finished(self) -> bool:
         """
-        返回当前 TargetPosTask 实例是否已经结束。即此实例的 set_target_volume 函数不会再接受参数，此实例不会再下单或者撤单。
+        返回当前 TargetPosTask 实例是否已经结束。即如果后续调用此实例的 set_target_volume 函数会报错，此实例不会再下单或者撤单。
 
         Returns:
             bool: 当前 TargetPosTask 实例是否已经结束

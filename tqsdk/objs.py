@@ -5,7 +5,6 @@ __author__ = 'chengzhi'
 import copy
 import json
 import warnings
-from datetime import datetime
 
 from tqsdk.datetime import _get_expire_rest_days
 from tqsdk.diff import _get_obj

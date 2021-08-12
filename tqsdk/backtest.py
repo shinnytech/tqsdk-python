@@ -50,6 +50,10 @@ class TqBacktest(object):
 
         * 如果即没有订阅 tick, 也没有订阅k线或 订阅的k线周期大于分钟线, 则 TqBacktest 会 **自动订阅分钟线** 来生成 quote
 
+        * 如果没有订阅 tick, 但是订阅了 k线, 则对应合约的 quote **只有下字段** :
+          datetime/ask&bid_price1/ask&bid_volume1/last_price/open_interest/
+          price_tick/price_decs/volume_multiple/max&min_limit&market_order_volume/underlying_symbol/strike_price
+
     **注意** ：如果未订阅 quote，模拟交易在下单时会自动为此合约订阅 quote ，根据回测时 quote 的更新规则，如果此合约没有订阅K线或K线周期大于分钟线 **则会自动订阅一个分钟线** 。
 
     模拟交易要求报单价格大于等于对手盘价格才会成交, 例如下买单, 要求价格大于等于卖一价才会成交, 如果不能立即成交则会等到下次行情更新再重新判断。

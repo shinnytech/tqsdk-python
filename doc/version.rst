@@ -2,6 +2,19 @@
 
 版本变更
 =============================
+2.8.1 (2021/08/12)
+
+* 增加：增强在协程中的支持，以下接口 :py:meth:`~tqsdk.api.TqApi.query_quotes`，:py:meth:`~tqsdk.api.TqApi.query_cont_quotes`，
+  :py:meth:`~tqsdk.api.TqApi.query_options`，:py:meth:`~tqsdk.api.TqApi.query_atm_options`，
+  :py:meth:`~tqsdk.api.TqApi.query_symbol_info`，:py:meth:`~tqsdk.api.TqApi.query_all_level_options`，
+  :py:meth:`~tqsdk.api.TqApi.query_all_level_finance_options`，支持协程中
+  ``in_options, at_options, out_options = await api.query_all_level_finance_options("SSE.510300", 4.60, "CALL", nearbys = 1)`` 写法，参考文档：:ref:`multi_async_task`
+* 修复：target_pos_task 优化报错提示，已经结束的 TargetPosTask 实例再调用 set_target_volume 设置手数会报错。参考文档：:py:meth:`~tqsdk.lib.target_pos_task.TargetPosTask.cancel`
+* 修复：下载历史数据时，某些数据未按照最小价格变动单位保留相应小数位数的问题
+* 重构：优化 wait_update、is_changing 接口的实现，增强对协程的支持
+* docs：完善回测字段规则文档说明
+
+
 2.8.0 (2021/08/05)
 
 * 增加：**支持免费用户每日回测 3 次**

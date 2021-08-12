@@ -26,6 +26,10 @@ except:
     DEAD_INS = {}
 
 
+# 价格相关的字段，需要 format 数据格式
+PRICE_KEYS = ["open", "high", "low", "close", "last_price", "highest", "lowest"] + [f"bid_price{i}" for i in range(1, 6)] + [f"ask_price{i}" for i in range(1, 6)]
+
+
 class DataDownloader:
     """
     数据下载工具是 TqSdk 专业版中的功能，能让用户下载目前 TqSdk 提供的全部期货、期权和股票类的历史数据，下载数据支持 tick 级别精度和任意 kline 周期
@@ -315,13 +319,13 @@ class DataDownloader:
                             return
                         row = [self._nano_to_str(item["datetime"]), item["datetime"]]
                         for col in data_cols:
-                            row.append(self._get_value(item, col))
+                            row.append(self._get_value(item, col, self._quote_list[0]["price_decs"]))
                         for i in range(1, len(self._symbol_list)):
                             symbol = self._symbol_list[i]
                             tid = serials[0].get("binding", {}).get(symbol, {}).get(str(current_id), -1)
                             k = {} if tid == -1 else serials[i]["data"].get(str(tid), {})
                             for col in data_cols:
-                                row.append(self._get_value(k, col))
+                                row.append(self._get_value(k, col, self._quote_list[i]["price_decs"]))
                         await self._data_chan.send(row)
                         current_id += 1
                         self._current_dt_nano = item["datetime"]
@@ -362,12 +366,15 @@ class DataDownloader:
             return cols
 
     @staticmethod
-    def _get_value(obj, key):
+    def _get_value(obj, key, price_decs):
         if key not in obj:
             return "#N/A"
         if isinstance(obj[key], str):
             return float("nan")
-        return obj[key]
+        if key in PRICE_KEYS:
+            return round(obj[key], price_decs)
+        else:
+            return obj[key]
 
     @staticmethod
     def _nano_to_str(nano):
