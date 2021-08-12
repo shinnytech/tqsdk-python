@@ -134,7 +134,6 @@ class Twap(object):
             raise Exception("请调整参数, min_volume_each_order 必须小于 max_volume_each_order。")
         # 得到有效的手数序列和时间间隔序列
         volume_list, interval_list = self._get_volume_list()
-        self._quote = self._api.get_quote(self._symbol)
         self._task = self._api.create_task(self._run(volume_list, interval_list))
         self._order_task = None
 
@@ -153,9 +152,7 @@ class Twap(object):
             return self._trade_sum_amount / self._trade_sum_volume
 
     async def _run(self, volume_list, interval_list):
-        async with self._api.register_update_notify() as update_chan:
-            while self._quote.datetime == "":
-                await update_chan.recv()
+        self._quote = await self._api.get_quote(self._symbol)
         # 计算得到时间序列，每个时间段快要结束的时间点，此时应该从被动价格切换为主动价格
         deadline_timestamp_list, strict_deadline_timestamp_list = self._get_deadline_timestamp(interval_list)
         for i in range(len(volume_list)):

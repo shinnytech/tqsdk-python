@@ -74,7 +74,7 @@ def _gen_diff_obj(diff, path):
 def _notify_update(target, recursive, content):
     """同步通知业务数据更新"""
     if isinstance(target, dict) or isinstance(target, Entity):
-        for q in target["_listener"]:
+        for q in getattr(target, "_listener", {}):
             q.send_nowait(content)
         if recursive:
             for v in target.values():

@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: tqsdk
-Version: 2.8.0
+Version: 2.8.1
 Summary: TianQin SDK
 Home-page: https://www.shinnytech.com/tqsdk
 Author: TianQin
@@ -15,7 +15,7 @@ Description-Content-Type: text/markdown
 License-File: LICENSE
 
 <p align="center">
-  <img src ="https://raw.githubusercontent.com/shinnytech/tqsdk-python/master/doc/tqsdk_new_logo.png"/>
+  <img src ="https://raw.githubusercontent.com/shinnytech/tqsdk-python/master/doc/images/tqsdk_new_logo.png"/>
 </p>
 <p align="center">
     <img src ="https://img.shields.io/pypi/v/tqsdk?color=blueviolet">

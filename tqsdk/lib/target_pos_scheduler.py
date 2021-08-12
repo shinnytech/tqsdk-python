@@ -104,7 +104,6 @@ class TargetPosScheduler(object):
 
         self._trade_objs_chan = trade_objs_chan if trade_objs_chan else TqChan(self._api)
         self._time_table = _check_time_table(time_table)
-        self._quote = self._api.get_quote(self._symbol)
         self._task = self._api.create_task(self._run())
 
         self._trade_keys = list(Trade(None).keys())
@@ -113,7 +112,8 @@ class TargetPosScheduler(object):
 
     async def _run(self):
         """负责调整目标持仓的task"""
-        self._time_table['deadline'] = _get_deadline_from_interval(self._quote, self._time_table['interval'])
+        quote = await self._api.get_quote(self._symbol)
+        self._time_table['deadline'] = _get_deadline_from_interval(quote, self._time_table['interval'])
         target_pos_task = None
         try:
             _index = 0  # _index 表示下标
@@ -129,8 +129,8 @@ class TargetPosScheduler(object):
                                                     account=self._account)
                     target_pos_task.set_target_volume(row['target_pos'])
                 if _index < self._time_table.shape[0] - 1:  # 非最后一项
-                    async for _ in self._api.register_update_notify(self._quote):
-                        if _get_trade_timestamp(self._quote.datetime, float('nan')) > row['deadline']:
+                    async for _ in self._api.register_update_notify(quote):
+                        if _get_trade_timestamp(quote.datetime, float('nan')) > row['deadline']:
                             if target_pos_task:
                                 target_pos_task._task.cancel()
                                 await asyncio.gather(target_pos_task._task, return_exceptions=True)

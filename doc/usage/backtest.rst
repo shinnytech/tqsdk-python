@@ -6,7 +6,7 @@
 
 如果想使用策略回测该功能，可以点击 `天勤量化专业版 <https://www.shinnytech.com/tqsdk_professional/>`_ 申请使用或购买
 
-对于 TqSdk 免费版本的用户,每天可以进行3次回测，同时也可以使用 :ref:`replay` 或申请模拟账户后模拟运行来检验策略 :ref:`sim_trading`
+对于 TqSdk 免费版本的用户，每天可以进行3次回测，同时也可以申请模拟账户后模拟运行来检验策略 :ref:`sim_trading`
 
 执行策略回测
 -------------------------------------------------
@@ -149,9 +149,10 @@ TqSdk回测框架使用一套复杂的规则来推进行情：
 规则3: quote按照以下规则更新::
 
   if 策略程序中使用了这个合约的tick序列:
-    每次tick序列推进时会更新quote的这些字段 datetime/ask&bid_price1/ask&bid_volume1/last_price/highest/lowest/average/volume/amount/open_interest/ price_tick/price_decs/volume_multiple/max&min_limit&market_order_volume/underlying_symbol/strike_price
+    每次tick序列推进时会更新quote的这些字段 datetime/ask&bid_price1/ask&bid_volume1/last_price/highest/lowest/average/volume/amount/open_interest/price_tick/price_decs/volume_multiple/max&min_limit&market_order_volume/underlying_symbol/strike_price
   elif 策略程序中使用了这个合约的K线序列:
-    每次K线序列推进时会更新quote. 使用 k线生成的 quote 的盘口由收盘价分别加/减一个最小变动单位, 并且 highest/lowest/average/amount 始终为 nan, volume 始终为0. 
+    每次K线序列推进时会更新quote. 使用 k线生成的 quote 的盘口由收盘价分别加/减一个最小变动单位, 并且 highest/lowest/average/amount 始终为 nan, volume 始终为0.
+    每次K线序列推进时会更新quote的这些字段 datetime/ask&bid_price1/ask&bid_volume1/last_price/open_interest/price_tick/price_decs/volume_multiple/max&min_limit&market_order_volume/underlying_symbol/strike_price
     if 策略程序使用的K线周期大于1分钟:
       回测框架会隐式的订阅一个1分钟K线, 确保quote的更新周期不会超过1分钟
   else:

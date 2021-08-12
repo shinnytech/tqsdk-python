@@ -19,7 +19,6 @@ __author__ = 'chengzhi'
 
 import asyncio
 import copy
-import functools
 import logging
 import os
 import platform
@@ -27,7 +26,7 @@ import re
 import sys
 import time
 from datetime import datetime, date
-from typing import Union, List, Any, Optional, Coroutine
+from typing import Union, List, Any, Optional, Coroutine, Callable, Tuple
 
 import numpy as np
 import psutil
@@ -56,6 +55,7 @@ else:
 
 from tqsdk.auth import TqAuth
 from tqsdk.account import TqAccount, TqKq
+from tqsdk.baseApi import TqBaseApi
 from tqsdk.multiaccount import TqMultiAccount
 from tqsdk.backtest import TqBacktest, TqReplay
 from tqsdk.channel import TqChan
@@ -68,7 +68,7 @@ from tqsdk.exceptions import TqTimeoutError
 from tqsdk.log import _get_log_name, _clear_logs
 from tqsdk.objs import Quote, Kline, Tick, Account, Position, Order, Trade, QuotesEntity, RiskManagementRule, RiskManagementData
 from tqsdk.objs import SecurityAccount, SecurityOrder, SecurityTrade, SecurityPosition
-from tqsdk.objs_not_entity import QuoteList, TqDataFrame, TqSymbolDataFrame
+from tqsdk.objs_not_entity import QuoteList, TqDataFrame, TqSymbolDataFrame, SymbolList, SymbolLevelList
 from tqsdk.sim import TqSim
 from tqsdk.symbols import TqSymbols
 from tqsdk.tqwebhelper import TqWebHelper
@@ -80,7 +80,7 @@ from tqsdk.tafunc import get_dividend_df, get_dividend_factor
 from .__version__ import __version__
 
 
-class TqApi(object):
+class TqApi(TqBaseApi):
     """
     天勤接口及数据管理类
 
@@ -203,6 +203,9 @@ class TqApi(object):
         self._logger.setLevel(logging.DEBUG)
         self.disable_print = disable_print
 
+        # 创建一个新的 ioloop, 避免和其他框架/环境产生干扰
+        super(TqApi, self).__init__(loop=loop)
+
         # 记录参数
         self._debug = debug  # 日志选项
         if isinstance(auth, TqAuth):
@@ -233,17 +236,6 @@ class TqApi(object):
             self._md_url = _md_url
         if _td_url:
             self._td_url = _td_url
-        self._loop = asyncio.SelectorEventLoop() if loop is None else loop  # 创建一个新的 ioloop, 避免和其他框架/环境产生干扰
-
-        # 初始化loop
-        self._send_chan, self._recv_chan = TqChan(self), TqChan(self)  # 消息收发队列
-        self._tasks = set()  # 由api维护的所有根task，不包含子task，子task由其父task维护
-        self._exceptions = []  # 由api维护的所有task抛出的例外
-        # 回测需要行情和交易 lockstep, 而 asyncio 没有将内部的 _ready 队列暴露出来,
-        # 因此 monkey patch call_soon 函数用来判断是否有任务等待执行
-        self._loop.call_soon = functools.partial(self._call_soon, self._loop.call_soon)
-        self._event_rev, self._check_rev = 0, 0
-        self._latest_order_id = {}
 
         # 内部关键数据
         self._requests = {
@@ -259,11 +251,12 @@ class TqApi(object):
         self._data._instance_entity([])
         self._data["quotes"] = QuotesEntity(self)
         self._data["quotes"]._instance_entity(["quotes"])
-        self._diffs = []  # 自上次wait_update返回后收到更新数据的数组
+        self._diffs = []  # 自上次wait_update返回后收到更新数据的数组 (异步代码)
+        self._sync_diffs = []  # 自上次wait_update返回后收到更新数据的数组 (同步代码)
         self._pending_diffs = []  # 从网络上收到的待处理的 diffs, 只在 wait_update 函数执行过程中才可能为非空
+        self._pending_peek = False  # 是否有发出的 peek_message 还没收到数据回复
         self._prototype = self._gen_prototype()  # 各业务数据的原型, 用于决定默认值及将收到的数据转为特定的类型
         self._security_prototype = self._gen_security_prototype() # 股票业务数据原型
-        self._wait_timeout = False  # wait_update 是否触发超时
         self._dividend_cache = {}  # 缓存合约对应的复权系数矩阵，每个合约只计算一次
 
         # slave模式的api不需要完整初始化流程
@@ -280,8 +273,7 @@ class TqApi(object):
 
         self._web_gui = web_gui
         # 初始化
-        if sys.platform.startswith("win"):
-            self.create_task(self._windows_patch())  # Windows系统下asyncio不支持KeyboardInterrupt的临时补丁
+        self._send_chan, self._recv_chan = TqChan(self), TqChan(self)  # 消息收发队列
         self.create_task(self._notify_watcher())  # 监控服务器发送的通知
         self._reconnect_timer = ReconnectTimer()  # 管理 ws 连接重连时间
         self._setup_connection()  # 初始化通讯连接
@@ -294,13 +286,13 @@ class TqApi(object):
             while self._data.get("mdhis_more_data", True) or trade_more_data:
                 if not self.wait_update(deadline=deadline):  # 等待连接成功并收取截面数据
                     raise TqTimeoutError("接收数据超时，请检查客户端及网络是否正常")
-
                 trade_more_data = self._account._get_trade_more_data_and_order_id(self, self._data)
         except:
             self.close()
             raise
-        # 使用非空list,使得wait_update()能正确发送peek_message; 使用空dict, 使得is_changing()返回false, 因为截面数据不算做更新数据.
-        self._diffs = [{}]
+        # 使用空 list, 使得 is_changing() 返回 false, 因为截面数据不算做更新数据
+        self._diffs = []
+        self._sync_diffs = []
 
     def _print(self, msg: str = "", level: str = "INFO"):
         if self.disable_print:
@@ -349,17 +341,10 @@ class TqApi(object):
         elif asyncio._get_running_loop():
             raise Exception(
                 "TqSdk 使用了 python3 的原生协程和异步通讯库 asyncio，您所使用的 IDE 不支持 asyncio, 请使用 pycharm 或其它支持 asyncio 的 IDE")
-
         # 总会发送 serial_extra_array 数据，由 TqWebHelper 处理
         for _, serial in self._serials.items():
             self._process_serial_extra_array(serial)
-        self._run_until_idle()  # 由于有的处于 ready 状态 task 可能需要报撤单, 因此一直运行到没有 ready 状态的 task
-        for task in self._tasks:
-            task.cancel()
-        while self._tasks:  # 等待 task 执行完成
-            self._run_once()
-        self._loop.run_until_complete(self._loop.shutdown_asyncgens())
-        self._loop.close()
+        super(TqApi, self)._close()
         mem = psutil.virtual_memory()
         self._logger.debug("process end", mem_total=mem.total, mem_free=mem.free)
         _clear_logs()  # 清除过期日志文件
@@ -369,7 +354,6 @@ class TqApi(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
-
 
     # ----------------------------------------------------------------------
     def get_quote(self, symbol: str) -> Quote:
@@ -478,34 +462,18 @@ class TqApi(object):
         """
         if any([s == "" for s in symbols]):
             raise Exception(f"get_quote_list 中请求合约代码不能为空字符串 {symbols}")
-        if self._loop.is_running():
-            quote_list = QuoteList(self, [_get_obj(self._data, ["quotes", s], self._prototype["quotes"]["#"])
-                                          for s in symbols])
-            return quote_list
-        else:
-            self._ensure_symbol(symbols)
-            self._auth._has_md_grants(symbols)
-            quote_list = [_get_obj(self._data, ["quotes", symbol], self._prototype["quotes"]["#"])
-                          for symbol in symbols]
-            underlying_symbols = set([q.underlying_symbol for q in quote_list if q.underlying_symbol])  # 标的的合约信息
-            need_quotes = set(symbols).union(underlying_symbols)
-            if need_quotes - self._requests["quotes"]:
-                self._requests["quotes"] = self._requests["quotes"].union(set(need_quotes))
-                self._send_pack({
-                    "aid": "subscribe_quote",
-                    "ins_list": ",".join(self._requests["quotes"]),
-                })
-                deadline = time.time() + 30
-                if isinstance(self._backtest, TqBacktest):
-                    if len(quote_list) > 100:
-                        raise Exception("get_quote_list 请求合约长度超过限制。回测中最多支持长度为 100。")
-                    deadline = time.time() + 25 + 3 * len(quote_list)  # 回测时的行情需要下载 klines，加长超时时间
-                all_quotes = quote_list + [_get_obj(self._data, ["quotes", s], self._prototype["quotes"]["#"]) for s in underlying_symbols]
-                while any([quote["datetime"] == "" for quote in all_quotes]):
-                    # @todo: merge diffs
-                    if not self.wait_update(deadline=deadline):
-                        raise TqTimeoutError(f"获取 {symbols} 的行情信息超时，请检查客户端及网络是否正常")
-            return quote_list
+        quote_list = QuoteList(self, [_get_obj(self._data, ["quotes", s], self._prototype["quotes"]["#"])
+                                      for s in symbols])
+        if not self._loop.is_running():
+            deadline = time.time() + 30
+            if isinstance(self._backtest, TqBacktest):
+                if len(quote_list) > 100:
+                    raise Exception("get_quote_list 请求合约长度超过限制。回测中最多支持长度为 100。")
+                deadline = time.time() + 25 + 3 * len(quote_list)  # 回测时的行情需要下载 klines，加长超时时间
+            while not quote_list._task.done():
+                if not self.wait_update(deadline=deadline, _task=quote_list._task):
+                    raise TqTimeoutError(f"获取 {symbols} 的行情信息超时，请检查客户端及网络是否正常")
+        return quote_list
 
     def _ensure_symbol(self, symbol: Union[str, List[str]]):
         # 已经收到收到合约信息之后返回，同步
@@ -518,17 +486,13 @@ class TqApi(object):
 
         if self._stock is False:
             raise Exception("代码 %s 不存在, 请检查合约代码是否填写正确" % (symbol_list))
-        elif self._loop.is_running():
-            self.create_task(self._ensure_symbol_async(symbol_list), _caller_api=True)
         else:
-            query_pack = _query_for_quote(symbol_list)
-            self._send_pack(query_pack)
-            deadline = time.time() + 30
-            while True:
-                if all([self._data.get("quotes", {}).get(symbol, {}).get('price_tick', float('nan')) > 0 for symbol in symbol_list]):
-                    break
-                if not self.wait_update(deadline=deadline):
-                    raise TqTimeoutError(f"获取 {symbol} 的合约信息超时，请检查客户端及网络是否正常，且合约代码填写正确")
+            task = self.create_task(self._ensure_symbol_async(symbol_list), _caller_api=True)
+            if not self._loop.is_running():
+                deadline = time.time() + 30
+                while not task.done():
+                    if not self.wait_update(deadline=deadline, _task=task):
+                        raise TqTimeoutError(f"获取 {symbol} 的合约信息超时，请检查客户端及网络是否正常，且合约代码填写正确")
 
     async def _ensure_symbol_async(self, symbol: Union[str, List[str]]):
         # 已经收到收到合约信息之后返回，异步
@@ -546,7 +510,7 @@ class TqApi(object):
             self._send_pack(query_pack)
             async with self.register_update_notify() as update_chan:
                 async for _ in update_chan:
-                    if all([self._data.get("quotes", {}).get(symbol, {}).get('price_tick', float('nan'))  > 0 for symbol in symbol_list]):
+                    if all([self._data.get("quotes", {}).get(symbol, {}).get('price_tick', float('nan')) > 0 for symbol in symbol_list]):
                         break
 
     # ----------------------------------------------------------------------
@@ -674,13 +638,8 @@ class TqApi(object):
             "view_width": data_length if len(symbol) == 1 else 8964,
             # 如果同时订阅了两个以上合约K线，初始化数据时默认获取 1w 根K线(初始化完成后修改指令为设定长度)
         }
-        if self._loop.is_running():
-            self.create_task(self._get_kline_serial_async(symbol, chart_id, serial, pack.copy()), _caller_api=True)
-        else:
-            self._ensure_symbol(symbol)
-            self._auth._has_md_grants(symbol)
-            if serial is None or chart_id is not None:  # 判断用户是否指定了 chart_id（参数）, 如果指定了，则一定会发送新的请求。
-                self._send_pack(pack.copy())  # 注意：将数据权转移给TqChan时其所有权也随之转移，因pack还需要被用到，所以传入副本
+        #将数据权转移给TqChan时其所有权也随之转移，因pack还需要被用到，所以传入副本
+        task = self.create_task(self._get_serial_async(symbol, chart_id, serial, pack.copy()), _caller_api=True)
         if serial is None:
             serial = self._init_serial([_get_obj(self._data, ["klines", s, str(dur_id)]) for s in symbol],
                                        data_length, self._prototype["klines"]["*"]["*"]["data"]["@"], adj_type)
@@ -691,8 +650,7 @@ class TqApi(object):
         # 对于多合约Kline，超时的等待时间应该和需要下载的数据量成正比，根据合约数量判断下载的数据量
         deadline = time.time() + 25 + 5 * len(symbol)
         while not self._loop.is_running() and not serial["init"]:
-            # @todo: merge diffs
-            if not self.wait_update(deadline=deadline):
+            if not self.wait_update(deadline=deadline, _task=[task, serial["df"].__dict__["_task"]]):
                 if len(symbol) > 1:
                     raise TqTimeoutError("获取 %s (%d) 的K线超时，请检查客户端及网络是否正常，或任一副合约在主合约行情的最后 %d 秒内无可对齐的K线" % (
                         symbol, duration_seconds, 8964 * duration_seconds))
@@ -700,9 +658,10 @@ class TqApi(object):
                     raise TqTimeoutError("获取 %s (%d) 的K线超时，请检查客户端及网络是否正常" % (symbol, duration_seconds))
         return serial["df"]
 
-    async def _get_kline_serial_async(self, symbol, chart_id, serial, pack):
+    async def _get_serial_async(self, symbol, chart_id, serial, pack):
         await self._ensure_symbol_async(symbol)
         self._auth._has_md_grants(symbol)
+        # 判断用户是否指定了 chart_id（参数）, 如果指定了，则一定会发送新的请求。
         if serial is None or chart_id is not None:
             self._send_pack(pack)
 
@@ -777,13 +736,8 @@ class TqApi(object):
             "duration": 0,
             "view_width": data_length,
         }
-        if self._loop.is_running():
-            self.create_task(self._get_tick_serial_async(symbol, chart_id, serial, pack.copy()), _caller_api=True)
-        else:
-            self._ensure_symbol(symbol)
-            self._auth._has_md_grants(symbol)
-            if serial is None or chart_id is not None:  # 判断用户是否指定了 chart_id（参数）, 如果指定了，则一定会发送新的请求。
-                self._send_pack(pack.copy())  # pack 的副本数据和所有权转移给TqChan
+        # pack 的副本数据和所有权转移给TqChan
+        task = self.create_task(self._get_serial_async(symbol, chart_id, serial, pack.copy()), _caller_api=True)
         if serial is None:
             serial = self._init_serial([_get_obj(self._data, ["ticks", symbol])], data_length,
                                        self._prototype["ticks"]["*"]["data"]["@"], adj_type)
@@ -793,16 +747,9 @@ class TqApi(object):
             self._serials[id(serial["df"])] = serial
         deadline = time.time() + 30
         while not self._loop.is_running() and not serial["init"]:
-            # @todo: merge diffs
-            if not self.wait_update(deadline=deadline):
+            if not self.wait_update(deadline=deadline, _task=[task, serial["df"].__dict__["_task"]]):
                 raise TqTimeoutError("获取 %s 的Tick超时，请检查客户端及网络是否正常，且合约代码填写正确" % (symbol))
         return serial["df"]
-
-    async def _get_tick_serial_async(self, symbol, chart_id, serial, pack):
-        await self._ensure_symbol_async(symbol)
-        self._auth._has_md_grants(symbol)
-        if serial is None or chart_id is not None:
-            self._send_pack(pack)
 
     # ----------------------------------------------------------------------
     def get_kline_data_series(self, symbol: Union[str, List[str]], duration_seconds: int,
@@ -1700,7 +1647,7 @@ class TqApi(object):
             return _get_obj(self._data, ["trade", self._account._get_account_key(account), "risk_management_data"])
 
     # ----------------------------------------------------------------------
-    def wait_update(self, deadline: Optional[float] = None) -> None:
+    def wait_update(self, deadline: Optional[float] = None, _task: Union[asyncio.Task, List[asyncio.Task], None] = None) -> bool:
         """
         等待业务数据更新
 
@@ -1736,54 +1683,58 @@ class TqApi(object):
             raise Exception(
                 "TqSdk 使用了 python3 的原生协程和异步通讯库 asyncio，您所使用的 IDE 不支持 asyncio, 请使用 pycharm 或其它支持 asyncio 的 IDE")
         self._wait_timeout = False
-        # 先尝试执行各个task,再请求下个业务数据
+        # 先尝试执行各个task,再请求下个业务数据，可能用户的同步代码会在 chan 中 send 数据，需要先 run_tasks
         self._run_until_idle()
 
-        # 总会发送 serial_extra_array 数据，由 TqWebHelper 处理
+        # 用户可能在同步或者异步代码中修改 klines 附加列的值
+        #    同步代码：此次调用 wait_update 之前应该已经修改执行
+        #    异步代码：上一行 self._run_until_idle() 可能会修改 klines 附加列的值
+        # 所以放在这里处理， 总会发送 serial_extra_array 数据，由 TqWebHelper 处理
         for _, serial in self._serials.items():
             self._process_serial_extra_array(serial)
-        # 先尝试执行各个task,再请求下个业务数据
-        self._run_until_idle()
-        if not self._is_slave and self._diffs:
+        self._run_until_idle()  # 这里 self._run_until_idle() 主要为了把上一步计算出得需要绘制的数据发送到 TqWebHelper
+        if _task is not None:
+                # 如果 _task 已经 done，则提前返回 True, False 代表超时会抛错
+            _tasks = _task if isinstance(_task, list) else [_task]
+            if all([t.done() for t in _tasks]):
+                return True
+        if not self._is_slave and not self._pending_peek:
             self._send_chan.send_nowait({
                 "aid": "peek_message"
             })
+            self._pending_peek = True
 
         # 先 _fetch_msg 再判断 deadline, 避免当 deadline 立即触发时无法接收数据
         update_task = self.create_task(self._fetch_msg())
-        deadline_handle = None if deadline is None else self._loop.call_later(max(0, deadline - time.time()),
-                                                                              self._set_wait_timeout)
         try:
-            while not self._wait_timeout and not self._pending_diffs:
-                self._run_once()
+            self._run_until_task_done(task=update_task, deadline=deadline)
             return len(self._pending_diffs) != 0
         finally:
-            self._diffs = self._pending_diffs
-            self._pending_diffs = []
-            # 清空K线更新范围，避免在 wait_update 未更新K线时仍通过 is_changing 的判断
-            self._klines_update_range = {}
-            for d in self._diffs:
-                # 判断账户类别, 对股票和期货的 trade 数据分别进行处理
-                if "trade" in d:
-                    for k, v in d.get('trade').items():
-                        prototype = self._security_prototype if self._account._is_stock_type(k) else self._prototype
-                        _merge_diff(self._data, {'trade': {k: v} }, prototype, False)
-                # 非交易数据均按照期货处理逻辑
-                diff_without_trade = {k : v for k, v in d.items() if k != "trade"}
-                if diff_without_trade:
-                    _merge_diff(self._data, diff_without_trade, self._prototype, False)
-            for _, serial in self._serials.items():
-                # K线df的更新与原始数据、left_id、right_id、more_data、last_id相关，其中任何一个发生改变都应重新计算df
-                # 注：订阅某K线后再订阅合约代码、周期相同但长度更短的K线时, 服务器不会再发送已有数据到客户端，即chart发生改变但内存中原始数据未改变。
-                # 检测到K线数据或chart的任何字段发生改变则更新serial的数据
-                if self.is_changing(serial["df"]) or self.is_changing(serial["chart"]):
-                    if len(serial["root"]) == 1:  # 订阅单个合约
-                        self._update_serial_single(serial)
-                    else:  # 订阅多个合约
-                        self._update_serial_multi(serial)
-            if deadline_handle:
-                deadline_handle.cancel()
-            update_task.cancel()
+            if len(self._pending_diffs) > 0:
+                self._diffs = self._pending_diffs
+                self._sync_diffs = (self._sync_diffs if _task else []) + self._pending_diffs
+                self._pending_diffs = []
+                # 清空K线更新范围，避免在 wait_update 未更新K线时仍通过 is_changing 的判断
+                self._klines_update_range = {}
+                for d in self._diffs:
+                    # 判断账户类别, 对股票和期货的 trade 数据分别进行处理
+                    if "trade" in d:
+                        for k, v in d.get('trade').items():
+                            prototype = self._security_prototype if self._account._is_stock_type(k) else self._prototype
+                            _merge_diff(self._data, {'trade': {k: v} }, prototype, False)
+                    # 非交易数据均按照期货处理逻辑
+                    diff_without_trade = {k : v for k, v in d.items() if k != "trade"}
+                    if diff_without_trade:
+                        _merge_diff(self._data, diff_without_trade, self._prototype, False)
+                for _, serial in self._serials.items():
+                    # K线df的更新与原始数据、left_id、right_id、more_data、last_id相关，其中任何一个发生改变都应重新计算df
+                    # 注：订阅某K线后再订阅合约代码、周期相同但长度更短的K线时, 服务器不会再发送已有数据到客户端，即chart发生改变但内存中原始数据未改变。
+                    # 检测到K线数据或chart的任何字段发生改变则更新serial的数据
+                    if self.is_changing(serial["df"]) or self.is_changing(serial["chart"]):
+                        if len(serial["root"]) == 1:  # 订阅单个合约
+                            self._update_serial_single(serial)
+                        else:  # 订阅多个合约
+                            self._update_serial_multi(serial)
 
     # ----------------------------------------------------------------------
     def is_changing(self, obj: Any, key: Union[str, List[str], None] = None) -> bool:
@@ -1876,7 +1827,8 @@ class TqApi(object):
                 paths = [obj["_path"]]
         except (KeyError, IndexError):
             return False
-        for diff in self._diffs:
+        # is_changing 区分同步 / 异步中，根据不同的 diffs 判断
+        for diff in (self._diffs if self._loop.is_running() else self._sync_diffs):
             # 如果传入key：生成一个dict（key:序号，value: 字段）, 遍历这个dict并在_is_key_exist()判断key是否存在
             if (isinstance(obj, pd.DataFrame) or isinstance(obj, pd.Series)) and len(key) != 0:
                 k_dict = {}
@@ -1957,13 +1909,7 @@ class TqApi(object):
             #以上代码将在3秒后输出
             hello world
         """
-        task = self._loop.create_task(coro)
-        current_task = asyncio.Task.current_task(loop=self._loop)\
-            if (sys.version_info[0] == 3 and sys.version_info[1] < 7) else asyncio.current_task(loop=self._loop)
-        if current_task is None or _caller_api:  # 由 api 创建的 task，需要 api 主动管理
-            self._tasks.add(task)
-            task.add_done_callback(self._on_task_done)
-        return task
+        return super(TqApi, self)._create_task(coro=coro, _caller_api=_caller_api)
 
     # ----------------------------------------------------------------------
     def register_update_notify(self, obj: Optional[Any] = None, chan: Optional[TqChan] = None) -> TqChan:
@@ -2163,8 +2109,8 @@ class TqApi(object):
             print(ls)  # 上海交易所基金代码列表
 
         """
-        if self._stock is False or self._loop.is_running():
-            raise Exception("不支持（_stock is False 或者在协程中）当前接口调用")
+        if self._stock is False:
+            raise Exception("期货行情系统(_stock = False)不支持当前接口调用")
         variables = {}
         if ins_class is not None:
             if ins_class == "":
@@ -2188,14 +2134,27 @@ class TqApi(object):
             variables["timestamp"] = int(self._get_current_datetime().timestamp() * 1e9)
         args_definitions, args = _get_query_args(variables)
         query = f"query({args_definitions}){{multi_symbol_info({args}){{ ... on basic {{instrument_id }} }}}}"
-        query_result = self.query_graphql(query, variables)
-        result = []
-        for quote in query_result.get("result", {}).get("multi_symbol_info", []):
-            if ins_class in ["INDEX", "CONT"] and exchange_id in ["CFFEX", "SHFE", "DCE", "CZCE", "INE"]:
-                if exchange_id in quote["instrument_id"]:
+        def filter(query_result):
+            result = []
+            for quote in query_result.get("result", {}).get("multi_symbol_info", []):
+                if ins_class in ["INDEX", "CONT"] and exchange_id in ["CFFEX", "SHFE", "DCE", "CZCE", "INE"]:
+                    if exchange_id in quote["instrument_id"]:
+                        result.append(quote["instrument_id"])
+                else:
                     result.append(quote["instrument_id"])
-            else:
-                result.append(quote["instrument_id"])
+            return result
+        return self._get_symbol_list(query=query, variables=variables, filter=filter)
+
+    def _get_symbol_list(self, query: str, variables: dict, filter: Callable[[dict], list]):
+        for k, v in variables.items():
+            if v == "" or isinstance(v, list) and (any([s == "" for s in v]) or len(v) == 0):
+                raise Exception(f"variables 中变量值不支持空字符串、空列表或者列表中包括空字符串。")
+        result = SymbolList(self, query_id=_generate_uuid("PYSDK_api"), query=query, variables=variables, filter=filter)
+        if not self._loop.is_running():
+            deadline = time.time() + 30
+            while not result._task.done():
+                if not self.wait_update(deadline=deadline, _task=result._task):
+                    raise TqTimeoutError("查询合约服务 %s 超时，请检查客户端及网络是否正常 %s" % (query, variables))
         return result
 
     def query_cont_quotes(self, exchange_id: str = None, product_id: str = None, has_night: bool = None) -> List[str]:
@@ -2251,8 +2210,8 @@ class TqApi(object):
             ['DCE.y2105', 'DCE.j2105', 'DCE.jd2105', 'DCE.c2105', 'DCE.m2105', 'DCE.rr2105', 'DCE.b2105', 'DCE.jm2105', 'DCE.fb2105', 'DCE.pp2105', 'DCE.lh2109', 'DCE.i2105', 'DCE.cs2105', 'DCE.eb2105', 'DCE.l2105', 'DCE.v2105', 'DCE.pg2104', 'DCE.eg2105', 'DCE.p2105', 'DCE.bb2105', 'DCE.a2105']
 
         """
-        if self._stock is False or self._loop.is_running():
-            raise Exception("不支持（_stock is False 或者在协程中）当前接口调用")
+        if self._stock is False:
+            raise Exception("期货行情系统(_stock = False)不支持当前接口调用")
         variables = {"class": ["CONT"]}
         if has_night is not None:
             variables["has_night"] = has_night
@@ -2262,17 +2221,19 @@ class TqApi(object):
         query = f"query( {args_definitions} ){{multi_symbol_info( {args} ){{...basic ...cont}}}}"
         fragments = "fragment basic on basic {instrument_id}" \
                     "fragment cont on derivative{underlying{edges{node{...on basic{instrument_id exchange_id}...on future {product_id}}}}}"
-        query_result = self.query_graphql(query + fragments, variables)
-        result = []
-        for quote in query_result.get("result", {}).get("multi_symbol_info", []):
-            if quote.get("underlying"):
-                for edge in quote["underlying"]["edges"]:
-                    underlying_quote = edge["node"]
-                    if (exchange_id and underlying_quote["exchange_id"] != exchange_id) \
-                            or (product_id and underlying_quote["product_id"] != product_id):
-                        continue
-                    result.append(underlying_quote["instrument_id"])
-        return result
+        def filter(query_result):
+            result = []
+            for quote in query_result.get("result", {}).get("multi_symbol_info", []):
+                if quote.get("underlying"):
+                    for edge in quote["underlying"]["edges"]:
+                        underlying_quote = edge["node"]
+                        if (exchange_id and underlying_quote["exchange_id"] != exchange_id) \
+                                or (product_id and underlying_quote["product_id"] != product_id):
+                            continue
+                        result.append(underlying_quote["instrument_id"])
+            return result
+        return self._get_symbol_list(query=query + fragments, variables=variables, filter=filter)
+
 
     def query_options(self, underlying_symbol: str, option_class: str = None, exercise_year: int = None,
                       exercise_month: int = None, strike_price: float = None, expired: bool = None, has_A: bool = None,
@@ -2326,26 +2287,30 @@ class TqApi(object):
             ls = api.query_options("SSE.510300", exercise_year=2020, exercise_month=12)
             print(ls)  # 上交所沪深300etf期权, 限制条件 2020 年 12 月份行权
         """
-        if self._stock is False or self._loop.is_running():
-            raise Exception("不支持（_stock is False 或者在协程中）当前接口调用")
-        query_result = self._query_options_by_underlying(underlying_symbol)
-        options = []
-        exercise_year = exercise_year if exercise_year else kwargs.get("delivery_year")
-        exercise_month = exercise_month if exercise_month else kwargs.get("delivery_month")
-        for quote in query_result.get("result", {}).get("multi_symbol_info", []):
-            if quote.get("derivatives"):
-                for edge in quote["derivatives"]["edges"]:
-                    option = edge["node"]
-                    if (option_class and option["call_or_put"] != option_class) \
-                            or (exercise_year and datetime.fromtimestamp(option["last_exercise_datetime"] / 1e9).year != exercise_year) \
-                            or (exercise_month and datetime.fromtimestamp(option["last_exercise_datetime"] / 1e9).month != exercise_month) \
-                            or (strike_price and option["strike_price"] != strike_price) \
-                            or (expired is not None and option["expired"] != expired) \
-                            or (has_A is True and option["english_name"].count('A') == 0) \
-                            or (has_A is False and option["english_name"].count('A') > 0):
-                        continue
-                    options.append(option["instrument_id"])
-        return options
+        if self._stock is False:
+            raise Exception("期货行情系统(_stock = False)不支持当前接口调用")
+        query, variables = self._query_options_by_underlying(underlying_symbol)
+        def filter(query_result):
+            options = []
+            exe_year = exercise_year if exercise_year else kwargs.get("delivery_year")
+            exe_month = exercise_month if exercise_month else kwargs.get("delivery_month")
+            for quote in query_result.get("result", {}).get("multi_symbol_info", []):
+                if quote.get("derivatives"):
+                    for edge in quote["derivatives"]["edges"]:
+                        option = edge["node"]
+                        if (option_class and option["call_or_put"] != option_class) \
+                                or (exe_year and datetime.fromtimestamp(
+                            option["last_exercise_datetime"] / 1e9).year != exe_year) \
+                                or (exe_month and datetime.fromtimestamp(
+                            option["last_exercise_datetime"] / 1e9).month != exe_month) \
+                                or (strike_price and option["strike_price"] != strike_price) \
+                                or (expired is not None and option["expired"] != expired) \
+                                or (has_A is True and option["english_name"].count('A') == 0) \
+                                or (has_A is False and option["english_name"].count('A') > 0):
+                            continue
+                        options.append(option["instrument_id"])
+            return options
+        return self._get_symbol_list(query=query, variables=variables, filter=filter)
 
     def query_atm_options(self, underlying_symbol, underlying_price, price_level, option_class, exercise_year: int = None,
                          exercise_month: int = None, has_A: bool = None):
@@ -2425,6 +2390,8 @@ class TqApi(object):
             # 预计输出 上交所 沪深300股指ETF期权,2020年12月的虚值1档期权
 
         """
+        if self._stock is False:
+            raise Exception("期货行情系统(_stock = False)不支持当前接口调用")
         price_level = price_level if type(price_level) is list else [price_level]
         if not all([pl in range(-100, 101, 1) for pl in price_level]):
             raise Exception("price_level 必须为 -100 ~ 100 之间的整数")
@@ -2432,23 +2399,23 @@ class TqApi(object):
             raise Exception("option_class 参数错误，option_class 必须是 'CALL' 或者 'PUT'")
         if exercise_year and exercise_month and not (isinstance(exercise_year, int) and isinstance(exercise_month, int)):
             raise Exception("exercise_year / exercise_month 类型错误")
-        if self._stock is False or self._loop.is_running():
-            raise Exception("不支持（_stock is False 或者在协程中）当前接口调用")
-        query_result = self._query_options_by_underlying(underlying_symbol)
-        options = self._convert_query_result_to_list(query_result)
-        if options:
-            options = self._get_options_filtered(options, option_class=option_class, exercise_year=exercise_year, exercise_month=exercise_month, has_A=has_A)
-            options, option_0_index = self._get_options_sorted(options, underlying_price, option_class)
-            rst_options = []
-            for pl in price_level:
-                option_index = option_0_index - pl
-                if 0 <= option_index < len(options):
-                    rst_options.append(options[option_index]["instrument_id"])
-                else:
-                    rst_options.append(None)
-            return rst_options
-        else:
-            return []
+        query, variables = self._query_options_by_underlying(underlying_symbol)
+        def filter(query_result):
+            options = self._convert_query_result_to_list(query_result)
+            if options:
+                options = self._get_options_filtered(options, option_class=option_class, exercise_year=exercise_year, exercise_month=exercise_month, has_A=has_A)
+                options, option_0_index = self._get_options_sorted(options, underlying_price, option_class)
+                rst_options = []
+                for pl in price_level:
+                    option_index = option_0_index - pl
+                    if 0 <= option_index < len(options):
+                        rst_options.append(options[option_index]["instrument_id"])
+                    else:
+                        rst_options.append(None)
+                return rst_options
+            else:
+                return []
+        return self._get_symbol_list(query=query, variables=variables, filter=filter)
 
     def query_symbol_info(self, symbol: Union[str, List[str]]):
         """
@@ -2516,27 +2483,17 @@ class TqApi(object):
             api.close()
 
         """
+        if self._stock is False:
+            raise Exception("期货行情系统(_stock = False)不支持当前接口调用")
         symbol_list = [symbol] if isinstance(symbol, str) else symbol
         if any([s == "" for s in symbol_list]):
             raise Exception(f"symbol 参数 {symbol} 中不能有空字符串。")
-        backtest_timestamp = None
-        if isinstance(self._backtest, TqBacktest):
-            backtest_timestamp = int(self._get_current_datetime().timestamp() * 1e9)
+        backtest_timestamp = int(self._get_current_datetime().timestamp() * 1e9) if isinstance(self._backtest, TqBacktest) else None
         df = TqSymbolDataFrame(self, symbol_list, backtest_timestamp=backtest_timestamp)
-        if not self._loop.is_running():
-            deadline = time.time() + 30
-            """
-            这里本来是 while not df.__dict__["_task"].done(): 连续调用两次相同的参数，已经请求过合约信息不会发送请求，也不会收到任何网络包，这里导致超时。
-            修改方案：
-            1. 重构 wait_update ，区分 tqsdk 内部调用和用户调用
-            2. 同步、异步代码分别处理（get_quote_list）
-            3. 修改 TqSymbolDataFrame, 增加 ready 字段表示是否有数据
-            4. 修改 TqSymbolDataFrame, 每次都一定发送请求
-            """
-            while not df.__dict__["_task"].done():
-                # todo: merge diffs
-                if not self.wait_update(deadline=deadline):
-                    raise TqTimeoutError(f"获取 {symbol} 的行情信息超时，请检查客户端及网络是否正常")
+        deadline = time.time() + 30
+        while not self._loop.is_running() and not df.__dict__["_task"].done():
+            if not self.wait_update(deadline=deadline, _task=df.__dict__["_task"]):
+                raise TqTimeoutError(f"获取 {symbol} 的行情信息超时，请检查客户端及网络是否正常")
         return df
 
     def query_all_level_options(self, underlying_symbol, underlying_price, option_class, exercise_year: int = None,
@@ -2585,26 +2542,40 @@ class TqApi(object):
             print(out_of_money_options)  # 虚值期权列表
 
         """
+        if self._stock is False:
+            raise Exception("期货行情系统(_stock = False)不支持当前接口调用")
         if option_class not in ['CALL', 'PUT']:
             raise Exception("option_class 参数错误，option_class 必须是 'CALL' 或者 'PUT'")
         if exercise_year and exercise_month and not (isinstance(exercise_year, int) and isinstance(exercise_month, int)):
             raise Exception("exercise_year / exercise_month 类型错误")
-        if self._stock is False or self._loop.is_running():
-            raise Exception("不支持（_stock is False 或者在协程中）当前接口调用")
-        query_result = self._query_options_by_underlying(underlying_symbol)
-        options = self._convert_query_result_to_list(query_result)
-        if options:
-            options = self._get_options_filtered(options, option_class=option_class, exercise_year=exercise_year, exercise_month=exercise_month, has_A=has_A)
-            options, option_0_index = self._get_options_sorted(options, underlying_price, option_class)
-            # 实值期权
-            in_money_options = [o['instrument_id'] for o in options[:option_0_index]]
-            # 平值期权
-            at_money_options = [options[option_0_index]['instrument_id']]
-            # 虚值期权
-            out_of_money_options = [o['instrument_id'] for o in options[option_0_index+1:]]
-            return in_money_options, at_money_options, out_of_money_options
-        else:
-            return [], [], []
+        query, variables = self._query_options_by_underlying(underlying_symbol)
+        def filter(query_result):
+            options = self._convert_query_result_to_list(query_result)
+            if options:
+                options = self._get_options_filtered(options, option_class=option_class, exercise_year=exercise_year, exercise_month=exercise_month, has_A=has_A)
+                options, option_0_index = self._get_options_sorted(options, underlying_price, option_class)
+                # 实值期权
+                in_money_options = [o['instrument_id'] for o in options[:option_0_index]]
+                # 平值期权
+                at_money_options = [options[option_0_index]['instrument_id']]
+                # 虚值期权
+                out_of_money_options = [o['instrument_id'] for o in options[option_0_index+1:]]
+                return in_money_options, at_money_options, out_of_money_options
+            else:
+                return [], [], []
+        return self._get_symbol_level_list(query=query, variables=variables, filter=filter)
+
+    def _get_symbol_level_list(self, query: str, variables: dict, filter: Callable[[dict], Tuple[list, list, list]]):
+        for k, v in variables.items():
+            if v == "" or isinstance(v, list) and (any([s == "" for s in v]) or len(v) == 0):
+                raise Exception(f"variables 中变量值不支持空字符串、空列表或者列表中包括空字符串。")
+        result = SymbolLevelList(self, query_id=_generate_uuid("PYSDK_api"), query=query, variables=variables, filter=filter)
+        if not self._loop.is_running():
+            deadline = time.time() + 30
+            while not result._task.done():
+                if not self.wait_update(deadline=deadline, _task=result._task):
+                    raise TqTimeoutError("查询合约服务 %s 超时，请检查客户端及网络是否正常 %s" % (query, variables))
+        return result
 
     def query_all_level_finance_options(self, underlying_symbol, underlying_price, option_class,
                                         nearbys: Union[int, List[int]], has_A: bool = None):
@@ -2671,8 +2642,8 @@ class TqApi(object):
             print(out_of_money_options)  # 虚值期权列表
 
         """
-        if self._stock is False or self._loop.is_running():
-            raise Exception("不支持（_stock is False 或者在协程中）当前接口调用")
+        if self._stock is False:
+            raise Exception("期货行情系统(_stock = False)不支持当前接口调用")
         if underlying_symbol not in ["SSE.000300", "SSE.510050", "SSE.510300", "SZSE.159919"]:
             raise Exception("不支持的标的合约")
         if option_class not in ['CALL', 'PUT']:
@@ -2684,17 +2655,19 @@ class TqApi(object):
         else:  # ETF期权
             if any([i not in [0, 1, 2, 3] for i in nearbys]):
                 raise Exception(f"ETF 期权标的为：{underlying_symbol}，exercise_date 参数应该是在 [0, 1, 2, 3] 之间。")
-        query_result = self._query_options_by_underlying(underlying_symbol)
-        options = self._convert_query_result_to_list(query_result)
-        if options:
-            options = self._get_options_filtered(options, option_class=option_class, has_A=has_A, nearbys=nearbys)
-            options, option_0_index = self._get_options_sorted(options, underlying_price, option_class)
-            in_money_options = [o['instrument_id'] for o in options[:option_0_index]]  # 实值期权
-            at_money_options = [options[option_0_index]['instrument_id']]  # 平值期权
-            out_of_money_options = [o['instrument_id'] for o in options[option_0_index + 1:]]  # 虚值期权
-            return in_money_options, at_money_options, out_of_money_options
-        else:
-            return [], [], []
+        query, variables = self._query_options_by_underlying(underlying_symbol)
+        def filter(query_result):
+            options = self._convert_query_result_to_list(query_result)
+            if options:
+                options = self._get_options_filtered(options, option_class=option_class, has_A=has_A, nearbys=nearbys)
+                options, option_0_index = self._get_options_sorted(options, underlying_price, option_class)
+                in_money_options = [o['instrument_id'] for o in options[:option_0_index]]  # 实值期权
+                at_money_options = [options[option_0_index]['instrument_id']]  # 平值期权
+                out_of_money_options = [o['instrument_id'] for o in options[option_0_index + 1:]]  # 虚值期权
+                return in_money_options, at_money_options, out_of_money_options
+            else:
+                return [], [], []
+        return self._get_symbol_level_list(query=query, variables=variables, filter=filter)
 
     def _query_options_by_underlying(self, underlying_symbol):
         """返回标的为 underlying_symbol 的全部期权"""
@@ -2725,7 +2698,7 @@ class TqApi(object):
                 }"""
         fragments = "fragment basic on basic{class instrument_id exchange_id english_name}" +\
                     "fragment option on option{expired expire_datetime last_exercise_datetime strike_price call_or_put}"
-        return self.query_graphql(query + fragments, variables)
+        return query + fragments, variables
 
     def _convert_query_result_to_list(self, query_result):
         options = []
@@ -2772,12 +2745,6 @@ class TqApi(object):
         if option_class == "PUT":
             options.sort(key=lambda x: x['strike_price'], reverse=True)  # 看跌期权按照行权价倒序排序, 保证实值在前虚值在后
         return options, options.index(mid_option)
-
-    # ----------------------------------------------------------------------
-    def _call_soon(self, org_call_soon, callback, *args, **kargs):
-        """ioloop.call_soon的补丁, 用来追踪是否有任务完成并等待执行"""
-        self._event_rev += 1
-        return org_call_soon(callback, *args, **kargs)
 
     def _setup_connection(self):
         """初始化"""
@@ -2909,11 +2876,6 @@ class TqApi(object):
             stock_send_chan, stock_recv_chan = TqChan(self), TqChan(self)
             self.create_task(stock_profit_helper._run(stock_send_chan, stock_recv_chan, self._send_chan, self._recv_chan))
             self._send_chan, self._recv_chan = stock_send_chan, stock_recv_chan
-
-        # 发送第一个peek_message,因为只有当收到上游数据包时wait_update()才会发送peek_message
-        self._send_chan.send_nowait({
-            "aid": "peek_message"
-        })
 
     def _fetch_symbol_info(self, url):
         """获取合约信息"""
@@ -3263,47 +3225,6 @@ class TqApi(object):
         }
         self._send_pack(pack)
 
-    def _run_once(self):
-        """执行 ioloop 直到 ioloop.stop 被调用"""
-        if not self._exceptions:
-            self._loop.run_forever()
-        if self._exceptions:
-            raise self._exceptions.pop(0)
-
-    def _run_until_idle(self):
-        """执行 ioloop 直到没有待执行任务"""
-        while self._check_rev != self._event_rev:
-            check_handle = self._loop.call_soon(self._check_event, self._event_rev + 1)
-            try:
-                self._run_once()
-            finally:
-                check_handle.cancel()
-
-    def _check_event(self, rev):
-        self._check_rev = rev
-        self._loop.stop()
-
-    def _set_wait_timeout(self):
-        self._wait_timeout = True
-        self._loop.stop()
-
-    def _on_task_done(self, task):
-        """当由 api 维护的 task 执行完成后取出运行中遇到的例外并停止 ioloop"""
-        try:
-            exception = task.exception()
-            if exception:
-                self._exceptions.append(exception)
-        except asyncio.CancelledError:
-            pass
-        finally:
-            self._tasks.remove(task)
-            self._loop.stop()
-
-    async def _windows_patch(self):
-        """Windows系统下asyncio不支持KeyboardInterrupt的临时补丁, 详见 https://bugs.python.org/issue23057"""
-        while True:
-            await asyncio.sleep(1)
-
     async def _notify_watcher(self):
         """将从服务器收到的通知打印出来"""
         notify_logger = self._logger.getChild("Notify")
@@ -3324,12 +3245,11 @@ class TqApi(object):
     async def _fetch_msg(self):
         while not self._pending_diffs:
             pack = await self._recv_chan.recv()
-            if pack is None:
-                return
             if not self._is_slave:
                 for slave in self._slaves:
                     slave._slave_recv_pack(copy.deepcopy(pack))
             self._pending_diffs.extend(pack.get("data", []))
+        self._pending_peek = False
 
     def _gen_prototype(self):
         """所有业务数据的原型"""
