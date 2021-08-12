@@ -2,8 +2,8 @@ name: Deploy Release
 
 on:
   push:
-    tags:
-      - '*'
+    branches:
+      - 'master'
 
 jobs:
 
@@ -19,10 +19,40 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Dump GitHub context
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+        run: echo "$GITHUB_CONTEXT"
 
-    - name: Publish to github release
-      if: startsWith(github.event.ref, 'refs/tags')
-      uses: fnkr/github-action-ghr@v1
-      env:
-        GHR_PATH: ./
-        GITHUB_TOKEN: ${{ secrets.GITHUB_USER_TOKEN }}
+      - name: Format ci info on tag
+        if: startsWith(github.event.head_commit.message, 'Update Version')
+        run: |
+          echo "TAG_NAME=$(echo ${{ github.event.head_commit.message }} | cut -c15-)" >> $GITHUB_ENV
+
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Add tag
+        if: startsWith(github.event.head_commit.message, 'Update Version')
+        uses: mathieudutour/github-tag-action@v5.6
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          custom_tag: ${{ env.TAG_NAME }}
+          create_annotated_tag: true
+          tag_prefix: ''
+
+      - name: Install ghr
+        if: startsWith(github.event.head_commit.message, 'Update Version')
+        env:
+          GHR_FORK: tcnksm/ghr
+          GHR_VERSION: 0.14.0
+        run: |
+          curl --silent -L https://github.com/${{env.GHR_FORK}}/releases/download/v${{env.GHR_VERSION}}/ghr_v${{env.GHR_VERSION}}_linux_amd64.tar.gz > ghr_v${{env.GHR_VERSION}}_linux_amd64.tar.gz
+          tar xvzf ghr_v${{env.GHR_VERSION}}_linux_amd64.tar.gz
+          mv ghr_v${{env.GHR_VERSION}}_linux_amd64/ghr /usr/local/bin/
+          rm -rf ghr_v${{env.GHR_VERSION}}_linux_amd64 ghr_v${{env.GHR_VERSION}}_linux_amd64.tar.gz
+
+      - name: Publish to github release
+        if: startsWith(github.event.head_commit.message, 'Update Version')
+        run: |
+          ghr -u shinny-yangyang -t ${{ secrets.GITHUB_USER_TOKEN }} ${{ env.TAG_NAME }}
