@@ -2,6 +2,14 @@
 
 版本变更
 =============================
+2.8.2 (2021/08/17)
+
+* 增加：is_changing 接口增加对于合约 :py:meth:`~tqsdk.objs.Quote.expire_rest_days`，持仓 :py:meth:`~tqsdk.objs.Position.pos_long`、
+  :py:meth:`~tqsdk.objs.Position.pos_short`、:py:meth:`~tqsdk.objs.Position.pos` 字段支持判断是否更新
+* 修复：2.8.1 版本重构后，不支持多线程运行的问题
+* docs: 更新合约字段示例说明
+
+
 2.8.1 (2021/08/12)
 
 * 增加：增强在协程中的支持，以下接口 :py:meth:`~tqsdk.api.TqApi.query_quotes`，:py:meth:`~tqsdk.api.TqApi.query_cont_quotes`，

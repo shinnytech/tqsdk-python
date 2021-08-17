@@ -171,14 +171,8 @@ class Quote(Entity):
         self.stock_dividend_ratio: list = []
         #: 除息表 ["20190601,0.15","20200107,0.2"…]
         self.cash_dividend_ratio: list = []
-
-    @property
-    def expire_rest_days(self):
-        """距离到期日的剩余天数（自然日天数），正数表示距离到期日的剩余天数，0表示到期日当天，负数表示距离到期日已经过去的天数"""
-        if self.expire_datetime:
-            now = self._api._get_current_datetime()  # 这里没有使用行情时间，就不需要订阅合约
-            return _get_expire_rest_days(self.expire_datetime, now.timestamp())
-        return float('nan')
+        #: 距离到期日的剩余天数（自然日天数），正数表示距离到期日的剩余天数，0表示到期日当天，负数表示距离到期日已经过去的天数
+        self.expire_rest_days: int = float('nan')
 
     def _instance_entity(self, path):
         super(Quote, self)._instance_entity(path)
@@ -427,39 +421,12 @@ class Position(Entity):
         self.market_value_short: float = float("nan")
         #: 期权市值
         self.market_value: float = float("nan")
-
-    @property
-    def pos(self):
-        """
-        净持仓手数
-
-        :return: int, ==0表示无持仓或多空持仓手数相等. <0表示空头持仓大于多头持仓, >0表示多头持仓大于空头持仓
-
-        注: 本字段是由 pos_long 等字段计算出来的，而非服务器发回的原始数据中的字段，则：
-            1. is_changing() 是判断服务器发回的数据字段，因此不能用于 is_changing() 判断。
-            2. 在直接 print(position) 时不会显示出此字段。
-            3. 只能用 position.pos 方式取值，不能用 position["pos"] 方式。
-            4. pos_long, pos_short, orders这三个字段同理。
-        """
-        return self.pos_long - self.pos_short
-
-    @property
-    def pos_long(self):
-        """
-        多头持仓手数
-
-        :return: int, ==0表示无多头持仓. >0表示多头持仓手数
-        """
-        return (self.pos_long_his + self.pos_long_today)
-
-    @property
-    def pos_short(self):
-        """
-        空头持仓手数
-
-        :return: int, ==0表示无空头持仓. >0表示空头持仓手数
-        """
-        return (self.pos_short_his + self.pos_short_today)
+        #: 净持仓手数, ==0表示无持仓或多空持仓手数相等. <0表示空头持仓大于多头持仓, >0表示多头持仓大于空头持仓
+        self.pos: int = 0
+        #: 多头持仓手数, ==0表示无多头持仓. >0表示多头持仓手数
+        self.pos_long: int = 0
+        #: 空头持仓手数, ==0表示无空头持仓. >0表示空头持仓手数
+        self.pos_short: int = 0
 
     @property
     def orders(self):
