@@ -60,6 +60,7 @@ from tqsdk.multiaccount import TqMultiAccount
 from tqsdk.backtest import TqBacktest, TqReplay
 from tqsdk.channel import TqChan
 from tqsdk.connect import TqConnect, MdReconnectHandler, TdReconnectHandler, ReconnectTimer
+from tqsdk.data_extension import DataExtension
 from tqsdk.data_series import DataSeries
 from tqsdk.datetime import _get_trading_day_start_time, _get_trading_day_end_time, _get_trading_calendar
 from tqsdk.diff import _merge_diff, _get_obj, _is_key_exist, _register_update_chan
@@ -258,6 +259,7 @@ class TqApi(TqBaseApi):
         self._prototype = self._gen_prototype()  # 各业务数据的原型, 用于决定默认值及将收到的数据转为特定的类型
         self._security_prototype = self._gen_security_prototype() # 股票业务数据原型
         self._dividend_cache = {}  # 缓存合约对应的复权系数矩阵，每个合约只计算一次
+        self._send_chan, self._recv_chan = TqChan(self), TqChan(self)  # 消息收发队列
 
         # slave模式的api不需要完整初始化流程
         self._is_slave = isinstance(account, TqApi)
@@ -273,7 +275,6 @@ class TqApi(TqBaseApi):
 
         self._web_gui = web_gui
         # 初始化
-        self._send_chan, self._recv_chan = TqChan(self), TqChan(self)  # 消息收发队列
         self.create_task(self._notify_watcher())  # 监控服务器发送的通知
         self._reconnect_timer = ReconnectTimer()  # 管理 ws 连接重连时间
         self._setup_connection()  # 初始化通讯连接
@@ -2867,15 +2868,20 @@ class TqApi(TqBaseApi):
         self.create_task(tq_web_helper._run(web_send_chan, web_recv_chan, self._send_chan, self._recv_chan))
         self._send_chan, self._recv_chan = web_send_chan, web_recv_chan
 
-        self._send_chan._logger_bind(chan_from="api")
-        self._recv_chan._logger_bind(chan_to="api")
-
         # 股票盈亏计算
         if self._account._has_stock_account:
             stock_profit_helper = TqStockProfit(self)
             stock_send_chan, stock_recv_chan = TqChan(self), TqChan(self)
             self.create_task(stock_profit_helper._run(stock_send_chan, stock_recv_chan, self._send_chan, self._recv_chan))
             self._send_chan, self._recv_chan = stock_send_chan, stock_recv_chan
+
+        data_extension = DataExtension(self)
+        data_extension_send_chan = TqChan(self, chan_name="send to data_extension")
+        data_extension_recv_chan = TqChan(self, chan_name="recv from data_extension")
+        self.create_task(data_extension._run(data_extension_send_chan, data_extension_recv_chan, self._send_chan, self._recv_chan))
+        self._send_chan, self._recv_chan = data_extension_send_chan, data_extension_recv_chan
+        self._send_chan._logger_bind(chan_from="api")
+        self._recv_chan._logger_bind(chan_to="api")
 
     def _fetch_symbol_info(self, url):
         """获取合约信息"""
