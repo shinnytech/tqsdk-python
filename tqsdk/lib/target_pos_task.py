@@ -127,7 +127,7 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
         Example1::
 
             # ... 用户代码 ...
-            quote = api.get("SHFE.cu2012")
+            quote = api.get_quote("SHFE.cu2012")
             def get_price(direction):
                 # 在 BUY 时使用买一价加一档价格，SELL 时使用卖一价减一档价格
                 if direction == "BUY":
@@ -146,8 +146,8 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
         Example2::
 
             # ... 用户代码 ...
-            quote1 = api.get("SHFE.cu2012")
-            quote2 = api.get("SHFE.au2012")
+            quote1 = api.get_quote("SHFE.cu2012")
+            quote2 = api.get_quote("SHFE.au2012")
 
             def get_price(direction, quote):
                 # 在 BUY 时使用买一价加一档价格，SELL 时使用卖一价减一档价格

@@ -3,6 +3,7 @@
 __author__ = 'yanqiong'
 
 import copy
+from typing import Set, Union, Dict, Tuple
 
 from tqsdk.entity import Entity
 
@@ -143,3 +144,40 @@ def _simple_merge_diff(result, diff, reduce_diff=True, persist=False):
             del diff[key]
         else:
             result[key] = diff[key]
+
+
+def _simple_merge_diff_and_collect_paths(result, diff, path: Tuple, diff_paths: Set, prototype: Union[Dict, None]):
+    """
+    更新业务数据并收集指定节点的路径
+    默认行为 reduce_diff = True，表示函数运行完成后，diff 会更新为与 result 真正的有区别的字段。
+    这个函数只在 data_extension 中用到，diff 只使用一次，并且全部转发到 api，可以执行 reduce_diff = True 的行为。
+    :param result: 更新结果
+    :param diff: diff pack
+    :param path: 当前迭代 merge_diff 的节点路径
+    :param diff_paths: 收集指定节点的路径
+    :param prototype: 数据原型, 为 None 的节点路径会被记录在 diff_paths 集合中
+    :return:
+    """
+    for key in list(diff.keys()):
+        if diff[key] is None:
+            result.pop(key, None)
+            if prototype and ('*' in prototype or key in prototype) and prototype['*' if '*' in prototype else key] is None:
+                diff_paths.add(path + (key, ))
+        elif isinstance(diff[key], dict):
+            target = result.setdefault(key, {})
+            sub_path = path + (key, )
+            sub_prototype = None
+            if prototype and ('*' in prototype or key in prototype):
+                sub_prototype = prototype['*' if '*' in prototype else key]
+                if sub_prototype is None:
+                    diff_paths.add(sub_path)
+            _simple_merge_diff_and_collect_paths(target, diff[key], path=sub_path, prototype=sub_prototype, diff_paths=diff_paths)
+            if len(diff[key]) == 0:
+                del diff[key]
+        elif key in result and result[key] == diff[key]:
+            del diff[key]
+        else:
+            result[key] = diff[key]
+            # 只有确实有变更的字段，会出现在 diff_paths 里
+            if prototype and ('*' in prototype or key in prototype) and prototype['*' if '*' in prototype else key] is None:
+                diff_paths.add(path + (key, ))
