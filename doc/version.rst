@@ -2,6 +2,15 @@
 
 版本变更
 =============================
+2.8.3 (2021/08/30)
+
+* 增加：is_changing 接口增加对于委托单 :py:meth:`~tqsdk.objs.Order.is_dead`、:py:meth:`~tqsdk.objs.Order.is_online`、
+  :py:meth:`~tqsdk.objs.Order.is_error`、:py:meth:`~tqsdk.objs.Order.trade_price` 字段支持判断是否更新
+* 修复: TqApi 初始化可能失败的问题
+* 优化: 将已知下市合约直接打包在代码中，缩短 TqApi 初始化时间
+* docs: 完善主力切换规则说明，将阿里源替换为清华源
+
+
 2.8.2 (2021/08/17)
 
 * 增加：is_changing 接口增加对于合约 :py:meth:`~tqsdk.objs.Quote.expire_rest_days`，持仓 :py:meth:`~tqsdk.objs.Position.pos_long`、

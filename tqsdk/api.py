@@ -20,6 +20,8 @@ __author__ = 'chengzhi'
 import asyncio
 import copy
 import logging
+import lzma
+import json
 import os
 import platform
 import re
@@ -116,15 +118,14 @@ class TqApi(TqBaseApi):
                 信易账户注册链接 https://www.shinnytech.com/register-intro/
 
             url (str): [可选]指定服务器的地址
-                * 当 account 为 :py:class:`~tqsdk.account.TqAccount` 类型时, 可以通过该参数指定交易服务器地址, \
-                默认使用 wss://opentd.shinnytech.com/trade/user0, 行情始终使用 wss://openmd.shinnytech.com/t/md/front/mobile
+                * 当 account 为 :py:class:`~tqsdk.account.TqAccount`、:py:class:`~tqsdk.multiaccount.TqMultiAccount` 类型时, 可以通过该参数指定交易服务器地址,\
+                默认使用对应账户的交易服务地址，行情地址该信易账户对应的行情服务地址
 
-                * 当 account 为 :py:class:`~tqsdk.sim.TqSim` 类型时, 可以通过该参数指定行情服务器地址,\
-                默认使用 wss://openmd.shinnytech.com/t/md/front/mobile
+                * 当 account 为 :py:class:`~tqsdk.sim.TqSim` 类型时, 可以通过该参数指定行情服务器地址, 默认使用该信易账户对应的行情服务地址
 
             backtest (TqBacktest/TqReplay): [可选] 进入时光机，此时强制要求 account 类型为 :py:class:`~tqsdk.sim.TqSim`
                 * :py:class:`~tqsdk.backtest.TqBacktest` : 传入 TqBacktest 对象，进入回测模式 \
-                在回测模式下, TqBacktest 连接 wss://openmd.shinnytech.com/t/md/front/mobile 接收行情数据, \
+                在回测模式下, TqBacktest 连接 wss://backtest.shinnytech.com/t/md/front/mobile 接收行情数据, \
                 由 TqBacktest 内部完成回测时间段内的行情推进和 K 线、Tick 更新.
 
                 * :py:class:`~tqsdk.backtest.TqReplay` : 传入 TqReplay 对象, 进入复盘模式 \
@@ -2790,29 +2791,22 @@ class TqApi(TqBaseApi):
 
         if self._stock is False:  # self._stock == False 需要旧版的合约服务文件
             quotes = self._fetch_symbol_info(self._ins_url)
-            if isinstance(self._backtest, TqBacktest):
-                _quotes_add_night(quotes)
-            ws_md_recv_chan.send_nowait({
-                "aid": "rtn_data",
-                "data": [{
-                    "quotes": quotes
-                }]
-            })  # 获取合约信息
         else:  # todo: self._stock == True 新版合约服务没有已下市合约
-            quotes = self._fetch_symbol_info(os.getenv("TQ_INS_URL", "https://openmd.shinnytech.com/t/md/symbols/2020-09-15.json"))
-            if isinstance(self._backtest, TqBacktest):
-                _quotes_add_night(quotes)
-            ws_md_recv_chan.send_nowait({
-                "aid": "rtn_data",
-                "data": [{
-                    "quotes": {k: v for k, v in quotes.items() if v["expired"] is True}
-                }]
-            })  # 获取合约信息
+            dir_path = os.path.dirname(os.path.realpath(__file__))
+            with lzma.open(os.path.join(dir_path, "expired_quotes.json.lzma"), "rt", encoding="utf-8") as f:
+                quotes = json.loads(f.read())
+
+        if isinstance(self._backtest, TqBacktest):
+            _quotes_add_night(quotes)
         # 期权增加了 exercise_year、exercise_month 在旧版合约服务中没有，需要添加，使用下市日期代替最后行权日
         for quote in quotes.values():
             if quote["ins_class"] == "FUTURE_OPTION":
                 quote["exercise_year"] = datetime.fromtimestamp(quote["expire_datetime"]).year
                 quote["exercise_month"] = datetime.fromtimestamp(quote["expire_datetime"]).month
+        ws_md_recv_chan.send_nowait({
+            "aid": "rtn_data",
+            "data": [{"quotes": quotes}]
+        })  # 获取合约信息
 
         conn = TqConnect(md_logger)
         self.create_task(conn._run(self, self._md_url, ws_md_send_chan, ws_md_recv_chan))
@@ -2879,6 +2873,8 @@ class TqApi(TqBaseApi):
         data_extension_send_chan = TqChan(self, chan_name="send to data_extension")
         data_extension_recv_chan = TqChan(self, chan_name="recv from data_extension")
         self.create_task(data_extension._run(data_extension_send_chan, data_extension_recv_chan, self._send_chan, self._recv_chan))
+        self._send_chan._logger_bind(chan_from="data_extension")
+        self._recv_chan._logger_bind(chan_to="data_extension")
         self._send_chan, self._recv_chan = data_extension_send_chan, data_extension_recv_chan
         self._send_chan._logger_bind(chan_from="api")
         self._recv_chan._logger_bind(chan_to="api")

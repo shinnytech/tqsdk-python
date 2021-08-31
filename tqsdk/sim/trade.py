@@ -133,7 +133,7 @@ class SimTrade(object):
         if position["volume_long"] > 0 or position["volume_short"] > 0:
             if position["last_price"] != quote["last_price"] \
                     or (math.isnan(future_margin) or future_margin != position["future_margin"])\
-                    or (math.isnan(underlying_last_price) or underlying_last_price != position["underlying_last_price"]):
+                    or (underlying_quote and (math.isnan(underlying_last_price) or underlying_last_price != position["underlying_last_price"])):
                 self._adjust_position_account(symbol, quote, underlying_quote,
                                               pre_last_price=position["last_price"],
                                               last_price=quote["last_price"],

@@ -476,57 +476,16 @@ class Order(Entity):
         self.last_msg: str = ""
         #: 委托单状态, ALIVE=有效, FINISHED=已完
         self.status: str = ""
+        #: 委托单是否确定已死亡（以后一定不会再产生成交）(注意，False 不代表委托单还存活，有可能交易所回来的信息还在路上或者丢掉了)
+        self.is_dead: bool = None
+        #: 委托单是否确定已报入交易所并等待成交 (注意，返回 False 不代表确定未报入交易所，有可能交易所回来的信息还在路上或者丢掉了)
+        self.is_online: bool = None
+        #: 委托单是否确定是错单（即下单失败，一定不会有成交）(注意，返回 False 不代表确定不是错单，有可能交易所回来的信息还在路上或者丢掉了)
+        self.is_error: bool = None
+        #: 平均成交价
+        self.trade_price: float = float('nan')
 
         self._this_session = False
-
-    @property
-    def is_dead(self):
-        """
-        判定这个委托单是否确定已死亡（以后一定不会再产生成交）
-
-        :return: 确定委托单已死时，返回 True, 否则返回 False. 注意，返回 False 不代表委托单还存活，有可能交易所回来的信息还在路上或者丢掉了
-
-        注: 本字段是由 status 等字段计算出来的，而非服务器发回的原始数据中的字段，则：
-            1. is_changing() 是判断服务器发回的数据字段，因此不能用于 is_changing() 判断。
-            2. 在直接 print(order) 时不会显示出此字段。
-            3. 只能用 order.is_dead 方式取值，不能用 order["is_dead"] 方式。
-            4. is_online, is_error, trade_price, trade_records 这四个字段同理。
-        """
-        return self.status == "FINISHED"
-
-    @property
-    def is_online(self):
-        """
-        判定这个委托单是否确定已报入交易所并等待成交
-
-        :return: 确定委托单已报入交易所时，返回 True, 否则返回 False. 注意，返回 False 不代表确定未报入交易所，有可能交易所回来的信息还在路上或者丢掉了
-        """
-        return self.exchange_order_id != "" and self.status == "ALIVE"
-
-    @property
-    def is_error(self):
-        """
-        判定这个委托单是否确定是错单（即下单失败，一定不会有成交）
-
-        :return: 确定委托单是错单时，返回 True, 否则返回 False. 注意，返回 False 不代表确定不是错单，有可能交易所回来的信息还在路上或者丢掉了
-        """
-        return self.exchange_order_id == "" and self.status == "FINISHED"
-
-    @property
-    def trade_price(self):
-        """
-        平均成交价
-
-        :return: 当委托单部分成交或全部成交时, 返回成交部分的平均成交价. 无任何成交时, 返回 nan
-        """
-        tdict = _get_obj(self._api._data, ["trade", self._path[1], "trades"])
-        sum_volume = sum([trade.volume for trade_id, trade in tdict.items() if
-                          (not trade_id.startswith("_")) and trade.order_id == self.order_id])
-        if sum_volume == 0:
-            return float('nan')
-        sum_amount = sum([trade.volume * trade.price for trade_id, trade in tdict.items() if
-                          (not trade_id.startswith("_")) and trade.order_id == self.order_id])
-        return sum_amount / sum_volume
 
     @property
     def trade_records(self):

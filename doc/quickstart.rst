@@ -34,7 +34,7 @@
 
 但是由于 `pip` 使用的是国外的服务器，普通用户往往下载速度过慢或不稳定，对于使用 `pip` 命令下载速度较慢的用户，我们推荐采用切换国内源的方式安装/升级 TqSdk::
 
-    pip install tqsdk -U -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host=mirrors.aliyun.com
+    pip install tqsdk -U -i https://pypi.tuna.tsinghua.edu.cn/simple --trusted-host=pypi.tuna.tsinghua.edu.cn
 
 .. _quickstart_0:
 
@@ -138,7 +138,7 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 
 点击生成的地址，即可访问订阅的K线图形
 
-.. figure:: images/web_gui_klines.png
+.. figure:: images/web_gui_demo.png
 
 具体请见 :ref:`web_gui`
 
