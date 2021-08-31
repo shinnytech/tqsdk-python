@@ -26,7 +26,7 @@ class DataExtension(object):
                         'pos': int
                     }
                 },
-                ordres: {
+                orders: {
                     *: {
                         'is_dead': bool
                         'is_online': bool
