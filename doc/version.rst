@@ -2,6 +2,11 @@
 
 版本变更
 =============================
+2.8.4 (2021/08/31)
+
+* 修复：由于缺少初始合约文件，TqApi 初始化可能失败的问题
+
+
 2.8.3 (2021/08/30)
 
 * 增加：is_changing 接口增加对于委托单 :py:meth:`~tqsdk.objs.Order.is_dead`、:py:meth:`~tqsdk.objs.Order.is_online`、
