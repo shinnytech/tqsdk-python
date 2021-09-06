@@ -1,2 +1,2 @@
 from PyInstaller.utils.hooks import collect_data_files
-datas = collect_data_files('tqsdk', includes=['ctpse', 'web'])
+datas = collect_data_files('tqsdk', includes=['ctpse', 'web', 'expired_quotes.json.lzma'])

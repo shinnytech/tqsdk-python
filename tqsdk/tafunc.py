@@ -860,6 +860,25 @@ def _get_pdf(series: pd.Series):
     return series.loc[series.isna()].append(pd.Series(stats.norm.pdf(s), index=s.index), verify_integrity=True)
 
 
+def _get_options_class(series: pd.Series, option_class: Union[str, pd.Series]):
+    """
+    根据价格序列 series，和指定的 option_class
+
+    Args:
+        option_class (str / Series[str]): CALL / PUT / Series(['CALL', 'CALL', 'CALL', 'PUT'])
+
+    Returns:
+        Series[int] :  长度和 series 一致，Series([1, 1, 1, 1]) / Series([-1, -1, -1, -1]) / Series([1, 1, 1, -1]), 对于无效的参数值为 Series([nan, nan, nan, nan])
+
+    """
+    if type(option_class) is str and option_class in ["CALL", "PUT"]:
+        return Series([(1 if option_class == "CALL" else -1) for _ in range(series.size)])
+    elif type(option_class) is Series and series.size == option_class.size:
+        return option_class.map({'CALL': 1, 'PUT': -1})
+    else:
+        return Series([float('nan') for _ in range(series.size)])
+
+
 def get_t(df, expire_datetime):
     """
     计算 K 线序列对应的年化到期时间，主要用于计算期权相关希腊指标时，需要得到计算出序列对应的年化到期时间
@@ -952,7 +971,11 @@ def get_bs_price(series, k, r, v, t, option_class):
 
             * pandas.Series: 其元素个数应该和 series 元素个数相同，对于 series 中每个元素都使用 t 中对应的值计算理论价
 
-        option_class (str): 期权方向，必须是 "CALL" 或者 "PUT"，否则返回的序列值全部为 nan
+        option_class (str / pandas.Series): 期权方向，必须是两者其一，否则返回的序列值全部为 nan
+
+            * str: "CALL" 或者 "PUT"
+
+            * pandas.Series: 其元素个数应该和 series 元素个数相同，每个元素的值为 "CALL" 或者 "PUT"
 
     Returns:
         pandas.Series: 返回该序列理论价
@@ -974,9 +997,7 @@ def get_bs_price(series, k, r, v, t, option_class):
         print(list(bs_price.round(2)))
         api.close()
     """
-    if option_class not in ["CALL", "PUT"]:
-        return pd.Series(np.full_like(series, float('nan')))
-    o = 1 if option_class == "CALL" else -1
+    o = _get_options_class(series, option_class=option_class)
     d1 = _get_d1(series, k, r, v, t)
     d2 = pd.Series(np.where(np.isnan(d1), np.nan, d1 - v * np.sqrt(t)))
     return pd.Series(
@@ -1006,7 +1027,11 @@ def get_delta(series, k, r, v, t, option_class, d1=None):
 
             * pandas.Series: 其元素个数应该和 series 元素个数相同，对于 series 中每个元素都使用 t 中对应的值计算理论价
 
-        option_class (str): 期权方向，必须是 "CALL" 或者 "PUT"，否则返回的序列值全部为 nan
+        option_class (str / pandas.Series): 期权方向，必须是两者其一，否则返回的序列值全部为 nan
+
+            * str: "CALL" 或者 "PUT"
+
+            * pandas.Series: 其元素个数应该和 series 元素个数相同，每个元素的值为 "CALL" 或者 "PUT"
 
         d1 (None | pandas.Series): [可选] 序列对应的 BS 公式中 b1 值
 
@@ -1033,9 +1058,7 @@ def get_delta(series, k, r, v, t, option_class, d1=None):
         api.close()
 
     """
-    if option_class not in ["CALL", "PUT"]:
-        return pd.Series(np.full_like(series, float('nan')))
-    o = 1 if option_class == "CALL" else -1
+    o = _get_options_class(series, option_class=option_class)
     if d1 is None:
         d1 = _get_d1(series, k, r, v, t)
     return pd.Series(np.where(np.isnan(d1), np.nan, pd.Series(o * _get_cdf(o * d1))))
@@ -1117,7 +1140,11 @@ def get_theta(series, k, r, v, t, option_class, d1=None):
 
             * pandas.Series: 其元素个数应该和 series 元素个数相同，对于 series 中每个元素都使用 t 中对应的值计算理论价
 
-        option_class (str): 期权方向，必须是 "CALL" 或者 "PUT"，否则返回的序列值全部为 nan
+        option_class (str / pandas.Series): 期权方向，必须是两者其一，否则返回的序列值全部为 nan
+
+            * str: "CALL" 或者 "PUT"
+
+            * pandas.Series: 其元素个数应该和 series 元素个数相同，每个元素的值为 "CALL" 或者 "PUT"
 
         d1 (None | pandas.Series): [可选] 序列对应的 BS 公式中 b1 值
 
@@ -1144,9 +1171,7 @@ def get_theta(series, k, r, v, t, option_class, d1=None):
         api.close()
 
     """
-    if option_class not in ["CALL", "PUT"]:
-        return pd.Series(np.full_like(series, float('nan')))
-    o = 1 if option_class == "CALL" else -1
+    o = _get_options_class(series, option_class=option_class)
     if d1 is None:
         d1 = _get_d1(series, k, r, v, t)
     d2 = pd.Series(np.where(np.isnan(d1), np.nan, d1 - v * np.sqrt(t)))
@@ -1230,7 +1255,11 @@ def get_rho(series, k, r, v, t, option_class, d1=None):
 
             * pandas.Series: 其元素个数应该和 series 元素个数相同，对于 series 中每个元素都使用 t 中对应的值计算理论价
 
-        option_class (str): 期权方向，必须是 "CALL" 或者 "PUT"，否则返回的序列值全部为 nan
+        option_class (str / pandas.Series): 期权方向，必须是两者其一，否则返回的序列值全部为 nan
+
+            * str: "CALL" 或者 "PUT"
+
+            * pandas.Series: 其元素个数应该和 series 元素个数相同，每个元素的值为 "CALL" 或者 "PUT"
 
         d1 (None | pandas.Series): [可选] 序列对应的 BS 公式中 b1 值
 
@@ -1257,9 +1286,7 @@ def get_rho(series, k, r, v, t, option_class, d1=None):
         api.close()
 
     """
-    if option_class not in ["CALL", "PUT"]:
-        return pd.Series(np.full_like(series, float('nan')))
-    o = 1 if option_class == "CALL" else -1
+    o = _get_options_class(series, option_class=option_class)
     if d1 is None:
         d1 = _get_d1(series, k, r, v, t)
     d2 = pd.Series(np.where(np.isnan(d1), np.nan, d1 - v * np.sqrt(t)))
@@ -1291,7 +1318,11 @@ def get_impv(series, series_option, k, r, init_v, t, option_class):
 
             * pandas.Series: 其元素个数应该和 series 元素个数相同，对于 series 中每个元素都使用 t 中对应的值计算理论价
 
-        option_class (str): 期权方向，必须是 "CALL" 或者 "PUT"，否则返回的序列值全部为 nan
+        option_class (str / pandas.Series): 期权方向，必须是两者其一，否则返回的序列值全部为 nan
+
+            * str: "CALL" 或者 "PUT"
+
+            * pandas.Series: 其元素个数应该和 series 元素个数相同，每个元素的值为 "CALL" 或者 "PUT"
 
     Returns:
         pandas.Series: 该序列的隐含波动率
@@ -1314,9 +1345,7 @@ def get_impv(series, series_option, k, r, init_v, t, option_class):
         print("impv", list((impv * 100).round(2)))
         api.close()
     """
-    if option_class not in ["CALL", "PUT"]:
-        return pd.Series(np.full_like(series, float('nan')))
-    o = 1 if option_class == "CALL" else -1
+    o = _get_options_class(series, option_class=option_class)
     lower_limit = o * (series - k * np.exp(-r * t))
     x = pd.Series(np.where((series_option < lower_limit) | (t <= 0), np.nan, init_v))
     y = pd.Series(np.where(np.isnan(x), np.nan, get_bs_price(series, k, r, x, t, option_class)))

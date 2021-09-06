@@ -71,7 +71,8 @@ from tqsdk.exceptions import TqTimeoutError
 from tqsdk.log import _get_log_name, _clear_logs
 from tqsdk.objs import Quote, Kline, Tick, Account, Position, Order, Trade, QuotesEntity, RiskManagementRule, RiskManagementData
 from tqsdk.objs import SecurityAccount, SecurityOrder, SecurityTrade, SecurityPosition
-from tqsdk.objs_not_entity import QuoteList, TqDataFrame, TqSymbolDataFrame, SymbolList, SymbolLevelList
+from tqsdk.objs_not_entity import QuoteList, TqDataFrame, TqSymbolDataFrame, SymbolList, SymbolLevelList, \
+    TqSymbolRankingDataFrame, TqOptionGreeksDataFrame
 from tqsdk.sim import TqSim
 from tqsdk.symbols import TqSymbols
 from tqsdk.tqwebhelper import TqWebHelper
@@ -261,6 +262,7 @@ class TqApi(TqBaseApi):
         self._security_prototype = self._gen_security_prototype() # 股票业务数据原型
         self._dividend_cache = {}  # 缓存合约对应的复权系数矩阵，每个合约只计算一次
         self._send_chan, self._recv_chan = TqChan(self), TqChan(self)  # 消息收发队列
+        self._ws_md_recv_chan = None  # 记录 ws_md_recv_chan 引用
 
         # slave模式的api不需要完整初始化流程
         self._is_slave = isinstance(account, TqApi)
@@ -2042,6 +2044,74 @@ class TqApi(TqBaseApi):
                 })
         return _get_obj(self._data, ["symbols", query_id])
 
+    def query_symbol_ranking(self, symbol: str, ranking_type: str, days: int = 1, start_dt: date = None, broker: str = None):
+        """
+        查询合约成交排名/持仓排名
+
+        本接口仅限专业版用户使用，如需购买专业版或者申请试用，请访问 https://www.shinnytech.com/tqsdk_professional/。
+
+        该函数返回的对象不会更新，不建议在循环内调用该方法。
+
+        Args:
+
+            symbol (str): [必填] 合约代码
+
+            ranking_type (str)：[必填] 表示返回结果以哪一项为排名基准，VOLUME 成交量排名，LONG 多头持仓排名, SHORT 空头持仓排名
+
+            days (int): [必填] 返回结果中包含的天数，默认为 1
+
+            start_dt (date): [可选] 查询时间段开始日期，默认为 None
+                * 如果开始日期为 date 类型，则返回从开始日期之后 days 个交易日的有效数据
+                * 如果开始日期为 None，则返回最近 days 个交易日的持仓排名情况
+
+            broker (str): [可选] 指定期货公司，以各家交易所列出的期货公司名称为准来进行查询，各家交易所可能期货公司名称不一致，如果对应这一天这家交易所没数据则返回对应数值为nan
+
+        Returns:
+            pandas.DataFrame: 本函数返回 pandas.DataFrame 实例。行数为 days * 20，每行为一条成交量/多头持仓量/空头持仓量的排名信息。返回值不会再更新。包含以下列:
+
+                * datetime (查询日期)
+                * symbol (合约代码，以交易所列出的期货公司名称为准)
+                * exchange_id (交易所)
+                * instrument_id (交易所内合约代码)
+                * broker (期货公司)
+                * volume (成交量)
+                * volume_change (成交量变化)
+                * volume_ranking (成交量排名)
+                * long_oi (多头持仓量)
+                * long_change (多头持仓增减量)
+                * long_ranking (多头持仓量排名)
+                * short_oi (空头持仓量)
+                * short_change (空头持仓增减量)
+                * short_ranking (空头持仓量排名)
+
+            注意:
+            1. 返回值中 datetime、symbol、exchange_id、instrument_id、broker 这几列一定为有效值。其他列会根据不同的 ranking_type 参数值，可能返回 nan：
+                * 例如：当 ranking_type 参数值为 volume_ranking 时，volume、volume_change、volume_ranking 这三列为有效值；
+                    如果该期货公司的 long_ranking 在前 20 名内，long_oi、long_change、long_ranking 这三列为有效值，否则为 nan。
+                    如果该期货公司的 short_ranking 在前 20 名内，short_oi、short_change、short_ranking 这三列为有效值，否则为 nan。
+
+            2. 数据更新时间: 18:30~19:00。 用户在交易日 19:00 之前可以查询当前交易日之前的所有数据，19:00 之后可以查询包括当前交易日的数据。
+
+            3. 数据支持范围：从 20200720 开始的期货数据。
+
+        """
+        if not isinstance(symbol, str) or symbol == "":
+            raise Exception(f"symbol 参数应该填入有效的合约代码。")
+        if ranking_type not in ['VOLUME', 'LONG', 'SHORT']:
+            raise Exception(f"ranking_type 参数只支持以下值： 'VOLUME', 'LONG', 'SHORT'。")
+        if not (start_dt is None or isinstance(start_dt, date)):
+            raise Exception(f"start_dt 参数类型 {type(start_dt)} 错误。")
+        if not (isinstance(days, int) or days <= 1):
+            raise Exception(f"days 参数 {days} 错误。")
+        if not (broker is None or isinstance(broker, str)):
+            raise Exception(f"str 参数类型 {type(str)} 错误。")
+        df = TqSymbolRankingDataFrame(self, symbol, ranking_type, days=days, start_dt=start_dt, broker=broker)
+        deadline = time.time() + 30
+        while not self._loop.is_running() and not df.__dict__["_task"].done():
+            if not self.wait_update(deadline=deadline, _task=df.__dict__["_task"]):
+                raise TqTimeoutError(f"获取 {symbol}, {ranking_type} 持仓排名信息信息超时，请检查客户端及网络是否正常")
+        return df
+
     def query_quotes(self, ins_class: str = None, exchange_id: str = None, product_id: str = None, expired: bool = None,
                      has_night: bool = None) -> List[str]:
         """
@@ -2748,6 +2818,52 @@ class TqApi(TqBaseApi):
             options.sort(key=lambda x: x['strike_price'], reverse=True)  # 看跌期权按照行权价倒序排序, 保证实值在前虚值在后
         return options, options.index(mid_option)
 
+    def query_option_greeks(self, symbol: Union[str, List[str]], v: Union[float, List[float], None] = None, r=0.025):
+        """
+        返回指定期权的希腊指标
+
+        Args:
+            symbol (str / list of str): 指定合约代码或合约代码列表
+                * str: 一个合约代码
+                * list of str: 合约代码列表
+
+            v (float / list of float): 合约对应的波动率
+                * float: 一个波动率值，symbol 为 str 类型时，可以只传入一个波动率值
+                * list of float: 波动率序列，symbol 为 list 类型时，必须传入与 symbol 数量相同，顺序一一对应的波动率序列
+                * None: 默认使用隐含波动率计算
+
+            r (float): [可选] 无风险利率
+
+        Returns:
+            pandas.DataFrame: 行数与参数 symbol 的合约数量相同，包含以下列：
+
+            * instrument_id: 合约代码
+            * instrument_name: 合约中文名
+            * option_class: 期权方向
+            * expire_rest_days: 距离到期日的剩余天数
+            * expire_datetime: 到期具体日，以秒为单位的 timestamp 值
+            * underlying_symbol: 标的合约
+            * strike_price: 期权行权价
+            * delta: 期权希腊指标 detla 值
+            * gamma: 期权希腊指标 gamma 值
+            * theta: 期权希腊指标 theta 值
+            * vega: 期权希腊指标 vega 值
+            * rho: 期权希腊指标 rho 值
+
+        """
+        symbol_list = [symbol] if isinstance(symbol, str) else symbol
+        if len(symbol_list) <= 0 or any([s == "" or s is None for s in symbol_list]):
+            raise Exception(f"symbol 参数 {symbol} 不能为空列表，以及不能有空字符串或者 None。")
+        v_list = [v] if isinstance(v, float) else v
+        if not (v_list is None or len(v_list) == len(symbol_list)):
+            raise Exception(f"v 参数 {v} 数量与 symbol 参数 {symbol} 数量不同。")
+        df = TqOptionGreeksDataFrame(self, symbol_list, v_list=v_list, r=r)
+        deadline = time.time() + 30
+        while not self._loop.is_running() and not df.__dict__["_task"].done():
+            if not self.wait_update(deadline=deadline, _task=df.__dict__["_task"]):
+                raise TqTimeoutError(f"获取 {symbol} 的行情信息超时，请检查客户端及网络是否正常")
+        return df
+
     def _setup_connection(self):
         """初始化"""
         tq_web_helper = TqWebHelper(self)
@@ -2807,6 +2923,8 @@ class TqApi(TqBaseApi):
             "aid": "rtn_data",
             "data": [{"quotes": quotes}]
         })  # 获取合约信息
+
+        self._ws_md_recv_chan = ws_md_recv_chan  # 记录 ws_md_recv_chan 引用
 
         conn = TqConnect(md_logger)
         self.create_task(conn._run(self, self._md_url, ws_md_send_chan, ws_md_recv_chan))
