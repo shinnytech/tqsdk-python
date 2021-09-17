@@ -2,6 +2,13 @@
 
 版本变更
 =============================
+2.8.6 (2021/09/16)
+
+* 增加：TqApi 增加 :py:meth:`~tqsdk.api.TqApi.query_his_cont_quotes` 接口，可以获取过去 n 个交易日的历史主连信息
+* 增加：通知模块 :py:class:`~tqsdk.lib.notify.TqNotify`，帮助用户收集通知信息并做定制化处理
+* docs：完善风控文档，增加专业版权限函数说明
+
+
 2.8.5 (2021/09/06)
 
 * 增加：TqApi 增加 :py:meth:`~tqsdk.api.TqApi.query_symbol_ranking` 接口，支持查询合约成交排名/持仓排名。

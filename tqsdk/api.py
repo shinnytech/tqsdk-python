@@ -27,7 +27,7 @@ import platform
 import re
 import sys
 import time
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from typing import Union, List, Any, Optional, Coroutine, Callable, Tuple
 
 import numpy as np
@@ -61,10 +61,11 @@ from tqsdk.baseApi import TqBaseApi
 from tqsdk.multiaccount import TqMultiAccount
 from tqsdk.backtest import TqBacktest, TqReplay
 from tqsdk.channel import TqChan
-from tqsdk.connect import TqConnect, MdReconnectHandler, TdReconnectHandler, ReconnectTimer
+from tqsdk.connect import TqConnect, MdReconnectHandler, ReconnectTimer
+from tqsdk.calendar import _get_trading_calendar, TqContCalendar
 from tqsdk.data_extension import DataExtension
 from tqsdk.data_series import DataSeries
-from tqsdk.datetime import _get_trading_day_start_time, _get_trading_day_end_time, _get_trading_calendar
+from tqsdk.datetime import _get_trading_day_start_time, _get_trading_day_end_time, _get_trading_day_from_timestamp
 from tqsdk.diff import _merge_diff, _get_obj, _is_key_exist, _register_update_chan
 from tqsdk.entity import Entity
 from tqsdk.exceptions import TqTimeoutError
@@ -962,6 +963,63 @@ class TqApi(TqBaseApi):
         return _get_trading_calendar(start_dt, end_dt)
 
     # ----------------------------------------------------------------------
+    def query_his_cont_quotes(self, symbol: Union[str, List[str]], n: int = 200):
+        """
+        获取指定的主连合约最近 n 天的标的，可以处理的范围为 2003-01-01 ～ 2021-12-31。
+
+        Args:
+            symbol (str/list of str): 指定主连合约代码或主连合约代码列表.
+                * str: 一个合约代码
+                * list of str: 合约代码列表 （一次提取多个合约的K线并根据相同的时间向第一个合约（主合约）对齐)
+
+            n：返回 n 个交易日交易日的对应品种的主力, 默认值为 200，最大为 8964
+
+        Returns：
+            pandas.DataFrame: 包含 n 行数据，列数为指定主连合约代码个数加 1，有以下列:
+
+                *    date: (datetime64[ns]) 日期
+                * 主连代码:            (str) 对应的标的合约
+
+        注意:
+
+        如果返回的时间段中，还未上市的主连合约，其对应的标的合约值为空字符串。
+
+        Example::
+
+            from datetime import date
+            from tqsdk import TqApi, TqAuth
+
+            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            conts = api.query_his_cont_quotes(symbol=['KQ.m@DCE.a', 'KQ.m@DCE.eg'], n=20)
+            print(conts)
+
+            # 预期输出如下
+            #         date KQ.m@DCE.a KQ.m@DCE.eg
+            # 0  2021-08-13  DCE.a2109  DCE.eg2109
+            # 1  2021-08-16  DCE.a2111  DCE.eg2109
+            # 2  2021-08-17  DCE.a2111  DCE.eg2109
+            # ......
+            # 17 2021-09-07  DCE.a2111  DCE.eg2201
+            # 18 2021-09-08  DCE.a2111  DCE.eg2201
+            # 19 2021-09-09  DCE.a2111  DCE.eg2201
+
+            api.close()
+        """
+        symbols = symbol if isinstance(symbol, list) else [symbol]
+        if any([s == "" for s in symbols]):
+            raise Exception("参数错误，合约代码不能为空字符串")
+        if n <= 0:
+            raise Exception(f"参数错误，n={n} 应该是大于等于 1 的整数")
+        now_dt = self._get_current_datetime()
+        trading_day = _get_trading_day_from_timestamp(int(now_dt.timestamp() * 1000000000))
+        end_dt = datetime.fromtimestamp(trading_day / 1000000000)
+        cont_calendar = TqContCalendar(start_dt=end_dt - timedelta(days=n * 2 + 30), end_dt=end_dt, symbols=symbols)
+        df = cont_calendar.df.loc[cont_calendar.df.date.le(end_dt), ['date'] + symbols]
+        df = df.iloc[-n:]
+        df.reset_index(inplace=True, drop=True)
+        return df
+
+    # ----------------------------------------------------------------------
     def insert_order(self, symbol: str, direction: str, offset: str = "", volume: int = 0,
                      limit_price: Union[str, float, None] = None,
                      advanced: Optional[str] = None, order_id: Optional[str] = None, account: Optional[Union[
@@ -1573,7 +1631,7 @@ class TqApi(TqBaseApi):
 
             trade_units_limit (int): [可选]成交持仓比起算成交手数，如果未填写，服务器将根据交易所不同赋不同的默认值。
 
-            trade_position_ratio_limit (float): [可选]成交持仓比例限额，为百分比，如果未填写，服务器将根据交易所不同赋不同的默认值。
+            trade_position_ratio_limit (float): [可选]成交持仓比例限额，为百分比，如果未填写，服务器将根据交易所不同赋不同的默认值，持仓数为该合约的净持仓。
 
         Returns:
             :py:class:`~tqsdk.objs.RiskManagementRule`: 返回一个风控规则对象引用. 其内容将在 :py:meth:`~tqsdk.api.TqApi.wait_update` 时更新.
@@ -2093,6 +2151,18 @@ class TqApi(TqBaseApi):
             2. 数据更新时间: 18:30~19:00。 用户在交易日 19:00 之前可以查询当前交易日之前的所有数据，19:00 之后可以查询包括当前交易日的数据。
 
             3. 数据支持范围：从 20200720 开始的期货数据。
+
+
+        Example::
+
+            from tqsdk import TqApi, TqAuth
+            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            df = api.query_symbol_ranking("SHFE.cu2109", ranking_type='VOLUME')
+            print(df.to_string())  # 最近 1 天持仓排名信息，以成交量排序
+
+            df = api.query_symbol_ranking("SHFE.cu2109", ranking_type='LONG', days=3)
+            print(df.to_string())  # 最近 3 天持仓排名信息，以多头持仓量排序
+            api.close()
 
         """
         if not isinstance(symbol, str) or symbol == "":
@@ -2849,6 +2919,17 @@ class TqApi(TqBaseApi):
             * theta: 期权希腊指标 theta 值
             * vega: 期权希腊指标 vega 值
             * rho: 期权希腊指标 rho 值
+
+        Example::
+
+            from tqsdk import TqApi, TqAuth
+            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            quote = api.get_quote("SSE.510300")
+            in_money_options, at_money_options, out_of_money_options = api.query_all_level_finance_options("SSE.510300", quote.last_price, "CALL", nearbys = 1)
+            ls = in_money_options + at_money_options + out_of_money_options  # 期权列表
+            df = api.query_option_greeks(ls)
+            print(df.to_string())  # 显示期权希腊指标
+            api.close()
 
         """
         symbol_list = [symbol] if isinstance(symbol, str) else symbol
