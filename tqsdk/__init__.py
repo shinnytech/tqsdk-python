@@ -9,7 +9,7 @@ from tqsdk.auth import TqAuth
 from tqsdk.channel import TqChan
 from tqsdk.backtest import TqBacktest, TqReplay
 from tqsdk.exceptions import BacktestFinished, TqTimeoutError
-from tqsdk.lib import TargetPosScheduler, TargetPosTask, InsertOrderUntilAllTradedTask, InsertOrderTask
+from tqsdk.lib import TargetPosScheduler, TargetPosTask, InsertOrderUntilAllTradedTask, InsertOrderTask, TqNotify
 from tqsdk.sim import TqSim
 from tqsdk.multiaccount import TqMultiAccount
 from .__version__ import __version__
