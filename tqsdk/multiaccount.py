@@ -208,8 +208,8 @@ class TqMultiAccount(object):
         conn = TqConnect(td_logger)
         api.create_task(conn._run(api, account._td_url, ws_td_send_chan, ws_td_recv_chan))
 
-        ws_td_send_chan._logger_bind(chan_from="td_reconn")
-        ws_td_recv_chan._logger_bind(chan_to="td_reconn")
+        ws_td_send_chan._logger_bind(chan_from=f"td_reconn_{index}")
+        ws_td_recv_chan._logger_bind(chan_to=f"td_reconn_{index}")
 
         td_handler_logger = self._format_logger("TdReconnect", account)
         td_reconnect = TdReconnectHandler(td_handler_logger)

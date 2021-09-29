@@ -81,9 +81,10 @@ class DataExtension(object):
         try:
             async for pack in api_send_chan:
                 if "_md_recv" in pack:
-                    self._pending_peek_md = False
-                    await self._md_recv(pack)
-                    await self._send_diff()
+                    if pack['aid'] == 'rtn_data':
+                        self._pending_peek_md = False
+                        await self._md_recv(pack)
+                        await self._send_diff()
                     if self._pending_peek and self._pending_peek_md is False:
                         self._pending_peek_md = True
                         await self._md_send_chan.send({"aid": "peek_message"})

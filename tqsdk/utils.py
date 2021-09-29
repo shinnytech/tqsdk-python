@@ -17,33 +17,24 @@ def _generate_uuid(prefix=''):
     return f"{prefix + '_' if prefix else ''}{RD.getrandbits(128):032x}"
 
 
-query_all_fields = """
-    ... on basic{ class trading_time{day night} trading_day instrument_id instrument_name price_tick price_decs exchange_id english_name}
-    ... on stock{ stock_dividend_ratio cash_dividend_ratio}
-    ... on fund{ cash_dividend_ratio}
-    ... on bond{ maturity_datetime }
-    ... on tradeable{ volume_multiple quote_multiple}
-    ... on index{ index_multiple}
-    ... on securities{ currency face_value first_trading_datetime buy_volume_unit sell_volume_unit status public_float_share_quantity}
-    ... on future{ expired product_id product_short_name delivery_year delivery_month expire_datetime settlement_price max_market_order_volume max_limit_order_volume margin commission mmsa}
-    ... on option{ expired product_short_name expire_datetime last_exercise_datetime settlement_price max_market_order_volume max_limit_order_volume strike_price call_or_put exercise_type}
-    ... on combine{ expired product_id expire_datetime max_market_order_volume max_limit_order_volume leg1{ ... on basic{instrument_id}} leg2{ ... on basic{instrument_id}} }
-    ... on derivative{ 
-        underlying{ 
-            count edges{ underlying_multiple node{
-                ... on basic{ class trading_time{day night} trading_day instrument_id instrument_name price_tick price_decs exchange_id english_name }
-                ... on stock{ stock_dividend_ratio cash_dividend_ratio }
-                ... on fund{ cash_dividend_ratio }
-                ... on bond{ maturity_datetime }
-                ... on tradeable{ volume_multiple quote_multiple}
-                ... on index{ index_multiple}
-                ... on securities{ currency face_value first_trading_datetime buy_volume_unit sell_volume_unit public_float_share_quantity }
-                ... on future{ expired product_id product_short_name delivery_year delivery_month expire_datetime settlement_price max_market_order_volume max_limit_order_volume margin commission mmsa}
-                }
-            }
-        }
+fragments = """\
+fragment basic on basic {class trading_time{day night} trading_day instrument_id instrument_name price_tick price_decs exchange_id english_name}
+fragment stock on stock{ stock_dividend_ratio cash_dividend_ratio}
+fragment fund on fund{ cash_dividend_ratio}
+fragment bond on bond{ maturity_datetime }
+fragment tradeable on tradeable{ pre_close volume_multiple quote_multiple}
+fragment index on index{ index_multiple}
+fragment securities on securities{ currency face_value first_trading_datetime buy_volume_unit sell_volume_unit status public_float_share_quantity}
+fragment future on future{ pre_open_interest expired product_id product_short_name delivery_year delivery_month expire_datetime settlement_price max_market_order_volume max_limit_order_volume margin commission mmsa}
+fragment option on option{ pre_open_interest expired product_short_name expire_datetime last_exercise_datetime settlement_price max_market_order_volume max_limit_order_volume strike_price call_or_put exercise_type}
+fragment combine on combine{ expired product_id expire_datetime max_market_order_volume max_limit_order_volume leg1{ ...on basic{instrument_id}} leg2{ ...on basic{instrument_id}} }
+fragment derivative on derivative{
+    underlying{ 
+        count edges{ underlying_multiple node{...basic...stock...fund...bond...tradeable...index...securities...future}}
     }
-"""
+}"""
+
+query_all_fields = "...basic...stock...fund...bond...tradeable...index...securities...future...option...combine...derivative"
 
 
 def _query_for_quote(symbol):
@@ -56,7 +47,7 @@ def _query_for_quote(symbol):
     if any([s == "" for s in symbol_list]) or len(symbol_list) == 0:
         raise Exception("发送的 ins_query 请求合约代码不支持空字符串、空列表或者列表中包括空字符串。")
     query = "query ($instrument_id:[String]) {"
-    query += "multi_symbol_info(instrument_id:$instrument_id) {" + query_all_fields + "}}"
+    query += "multi_symbol_info(instrument_id:$instrument_id) {" + query_all_fields + "}}" + fragments
     return {
         "aid": "ins_query",
         "query_id": _generate_uuid(prefix='PYSDK_quote_'),
@@ -86,7 +77,7 @@ def _query_for_init():
     todo: 为了兼容旧版提供给用户的 api._data["quote"].items() 类似用法，应该限制交易所 ["SHFE", "DCE", "CZCE", "INE", "CFFEX", "KQ"]
     """
     query = "query ($class_list:[Class], $exchange_list:[String]) {"
-    query += "multi_symbol_info(class:$class_list, exchange_id:$exchange_list) {" + query_all_fields + "}}"
+    query += "multi_symbol_info(class:$class_list, exchange_id:$exchange_list) {" + query_all_fields + "}}" + fragments
     return query, {
         "class_list": ["FUTURE", "INDEX", "OPTION", "COMBINE", "CONT"],
         "exchange_list": ["SHFE", "DCE", "CZCE", "INE", "CFFEX", "KQ"]

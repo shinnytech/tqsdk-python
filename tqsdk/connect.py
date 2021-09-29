@@ -10,6 +10,8 @@ import sys
 import time
 import warnings
 from abc import abstractmethod
+from asyncio import Future
+from datetime import datetime
 from queue import Queue
 
 import certifi
@@ -150,6 +152,7 @@ class TqConnect(object):
                     else:
                         self._logger.debug("websocket connected")
                     # 发送网络连接建立的通知，code = 2019112901 or 2019112902，这里区分了第一次连接和重连
+                    await self._api._wait_until_idle()
                     await recv_chan.send({
                         "aid": "rtn_data",
                         "data": [{
@@ -163,8 +166,9 @@ class TqConnect(object):
                     send_task = self._api.create_task(self._send_handler(send_chan, client))
                     try:
                         async for msg in client:
-                            self._logger.debug("websocket received data", pack=msg)
                             pack = json.loads(msg)
+                            await self._api._wait_until_idle()
+                            self._logger.debug("websocket received data", pack=msg)
                             await recv_chan.send(pack)
                     finally:
                         if client.reader._start_read_message:
@@ -177,15 +181,18 @@ class TqConnect(object):
             except (websockets.exceptions.ConnectionClosed, websockets.exceptions.InvalidStatusCode,
                     websockets.exceptions.InvalidState, websockets.exceptions.ProtocolError, OSError,
                     TqBacktestPermissionError) as e:
+                in_ops_time = datetime.now().hour == 19 and 0 <= datetime.now().minute <= 30
                 # 发送网络连接断开的通知，code = 2019112911
                 notify_id = _generate_uuid()
                 notify = {
                     "type": "MESSAGE",
                     "level": "WARNING",
                     "code": 2019112911,
-                    "content": "与 %s 的网络连接断开，请检查客户端及网络是否正常" % url,
+                    "content": f"与 {url} 的网络连接断开，请检查客户端及网络是否正常",
                     "url": url
                 }
+                if in_ops_time:
+                    notify['content'] += '，每日 19:00-19:30 为日常运维时间，请稍后再试'
                 self._logger.debug("websocket connection closed", error=str(e))
                 await recv_chan.send({
                     "aid": "rtn_data",
@@ -198,6 +205,8 @@ class TqConnect(object):
                 if isinstance(e, TqBacktestPermissionError):
                     # 如果错误类型是用户无回测权限，直接返回
                     raise
+                if self._first_connect and in_ops_time:
+                    raise Exception(f'与 {url} 的连接失败，每日 19:00-19:30 为日常运维时间，请稍后再试')
             finally:
                 if self._first_connect:
                     self._first_connect = False

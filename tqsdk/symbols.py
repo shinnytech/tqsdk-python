@@ -21,6 +21,8 @@ class TqSymbols(object):
         self._md_recv_chan = md_recv_chan
         self._quotes_all_keys = set(Quote(None).keys())
         self._quotes_all_keys = self._quotes_all_keys.union({'margin', 'commission'})
+        # 以下字段合约服务也会请求，但是不应该记在 quotes 中，quotes 中的这些字段应该有行情服务负责
+        self._quotes_all_keys.difference_update({'pre_open_interest', 'pre_settlement', 'pre_close'})
         sim_task = self._api.create_task(self._sim_handler())
         try:
             async for pack in self._md_recv_chan:

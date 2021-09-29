@@ -9,7 +9,7 @@ TqSdk中的合约代码, 统一采用 交易所代码.交易所内品种代码 �
 
 其中 TqSdk 免费版本提供全部的期货、商品/金融期权和上证50、沪深300和中证500的实时行情
 
-其他股票类行情需购买或申请 TqSdk 专业版才可提供，具体 TqSdk免费版和专业版的区别，请点击 `天勤量化专业版 <https://www.shinnytech.com/tqsdk_professional/>`_
+购买或申请 TqSdk 专业版试用后可提供A股股票的实时和历史行情，具体免费版和专业版的区别，请点击 `天勤量化专业版 <https://www.shinnytech.com/tqsdk_professional/>`_
 
 目前 TqSdk 支持的交易所包括:
 

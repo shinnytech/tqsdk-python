@@ -106,10 +106,11 @@ class TqAccount(object):
                 "aid": "confirm_settlement"
             })  # 自动发送确认结算单
         self._pending_peek = False  # 是否有下游收到未处理的 peek_message
-        self._md_pending_peek = False  # 是否有发给上游的 peek_message，未收到过回复
+        self._md_pending_peek = False  # 是否有发给行情上游的 peek_message，未收到过回复
+        self._td_pending_peek = False  # 是否有发给交易上游的 peek_message，未收到过回复
         self._diffs = []
-        md_task = api.create_task(self._md_handler(api_recv_chan, md_send_chan, md_recv_chan))
-        td_task = api.create_task(self._td_handler(api_recv_chan, td_send_chan, td_recv_chan))
+        md_task = api.create_task(self._md_handler(api_recv_chan, md_recv_chan))
+        td_task = api.create_task(self._td_handler(api_recv_chan, td_recv_chan))
         try:
             async for pack in api_send_chan:
                 if pack["aid"] == "subscribe_quote" or pack["aid"] == "set_chart" or pack["aid"] == "ins_query":
@@ -125,9 +126,13 @@ class TqAccount(object):
                 elif pack["aid"] == "peek_message":
                     self._pending_peek = True
                     await self._send_diff(api_recv_chan)
-                    if self._pending_peek and self._md_pending_peek is False:  # 控制"peek_message"发送: 当没有新的事件需要用户处理时才推进到下一个行情
-                        await md_send_chan.send(pack)
-                        self._md_pending_peek = True
+                    if self._pending_peek:
+                        if self._md_pending_peek is False:  # 控制"peek_message"发送: 当没有新的事件需要用户处理时才推进到下一个行情
+                            await md_send_chan.send({"aid": "peek_message"})
+                            self._md_pending_peek = True
+                        if self._td_pending_peek is False:  # 控制"peek_message"发送: 当没有新的事件需要用户处理时才推进到下一个行情
+                            await td_send_chan.send({"aid": "peek_message"})
+                            self._td_pending_peek = True
         finally:
             md_task.cancel()
             td_task.cancel()
@@ -142,16 +147,16 @@ class TqAccount(object):
             self._pending_peek = False
             await api_recv_chan.send(rtn_data)
 
-    async def _md_handler(self, api_recv_chan, md_send_chan, md_recv_chan):
+    async def _md_handler(self, api_recv_chan, md_recv_chan):
         async for pack in md_recv_chan:
             if pack["aid"] == "rtn_data":
+                self._md_pending_peek = False
                 self._diffs.extend(pack.get('data', []))
+                await self._send_diff(api_recv_chan)
             else:
                 await api_recv_chan.send(pack)  # 有可能是另一个 account 的 rsp_login
-            self._md_pending_peek = False
-            await self._send_diff(api_recv_chan)
 
-    async def _td_handler(self, api_recv_chan, td_send_chan, td_recv_chan):
+    async def _td_handler(self, api_recv_chan, td_recv_chan):
         async for pack in td_recv_chan:
             # OTG 返回业务信息截面 trade 中 account_key 为 user_id, 该值需要替换为 account_key
             for _, slice_item in enumerate(pack["data"] if "data" in pack else []):
@@ -166,13 +171,11 @@ class TqAccount(object):
                 elif self._sub_account_id in slice_item["trade"]:
                     slice_item["trade"][self._account_key] = slice_item["trade"].pop(self._sub_account_id)
             if pack["aid"] == "rtn_data":
+                self._td_pending_peek = False
                 self._diffs.extend(pack.get('data', []))
+                await self._send_diff(api_recv_chan)
             else:
                 await api_recv_chan.send(pack)
-            await td_send_chan.send({
-                "aid": "peek_message"
-            })
-            await self._send_diff(api_recv_chan)
 
     def _get_sub_account(self, trade):
         """ 股票账户

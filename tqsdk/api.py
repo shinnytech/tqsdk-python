@@ -1143,7 +1143,8 @@ class TqApi(TqBaseApi):
 
         """
         (exchange_id, instrument_id) = symbol.split(".", 1)
-        if not self._account._check_valid(account):
+        account = self._account._check_valid(account)
+        if account is None:
             raise Exception(f"多账户模式下, 需要指定账户实例 account")
         if direction not in ("BUY", "SELL"):
             raise Exception("下单方向(direction) %s 错误, 请检查 direction 参数是否填写正确" % (direction))
@@ -1152,6 +1153,8 @@ class TqApi(TqBaseApi):
             raise Exception("下单数量(volume) %s 错误, 请检查 volume 是否填写正确" % (volume))
         if limit_price != limit_price:
             raise Exception(f"limit_price 参数不支持设置为 {limit_price}。")
+        if isinstance(account, TqAccount) and exchange_id == "KQ":
+            raise Exception(f"账户 {account._broker_id}, {account._account_id} 不支持交易合约 {symbol}。")
         # 股票下单时, 不支持 order_id 和 offset 参数
         if exchange_id in ["SSE", "SZSE"] and self._account._is_stock_type(account):
             if order_id:
@@ -1746,7 +1749,7 @@ class TqApi(TqBaseApi):
                 "TqSdk 使用了 python3 的原生协程和异步通讯库 asyncio，您所使用的 IDE 不支持 asyncio, 请使用 pycharm 或其它支持 asyncio 的 IDE")
         self._wait_timeout = False
         # 先尝试执行各个task,再请求下个业务数据，可能用户的同步代码会在 chan 中 send 数据，需要先 run_tasks
-        self._run_until_idle()
+        self._run_until_idle(async_run=False)
 
         # 用户可能在同步或者异步代码中修改 klines 附加列的值
         #    同步代码：此次调用 wait_update 之前应该已经修改执行
@@ -1754,7 +1757,7 @@ class TqApi(TqBaseApi):
         # 所以放在这里处理， 总会发送 serial_extra_array 数据，由 TqWebHelper 处理
         for _, serial in self._serials.items():
             self._process_serial_extra_array(serial)
-        self._run_until_idle()  # 这里 self._run_until_idle() 主要为了把上一步计算出得需要绘制的数据发送到 TqWebHelper
+        self._run_until_idle(async_run=False)  # 这里 self._run_until_idle() 主要为了把上一步计算出得需要绘制的数据发送到 TqWebHelper
         if _task is not None:
                 # 如果 _task 已经 done，则提前返回 True, False 代表超时会抛错
             _tasks = _task if isinstance(_task, list) else [_task]
@@ -2595,6 +2598,9 @@ class TqApi(TqBaseApi):
             * exercise_year: 期权最后行权日年份，只对期权品种有效。
             * exercise_month: 期权最后行权日月份，只对期权品种有效。
             * option_class: 期权方向
+            * pre_settlement: 昨结算
+            * pre_open_interest: 昨持仓
+            * pre_close: 昨收盘
 
         Example1::
 
@@ -2981,7 +2987,14 @@ class TqApi(TqBaseApi):
 
         # 连接合约和行情服务器
         if self._md_url is None:
-            self._md_url = self._auth._get_md_url(self._stock, backtest=isinstance(self._backtest, TqBacktest))  # 如果用户未指定行情地址，则使用名称服务获取行情地址
+            try:
+                self._md_url = self._auth._get_md_url(self._stock, backtest=isinstance(self._backtest, TqBacktest))  # 如果用户未指定行情地址，则使用名称服务获取行情地址
+            except Exception as e:
+                now = datetime.now()
+                if now.hour == 19 and 0 <= now.minute <= 30:
+                    raise Exception(f"{e}, 每日 19:00-19:30 为日常运维时间，请稍后再试")
+                else:
+                    raise
         md_logger = ShinnyLoggerAdapter(self._logger.getChild("TqConnect"), url=self._md_url)
         ws_md_send_chan = TqChan(self, chan_name="send to md", logger=md_logger)
         ws_md_recv_chan = TqChan(self, chan_name="recv from md", logger=md_logger)
@@ -3071,9 +3084,9 @@ class TqApi(TqBaseApi):
         data_extension = DataExtension(self)
         data_extension_send_chan = TqChan(self, chan_name="send to data_extension")
         data_extension_recv_chan = TqChan(self, chan_name="recv from data_extension")
-        self.create_task(data_extension._run(data_extension_send_chan, data_extension_recv_chan, self._send_chan, self._recv_chan))
         self._send_chan._logger_bind(chan_from="data_extension")
         self._recv_chan._logger_bind(chan_to="data_extension")
+        self.create_task(data_extension._run(data_extension_send_chan, data_extension_recv_chan, self._send_chan, self._recv_chan))
         self._send_chan, self._recv_chan = data_extension_send_chan, data_extension_recv_chan
         self._send_chan._logger_bind(chan_from="api")
         self._recv_chan._logger_bind(chan_to="api")

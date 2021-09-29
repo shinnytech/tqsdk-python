@@ -181,6 +181,11 @@ class Quote(Entity):
 
     @property
     def underlying_quote(self):
+        """
+        标的合约 underlying_symbol 所指定的合约对象，若没有标的合约则为 None
+
+        :return: 标的指定的 :py:class:`~tqsdk.objs.Quote` 对象
+        """
         if self.underlying_symbol:
             return _get_obj(self._api._data, ["quotes", self.underlying_symbol], self._api._prototype["quotes"]["#"])
         return None

@@ -336,6 +336,7 @@ class TqBacktest(object):
                             }
                         }]
                     })
+                    await self._api._wait_until_idle()
                     raise BacktestFinished(self._api) from None
             for ins, diff in quotes.items():
                 self._quotes[ins]["sended_init_quote"] = True
