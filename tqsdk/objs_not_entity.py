@@ -11,7 +11,7 @@ from pandas import DataFrame, Series
 
 from tqsdk.objs import Quote
 from tqsdk.diff import _get_obj
-from tqsdk.utils import _query_for_quote, query_all_fields, _generate_uuid
+from tqsdk.utils import _query_for_quote, query_all_fields, _generate_uuid, fragments
 from tqsdk.tafunc import _get_t_series, get_impv, _get_d1, get_delta, get_theta, get_gamma, get_vega, get_rho
 
 """
@@ -228,7 +228,10 @@ class TqSymbolDataFrame(DataFrame):
             "last_exercise_datetime",
             "exercise_year",
             "exercise_month",
-            "option_class"
+            "option_class",
+            "pre_settlement",
+            "pre_open_interest",
+            "pre_close"
         ]
         default_quote = Quote(None)
         data = [{k: (s if k == "instrument_id" else default_quote[k]) for k in self.__dict__["_columns"]} for s in symbol_list]
@@ -241,10 +244,10 @@ class TqSymbolDataFrame(DataFrame):
         if self.__dict__["_backtest_timestamp"]:
             variables["timestamp"] = self.__dict__["_backtest_timestamp"]
             query = "query ($instrument_id:[String],$timestamp:Int64) {"
-            query += "multi_symbol_info(instrument_id:$instrument_id,timestamp:$timestamp) {" + query_all_fields + "}}"
+            query += "multi_symbol_info(instrument_id:$instrument_id,timestamp:$timestamp) {" + query_all_fields + "}}" + fragments
         else:
             query = "query ($instrument_id:[String]) {"
-            query += "multi_symbol_info(instrument_id:$instrument_id) {" + query_all_fields + "}}"
+            query += "multi_symbol_info(instrument_id:$instrument_id) {" + query_all_fields + "}}" + fragments
         self.__dict__["_api"]._send_pack({
             "aid": "ins_query",
             "query_id": query_id,

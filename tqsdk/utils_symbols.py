@@ -64,6 +64,8 @@ def _convert_symbol_to_quote(symbol, keys):
             quote["exercise_year"] = datetime.fromtimestamp(symbol["last_exercise_datetime"] / 1e9).year
         elif key == "exercise_month" and symbol.get("last_exercise_datetime"):
             quote["exercise_month"] = datetime.fromtimestamp(symbol["last_exercise_datetime"] / 1e9).month
+        elif key == "pre_settlement" and "settlement_price" in symbol:
+            quote["pre_settlement"] = symbol["settlement_price"]
         elif key in symbol:
             quote[key] = symbol[key]
     return quote

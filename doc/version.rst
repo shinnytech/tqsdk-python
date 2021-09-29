@@ -2,6 +2,16 @@
 
 版本变更
 =============================
+2.9.0 (2021/09/29)
+
+* 增加：:py:meth:`~tqsdk.api.TqApi.query_symbol_info` 接口返回值中增加 ``pre_open_interest``, ``pre_settlement``, ``pre_close`` 这三个字段
+* 优化：重构网络连接，增加多账户测试用例
+* 优化：简化回测结束后用户依然需要查看 web_gui 时的代码，详情参考 :ref:`backtest_with_web_gui`
+* 优化：网络连接失败时，优化对用户的提示信息
+* 优化：实盘账户实盘不支持主连和指数交易，提前抛错提示用户
+* docs：更新文档，专业版承诺提供A股股票行情
+
+
 2.8.6 (2021/09/16)
 
 * 增加：TqApi 增加 :py:meth:`~tqsdk.api.TqApi.query_his_cont_quotes` 接口，可以获取过去 n 个交易日的历史主连信息

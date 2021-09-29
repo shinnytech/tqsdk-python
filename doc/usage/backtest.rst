@@ -59,6 +59,28 @@
 
 .. figure:: ../images/web_gui_backtest.png
 
+.. _backtest_with_web_gui:
+
+回测结束在浏览器中查看绘图结果
+-------------------------------------------------
+
+要在回测结束时，如果依然需要在浏览器中查看绘图结果，同时又需要打印回测信息，您应该这样做::
+
+  from tqsdk import BacktestFinished
+
+  acc = TqSim()
+
+  try:
+    api = TqApi(acc, backtest=TqBacktest(start_dt=date(2018, 5, 1), end_dt=date(2018, 10, 1)), auth=TqAuth("信易账户", "账户密码"))
+    #策略代码在这里
+    #...
+  except BacktestFinished as e:
+    print(acc.tqsdk_stat)  # 回测时间内账户交易信息统计结果，其中包含以下字段
+    # 由于需要在浏览器中查看绘图结果，因此程序不能退出
+    while True:
+        api.wait_update()
+
+
 .. _backtest_underlying_symbol:
 
 回测时获取主连合约标的

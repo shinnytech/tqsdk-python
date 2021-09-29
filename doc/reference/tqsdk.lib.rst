@@ -4,6 +4,14 @@ tqsdk.lib - 业务工具库
 ------------------------------------------------------------------
 
 
+.. _tqsdk.lib.notify:
+
+tqsdk.lib.notify - 收集通知信息工具
+==================================================================
+.. automodule:: tqsdk.lib.notify
+    :members:
+
+
 .. _tqsdk.lib.target_pos_task:
 
 tqsdk.lib.target_pos_task - 目标持仓工具
