@@ -212,6 +212,21 @@ class TradingTime(Entity):
         return json.dumps({"day": self.day, "night": self.night})
 
 
+class TradingStatus(Entity):
+    """ TradingStatus 是一个交易状态对象 """
+
+    def __init__(self, api):
+        self._api = api
+        #: 合约
+        self.symbol: str = ""
+        #: 交易状态, AUCTIONORDERING: 集合竞价报单; CONTINOUS: 连续交易; NOTRADING: 非交易时段
+        self.trade_status: str = ""
+
+    def __await__(self):
+        assert self._task
+        return self._task.__await__()
+
+
 class Kline(Entity):
     """ Kline 是一个K线对象 """
 

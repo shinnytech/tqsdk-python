@@ -408,3 +408,15 @@ class TdReconnectHandler(TqReconnect):
                     }
                 })
         return True
+
+
+class TsReconnectHandler(TqReconnect):
+
+    def _record_lower_data(self, pack):
+        """从下游收到的数据中，记录下重连时需要的数据"""
+        aid = pack.get("aid")
+        if aid == "subscribe_trading_status":
+            self._resend_request["subscribe_trading_status"] = pack
+
+    def _is_all_received(self):
+        return True

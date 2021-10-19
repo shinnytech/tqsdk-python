@@ -2,9 +2,12 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'mayanqiong'
 
+from typing import Dict, Optional
+
 import numpy as np
 from pandas import DataFrame, Series
 
+from tqsdk.objs import Account, Trade
 from tqsdk.tafunc import get_sharp, get_sortino, get_calmar, _cum_counts
 
 TRADING_DAYS_OF_YEAR = 250
@@ -19,33 +22,22 @@ class TqReport(object):
 
     """
 
-    def __init__(self, report_id: str, account_df: DataFrame, trade_df: DataFrame):
+    def __init__(self, report_id: str, trade_log: Optional[Dict] = None, quotes: Optional[Dict] = None):
         """
+        本模块为给 TqSim 提供交易成交统计
         Args:
             report_id (str): 报告Id
 
-            account_df (pandas.DataFrame): 每日账户截面记录
-                应该包括的列有：
-                + 'date': 日期
-                + 'pre_balance': 昨日权益
-                + 'balance': 今日权益
-                + 'commission': 日内手续费
-                + 'risk_ratio': 风险度
+            trade_log (dict): TqSim 交易结束之后生产的每日账户截面和交易记录
+                {
+                    '2020-09-01': {
+                        "trades": [],
+                        "account": {},
+                        "positions": {},
+                    '2020-09-02': {....},
+                }
 
-            trade_df (pandas.DataFrame): 成交记录
-                应该包括的列有：
-                + 'user_id'
-                + 'order_id'
-                + 'trade_id'
-                + 'exchange_trade_id'
-                + 'exchange_id'
-                + 'instrument_id'
-                + 'direction'
-                + 'offset'
-                + 'price'
-                + 'volume'
-                + 'trade_date_time'
-                + 'commission'
+            quotes (dict): 合约信息
 
         Example::
 
@@ -53,47 +45,144 @@ class TqReport(object):
 
         """
         self.report_id = report_id
-        self.account_df = account_df.sort_values(by=['date'], ignore_index=True)
-        # self.account_df.index = account_df['date']
-        self.trade_df = trade_df.sort_values(by=['trade_date_time'], ignore_index=True)
-        self.trade_df["offset1"] = trade_df["offset"].replace("CLOSETODAY", "CLOSE")
-
+        self.trade_log = trade_log
+        self.quotes = quotes
+        self.date_keys = sorted(trade_log.keys())
+        self.account_df, self.trade_df = self._get_df()
         # default metrics
+        self.default_metrics = self._get_default_metrics()
+
+    def _get_df(self):
+        account_data = [{'date': dt} for dt in self.date_keys]
+        for item in account_data:
+            item.update(self.trade_log[item['date']]['account'])
+        account_df = DataFrame(data=account_data, columns=['date'] + list(Account(None).keys()))
+        trade_array = []
+        for date in self.date_keys:
+            trade_array.extend(self.trade_log[date]['trades'])
+        trade_df = DataFrame(data=trade_array, columns=list(Trade(None).keys()))
+        trade_df["offset1"] = trade_df["offset"].replace("CLOSETODAY", "CLOSE")
+        return account_df, trade_df
+
+    def _get_default_metrics(self):
+        if self.account_df.shape[0] > 0:
+            result = self._get_account_stat_metrics()
+            result.update(self._get_trades_stat_metrics())
+            return result
+        else:
+            return {
+                "winning_rate": float('nan'),  # 胜率
+                "profit_loss_ratio": float('nan'),  # 盈亏额比例
+                "ror": float('nan'),  # 收益率
+                "annual_yield": float('nan'),  # 年化收益率
+                "max_drawdown": float('nan'),  # 最大回撤
+                "sharpe_ratio": float('nan'),  # 年化夏普率
+                "sortino_ratio": float('nan'),  # 年化索提诺比率
+                "commission": 0,  # 总手续费
+                "tqsdk_punchline": ""
+            }
+
+    def _get_account_stat_metrics(self):
         init_balance = self.account_df.iloc[0]['pre_balance']
+        balance = self.account_df.iloc[-1]['balance']
         self.account_df['profit'] = self.account_df['balance'] - self.account_df['balance'].shift(fill_value=init_balance)  # 每日收益
         self.account_df['is_profit'] = np.where(self.account_df['profit'] > 0, 1, 0)  # 是否收益
         self.account_df['is_loss'] = np.where(self.account_df['profit'] < 0, 1, 0)  # 是否亏损
         self.account_df['daily_yield'] = self.account_df['balance'] / self.account_df['balance'].shift(fill_value=init_balance) - 1  # 每日收益率
         self.account_df['max_balance'] = self.account_df['balance'].cummax()  # 当前单日最大权益
         self.account_df['drawdown'] = (self.account_df['max_balance'] - self.account_df['balance']) / self.account_df['max_balance']  # 回撤
-        self.default_metrics = self._get_default_metrics()
+        _ror = self.account_df.iloc[-1]['balance'] / self.account_df.iloc[0]['pre_balance']
+        return {
+            "start_date": self.account_df.iloc[0]["date"],
+            "end_date": self.account_df.iloc[-1]["date"],
+            "init_balance": init_balance,
+            "balance": balance,
+            "start_balance": init_balance,
+            "end_balance": balance,
+            "ror": _ror - 1,  # 收益率
+            "annual_yield": _ror ** (TRADING_DAYS_OF_YEAR / self.account_df.shape[0]) - 1,  # 年化收益率
+            "trading_days": self.account_df.shape[0],  # 总交易天数
+            "cum_profit_days": self.account_df['is_profit'].sum(),  # 累计盈利天数
+            "cum_loss_days": self.account_df['is_loss'].sum(),  # 累计亏损天数
+            "max_drawdown": self.account_df['drawdown'].max(),  # 最大回撤
+            "commission": self.account_df['commission'].sum(),  # 总手续费
+            "open_times": self.trade_df.loc[self.trade_df["offset1"] == "OPEN"].shape[0],  # 开仓次数
+            "close_times": self.trade_df.loc[self.trade_df["offset1"] == "CLOSE"].shape[0],  # 平仓次数
+            "daily_risk_ratio": self.account_df['risk_ratio'].mean(),  # 提供日均风险度
+            "max_cont_profit_days": _cum_counts(self.account_df['is_profit']).max(),  # 最大连续盈利天数
+            "max_cont_loss_days": _cum_counts(self.account_df['is_loss']).max(),  # 最大连续亏损天数
+            "sharpe_ratio": get_sharp(self.account_df['daily_yield']),  # 年化夏普率
+            "calmar_ratio": get_calmar(self.account_df['daily_yield'], self.account_df['drawdown'].max()),  # 年化卡玛比率
+            "sortino_ratio": get_sortino(self.account_df['daily_yield']),  # 年化索提诺比率
+            "tqsdk_punchline": self._get_tqsdk_punchlines(_ror - 1)
+        }
 
-    def _get_default_metrics(self):
-        if self.account_df.shape[0] > 0:
-            _ror = self.account_df.iloc[-1]['balance'] / self.account_df.iloc[0]['pre_balance']
-            return {
-                "start_date": self.account_df.iloc[0]["date"],
-                "end_date": self.account_df.iloc[-1]["date"],
-                "start_balance": self.account_df.iloc[0]['pre_balance'],
-                "end_balance": self.account_df.iloc[-1]['balance'],
-                "ror": _ror - 1,  # 收益率
-                "annual_yield": _ror ** (TRADING_DAYS_OF_YEAR / self.account_df.shape[0]) - 1,  # 年化收益率
-                "trading_days": self.account_df.shape[0],  # 总交易天数
-                "cum_profit_days": self.account_df['is_profit'].sum(),  # 累计盈利天数
-                "cum_loss_days": self.account_df['is_loss'].sum(),  # 累计亏损天数
-                "max_drawdown": self.account_df['drawdown'].max(),  # 最大回撤
-                "commission":  self.account_df['commission'].sum(),  # 总手续费
-                "open_times": self.trade_df.loc[self.trade_df["offset1"] == "OPEN"].shape[0],  # 开仓次数
-                "close_times": self.trade_df.loc[self.trade_df["offset1"] == "CLOSE"].shape[0],  # 平仓次数
-                "daily_risk_ratio": self.account_df['risk_ratio'].mean(),  # 提供日均风险度
-                "max_cont_profit_days": _cum_counts(self.account_df['is_profit']).max(),  # 最大连续盈利天数
-                "max_cont_loss_days": _cum_counts(self.account_df['is_loss']).max(),  # 最大连续亏损天数
-                "sharpe_ratio": get_sharp(self.account_df['daily_yield']),  # 年化夏普率
-                "calmar_ratio": get_calmar(self.account_df['daily_yield'], self.account_df['drawdown'].max()),  # 年化卡玛比率
-                "sortino_ratio": get_sortino(self.account_df['daily_yield'])  # 年化索提诺比率
-            }
+    def _get_trades_stat_metrics(self):
+        """
+        根据成交手数计算 胜率，盈亏额比例
+        self.quotes 主要需要合约乘数，用于计算盈亏额
+        """
+        trade_array = []
+        for date in self.date_keys:
+            for trade in self.trade_log[date]['trades']:
+                # 每一行都是 1 手的成交记录
+                trade_array.extend([{
+                    "symbol": f"{trade['exchange_id']}.{trade['instrument_id']}",
+                    "direction": trade["direction"],
+                    "offset": "CLOSE" if trade["offset"] == "CLOSETODAY" else trade["offset"],
+                    "price": trade["price"]
+                } for i in range(trade['volume'])])
+        trade_df = DataFrame(data=trade_array, columns=['symbol', 'direction', 'offset', 'price'])
+        profit_volumes = 0  # 盈利手数
+        loss_volumes = 0  # 亏损手数
+        profit_value = 0  # 盈利额
+        loss_value = 0  # 亏损额
+        all_symbols = trade_df['symbol'].drop_duplicates()
+        for symbol in all_symbols:
+            for direction in ["BUY", "SELL"]:
+                open_df = self._get_sub_df(trade_df, symbol, dir=direction, offset='OPEN')
+                close_df = self._get_sub_df(trade_df, symbol, dir=("SELL" if direction == "BUY" else "BUY"), offset='CLOSE')
+                close_df['profit'] = (close_df['price'] - open_df['price']) * (1 if direction == "BUY" else -1)
+                profit_volumes += close_df.loc[close_df['profit'] >= 0].shape[0]  # 盈利手数
+                loss_volumes += close_df.loc[close_df['profit'] < 0].shape[0]  # 亏损手数
+                profit_value += close_df.loc[close_df['profit'] >= 0, 'profit'].sum() * self.quotes[symbol]['volume_multiple']
+                loss_value += close_df.loc[close_df['profit'] < 0, 'profit'].sum() * self.quotes[symbol]['volume_multiple']
+        winning_rate = profit_volumes / (profit_volumes + loss_volumes) if profit_volumes + loss_volumes else 0
+        profit_pre_volume = profit_value / profit_volumes if profit_volumes else 0
+        loss_pre_volume = loss_value / loss_volumes if loss_volumes else 0
+        profit_loss_ratio = abs(profit_pre_volume / loss_pre_volume) if loss_pre_volume else float("inf")
+        return {
+            "profit_volumes": profit_volumes,
+            "loss_volumes": loss_volumes,
+            "profit_value": profit_value,
+            "loss_value": loss_value,
+            "winning_rate": winning_rate,
+            "profit_loss_ratio": profit_loss_ratio
+        }
+
+    def _get_tqsdk_punchlines(self, ror):
+        tqsdk_punchlines = [
+            '幸好是模拟账户，不然你就亏完啦',
+            '触底反弹,与其执迷修改参数，不如改变策略思路去天勤官网策略库进修',
+            '越挫越勇，不如去天勤量化官网策略库进修',
+            '不要灰心，少侠重新来过',
+            '策略看来小有所成',
+            '策略看来的得心应手',
+            '策略看来春风得意，堪比当代索罗斯',
+            '策略看来独孤求败，小心过拟合噢'
+        ]
+        ror_level = [i for i, k in enumerate([-1, -0.5, -0.2, 0, 0.2, 0.5, 1]) if ror < k]
+        if len(ror_level) > 0:
+            return tqsdk_punchlines[ror_level[0]]
         else:
-            return {}
+            return tqsdk_punchlines[-1]
+
+    def _get_sub_df(self, origin_df, symbol, dir, offset):
+        df = origin_df.where(
+            (origin_df['symbol'] == symbol) & (origin_df['offset'] == offset) & (origin_df['direction'] == dir))
+        df.dropna(inplace=True)
+        df.reset_index(drop=True, inplace=True)
+        return df
 
     def metrics(self, **kwargs):
         self.default_metrics.update(kwargs)

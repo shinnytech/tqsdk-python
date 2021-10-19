@@ -9,6 +9,7 @@ from typing import Callable, Tuple
 import aiohttp
 from pandas import DataFrame, Series
 
+from tqsdk.datetime import _get_expire_rest_days
 from tqsdk.objs import Quote
 from tqsdk.diff import _get_obj
 from tqsdk.utils import _query_for_quote, query_all_fields, _generate_uuid, fragments
@@ -221,8 +222,10 @@ class TqSymbolDataFrame(DataFrame):
             "underlying_symbol",
             "strike_price",
             "exchange_id",
+            "product_id",
             "expired",
             "expire_datetime",
+            "expire_rest_days",
             "delivery_year",
             "delivery_month",
             "last_exercise_datetime",
@@ -231,10 +234,14 @@ class TqSymbolDataFrame(DataFrame):
             "option_class",
             "pre_settlement",
             "pre_open_interest",
-            "pre_close"
+            "pre_close",
+            "trading_time_day",
+            "trading_time_night"
+            # todo upper_limit 涨停价
+            # todo lower_limit 跌停价
         ]
         default_quote = Quote(None)
-        data = [{k: (s if k == "instrument_id" else default_quote[k]) for k in self.__dict__["_columns"]} for s in symbol_list]
+        data = [{k: (s if k == "instrument_id" else default_quote.get(k, None)) for k in self.__dict__["_columns"]} for s in symbol_list]
         super(TqSymbolDataFrame, self).__init__(data=data, columns=self.__dict__["_columns"], *args, **kwargs)
         self.__dict__["_task"] = api.create_task(self.async_update(), _caller_api=True)
 
@@ -259,7 +266,9 @@ class TqSymbolDataFrame(DataFrame):
             async for _ in update_chan:
                 query_result = symbols.get(query_id, {})
                 if query_result:
-                    quotes = self.__dict__["_api"]._symbols_to_quotes(query_result, keys=set(self.__dict__["_columns"]))
+                    all_keys = set(self.__dict__["_columns"])
+                    all_keys.add('trading_time')
+                    quotes = self.__dict__["_api"]._symbols_to_quotes(query_result, keys=all_keys)
                     self._quotes_to_dataframe(quotes)
                     if self.__dict__["_backtest_timestamp"]:
                         # 回测时清空请求，不缓存请求内容
@@ -271,10 +280,21 @@ class TqSymbolDataFrame(DataFrame):
                         })
                     return self
 
+    def _get_trading_time(self, quotes, symbol, key):
+        v = quotes[symbol].get('trading_time', {'day': [], 'night': []}).get(key, [])
+        return v if v else None
+
     def _quotes_to_dataframe(self, quotes):
         default_quote = Quote(None)
         for col in self.__dict__["_columns"]:
-            self.loc[:, col] = [quotes[s].get(col, default_quote[col]) for s in self.__dict__["_symbol_list"]]
+            if col == "expire_rest_days":
+                current_dt = self._api._get_current_datetime().timestamp()
+                self.loc[:, col] = [_get_expire_rest_days(quotes[s]['expire_datetime'], current_dt) for s in self.__dict__["_symbol_list"]]
+            elif col == "trading_time_day" or col == "trading_time_night":
+                k = 'day' if col == "trading_time_day" else 'night'
+                self.loc[:, col] = [self._get_trading_time(quotes, s, k) for s in self.__dict__["_symbol_list"]]
+            else:
+                self.loc[:, col] = [quotes[s].get(col, default_quote[col]) for s in self.__dict__["_symbol_list"]]
 
     def __await__(self):
         return self.__dict__["_task"].__await__()
