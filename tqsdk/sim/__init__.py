@@ -15,7 +15,7 @@ from tqsdk.entity import Entity
 from tqsdk.objs import Quote
 from tqsdk.report import TqReport
 from tqsdk.sim.trade import SimTrade
-from tqsdk.sim.utils import _get_future_margin, _get_commission, _get_tqsim_stat, _get_account_df, _get_trade_df
+from tqsdk.sim.utils import _get_future_margin, _get_commission
 from tqsdk.utils import _query_for_quote
 
 
@@ -527,7 +527,9 @@ class TqSim(object):
                 f"保证金: {account['margin']:.2f}, 手续费: {account['commission']:.2f}, "
                 f"风险度: {account['risk_ratio'] * 100:.2f}%")
 
-        self.tqsdk_stat = _get_tqsim_stat(trade_log=self.trade_log, quotes=self._data['quotes'])
+        # TqReport 模块计算交易统计信息
+        report = TqReport(report_id=self._account_id, trade_log=self.trade_log, quotes=self._data['quotes'])
+        self.tqsdk_stat = report.default_metrics
         self._api._print(
             f"胜率: {self.tqsdk_stat['winning_rate'] * 100:.2f}%, 盈亏额比例: {self.tqsdk_stat['profit_loss_ratio']:.2f}, "
             f"收益率: {self.tqsdk_stat['ror'] * 100:.2f}%, 年化收益率: {self.tqsdk_stat['annual_yield'] * 100:.2f}%, "
@@ -537,9 +539,6 @@ class TqSim(object):
         # 回测情况下，在计算报告之后，还会发送绘制图表请求，
         # 这样处理，用户不要修改代码，就能够看到报告图表
         if self._tqsdk_backtest:
-            report = TqReport(report_id=self._account_id,
-                              account_df=_get_account_df(self.trade_log),
-                              trade_df=_get_trade_df(self.trade_log))
             self._api.draw_report(report.full())
 
     def _get_current_timestamp(self):

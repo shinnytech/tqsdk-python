@@ -2,6 +2,14 @@
 
 版本变更
 =============================
+2.9.1 (2021/10/19)
+
+* 增加：:py:meth:`~tqsdk.api.TqApi.get_trading_status` 接口，支持开盘抢单功能
+* 增加：:py:meth:`~tqsdk.api.TqApi.query_symbol_info` 接口返回值中增加 ``product_id``, ``expire_rest_days``, ``trading_time_day``, ``trading_time_night`` 几个字段
+* 优化：TqSim 回测报告增加部分字段，和 web_gui 显示回测报告一致
+* 优化：:py:meth:`~tqsdk.api.TqApi.get_kline_data_series`、:py:meth:`~tqsdk.api.TqApi.get_tick_data_series` 接口报错
+
+
 2.9.0 (2021/09/29)
 
 * 增加：:py:meth:`~tqsdk.api.TqApi.query_symbol_info` 接口返回值中增加 ``pre_open_interest``, ``pre_settlement``, ``pre_close`` 这三个字段

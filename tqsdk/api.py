@@ -70,12 +70,13 @@ from tqsdk.diff import _merge_diff, _get_obj, _is_key_exist, _register_update_ch
 from tqsdk.entity import Entity
 from tqsdk.exceptions import TqTimeoutError
 from tqsdk.log import _get_log_name, _clear_logs
-from tqsdk.objs import Quote, Kline, Tick, Account, Position, Order, Trade, QuotesEntity, RiskManagementRule, RiskManagementData
+from tqsdk.objs import Quote, TradingStatus, Kline, Tick, Account, Position, Order, Trade, QuotesEntity, RiskManagementRule, RiskManagementData
 from tqsdk.objs import SecurityAccount, SecurityOrder, SecurityTrade, SecurityPosition
 from tqsdk.objs_not_entity import QuoteList, TqDataFrame, TqSymbolDataFrame, SymbolList, SymbolLevelList, \
     TqSymbolRankingDataFrame, TqOptionGreeksDataFrame
 from tqsdk.sim import TqSim
 from tqsdk.symbols import TqSymbols
+from tqsdk.trading_status import TqTradingStatus
 from tqsdk.tqwebhelper import TqWebHelper
 from tqsdk.stockprofit import TqStockProfit
 from tqsdk.utils import _generate_uuid, _query_for_quote, BlockManagerUnconsolidated, _quotes_add_night, _bisect_value, \
@@ -243,6 +244,7 @@ class TqApi(TqBaseApi):
 
         # 内部关键数据
         self._requests = {
+            "trading_status": set(),
             "quotes": set(),
             "klines": {},
             "ticks": {},
@@ -517,6 +519,63 @@ class TqApi(TqBaseApi):
                 async for _ in update_chan:
                     if all([self._data.get("quotes", {}).get(symbol, {}).get('price_tick', float('nan')) > 0 for symbol in symbol_list]):
                         break
+
+    # ----------------------------------------------------------------------
+    def get_trading_status(self, symbol: str) -> TradingStatus:
+        """
+        获取指定合约的交易状态. 此接口为 TqSdk 专业版提供，便于实现开盘抢单功能。
+
+        如果想使用此功能，可以点击 `天勤量化专业版 <https://www.shinnytech.com/tqsdk_professional/>`_ 申请试用或购买
+
+        Args:
+            symbol (str): 合约代码
+
+        Returns:
+            :py:class:`~tqsdk.objs.TradingStatus`: 返回指定合约交易状态引用。
+
+        Example::
+
+            # 在集合竞价时下单
+            from tqsdk import TqApi, TqAuth
+            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            ts = api.get_trading_status("SHFE.cu2201")
+            print(ts.trade_status)
+            while True:
+              api.wait_update()
+              if ts.trade_status == "AUCTIONORDERING":
+                order = api.insert_order("SHFE.cu2201","BUY","OPEN", 1, 71400)
+                break
+            api.close()
+
+        """
+        if symbol == "":
+            raise Exception(f"get_trading_status 中合约代码不能为空字符串")
+        if not self._auth._has_feature('tq_trading_status'):
+            raise Exception(f"您的账户不支持查看交易状态信息，需要购买专业版本后使用。升级网址：https://account.shinnytech.com")
+        if self._backtest:
+            raise Exception('回测/复盘不支持查看交易状态信息')
+        ts = _get_obj(self._data, ['trading_status', symbol], self._prototype["trading_status"]["#"])
+        ts._task = self.create_task(self._handle_trading_status(symbol, ts), _caller_api=True)
+        if not self._loop.is_running():
+            deadline = time.time() + 30
+            while not ts._task.done():
+                if not self.wait_update(deadline=deadline, _task=ts._task):
+                    raise TqTimeoutError(f"获取 {symbol} 的合约交易状态信息超时，请检查客户端及网络是否正常")
+        return ts
+
+    async def _handle_trading_status(self, symbol, ts):
+        if ts.trade_status != "":
+            return ts
+        if symbol not in self._requests["trading_status"]:
+            self._requests["trading_status"].add(symbol)
+            self._send_pack({
+                "aid": "subscribe_trading_status",
+                "ins_list": ",".join(self._requests["trading_status"])
+            })
+        async with self.register_update_notify(ts) as update_chan:
+            async for _ in update_chan:
+                if ts.trade_status != "":
+                    return ts
 
     # ----------------------------------------------------------------------
     def get_kline_serial(self, symbol: Union[str, List[str]], duration_seconds: int, data_length: int = 200,
@@ -884,6 +943,8 @@ class TqApi(TqBaseApi):
         if not self._auth._has_feature("tq_dl"):
             raise Exception(
                 f"{call_func} 数据获取方式仅限专业版用户使用，如需购买专业版或者申请试用，请访问 https://www.shinnytech.com/tqsdk_professional/")
+        if self._backtest:
+            raise Exception(f"不支持在回测/复盘中调用 {call_func} 接口")
         dur_nano = duration_seconds * 1000000000
         symbol_list = symbol_list if isinstance(symbol_list, list) else [symbol_list]
         if len(symbol_list) != 1:
@@ -2584,6 +2645,7 @@ class TqApi(TqBaseApi):
             * instrument_id: 合约代码，参考 :ref:`mddatas`
             * instrument_name: 合约中文名
             * exchange_id: 交易所代码，参考 :ref:`mddatas`
+            * product_id: 品种代码
             * price_tick: 合约价格变动单位
             * volume_multiple: 合约乘数
             * max_limit_order_volume: 最大限价单手数
@@ -2592,6 +2654,7 @@ class TqApi(TqBaseApi):
             * strike_price: 期权行权价
             * expired: 合约是否已下市
             * expire_datetime: 到期具体日，以秒为单位的 timestamp 值
+            * expire_rest_days: 距离到期日的剩余天数（自然日天数）
             * delivery_year: 期货交割日年份，只对期货品种有效。期权推荐使用最后行权日年份
             * delivery_month: 期货交割日月份，只对期货品种有效。期权推荐使用最后行权日月份
             * last_exercise_datetime: 期权最后行权日，以秒为单位的 timestamp 值
@@ -2601,6 +2664,8 @@ class TqApi(TqBaseApi):
             * pre_settlement: 昨结算
             * pre_open_interest: 昨持仓
             * pre_close: 昨收盘
+            * trading_time_day: 白盘交易时间段，list 类型
+            * trading_time_night: 夜盘交易时间段，list 类型
 
         Example1::
 
@@ -3064,6 +3129,15 @@ class TqApi(TqBaseApi):
             self.create_task(self._backtest._run(self, bt_send_chan, bt_recv_chan, ws_md_send_chan, ws_md_recv_chan))
             ws_md_send_chan, ws_md_recv_chan = bt_send_chan, bt_recv_chan
 
+        if not self._backtest:
+            ts = TqTradingStatus()
+            ts_send_chan = TqChan(self, chan_name="send to trading_status")
+            ts_recv_chan = TqChan(self, chan_name="recv from trading_status")
+            ws_md_send_chan._logger_bind(chan_from="trading_status")
+            ws_md_recv_chan._logger_bind(chan_to="trading_status")
+            self.create_task(ts._run(self, ts_send_chan, ts_recv_chan, ws_md_send_chan, ws_md_recv_chan))
+            ws_md_send_chan, ws_md_recv_chan = ts_send_chan, ts_recv_chan
+
         # 启动账户实例并连接交易服务器
         self._account._run(self, self._send_chan, self._recv_chan, ws_md_send_chan, ws_md_recv_chan)
 
@@ -3486,6 +3560,9 @@ class TqApi(TqBaseApi):
                         "@": Tick(self),  # Tick的数据原型
                     }
                 }
+            },
+            "trading_status": {
+                "#": TradingStatus(self),  # 行情的数据原型
             },
             "trade": {
                 "*": {

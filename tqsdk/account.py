@@ -1,5 +1,5 @@
 #!usr/bin/env python3
-#-*- coding:utf-8 -*-
+# -*- coding:utf-8 -*-
 __author__ = 'yanqiong'
 
 import base64
@@ -10,8 +10,10 @@ import sys
 import uuid
 from typing import Optional
 
+from tqsdk.baseModule import TqModule
 
-class TqAccount(object):
+
+class TqAccount(TqModule):
     """天勤实盘类"""
 
     def __init__(self, broker_id: str, account_id: str, password: str, front_broker: Optional[str] = None,
@@ -54,7 +56,7 @@ class TqAccount(object):
         self._td_url = td_url
         self._app_id = "SHINNY_TQ_1.0"
         self._system_info = ""
-        self._order_id = 0  #最新股票下单委托合同编号
+        self._order_id = 0  # 最新股票下单委托合同编号
 
     def _get_system_info(self):
         try:
@@ -90,7 +92,6 @@ class TqAccount(object):
             "user_name": self._account_id,
             "password": self._password,
         }
-        self._api = api
         mac = f"{uuid.getnode():012X}"
         req["client_mac_address"] = "-".join([mac[e:e + 2] for e in range(0, 11, 2)])
         system_info = self._get_system_info()
@@ -105,77 +106,53 @@ class TqAccount(object):
             await td_send_chan.send({
                 "aid": "confirm_settlement"
             })  # 自动发送确认结算单
-        self._pending_peek = False  # 是否有下游收到未处理的 peek_message
-        self._md_pending_peek = False  # 是否有发给行情上游的 peek_message，未收到过回复
-        self._td_pending_peek = False  # 是否有发给交易上游的 peek_message，未收到过回复
-        self._diffs = []
-        md_task = api.create_task(self._md_handler(api_recv_chan, md_recv_chan))
-        td_task = api.create_task(self._td_handler(api_recv_chan, td_recv_chan))
-        try:
-            async for pack in api_send_chan:
-                if pack["aid"] == "subscribe_quote" or pack["aid"] == "set_chart" or pack["aid"] == "ins_query":
-                    await md_send_chan.send(pack)
-                elif pack["aid"] != "peek_message":
-                    # 若交易指令包不为当前账户实例，传递给下一个账户实例
-                    if "account_key" in pack and pack["account_key"] != self._account_key:
-                        await md_send_chan.send(pack)
-                    else:
-                        if "account_key" in pack:
-                            pack.pop("account_key", None)
-                        await td_send_chan.send(pack)
-                elif pack["aid"] == "peek_message":
-                    self._pending_peek = True
-                    await self._send_diff(api_recv_chan)
-                    if self._pending_peek:
-                        if self._md_pending_peek is False:  # 控制"peek_message"发送: 当没有新的事件需要用户处理时才推进到下一个行情
-                            await md_send_chan.send({"aid": "peek_message"})
-                            self._md_pending_peek = True
-                        if self._td_pending_peek is False:  # 控制"peek_message"发送: 当没有新的事件需要用户处理时才推进到下一个行情
-                            await td_send_chan.send({"aid": "peek_message"})
-                            self._td_pending_peek = True
-        finally:
-            md_task.cancel()
-            td_task.cancel()
+        self._api = api
+        self._api_send_chan = api_send_chan
+        self._api_recv_chan = api_recv_chan
+        self._md_send_chan = md_send_chan
+        self._md_recv_chan = md_recv_chan
+        self._td_send_chan = td_send_chan
+        self._td_recv_chan = td_recv_chan
+        await super(TqAccount, self)._run(api, api_send_chan, api_recv_chan, md_send_chan, md_recv_chan, td_send_chan,
+                                          td_recv_chan)
 
-    async def _send_diff(self, api_recv_chan):
-        if self._pending_peek and self._diffs:
-            rtn_data = {
-                "aid": "rtn_data",
-                "data": self._diffs,
-            }
-            self._diffs = []
-            self._pending_peek = False
-            await api_recv_chan.send(rtn_data)
-
-    async def _md_handler(self, api_recv_chan, md_recv_chan):
-        async for pack in md_recv_chan:
+    async def _handle_recv_data(self, pack, chan):
+        """
+        处理所有上游收到的数据包
+        """
+        if chan == self._md_recv_chan:  # 从行情收到的数据包
             if pack["aid"] == "rtn_data":
-                self._md_pending_peek = False
                 self._diffs.extend(pack.get('data', []))
-                await self._send_diff(api_recv_chan)
             else:
-                await api_recv_chan.send(pack)  # 有可能是另一个 account 的 rsp_login
+                await self._api_recv_chan.send(pack)  # 有可能是另一个 account 的 rsp_login
+        elif chan == self._td_recv_chan:  # 从交易收到的数据包
+            self._td_handler(pack)
 
-    async def _td_handler(self, api_recv_chan, td_recv_chan):
-        async for pack in td_recv_chan:
-            # OTG 返回业务信息截面 trade 中 account_key 为 user_id, 该值需要替换为 account_key
-            for _, slice_item in enumerate(pack["data"] if "data" in pack else []):
-                if "trade" not in slice_item:
-                    continue
-                # 股票账户需要根据登录确认包确定客户号与资金账户
-                if self._account_type != 'FUTURE' and self._sub_account_id is None:
-                    self._sub_account_id = self._get_sub_account(slice_item["trade"])
+    async def _handle_req_data(self, pack):
+        if pack["aid"] == "subscribe_quote" or pack["aid"] == "set_chart" or pack["aid"] == "ins_query":
+            await self._md_send_chan.send(pack)
+        elif "account_key" in pack and pack["account_key"] != self._account_key:
+            # 若交易指令包不为当前账户实例，传递给下一个账户实例
+            await self._md_send_chan.send(pack)
+        else:
+            if "account_key" in pack:
+                pack.pop("account_key", None)
+            await self._td_send_chan.send(pack)
 
-                if self._account_id in slice_item["trade"]:
-                    slice_item["trade"][self._account_key] = slice_item["trade"].pop(self._account_id)
-                elif self._sub_account_id in slice_item["trade"]:
-                    slice_item["trade"][self._account_key] = slice_item["trade"].pop(self._sub_account_id)
-            if pack["aid"] == "rtn_data":
-                self._td_pending_peek = False
-                self._diffs.extend(pack.get('data', []))
-                await self._send_diff(api_recv_chan)
-            else:
-                await api_recv_chan.send(pack)
+    def _td_handler(self, pack):
+        # OTG 返回业务信息截面 trade 中 account_key 为 user_id, 该值需要替换为 account_key
+        for _, slice_item in enumerate(pack["data"] if "data" in pack else []):
+            if "trade" not in slice_item:
+                continue
+            # 股票账户需要根据登录确认包确定客户号与资金账户
+            if self._account_type != 'FUTURE' and self._sub_account_id is None:
+                self._sub_account_id = self._get_sub_account(slice_item["trade"])
+            if self._account_id in slice_item["trade"]:
+                slice_item["trade"][self._account_key] = slice_item["trade"].pop(self._account_id)
+            elif self._sub_account_id in slice_item["trade"]:
+                slice_item["trade"][self._account_key] = slice_item["trade"].pop(self._sub_account_id)
+        if pack["aid"] == "rtn_data":
+            self._diffs.extend(pack.get('data', []))
 
     def _get_sub_account(self, trade):
         """ 股票账户
