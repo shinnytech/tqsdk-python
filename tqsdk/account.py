@@ -129,15 +129,15 @@ class TqAccount(TqModule):
             self._td_handler(pack)
 
     async def _handle_req_data(self, pack):
-        if pack["aid"] == "subscribe_quote" or pack["aid"] == "set_chart" or pack["aid"] == "ins_query":
-            await self._md_send_chan.send(pack)
-        elif "account_key" in pack and pack["account_key"] != self._account_key:
-            # 若交易指令包不为当前账户实例，传递给下一个账户实例
-            await self._md_send_chan.send(pack)
-        else:
-            if "account_key" in pack:
+        if pack["aid"] in ["insert_order", "cancel_order", "set_risk_management_rule"]:
+            assert "account_key" in pack, "发给交易请求的包必须包含 account_key"
+            if pack["account_key"] != self._account_key:
+                await self._md_send_chan.send(pack)  # 若交易指令包不为当前账户实例，传递给下一个账户实例
+            else:
                 pack.pop("account_key", None)
-            await self._td_send_chan.send(pack)
+                await self._td_send_chan.send(pack)
+        else:
+            await self._md_send_chan.send(pack)
 
     def _td_handler(self, pack):
         # OTG 返回业务信息截面 trade 中 account_key 为 user_id, 该值需要替换为 account_key

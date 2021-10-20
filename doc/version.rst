@@ -2,6 +2,12 @@
 
 版本变更
 =============================
+2.9.2 (2021/10/20)
+
+* 修复：实盘账户无法使用 :py:meth:`~tqsdk.api.TqApi.get_trading_status` 接口的问题
+* docs：完善专业版文档
+
+
 2.9.1 (2021/10/19)
 
 * 增加：:py:meth:`~tqsdk.api.TqApi.get_trading_status` 接口，支持开盘抢单功能
