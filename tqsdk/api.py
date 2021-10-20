@@ -545,6 +545,8 @@ class TqApi(TqBaseApi):
               if ts.trade_status == "AUCTIONORDERING":
                 order = api.insert_order("SHFE.cu2201","BUY","OPEN", 1, 71400)
                 break
+            # insert_order指令会在下一次wait_update()发出
+            api.wait_update()
             api.close()
 
         """
@@ -1718,6 +1720,7 @@ class TqApi(TqBaseApi):
             raise Exception(f"{exchange_id} 不支持设置风控规则，只有 SSE，SZSE 支持")
         rule_pack = {
             "aid": "set_risk_management_rule",
+            "account_key": self._account._get_account_key(account),
             "user_id": self._account._get_account_id(account),
             "exchange_id": exchange_id,
             "enable": enable,

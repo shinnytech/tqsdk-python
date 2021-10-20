@@ -81,6 +81,7 @@ TqApi 实例内存中保存了一份完整业务数据截面, 包括行情/K线�
 
     api = TqApi(auth=TqAuth("信易账户", "账户密码"))
     klines = api.get_kline_serial("SHFE.rb1901", 60)
+    position = api.get_position("SHFE.rb1901")
     target_pos = TargetPosTask(api, "SHFE.rb1901")
 
     while True:                                                 #判断开仓条件的主循环
@@ -92,9 +93,9 @@ TqApi 实例内存中保存了一份完整业务数据截面, 包括行情/K线�
     while True:                                                 #判断平仓条件的主循环
         api.wait_update()
         if 平仓条件:
-            target_pos.set_target_volume(0)                     ##如果触发了，则通过 target_pos 将 SHFE.rb1901 的目标持仓设置为0手(即空仓)
+            target_pos.set_target_volume(0)                     #如果触发了，则通过 target_pos 将 SHFE.rb1901 的目标持仓设置为0手(即空仓)
+        if position.pos == 0:                                   #如果已经将仓位平掉则跳出循环
             break
-
     api.close()                                                 #注意：程序结束运行前需调用此函数以关闭天勤接口实例并释放相应资源，同时此函数会包含发送最后一次wait_update信息传输
     #至此就完成一次完整的开平仓流程，如果平仓后还需再判断开仓条件可以把开仓循环和平仓循环再套到一个大循环中。
 
