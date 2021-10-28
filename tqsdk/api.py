@@ -74,6 +74,8 @@ from tqsdk.objs import Quote, TradingStatus, Kline, Tick, Account, Position, Ord
 from tqsdk.objs import SecurityAccount, SecurityOrder, SecurityTrade, SecurityPosition
 from tqsdk.objs_not_entity import QuoteList, TqDataFrame, TqSymbolDataFrame, SymbolList, SymbolLevelList, \
     TqSymbolRankingDataFrame, TqOptionGreeksDataFrame
+from tqsdk.risk_manager import TqRiskManager
+from tqsdk.risk_rule import TqRiskRule
 from tqsdk.sim import TqSim
 from tqsdk.symbols import TqSymbols
 from tqsdk.trading_status import TqTradingStatus
@@ -243,6 +245,7 @@ class TqApi(TqBaseApi):
             self._td_url = _td_url
 
         # 内部关键数据
+        self._risk_manager = TqRiskManager()
         self._requests = {
             "trading_status": set(),
             "quotes": set(),
@@ -376,13 +379,13 @@ class TqApi(TqBaseApi):
         注意:
         1. 在 tqsdk 还没有收到行情数据包时, 此对象中各项内容为 NaN 或 0
         2. 天勤接口从0.8版本开始，合约代码格式变更为 交易所代码.合约代码 的格式. 可用的交易所代码如下：
-             * CFFEX: 中金所
-             * SHFE: 上期所
-             * DCE: 大商所
-             * CZCE: 郑商所
-             * INE: 能源交易所(原油)
-             * SSE: 上交所
-             * SZSE: 深交所
+            * CFFEX: 中金所
+            * SHFE: 上期所
+            * DCE: 大商所
+            * CZCE: 郑商所
+            * INE: 能源交易所(原油)
+            * SSE: 上交所
+            * SZSE: 深交所
 
         Example1::
 
@@ -443,13 +446,13 @@ class TqApi(TqBaseApi):
         注意:
         1. 在 tqsdk 还没有收到行情数据包时, 此对象中各项内容为 NaN 或 0
         2. 天勤接口从0.8版本开始，合约代码格式变更为 交易所代码.合约代码 的格式. 可用的交易所代码如下：
-             * CFFEX: 中金所
-             * SHFE: 上期所
-             * DCE: 大商所
-             * CZCE: 郑商所
-             * INE: 能源交易所(原油)
-             * SSE: 上交所
-             * SZSE: 深交所
+            * CFFEX: 中金所
+            * SHFE: 上期所
+            * DCE: 大商所
+            * CZCE: 郑商所
+            * INE: 能源交易所(原油)
+            * SSE: 上交所
+            * SZSE: 深交所
 
         Example::
 
@@ -1083,6 +1086,37 @@ class TqApi(TqBaseApi):
         return df
 
     # ----------------------------------------------------------------------
+    def add_risk_rule(self, rule: TqRiskRule):
+        """
+        添加一项风控规则实例，此接口为 TqSdk 专业版提供。
+
+        如需使用此功能，可以点击 `天勤量化专业版 <https://www.shinnytech.com/tqsdk_professional/>`_ 申请试用或购买
+
+        Args:
+            rule (TqRiskRule): 风控规则实例，必须是 TqRiskRule 的子类型
+
+        """
+        if not self._auth._has_feature("tq_lc_rk"):
+            raise Exception("本地风控功能仅限专业版用户使用，如需购买专业版或者申请试用，请访问 https://www.shinnytech.com/tqsdk_professional/")
+        if not isinstance(rule, TqRiskRule):
+            raise Exception("传入参数对象必须是 TqRiskRule 的类型")
+        self._risk_manager.append(rule)
+
+    def delete_risk_rule(self, rule: TqRiskRule):
+        """
+        删除一项风控规则实例，此接口为 TqSdk 专业版提供。
+
+        如需使用此功能，可以点击 `天勤量化专业版 <https://www.shinnytech.com/tqsdk_professional/>`_ 申请试用或购买
+
+        Args:
+            rule (TqRiskRule): 风控规则实例，必须是 TqRiskRule 的子类型
+
+        """
+        if not isinstance(rule, TqRiskRule):
+            raise Exception("传入参数对象必须是 TqRiskRule 的类型")
+        self._risk_manager.remove(rule)
+
+    # ----------------------------------------------------------------------
     def insert_order(self, symbol: str, direction: str, offset: str = "", volume: int = 0,
                      limit_price: Union[str, float, None] = None,
                      advanced: Optional[str] = None, order_id: Optional[str] = None, account: Optional[Union[
@@ -1322,7 +1356,8 @@ class TqApi(TqBaseApi):
             msg["contingent_condition"] = "UNKNOWN"
             msg["volume_condition"] = "UNKNOWN"
             msg["time_condition"] = "UNKNOWN"
-
+        self._risk_manager._could_insert_order(msg)
+        self._risk_manager._on_insert_order(msg)
         return msg
 
     async def _insert_order_async(self, symbol, direction, offset, volume, limit_price, advanced, order_id,
@@ -2194,20 +2229,20 @@ class TqApi(TqBaseApi):
         Returns:
             pandas.DataFrame: 本函数返回 pandas.DataFrame 实例。行数为 days * 20，每行为一条成交量/多头持仓量/空头持仓量的排名信息。返回值不会再更新。包含以下列:
 
-                * datetime (查询日期)
-                * symbol (合约代码，以交易所列出的期货公司名称为准)
-                * exchange_id (交易所)
-                * instrument_id (交易所内合约代码)
-                * broker (期货公司)
-                * volume (成交量)
-                * volume_change (成交量变化)
-                * volume_ranking (成交量排名)
-                * long_oi (多头持仓量)
-                * long_change (多头持仓增减量)
-                * long_ranking (多头持仓量排名)
-                * short_oi (空头持仓量)
-                * short_change (空头持仓增减量)
-                * short_ranking (空头持仓量排名)
+            * datetime (查询日期)
+            * symbol (合约代码，以交易所列出的期货公司名称为准)
+            * exchange_id (交易所)
+            * instrument_id (交易所内合约代码)
+            * broker (期货公司)
+            * volume (成交量)
+            * volume_change (成交量变化)
+            * volume_ranking (成交量排名)
+            * long_oi (多头持仓量)
+            * long_change (多头持仓增减量)
+            * long_ranking (多头持仓量排名)
+            * short_oi (空头持仓量)
+            * short_change (空头持仓增减量)
+            * short_ranking (空头持仓量排名)
 
             注意:
             1. 返回值中 datetime、symbol、exchange_id、instrument_id、broker 这几列一定为有效值。其他列会根据不同的 ranking_type 参数值，可能返回 nan：

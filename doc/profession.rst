@@ -61,9 +61,9 @@ TqSdk 免费版本提供全部的期货、商品/金融期权和上证50、沪�
 
 其他相关函数
 -------------------------------------------------
- :py:meth:`~tqsdk.api.TqApi.query_symbol_ranking`交易所每日成交持仓排名
+ :py:meth:`~tqsdk.api.TqApi.query_symbol_ranking` 交易所每日成交持仓排名
 
- :py:meth:`~tqsdk.api.TqApi.get_kline_data_series`以起始日期获取 Dataframe 格式的 kline 数据
+ :py:meth:`~tqsdk.api.TqApi.get_kline_data_series` 以起始日期获取 Dataframe 格式的 kline 数据
 
  :py:meth:`~tqsdk.api.TqApi.get_trading_status` 获取指定合约的交易状态，帮助用户实现开盘/跨小节抢单
 

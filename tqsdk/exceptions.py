@@ -105,3 +105,13 @@ class TqBacktestPermissionError(Exception):
     def __init__(self, message):
         super().__init__(message)
         self.message = message
+
+
+class TqRiskRuleError(Exception):
+    """
+    风控触发的报错
+    """
+
+    def __init__(self, message):
+        super().__init__(message)
+        self.message = message
