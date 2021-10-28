@@ -17,5 +17,6 @@ TqSdk 模块参考
     tqsdk.sim.rst
     tqsdk.backtest.rst
     tqsdk.algorithm.rst
+    tqsdk.risk_rule.rst
     tqsdk.tools.download.rst
     tqsdk.exceptions.rst

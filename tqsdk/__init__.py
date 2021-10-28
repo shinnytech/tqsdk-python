@@ -8,7 +8,7 @@ from tqsdk.account import TqAccount, TqKq
 from tqsdk.auth import TqAuth
 from tqsdk.channel import TqChan
 from tqsdk.backtest import TqBacktest, TqReplay
-from tqsdk.exceptions import BacktestFinished, TqTimeoutError
+from tqsdk.exceptions import BacktestFinished, TqTimeoutError, TqRiskRuleError
 from tqsdk.lib import TargetPosScheduler, TargetPosTask, InsertOrderUntilAllTradedTask, InsertOrderTask, TqNotify
 from tqsdk.sim import TqSim
 from tqsdk.multiaccount import TqMultiAccount

@@ -2,6 +2,13 @@
 
 版本变更
 =============================
+2.9.3 (2021/10/28)
+
+* 增加：:py:class:`~tqsdk.risk_rule.TqRuleOpenCountsLimit`、:py:class:`~tqsdk.risk_rule.TqRuleOpenVolumesLimit` 类，
+  以及 :py:meth:`~tqsdk.api.TqApi.add_risk_rule`、:py:meth:`~tqsdk.api.TqApi.delete_risk_rule` 接口，支持本地风控功能
+* 增加：:py:class:`~tqsdk.exceptions.TqRiskRuleError` 错误类型，可以捕获风控触发的错误
+
+
 2.9.2 (2021/10/20)
 
 * 修复：实盘账户无法使用 :py:meth:`~tqsdk.api.TqApi.get_trading_status` 接口的问题

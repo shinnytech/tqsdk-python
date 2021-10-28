@@ -269,7 +269,7 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 
 刚刚注册完成的信易账户的【手机号】/【邮箱地址】/【用户名】和【密码】可以作为 快期模拟 账号，通过 :py:class:`~tqsdk.api.TqKq` 对 auth 传入参数进行登录，这个 快期模拟 账户在快期APP、快期V3 pro 和天勤量化上是互通的
 
-快期模拟的资金可以通过快期APP、快期V3 pro的模拟银行进行出入金::
+快期模拟的资金可以通过快期APP、快期专业版的模拟银行进行出入金::
 
   from tqsdk import TqApi, TqAuth, TqKq
 
