@@ -232,13 +232,13 @@ class TqSymbolDataFrame(DataFrame):
             "exercise_year",
             "exercise_month",
             "option_class",
+            "upper_limit",
+            "lower_limit",
             "pre_settlement",
             "pre_open_interest",
             "pre_close",
             "trading_time_day",
             "trading_time_night"
-            # todo upper_limit 涨停价
-            # todo lower_limit 跌停价
         ]
         default_quote = Quote(None)
         data = [{k: (s if k == "instrument_id" else default_quote.get(k, None)) for k in self.__dict__["_columns"]} for s in symbol_list]
@@ -271,6 +271,8 @@ class TqSymbolDataFrame(DataFrame):
                     quotes = self.__dict__["_api"]._symbols_to_quotes(query_result, keys=all_keys)
                     self._quotes_to_dataframe(quotes)
                     if self.__dict__["_backtest_timestamp"]:
+                        # 回测时这些字段应该为 nan
+                        self.loc[:, ["upper_limit", "lower_limit", "pre_settlement", "pre_open_interest", "pre_close"]] = float('nan')
                         # 回测时清空请求，不缓存请求内容
                         self.__dict__["_api"]._send_pack({
                             "aid": "ins_query",
@@ -292,9 +294,9 @@ class TqSymbolDataFrame(DataFrame):
                 self.loc[:, col] = [_get_expire_rest_days(quotes[s]['expire_datetime'], current_dt) for s in self.__dict__["_symbol_list"]]
             elif col == "trading_time_day" or col == "trading_time_night":
                 k = 'day' if col == "trading_time_day" else 'night'
-                self.loc[:, col] = [self._get_trading_time(quotes, s, k) for s in self.__dict__["_symbol_list"]]
+                self.loc[:, col] = Series([self._get_trading_time(quotes, s, k) for s in self.__dict__["_symbol_list"]])
             else:
-                self.loc[:, col] = [quotes[s].get(col, default_quote[col]) for s in self.__dict__["_symbol_list"]]
+                self.loc[:, col] = Series([quotes[s].get(col, default_quote[col]) for s in self.__dict__["_symbol_list"]])
 
     def __await__(self):
         return self.__dict__["_task"].__await__()

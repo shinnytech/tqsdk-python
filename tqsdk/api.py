@@ -265,7 +265,7 @@ class TqApi(TqBaseApi):
         self._pending_diffs = []  # 从网络上收到的待处理的 diffs, 只在 wait_update 函数执行过程中才可能为非空
         self._pending_peek = False  # 是否有发出的 peek_message 还没收到数据回复
         self._prototype = self._gen_prototype()  # 各业务数据的原型, 用于决定默认值及将收到的数据转为特定的类型
-        self._security_prototype = self._gen_security_prototype() # 股票业务数据原型
+        self._security_prototype = self._gen_security_prototype()  # 股票业务数据原型
         self._dividend_cache = {}  # 缓存合约对应的复权系数矩阵，每个合约只计算一次
         self._send_chan, self._recv_chan = TqChan(self), TqChan(self)  # 消息收发队列
         self._ws_md_recv_chan = None  # 记录 ws_md_recv_chan 引用
@@ -1858,7 +1858,7 @@ class TqApi(TqBaseApi):
             self._process_serial_extra_array(serial)
         self._run_until_idle(async_run=False)  # 这里 self._run_until_idle() 主要为了把上一步计算出得需要绘制的数据发送到 TqWebHelper
         if _task is not None:
-                # 如果 _task 已经 done，则提前返回 True, False 代表超时会抛错
+            # 如果 _task 已经 done，则提前返回 True, False 代表超时会抛错
             _tasks = _task if isinstance(_task, list) else [_task]
             if all([t.done() for t in _tasks]):
                 return True
@@ -2377,7 +2377,8 @@ class TqApi(TqBaseApi):
         if isinstance(self._backtest, TqBacktest):
             variables["timestamp"] = int(self._get_current_datetime().timestamp() * 1e9)
         args_definitions, args = _get_query_args(variables)
-        query = f"query({args_definitions}){{multi_symbol_info({args}){{ ... on basic {{instrument_id }} }}}}"
+        query = f"query{f'({args_definitions})' if args_definitions else ''}{{multi_symbol_info{f'({args})' if args else ''}{{ ... on basic {{instrument_id }} }}}}"
+
         def filter(query_result):
             result = []
             for quote in query_result.get("result", {}).get("multi_symbol_info", []):
@@ -2387,6 +2388,7 @@ class TqApi(TqBaseApi):
                 else:
                     result.append(quote["instrument_id"])
             return result
+
         return self._get_symbol_list(query=query, variables=variables, filter=filter)
 
     def _get_symbol_list(self, query: str, variables: dict, filter: Callable[[dict], list]):
@@ -2465,6 +2467,7 @@ class TqApi(TqBaseApi):
         query = f"query( {args_definitions} ){{multi_symbol_info( {args} ){{...basic ...cont}}}}"
         fragments = "fragment basic on basic {instrument_id}" \
                     "fragment cont on derivative{underlying{edges{node{...on basic{instrument_id exchange_id}...on future {product_id}}}}}"
+
         def filter(query_result):
             result = []
             for quote in query_result.get("result", {}).get("multi_symbol_info", []):
@@ -2476,8 +2479,8 @@ class TqApi(TqBaseApi):
                             continue
                         result.append(underlying_quote["instrument_id"])
             return result
-        return self._get_symbol_list(query=query + fragments, variables=variables, filter=filter)
 
+        return self._get_symbol_list(query=query + fragments, variables=variables, filter=filter)
 
     def query_options(self, underlying_symbol: str, option_class: str = None, exercise_year: int = None,
                       exercise_month: int = None, strike_price: float = None, expired: bool = None, has_A: bool = None,
@@ -2534,6 +2537,7 @@ class TqApi(TqBaseApi):
         if self._stock is False:
             raise Exception("期货行情系统(_stock = False)不支持当前接口调用")
         query, variables = self._query_options_by_underlying(underlying_symbol)
+
         def filter(query_result):
             options = []
             exe_year = exercise_year if exercise_year else kwargs.get("delivery_year")
@@ -2554,6 +2558,7 @@ class TqApi(TqBaseApi):
                             continue
                         options.append(option["instrument_id"])
             return options
+
         return self._get_symbol_list(query=query, variables=variables, filter=filter)
 
     def query_atm_options(self, underlying_symbol, underlying_price, price_level, option_class, exercise_year: int = None,
@@ -2644,6 +2649,7 @@ class TqApi(TqBaseApi):
         if exercise_year and exercise_month and not (isinstance(exercise_year, int) and isinstance(exercise_month, int)):
             raise Exception("exercise_year / exercise_month 类型错误")
         query, variables = self._query_options_by_underlying(underlying_symbol)
+
         def filter(query_result):
             options = self._convert_query_result_to_list(query_result)
             if options:
@@ -2659,6 +2665,7 @@ class TqApi(TqBaseApi):
                 return rst_options
             else:
                 return []
+
         return self._get_symbol_list(query=query, variables=variables, filter=filter)
 
     def query_symbol_info(self, symbol: Union[str, List[str]]):
@@ -2699,11 +2706,18 @@ class TqApi(TqBaseApi):
             * exercise_year: 期权最后行权日年份，只对期权品种有效。
             * exercise_month: 期权最后行权日月份，只对期权品种有效。
             * option_class: 期权方向
+            * upper_limit: 涨停价
+            * lower_limit: 跌停价
             * pre_settlement: 昨结算
             * pre_open_interest: 昨持仓
             * pre_close: 昨收盘
             * trading_time_day: 白盘交易时间段，list 类型
             * trading_time_night: 夜盘交易时间段，list 类型
+
+        注意:
+
+        1. 回测时，以下字段值为 nan: "upper_limit", "lower_limit", "pre_settlement", "pre_open_interest", "pre_close"
+        2. 中金所合约未提供涨停价、跌停价
 
         Example1::
 
@@ -2800,6 +2814,7 @@ class TqApi(TqBaseApi):
         if exercise_year and exercise_month and not (isinstance(exercise_year, int) and isinstance(exercise_month, int)):
             raise Exception("exercise_year / exercise_month 类型错误")
         query, variables = self._query_options_by_underlying(underlying_symbol)
+
         def filter(query_result):
             options = self._convert_query_result_to_list(query_result)
             if options:
@@ -2814,6 +2829,7 @@ class TqApi(TqBaseApi):
                 return in_money_options, at_money_options, out_of_money_options
             else:
                 return [], [], []
+
         return self._get_symbol_level_list(query=query, variables=variables, filter=filter)
 
     def _get_symbol_level_list(self, query: str, variables: dict, filter: Callable[[dict], Tuple[list, list, list]]):
@@ -2907,6 +2923,7 @@ class TqApi(TqBaseApi):
             if any([i not in [0, 1, 2, 3] for i in nearbys]):
                 raise Exception(f"ETF 期权标的为：{underlying_symbol}，exercise_date 参数应该是在 [0, 1, 2, 3] 之间。")
         query, variables = self._query_options_by_underlying(underlying_symbol)
+
         def filter(query_result):
             options = self._convert_query_result_to_list(query_result)
             if options:
@@ -2918,6 +2935,7 @@ class TqApi(TqBaseApi):
                 return in_money_options, at_money_options, out_of_money_options
             else:
                 return [], [], []
+
         return self._get_symbol_level_list(query=query, variables=variables, filter=filter)
 
     def _query_options_by_underlying(self, underlying_symbol):

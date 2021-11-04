@@ -179,7 +179,7 @@ class TqConnect(object):
             # 希望做到的效果是遇到网络问题可以断线重连, 但是可能抛出的例外太多了(TimeoutError,socket.gaierror等), 又没有文档或工具可以理出 try 代码中所有可能遇到的例外
             # 而这里的 except 又需要处理所有子函数及子函数的子函数等等可能抛出的例外, 因此这里只能遇到问题之后再补, 并且无法避免 false positive 和 false negative
             except (websockets.exceptions.ConnectionClosed, websockets.exceptions.InvalidStatusCode,
-                    websockets.exceptions.InvalidState, websockets.exceptions.ProtocolError, OSError,
+                    websockets.exceptions.InvalidState, websockets.exceptions.ProtocolError, OSError, EOFError,
                     TqBacktestPermissionError) as e:
                 in_ops_time = datetime.now().hour == 19 and 0 <= datetime.now().minute <= 30
                 # 发送网络连接断开的通知，code = 2019112911

@@ -2,6 +2,14 @@
 
 版本变更
 =============================
+2.9.4 (2021/11/04)
+
+* 增加：:py:meth:`~tqsdk.api.TqApi.query_symbol_info` 接口返回值中增加 ``upper_limit``, ``lower_limit`` 这两个字段
+* 优化: 多账户模式支持回测模块
+* 优化: query 系列函数，发送的查询请求中合约列表长度不能大于 8192
+* 优化: 网络连接优化断线重连机制
+
+
 2.9.3 (2021/10/28)
 
 * 增加：:py:class:`~tqsdk.risk_rule.TqRuleOpenCountsLimit`、:py:class:`~tqsdk.risk_rule.TqRuleOpenVolumesLimit` 类，
