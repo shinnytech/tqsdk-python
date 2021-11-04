@@ -22,7 +22,7 @@ fragment basic on basic {class trading_time{day night} trading_day instrument_id
 fragment stock on stock{ stock_dividend_ratio cash_dividend_ratio}
 fragment fund on fund{ cash_dividend_ratio}
 fragment bond on bond{ maturity_datetime }
-fragment tradeable on tradeable{ pre_close volume_multiple quote_multiple}
+fragment tradeable on tradeable{ pre_close volume_multiple quote_multiple upper_limit lower_limit}
 fragment index on index{ index_multiple}
 fragment securities on securities{ currency face_value first_trading_datetime buy_volume_unit sell_volume_unit status public_float_share_quantity}
 fragment future on future{ pre_open_interest expired product_id product_short_name delivery_year delivery_month expire_datetime settlement_price max_market_order_volume max_limit_order_volume margin commission mmsa}
@@ -44,8 +44,6 @@ def _query_for_quote(symbol):
     用户请求合约信息一定是 PYSDK_api 开头的请求，因为用户请求的合约信息在回测时带有 timestamp 参数，是不应该调用此函数的
     """
     symbol_list = symbol if isinstance(symbol, list) else [symbol]
-    if any([s == "" for s in symbol_list]) or len(symbol_list) == 0:
-        raise Exception("发送的 ins_query 请求合约代码不支持空字符串、空列表或者列表中包括空字符串。")
     query = "query ($instrument_id:[String]) {"
     query += "multi_symbol_info(instrument_id:$instrument_id) {" + query_all_fields + "}}" + fragments
     return {

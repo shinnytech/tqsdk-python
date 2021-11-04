@@ -22,7 +22,7 @@ class TqSymbols(object):
         self._quotes_all_keys = set(Quote(None).keys())
         self._quotes_all_keys = self._quotes_all_keys.union({'margin', 'commission'})
         # 以下字段合约服务也会请求，但是不应该记在 quotes 中，quotes 中的这些字段应该有行情服务负责
-        self._quotes_all_keys.difference_update({'pre_open_interest', 'pre_settlement', 'pre_close'})
+        self._quotes_all_keys.difference_update({'pre_open_interest', 'pre_settlement', 'pre_close', 'upper_limit', 'lower_limit'})
         sim_task = self._api.create_task(self._sim_handler())
         try:
             async for pack in self._md_recv_chan:
@@ -53,4 +53,14 @@ class TqSymbols(object):
     async def _sim_handler(self):
         # 下游发来的数据包，直接转发到上游
         async for pack in self._sim_send_chan:
+            if pack["aid"] == "ins_query":
+                # 检查数据包格式，不同的直接返回错误
+                for v in pack["variables"].values():
+                    if v == "":
+                        raise Exception("发送的 ins_query 请求不支持空字符串。")
+                    elif isinstance(v, list):
+                        if any([s == "" for s in v]) or len(v) == 0:
+                            raise Exception("发送的 ins_query 请求不支持空列表或者列表中包括空字符串。")
+                        if len(v) > 8192:
+                            raise Exception("发送的 ins_query 请求中列表类型变量，长度最多支持 8192。")
             await self._md_send_chan.send(pack)

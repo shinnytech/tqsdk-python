@@ -4,11 +4,13 @@ __time__ = '2020/8/5 22:45'
 __author__ = 'Hong Yan'
 
 from typing import List, Union
+
+from shinny_structlog import ShinnyLoggerAdapter
+
 from tqsdk.account import TqAccount, TqKq
-from tqsdk.sim import TqSim
+from tqsdk.connect import TqConnect, TdReconnectHandler
 from tqsdk.channel import TqChan
-from shinny_structlog import ShinnyLoggerAdapter, JSONFormatter
-from tqsdk.connect import TqConnect, MdReconnectHandler, TdReconnectHandler
+from tqsdk.sim import TqSim
 
 
 class TqMultiAccount(object):
@@ -21,10 +23,8 @@ class TqMultiAccount(object):
 
     **注意**
 
-    - 多账户模式暂未支持回测模块
     - 多账户模式暂未支持 `webgui`
     - 多账户模式下, 对于 get_position，account，insert_order，set_target_volume 等函数必须指定 account 参数
-    - 多账户必须指定信易账户信息, 如 ``api = TqApi(TqMultiAccount(...), auth=TqAuth("信易账户", "账户密码"))``
     - 多账户模式下, 实盘账户的数量受限于信易账户支持实盘账户数, 详见:`更多的实盘交易账户数 <https://doc.shinnytech.com/tqsdk/latest/profession.html#id2>`_
 
     """
