@@ -417,10 +417,7 @@ class TqBacktest(object):
 
     async def _ensure_query(self, pack):
         """一定收到了对应 query 返回的包"""
-        query_pack = {
-            "query": pack["query"],
-            "variables": pack["variables"].copy()
-        }
+        query_pack = {"query": pack["query"]}
         if query_pack.items() <= self._data.get("symbols", {}).get(pack["query_id"], {}).items():
             return
         async with TqChan(self._api, last_only=True) as update_chan:

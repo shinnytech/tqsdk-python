@@ -8,11 +8,14 @@ from typing import Callable, Tuple
 
 import aiohttp
 from pandas import DataFrame, Series
+from sgqlc.operation import Operation
+from tqsdk.backtest import TqBacktest
 
 from tqsdk.datetime import _get_expire_rest_days
+from tqsdk.ins_schema import ins_schema, _add_all_frags
 from tqsdk.objs import Quote
 from tqsdk.diff import _get_obj
-from tqsdk.utils import _query_for_quote, query_all_fields, _generate_uuid, fragments
+from tqsdk.utils import _query_for_quote, _generate_uuid
 from tqsdk.tafunc import _get_t_series, get_impv, _get_d1, get_delta, get_theta, get_gamma, get_vega, get_rho
 
 """
@@ -86,18 +89,17 @@ class QuoteList(list):
         return self._task.__await__()
 
 
-async def _query_graphql_async(api, query_id, query, variables):
+async def _query_graphql_async(api, query_id, query):
     api._send_pack({
         "aid": "ins_query",
         "query_id": query_id,
-        "query": query,
-        "variables": variables
+        "query": query
     })
     symbols = _get_obj(api._data, ["symbols"])
     async with api.register_update_notify(symbols) as update_chan:
         async for _ in update_chan:
             s = symbols.get(query_id, {})
-            if s.get("query") == query and s.get("variables") == variables:
+            if s.get("query") == query:
                 break
 
 
@@ -106,35 +108,30 @@ class SymbolList(list):
     query 系列函数返回对象
     """
 
-    def __init__(self, api, query_id: str, query: str, variables: dict, filter: Callable[[dict], list]):
+    def __init__(self, api, query_id: str, query: str, filter: Callable[[dict], list]):
         self._api = api
         self._query_id = query_id
         self._query = query
-        self._variables = variables
         self._filter = filter
         list.__init__(self, [])
         self._task = api.create_task(self._query_graphql(), _caller_api=True)
 
     async def _query_graphql(self):
-        pack = {
-            "query": self._query,
-            "variables": self._variables
-        }
+        pack = {"query": self._query}
         symbols = _get_obj(self._api._data, ["symbols"])
         query_result = None
         for symbol in symbols.values():
             if symbol.items() >= pack.items():  # 检查是否发送过相同的请求
                 query_result = symbol
         if query_result is None:
-            await _query_graphql_async(self._api, self._query_id, self._query, self._variables)
+            await _query_graphql_async(self._api, self._query_id, self._query)
             query_result = symbols.get(self._query_id)
         self += self._filter(query_result)
-        if self._variables.get('timestamp'):  # 回测时，清空缓存的请求
+        if isinstance(self._api._backtest, TqBacktest):  # 回测时，清空缓存的请求
             self._api._send_pack({
                 "aid": "ins_query",
                 "query_id": self._query_id,
-                "query": "",
-                "variables": {}
+                "query": ""
             })
         return self
 
@@ -150,37 +147,32 @@ class SymbolLevelList(namedtuple('SymbolLevel', ['in_money_options', 'at_money_o
     def __new__(cls, *args, **kwargs):
         return super(SymbolLevelList, cls).__new__(cls, in_money_options=[], at_money_options=[], out_of_money_options=[])
 
-    def __init__(self, api, query_id: str, query: str, variables: dict, filter: Callable[[dict], Tuple[list, list, list]]):
+    def __init__(self, api, query_id: str, query: str, filter: Callable[[dict], Tuple[list, list, list]]):
         self._api = api
         self._query_id = query_id
         self._query = query
-        self._variables = variables
         self._filter = filter
         self._task = api.create_task(self._query_graphql(), _caller_api=True)
 
     async def _query_graphql(self):
-        pack = {
-            "query": self._query,
-            "variables": self._variables
-        }
+        pack = {"query": self._query}
         symbols = _get_obj(self._api._data, ["symbols"])
         query_result = None
         for symbol in symbols.values():
             if symbol.items() >= pack.items():  # 检查是否发送过相同的请求
                 query_result = symbol
         if query_result is None:
-            await _query_graphql_async(self._api, self._query_id, self._query, self._variables)
+            await _query_graphql_async(self._api, self._query_id, self._query)
             query_result = symbols.get(self._query_id)
         l0, l1, l2 = self._filter(query_result)
         self[0].extend(l0)
         self[1].extend(l1)
         self[2].extend(l2)
-        if self._variables.get('timestamp'):  # 回测时，清空缓存的请求
+        if isinstance(self._api._backtest, TqBacktest):  # 回测时，清空缓存的请求
             self._api._send_pack({
                 "aid": "ins_query",
                 "query_id": self._query_id,
-                "query": "",
-                "variables": {}
+                "query": ""
             })
         return self
 
@@ -247,19 +239,16 @@ class TqSymbolDataFrame(DataFrame):
 
     async def async_update(self):
         query_id = _generate_uuid("PYSDK_api")
+        op = Operation(ins_schema.rootQuery)
         variables = {"instrument_id": self.__dict__["_symbol_list"]}
         if self.__dict__["_backtest_timestamp"]:
             variables["timestamp"] = self.__dict__["_backtest_timestamp"]
-            query = "query ($instrument_id:[String],$timestamp:Int64) {"
-            query += "multi_symbol_info(instrument_id:$instrument_id,timestamp:$timestamp) {" + query_all_fields + "}}" + fragments
-        else:
-            query = "query ($instrument_id:[String]) {"
-            query += "multi_symbol_info(instrument_id:$instrument_id) {" + query_all_fields + "}}" + fragments
+        query = op.multi_symbol_info(**variables)
+        _add_all_frags(query)
         self.__dict__["_api"]._send_pack({
             "aid": "ins_query",
             "query_id": query_id,
-            "query": query,
-            "variables": variables
+            "query": op.__to_graphql__()
         })
         symbols = _get_obj(self.__dict__["_api"]._data, ["symbols"])
         async with self.__dict__["_api"].register_update_notify(symbols) as update_chan:
@@ -277,8 +266,7 @@ class TqSymbolDataFrame(DataFrame):
                         self.__dict__["_api"]._send_pack({
                             "aid": "ins_query",
                             "query_id": query_id,
-                            "query": "",
-                            "variables": {}
+                            "query": ""
                         })
                     return self
 

@@ -7,7 +7,7 @@ from typing import List, Union
 
 from shinny_structlog import ShinnyLoggerAdapter
 
-from tqsdk.account import TqAccount, TqKq
+from tqsdk.account import TqAccount, TqKq, TqKqStock
 from tqsdk.connect import TqConnect, TdReconnectHandler
 from tqsdk.channel import TqChan
 from tqsdk.sim import TqSim
@@ -173,6 +173,11 @@ class TqMultiAccount(object):
                 if isinstance(account, TqKq):
                     account._account_id = self._api._auth._auth_id
                     account._password = self._api._auth._auth_id
+                elif isinstance(account, TqKqStock):
+                    account._account_id = self._api._auth._auth_id + "-sim-securities"
+                    account._password = self._api._auth._auth_id
+                    if not self._api._auth._has_account(account._account_id):
+                        raise Exception(f"您的账户不支持快期股票模拟，需要购买专业版本后使用。升级网址：https://account.shinnytech.com")
                 elif not self._api._auth._has_account(account._account_id):
                     self._api._auth._add_account(account._account_id)
 
