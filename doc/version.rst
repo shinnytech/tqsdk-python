@@ -2,6 +2,13 @@
 
 版本变更
 =============================
+3.0.0 (2021/11/12)
+
+* 增加：:py:class:`~tqsdk.account.TqKqStock` **快期股票模拟** 账户类型，支持股票模拟交易。**专业版用户** 可用，专业版购买网址：https://account.shinnytech.com。
+* 增加：:py:class:`~tqsdk.risk_rule.TqRuleAccOpenVolumesLimit` 类，日内累计开仓手数限制
+* 优化：使用 sgqlc 库生成合约服务的 graphql 查询
+
+
 2.9.4 (2021/11/04)
 
 * 增加：:py:meth:`~tqsdk.api.TqApi.query_symbol_info` 接口返回值中增加 ``upper_limit``, ``lower_limit`` 这两个字段

@@ -32,6 +32,7 @@ from typing import Union, List, Any, Optional, Coroutine, Callable, Tuple
 
 import numpy as np
 import psutil
+from sgqlc.operation import Operation
 from shinny_structlog import ShinnyLoggerAdapter, JSONFormatter
 
 try:
@@ -56,7 +57,7 @@ else:
     from pandas.core.internals import NumericBlock as FloatBlock
 
 from tqsdk.auth import TqAuth
-from tqsdk.account import TqAccount, TqKq
+from tqsdk.account import TqAccount, TqKq, TqKqStock
 from tqsdk.baseApi import TqBaseApi
 from tqsdk.multiaccount import TqMultiAccount
 from tqsdk.backtest import TqBacktest, TqReplay
@@ -77,12 +78,11 @@ from tqsdk.objs_not_entity import QuoteList, TqDataFrame, TqSymbolDataFrame, Sym
 from tqsdk.risk_manager import TqRiskManager
 from tqsdk.risk_rule import TqRiskRule
 from tqsdk.sim import TqSim
+from tqsdk.ins_schema import ins_schema, basic, derivative, future, option
 from tqsdk.symbols import TqSymbols
 from tqsdk.trading_status import TqTradingStatus
 from tqsdk.tqwebhelper import TqWebHelper
-from tqsdk.stockprofit import TqStockProfit
-from tqsdk.utils import _generate_uuid, _query_for_quote, BlockManagerUnconsolidated, _quotes_add_night, _bisect_value, \
-    _get_query_args
+from tqsdk.utils import _generate_uuid, _query_for_quote, BlockManagerUnconsolidated, _quotes_add_night, _bisect_value
 from tqsdk.utils_symbols import _symbols_to_quotes
 from tqsdk.tafunc import get_dividend_df, get_dividend_factor
 from .__version__ import __version__
@@ -1118,9 +1118,9 @@ class TqApi(TqBaseApi):
 
     # ----------------------------------------------------------------------
     def insert_order(self, symbol: str, direction: str, offset: str = "", volume: int = 0,
-                     limit_price: Union[str, float, None] = None,
-                     advanced: Optional[str] = None, order_id: Optional[str] = None, account: Optional[Union[
-                TqAccount, TqKq, TqSim]] = None) -> Order:
+                     limit_price: Union[str, float, None] = None, advanced: Optional[str] = None,
+                     order_id: Optional[str] = None,
+                     account: Optional[Union[TqAccount, TqKq, TqKqStock, TqSim]] = None) -> Order:
         """
         发送下单指令. **注意: 指令将在下次调用** :py:meth:`~tqsdk.api.TqApi.wait_update` **时发出**
 
@@ -1148,7 +1148,7 @@ class TqApi(TqBaseApi):
 
             order_id (str): [可选]指定下单单号, 默认由 api 自动生成, 股票交易下单时, 无需指定
 
-            account (TqAccount/TqKq/TqSim): [可选]指定发送下单指令的账户实例, 多账户模式下，该参数必须指定
+            account (TqAccount/TqKq/TqKqStock/TqSim): [可选]指定发送下单指令的账户实例, 多账户模式下，该参数必须指定
 
         Returns:
             :py:class:`~tqsdk.objs.Order`: 返回一个委托单对象引用. 其内容将在 :py:meth:`~tqsdk.api.TqApi.wait_update` 时更新.
@@ -1223,19 +1223,18 @@ class TqApi(TqBaseApi):
 
         Example5::
 
-            # 股票下单
-            from tqsdk import TqApi, TqAuth
+            # 股票模拟下单
+            from tqsdk import TqApi, TqAuth, TqKqStock
 
-            account = TqAccount(broker_id="券商柜台", account_id="证券账户客户号", password="交易密码")
+            account = TqKqStock()
             with TqApi(account=account, auth=TqAuth("信易账户", "账户密码")) as api:
-                order = api.insert_order(symbol="SSE.601456", direction="BUY", volume=100, limit_price=18.50)
+                order = api.insert_order("SSE.601456", direction="BUY", limit_price=None, volume=200)
                 while order.status != "FINISHED":
                     api.wait_update()
                     print("已成交: %d 股" % (order.volume_orign - order.volume_left))
 
-
             # 预计的输出是这样的:
-            已成交: 100 股
+            已成交: 200 股
             ...
 
         """
@@ -1252,18 +1251,17 @@ class TqApi(TqBaseApi):
             raise Exception(f"limit_price 参数不支持设置为 {limit_price}。")
         if isinstance(account, TqAccount) and exchange_id == "KQ":
             raise Exception(f"账户 {account._broker_id}, {account._account_id} 不支持交易合约 {symbol}。")
-        # 股票下单时, 不支持 order_id 和 offset 参数
-        if exchange_id in ["SSE", "SZSE"] and self._account._is_stock_type(account):
-            if order_id:
-                raise Exception("沪深A股下单委托单号不支持自定义")
+        if isinstance(account, TqKq) and exchange_id in ["SSE", "SZSE"]:  # 快期模拟暂不支持，提前抛错
+            raise Exception(f"快期模拟暂不支持股票及 ETF 期权交易，股票交易请使用 TqKqStock。")
+        order_id = order_id if order_id else _generate_uuid("PYSDK_insert")
+
+        # 股票下单时, 不支持 offset 参数
+        if self._account._is_stock_type(account):
             if offset:
-                raise Exception("股票交易无需指定开平标志" % (offset))
-            order_id = self._account._get_order_id(account)
-            offset = "UNKNOWN"
+                raise Exception(f"股票交易无需指定开平标志 {offset}")
         else:
             if offset not in ("OPEN", "CLOSE", "CLOSETODAY"):
                 raise Exception("开平标志(offset) %s 错误, 请检查 offset 是否填写正确" % (offset))
-            order_id = order_id if order_id else _generate_uuid("PYSDK_insert")
 
         if self._loop.is_running():
             # 需要在异步代码中发送合约信息请求和下单请求
@@ -1276,19 +1274,22 @@ class TqApi(TqBaseApi):
                 "exchange_id": exchange_id,
                 "instrument_id": instrument_id,
                 "direction": direction,
-                "offset": offset,
                 "volume_orign": volume,
                 "volume_left": volume,
                 "status": "ALIVE",
                 "_this_session": True
             })
+            if offset:
+                order.update({"offset": offset})
             return order
         else:
             self._ensure_symbol(symbol)  # 合约是否存在
             self._auth._has_td_grants(symbol)  # 用户是否有该合约交易权限
-            if isinstance(account, TqKq) and exchange_id in ["SSE", "SZSE"]:  # 快期模拟暂不支持，提前抛错
-                raise Exception(f"快期模拟暂不支持股票及 ETF 期权交易。")
-            pack = self._get_insert_order_pack(symbol, direction, offset, volume, limit_price, advanced, order_id, account)
+            quote = self._data["quotes"][symbol]
+            if quote.ins_class == "STOCK":
+                pack = self._get_insert_order_stock_pack(symbol, direction, volume, limit_price, order_id, account)
+            else:
+                pack = self._get_insert_order_future_pack(symbol, direction, offset, volume, limit_price, advanced, order_id, account)
             self._send_pack(pack)
             order = self.get_order(order_id, account=account)
             order.update({
@@ -1296,19 +1297,23 @@ class TqApi(TqBaseApi):
                 "exchange_id": exchange_id,
                 "instrument_id": instrument_id,
                 "direction": direction,
-                "offset": offset,
                 "volume_orign": volume,
                 "volume_left": volume,
                 "status": "ALIVE",
-                "_this_session": True,
                 "limit_price": pack.get("limit_price", float("nan")),
                 "price_type": pack["price_type"],
-                "volume_condition": pack["volume_condition"],
-                "time_condition": pack["time_condition"]
+                "_this_session": True
             })
+            if quote.ins_class != "STOCK":
+                # 非股票，期货/期权还有以下字段
+                order.update({
+                    "offset": offset,
+                    "volume_condition": pack["volume_condition"],
+                    "time_condition": pack["time_condition"]
+                })
             return order
 
-    def _get_insert_order_pack(self, symbol, direction, offset, volume, limit_price, advanced, order_id,
+    def _get_insert_order_future_pack(self, symbol, direction, offset, volume, limit_price, advanced, order_id,
                                account: Optional[Union[TqAccount, TqKq, TqSim]] = None):
         quote = self._data["quotes"][symbol]
         (exchange_id, instrument_id) = symbol.split(".", 1)
@@ -1348,14 +1353,26 @@ class TqApi(TqBaseApi):
             msg["limit_price"] = float(limit_price)
             msg["time_condition"] = "IOC" if advanced else "GFD"
         msg["volume_condition"] = "ALL" if advanced == "FOK" else "ANY"
+        self._risk_manager._could_insert_order(msg)
+        self._risk_manager._on_insert_order(msg)
+        return msg
 
-        # 股票交易下单 offset、volume_condition、time_condition、hedge_flag、contingent_condition 为 UNKNOWN
-        if exchange_id in ["SSE", "SZSE"] and quote['ins_class'] == 'STOCK':
-            msg["offset"] = "UNKNOWN"
-            msg["hedge_flag"] = "UNKNOWN"
-            msg["contingent_condition"] = "UNKNOWN"
-            msg["volume_condition"] = "UNKNOWN"
-            msg["time_condition"] = "UNKNOWN"
+    def _get_insert_order_stock_pack(self, symbol, direction, volume, limit_price, order_id,
+                                     account: Optional[Union[TqAccount, TqKq, TqSim]] = None):
+        (exchange_id, instrument_id) = symbol.split(".", 1)
+        msg = {
+            "aid": "insert_order",
+            "account_key": self._account._get_account_key(account),
+            "user_id": self._account._get_account_id(account),
+            "order_id": order_id,
+            "exchange_id": exchange_id,
+            "instrument_id": instrument_id,
+            "direction": direction,
+            "volume": volume,
+            "price_type": "ANY" if limit_price is None else "LIMIT"
+        }
+        if limit_price:
+            msg["limit_price"] = float(limit_price)
         self._risk_manager._could_insert_order(msg)
         self._risk_manager._on_insert_order(msg)
         return msg
@@ -1364,10 +1381,11 @@ class TqApi(TqBaseApi):
                                   account: Optional[Union[TqAccount, TqKq, TqSim]] = None):
         await self._ensure_symbol_async(symbol)  # 合约是否存在
         self._auth._has_td_grants(symbol)  # 用户是否有该合约交易权限
-        (exchange_id, instrument_id) = symbol.split(".", 1)
-        if isinstance(account, TqKq) and exchange_id in ["SSE", "SZSE"]:  # 快期模拟暂不支持，提前抛错
-            raise Exception(f"快期模拟暂不支持股票及 ETF 期权交易。")
-        pack = self._get_insert_order_pack(symbol, direction, offset, volume, limit_price, advanced, order_id, account)
+        quote = self._data["quotes"][symbol]
+        if quote.ins_class == "STOCK":
+            pack = self._get_insert_order_stock_pack(symbol, direction, volume, limit_price, order_id, account)
+        else:
+            pack = self._get_insert_order_future_pack(symbol, direction, offset, volume, limit_price, advanced, order_id, account)
         self._send_pack(pack)
 
     # ----------------------------------------------------------------------
@@ -2359,7 +2377,7 @@ class TqApi(TqBaseApi):
         if ins_class is not None:
             if ins_class == "":
                 raise Exception("ins_class 参数不能为空字符串。")
-            variables["class"] = [ins_class]
+            variables["class_"] = [ins_class]
         if exchange_id is not None:
             if exchange_id == "":
                 raise Exception("exchange_id 参数不能为空字符串。")
@@ -2376,8 +2394,9 @@ class TqApi(TqBaseApi):
             variables["has_night"] = has_night
         if isinstance(self._backtest, TqBacktest):
             variables["timestamp"] = int(self._get_current_datetime().timestamp() * 1e9)
-        args_definitions, args = _get_query_args(variables)
-        query = f"query{f'({args_definitions})' if args_definitions else ''}{{multi_symbol_info{f'({args})' if args else ''}{{ ... on basic {{instrument_id }} }}}}"
+        op = Operation(ins_schema.rootQuery)
+        query = op.multi_symbol_info(**variables)
+        query.__as__(basic).instrument_id()
 
         def filter(query_result):
             result = []
@@ -2389,18 +2408,15 @@ class TqApi(TqBaseApi):
                     result.append(quote["instrument_id"])
             return result
 
-        return self._get_symbol_list(query=query, variables=variables, filter=filter)
+        return self._get_symbol_list(query=op.__to_graphql__(), filter=filter)
 
-    def _get_symbol_list(self, query: str, variables: dict, filter: Callable[[dict], list]):
-        for k, v in variables.items():
-            if v == "" or isinstance(v, list) and (any([s == "" for s in v]) or len(v) == 0):
-                raise Exception(f"variables 中变量值不支持空字符串、空列表或者列表中包括空字符串。")
-        result = SymbolList(self, query_id=_generate_uuid("PYSDK_api"), query=query, variables=variables, filter=filter)
+    def _get_symbol_list(self, query: str, filter: Callable[[dict], list]):
+        result = SymbolList(self, query_id=_generate_uuid("PYSDK_api"), query=query, filter=filter)
         if not self._loop.is_running():
             deadline = time.time() + 30
             while not result._task.done():
                 if not self.wait_update(deadline=deadline, _task=result._task):
-                    raise TqTimeoutError("查询合约服务 %s 超时，请检查客户端及网络是否正常 %s" % (query, variables))
+                    raise TqTimeoutError(f"查询合约服务 {query} 超时，请检查客户端及网络是否正常")
         return result
 
     def query_cont_quotes(self, exchange_id: str = None, product_id: str = None, has_night: bool = None) -> List[str]:
@@ -2458,15 +2474,17 @@ class TqApi(TqBaseApi):
         """
         if self._stock is False:
             raise Exception("期货行情系统(_stock = False)不支持当前接口调用")
-        variables = {"class": ["CONT"]}
+        variables = {"class_": ["CONT"]}
         if has_night is not None:
             variables["has_night"] = has_night
         if isinstance(self._backtest, TqBacktest):
             variables["timestamp"] = int(self._get_current_datetime().timestamp() * 1e9)
-        args_definitions, args = _get_query_args(variables)
-        query = f"query( {args_definitions} ){{multi_symbol_info( {args} ){{...basic ...cont}}}}"
-        fragments = "fragment basic on basic {instrument_id}" \
-                    "fragment cont on derivative{underlying{edges{node{...on basic{instrument_id exchange_id}...on future {product_id}}}}}"
+        op = Operation(ins_schema.rootQuery)
+        query = op.multi_symbol_info(**variables)
+        query.__as__(basic).instrument_id()
+        query.__as__(derivative).underlying().edges().node().__as__(basic).instrument_id()
+        query.__as__(derivative).underlying().edges().node().__as__(basic).exchange_id()
+        query.__as__(derivative).underlying().edges().node().__as__(future).product_id()
 
         def filter(query_result):
             result = []
@@ -2480,7 +2498,7 @@ class TqApi(TqBaseApi):
                         result.append(underlying_quote["instrument_id"])
             return result
 
-        return self._get_symbol_list(query=query + fragments, variables=variables, filter=filter)
+        return self._get_symbol_list(query=op.__to_graphql__(), filter=filter)
 
     def query_options(self, underlying_symbol: str, option_class: str = None, exercise_year: int = None,
                       exercise_month: int = None, strike_price: float = None, expired: bool = None, has_A: bool = None,
@@ -2536,7 +2554,7 @@ class TqApi(TqBaseApi):
         """
         if self._stock is False:
             raise Exception("期货行情系统(_stock = False)不支持当前接口调用")
-        query, variables = self._query_options_by_underlying(underlying_symbol)
+        query = self._query_options_by_underlying(underlying_symbol)
 
         def filter(query_result):
             options = []
@@ -2559,7 +2577,7 @@ class TqApi(TqBaseApi):
                         options.append(option["instrument_id"])
             return options
 
-        return self._get_symbol_list(query=query, variables=variables, filter=filter)
+        return self._get_symbol_list(query=query, filter=filter)
 
     def query_atm_options(self, underlying_symbol, underlying_price, price_level, option_class, exercise_year: int = None,
                          exercise_month: int = None, has_A: bool = None):
@@ -2648,7 +2666,7 @@ class TqApi(TqBaseApi):
             raise Exception("option_class 参数错误，option_class 必须是 'CALL' 或者 'PUT'")
         if exercise_year and exercise_month and not (isinstance(exercise_year, int) and isinstance(exercise_month, int)):
             raise Exception("exercise_year / exercise_month 类型错误")
-        query, variables = self._query_options_by_underlying(underlying_symbol)
+        query = self._query_options_by_underlying(underlying_symbol)
 
         def filter(query_result):
             options = self._convert_query_result_to_list(query_result)
@@ -2666,7 +2684,7 @@ class TqApi(TqBaseApi):
             else:
                 return []
 
-        return self._get_symbol_list(query=query, variables=variables, filter=filter)
+        return self._get_symbol_list(query=query, filter=filter)
 
     def query_symbol_info(self, symbol: Union[str, List[str]]):
         """
@@ -2813,7 +2831,7 @@ class TqApi(TqBaseApi):
             raise Exception("option_class 参数错误，option_class 必须是 'CALL' 或者 'PUT'")
         if exercise_year and exercise_month and not (isinstance(exercise_year, int) and isinstance(exercise_month, int)):
             raise Exception("exercise_year / exercise_month 类型错误")
-        query, variables = self._query_options_by_underlying(underlying_symbol)
+        query = self._query_options_by_underlying(underlying_symbol)
 
         def filter(query_result):
             options = self._convert_query_result_to_list(query_result)
@@ -2830,18 +2848,15 @@ class TqApi(TqBaseApi):
             else:
                 return [], [], []
 
-        return self._get_symbol_level_list(query=query, variables=variables, filter=filter)
+        return self._get_symbol_level_list(query=query, filter=filter)
 
-    def _get_symbol_level_list(self, query: str, variables: dict, filter: Callable[[dict], Tuple[list, list, list]]):
-        for k, v in variables.items():
-            if v == "" or isinstance(v, list) and (any([s == "" for s in v]) or len(v) == 0):
-                raise Exception(f"variables 中变量值不支持空字符串、空列表或者列表中包括空字符串。")
-        result = SymbolLevelList(self, query_id=_generate_uuid("PYSDK_api"), query=query, variables=variables, filter=filter)
+    def _get_symbol_level_list(self, query: str, filter: Callable[[dict], Tuple[list, list, list]]):
+        result = SymbolLevelList(self, query_id=_generate_uuid("PYSDK_api"), query=query, filter=filter)
         if not self._loop.is_running():
             deadline = time.time() + 30
             while not result._task.done():
                 if not self.wait_update(deadline=deadline, _task=result._task):
-                    raise TqTimeoutError("查询合约服务 %s 超时，请检查客户端及网络是否正常 %s" % (query, variables))
+                    raise TqTimeoutError(f"查询合约服务 {query} 超时，请检查客户端及网络是否正常")
         return result
 
     def query_all_level_finance_options(self, underlying_symbol, underlying_price, option_class,
@@ -2922,7 +2937,7 @@ class TqApi(TqBaseApi):
         else:  # ETF期权
             if any([i not in [0, 1, 2, 3] for i in nearbys]):
                 raise Exception(f"ETF 期权标的为：{underlying_symbol}，exercise_date 参数应该是在 [0, 1, 2, 3] 之间。")
-        query, variables = self._query_options_by_underlying(underlying_symbol)
+        query = self._query_options_by_underlying(underlying_symbol)
 
         def filter(query_result):
             options = self._convert_query_result_to_list(query_result)
@@ -2936,38 +2951,31 @@ class TqApi(TqBaseApi):
             else:
                 return [], [], []
 
-        return self._get_symbol_level_list(query=query, variables=variables, filter=filter)
+        return self._get_symbol_level_list(query=query, filter=filter)
 
     def _query_options_by_underlying(self, underlying_symbol):
         """返回标的为 underlying_symbol 的全部期权"""
         if underlying_symbol == "":
             raise Exception("underlying_symbol 不能为空字符串。")
-        variables = {
-            "derivative_class": ["OPTION"],
-            "underlying_symbol": [underlying_symbol]
-        }
+        query_vars = {"instrument_id": [underlying_symbol]}
+        derivative_vars = {"class_": ["OPTION"]}
         if isinstance(self._backtest, TqBacktest):
-            variables['timestamp'] = int(self._get_current_datetime().timestamp() * 1e9)
-            query = """
-                query($derivative_class:[Class], $underlying_symbol:[String], $timestamp:Int64){
-                    multi_symbol_info(instrument_id:$underlying_symbol, timestamp:$timestamp){ 
-                        ... on basic { instrument_id derivatives (class: $derivative_class, timestamp:$timestamp) { 
-                            edges { node { ...basic ...option } }
-                        } }
-                    }
-                }"""
-        else:
-            query = """
-                query($derivative_class:[Class], $underlying_symbol:[String]){
-                    multi_symbol_info(instrument_id:$underlying_symbol){ 
-                        ... on basic { instrument_id derivatives (class: $derivative_class) { 
-                            edges { node { ...basic ...option } }
-                        } }
-                    }
-                }"""
-        fragments = "fragment basic on basic{class instrument_id exchange_id english_name}" +\
-                    "fragment option on option{expired expire_datetime last_exercise_datetime strike_price call_or_put}"
-        return query + fragments, variables
+            query_vars['timestamp'] = int(self._get_current_datetime().timestamp() * 1e9)
+            derivative_vars['timestamp'] = int(self._get_current_datetime().timestamp() * 1e9)
+        op = Operation(ins_schema.rootQuery)
+        query = op.multi_symbol_info(**query_vars)
+        query.__as__(basic).instrument_id()
+        derivative = query.__as__(basic).derivatives(**derivative_vars)
+        derivative.edges().node().__as__(basic).class_()
+        derivative.edges().node().__as__(basic).instrument_id()
+        derivative.edges().node().__as__(basic).exchange_id()
+        derivative.edges().node().__as__(basic).english_name()
+        derivative.edges().node().__as__(option).expired()
+        derivative.edges().node().__as__(option).expire_datetime()
+        derivative.edges().node().__as__(option).last_exercise_datetime()
+        derivative.edges().node().__as__(option).strike_price()
+        derivative.edges().node().__as__(option).call_or_put()
+        return op.__to_graphql__()
 
     def _convert_query_result_to_list(self, query_result):
         options = []
@@ -3204,19 +3212,12 @@ class TqApi(TqBaseApi):
         self.create_task(tq_web_helper._run(web_send_chan, web_recv_chan, self._send_chan, self._recv_chan))
         self._send_chan, self._recv_chan = web_send_chan, web_recv_chan
 
-        # 股票盈亏计算
-        if self._account._has_stock_account:
-            stock_profit_helper = TqStockProfit(self)
-            stock_send_chan, stock_recv_chan = TqChan(self), TqChan(self)
-            self.create_task(stock_profit_helper._run(stock_send_chan, stock_recv_chan, self._send_chan, self._recv_chan))
-            self._send_chan, self._recv_chan = stock_send_chan, stock_recv_chan
-
         data_extension = DataExtension(self)
         data_extension_send_chan = TqChan(self, chan_name="send to data_extension")
         data_extension_recv_chan = TqChan(self, chan_name="recv from data_extension")
         self._send_chan._logger_bind(chan_from="data_extension")
         self._recv_chan._logger_bind(chan_to="data_extension")
-        self.create_task(data_extension._run(data_extension_send_chan, data_extension_recv_chan, self._send_chan, self._recv_chan))
+        self.create_task(data_extension._run(data_extension_send_chan, data_extension_recv_chan, self._send_chan, self._recv_chan), _caller_api=True)
         self._send_chan, self._recv_chan = data_extension_send_chan, data_extension_recv_chan
         self._send_chan._logger_bind(chan_from="api")
         self._recv_chan._logger_bind(chan_to="api")

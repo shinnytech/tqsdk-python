@@ -33,8 +33,8 @@ class QuotesEntity(Entity):
         # 从 api._init_() 最后 3 行移到这里
         if self._not_send_init_query and self._api._stock:
             self._not_send_init_query = False
-            q, v = _query_for_init()
-            self._api.query_graphql(q, v, _generate_uuid("PYSDK_quote"))
+            q = _query_for_init()
+            self._api.query_graphql(q, {}, _generate_uuid("PYSDK_quote"))
         return super().__iter__()
 
 
@@ -714,139 +714,131 @@ class TradePositionRatio(Entity):
 
 
 class SecurityAccount(Entity):
-    """股票资金账户"""
+    """ SecurityAccount 是一个股票账户对象"""
 
     def __init__(self, api):
         self._api = api
         #: 用户客户号
         self.user_id: str = ""
-        #: 资金账户(普通账户、信用账户、衍生品账户)
-        self.account_id: str = ""
-        #: 资金帐户状态, NORMAL=正常, DISABLED=非正常, LOCKED=锁定
-        self.account_status: str = ""
-        #: 帐户类别, SPOT=普通, CREDIT=信用, OPTION=衍生品
-        self.account_type: str = ""
-        #: 当前可用余额
+        #: 币种, CNY=人民币, USD=美元, HKD=港币
+        self.currency: str = "CNY"
+        #: 当前市值
+        self.market_value: float = float("nan")
+        #: 当前资产 = 当前市值 + 可用金额 + 委托冻结金额 + 委托冻结费用
+        self.asset: float = float("nan")
+        #: 期初资产
+        self.asset_his: float = float("nan")
+        #: 当前可用余额 = 期初可用 + 当日入金 - 当日出金 + 当日分红金额 - 当日买入金额 - 当日买入费用 + 当日卖出金额 - 当日卖出费用 - 委托冻结金额 - 委托冻结手续费
         self.available: float = float("nan")
-        #: 当前余额
-        self.balance: float = float("nan")
-        #: 当前交易冻结金额
-        self.buy_frozen_balance: float = float("nan")
-        #: 币种, CNY=人民币
-        self.currency: float = float("nan")
-        #: 日中累计存入资金金额
-        self.deposit: float = float("nan")
-        #: 当前可取余额
+        #: 期初可用余额
+        self.available_his: float = float("nan")
+        #: 当前买入成本
+        self.cost: float = float("nan")
+        #: 当前可取余额 = MAX(期初余额 + 当日入金 – 当日出金 + MIN(0，当日卖出释放资金 - 当日买入占用资金 - 委托冻结金额), 0)
         self.drawable: float = float("nan")
-        #: 浮动盈亏
-        self.float_profit: float = float("nan")
-        #: 当前冻结交易费用金额
-        self.frozen_fee: float = float("nan")
-        #: 当前冻结的保证金(衍生品账户时指开仓在途冻结保证金)金额
-        self.frozen_margin: float = float("nan")
-        #: 当前提取冻结资金金额
-        self.frozen_withdraw: float = float("nan")
-        #: 手动冻结资金
-        self.manual_frozen_balance: float = float("nan")
-        #: 当前维持的保证金(衍生品账户时指开仓保证金)金额
-        self.margin: float = float("nan")
-        #: 期初可取余额
-        self.pre_available_balance: float = float("nan")
-        #: 期初余额
-        self.pre_balance: float = float("nan")
-        #: 期初可取余额
-        self.pre_drawable_balance: float = float("nan")
-        #: 当前冲正金额
-        self.reversal_balance: float = float("nan")
-        #: 日中累计买、申购、逆回购使用资金金额
-        self.total_buy_balance: float = float("nan")
-        #: 日中累计交易费用金额
-        self.total_fee: float = float("nan")
-        #: 日中累计卖、赎回获得的可用资金金额
-        self.total_sell_balance: float = float("nan")
-        #: 不可用资金余额
-        self.unavailable_balance: float = float("nan")
-        #: 不可用资金余额
-        self.unavailable_balance: float = float("nan")
-        #: 日中累计提取资金金额
+        #: 本交易日内累计入金金额
+        self.deposit: float = float("nan")
+        #: 本交易日内累计出金金额
         self.withdraw: float = float("nan")
+        #: 当前交易冻结金额（不含费用）= sum(order.volume_orign * order.limit_price)
+        self.buy_frozen_balance: float = float("nan")
+        #: 当前交易冻结费用 = sum(order.frozen_fee)
+        self.buy_frozen_fee: float = float("nan")
+        #: 当日买入占用资金（不含费用）
+        self.buy_balance_today: float = float("nan")
+        #: 当日买入累计费用
+        self.buy_fee_today: float = float("nan")
+        #: 当日卖出释放资金
+        self.sell_balance_today: float = float("nan")
+        #: 当日卖出累计费用
+        self.sell_fee_today: float = float("nan")
+        #: 当日持仓盈亏 = 当前市值 - 当前买入成本
+        self.hold_profit: float = float("nan")
+        #: 当日浮动盈亏 = SUM(持仓当日浮动盈亏)
+        self.float_profit_today: float = float("nan")
+        #: 当日实现盈亏 = SUM(持仓当日实现盈亏)
+        self.real_profit_today: float = float("nan")
+        #: 当日盈亏 = 当日浮动盈亏 + 当日实现盈亏
+        self.profit_today: float = float("nan")
+        #: 当日盈亏比 = 当日盈亏 / (当前买入成本 if 当前买入成本 > 0 else 期初资产)
+        self.profit_rate_today: float = float("nan")
+        #: 当日分红金额
+        self.dividend_balance_today: float = float("nan")
 
 
 class SecurityPosition(Entity):
-    """ Position 是一个持仓对象 """
+    """ SecurityPosition 是一个股票账户持仓对象 """
 
     def __init__(self, api):
         self._api = api
         #: 用户客户号
         self.user_id: str = ""
-        #: 证券资金账户
-        self.account_id: str = ""
-        #: 成本价
-        self.cost_price: float = float("nan")
-        #: 持仓成本
-        self.cost: float = float("nan")
-        #: 浮动盈亏
-        self.float_profit: float = float("nan")
         #: 交易所
         self.exchange_id: str = ""
         #: 证券代码
         self.instrument_id: str = ""
-        #: 股东账户代码
-        self.inv_account_id: str = ""
-        #: 当前可锁定持仓
-        self.lock_available_volume: int = 0
-        #: 手动冻结持仓
-        self.manual_frozen_volume: int = 0
-        #: 当日最大可减持额度
-        self.max_reduce_quota: int = 0
-        #: 持仓类型
-        self.position_type: str = ""
-        #: 日初可用持仓
-        self.pre_available_volume: int = 0
-        #: 日初总持仓成本
-        self.pre_cost: float = float("nan")
-        #: 日初锁定持仓
-        self.pre_frozen_volume: int = 0
-        #: 日初持仓
-        self.pre_volume: int = 0
-        #: 产品类型, EQUITY=普通股票、债券、基金、科创板,BOND_STD=逆回购标准券, IPO=新股认购, ALLOTMENT=配股认购, OPTION=期权
-        self.product_type: str = ""
-        #: 证券类型, STOCK=股票
-        self.security_type: str = ""
-        #: 证券子类型, STOCK_ASH=A股股票, STOCK_SME=中小板股票, STOCK_GEM=创业板股票, STOCK_KSH=科创板股票
-        self.security_sub_type: str = ""
-        #: 当前可卖持仓
-        self.sell_available_volume: int = 0
-        #: 当前卖出冻结持仓
-        self.sell_frozen_volume: int = 0
-        #: 日中累计买入持仓
-        self.today_buy_volume: int = 0
-        #: 日中累计买入持仓
-        self.today_buy_volume: int = 0
-        #: 日中累计卖出持仓
-        self.today_sell_volume: int = 0
-        #: 日中累计买入金额
-        self.total_buy_balance: float = float("nan")
-        #: 日中累计买入费用
-        self.total_buy_fee: float = float("nan")
-        #: 日中累计锁定持仓
-        self.total_frozen_volume: int = 0
-        #: 日中累计卖出金额
-        self.total_sell_balance: float = float("nan")
-        #: 日中累计卖出费用
-        self.total_sell_fee: float = float("nan")
-        #: 日中累计转换获得持仓
-        self.total_trsfin_volume: int = 0
-        #: 日中累计转换付出持仓
-        self.total_trsfout_volume: int = 0
-        #: 日中累计解锁持仓
-        self.total_unfrozen_volume: int = 0
-        #: 当前可转换付出持仓
-        self.trsf_out_available_volume: int = 0
-        #: 当前转换付出冻结持仓
-        self.trsf_out_frozen_volume: int = 0
-        #: 总持仓
+        #: 建仓日期
+        self.create_date: str = ""
+        #: 当前成本 = 昨买入成本 + 今买金额 + 今买费用 - 今卖数量 × (昨买入成本 / 昨持仓数量)
+        self.cost: float = float("nan")
+        #: 期初成本
+        self.cost_his: float = float("nan")
+        #: 今持仓数量 = 昨持仓数量 + 今买数量 - 今卖数量 + 送股数量
         self.volume: int = 0
+        #: 昨持仓数量
+        self.volume_his: int = 0
+        #: 最新价
+        self.last_price: float = float("nan")
+        #: 当日累计买入持仓
+        self.buy_volume_today: int = 0
+        #: 当日累计买入金额 (不包括费用)
+        self.buy_balance_today: float = float("nan")
+        #: 当日累计买入费用
+        self.buy_fee_today: float = float("nan")
+        #: 当日累计卖出持仓
+        self.sell_volume_today: int = 0
+        #: 当日累计卖出金额(不包括费用)
+        self.sell_balance_today: float = float("nan")
+        #: 当日累计卖出费用
+        self.sell_fee_today: float = float("nan")
+        #: 期初累计买入持仓
+        self.buy_volume_his: int = 0
+        #: 期初累计买入金额
+        self.buy_balance_his: float = float("nan")
+        #: 期初累计买入费用
+        self.buy_fee_his: float = float("nan")
+        #: 期初累计卖出持仓
+        self.sell_volume_his: int = 0
+        #: 期初累计卖出金额
+        self.sell_balance_his: float = float("nan")
+        #: 期初累计卖出费用
+        self.sell_fee_his: float = float("nan")
+        #: 今送股数量
+        self.shared_volume_today: float = float("nan")
+        #: 今分红金额
+        self.devidend_balance_today: float = float("nan")
+        #: 当前市值 = 持仓数量 × 行情最新价
+        self.market_value: float = float("nan")
+        #: 期初市值
+        self.market_value_his: float = float("nan")
+        #: 当日浮动盈亏 = (昨持仓数量 - 今卖数量) * (最新价 - 昨收盘价) + (今持仓数量 - (昨持仓数量 - 今卖数量)) * (最新价 - 买入均价)
+        self.float_profit_today: float = float("nan")
+        #: 当日实现盈亏 = 今卖数量 * (最新价 - 昨收盘价) - 今卖费用 + 今派息金额
+        self.real_profit_today: float = float("nan")
+        #: 期初实现盈亏
+        self.real_profit_his: float = float("nan")
+        #: 当日盈亏 = 当日浮动盈亏 + 当日实现盈亏
+        self.profit_today: float = float("nan")
+        #: 当日收益率
+        self.profit_rate_today: float = float("nan")
+        #: 当日持仓盈亏 = 当前持仓市值 – 当前买入成本
+        self.hold_profit: float = float("nan")
+        #: 累计实现盈亏 += 当日实现盈亏（成本）
+        self.real_profit_total: float = float("nan")
+        #: 总盈亏 = 累计实现盈亏 + 持仓盈亏
+        self.profit_total: float = float("nan")
+        #: 累计收益率 = 总盈亏  / (期初成本 if 当前成本==0 else 当前成本)
+        self.profit_rate_total: float = float("nan")
 
     @property
     def orders(self):
@@ -857,7 +849,7 @@ class SecurityPosition(Entity):
 
 
 class SecurityOrder(Entity):
-    """ Order 是一个委托单对象 """
+    """ SecurityOrder 是一个股票账户委托单对象 """
 
     def __init__(self, api):
         self._api = api
@@ -865,107 +857,70 @@ class SecurityOrder(Entity):
         self.user_id: str = ""
         #: 订单号,要求客户端保证其在一个交易日内的唯一性
         self.order_id: str = ""
-        #: 客户端编号
-        self.client_id: int = 0
-        #: 客户端环境号
-        self.client_env_id: int = 0
-        #: 客户端订单编号
-        self.client_order_id: int = 0
-        #: 客户委托流水号,通常和order_id相同
-        self.client_seq_no: str = ""
-        #: 委托确认时间
-        self.confirm_date_time: int = 0
-        #: 委托单当前确认状态
-        self.confirm_status: str = ""
-        #: 委托累计已经发生的交易金额
-        self.cum_balance: float = float("nan")
-        #: 委托累计已经发生的交易费用
-        self.cum_fee: float = float("nan")
-        #: 委托累计已经发生的利息
-        self.cum_interest: float = float("nan")
-        #: 委托累计已经发生数量
-        self.cum_volume: float = float("nan")
-        #: 下单方向, BUY=买, SELL=卖
-        self.direction: str = ""
+        #: 交易所委托合同编号
+        self.exchange_order_id: str = ""
         #: 交易所代码
         self.exchange_id: str = ""
-        #: 交易所订单编号
-        self.exchange_order_id: str = ""
-        #: 委托当前冻结的交易金额
-        self.frozen_balance: float = float("nan")
-        #: 委托当前冻结的交易费用
-        self.frozen_fee: float = float("nan")
-        #: 委托时间
-        self.insert_date_time: int = 0
         #: 证券代码
         self.instrument_id: str = ""
-        #: 股东账户代码
-        self.inv_account_id: str = ""
-        #: 报单价格类型
+        #: 下单方向, BUY=买, SELL=卖
+        self.direction: str = ""
+        #: 委托股数（A 股委托数量必须为 100 倍数；科创板股票必须为 200 倍数；零股卖出: 由于部分成交或分红导致持仓数量小于 100 股时，该部分持仓可一次性卖出，数量不为 100 或 200 倍数）
+        self.volume_orign: int = 0
+        #: 剩余股数
+        self.volume_left: int = 0
+        #: 报单价格类型，LIMIT=限价单，ANY=市价单
         self.price_type: str = ""
         #: 报单委托价格
         self.limit_price: float = float("nan")
-        #: 所有者类型
-        self.owner_type: str = ""
-        #: 产品类型
-        self.product_type: str = ""
-        #: 证券类型
-        self.security_type: str = ""
-        #: 证券子类型
-        self.security_sub_type: str = ""
+        #: 冻结费用
+        self.frozen_fee: float = float("nan")
+        #: 委托时间，自unix epoch(1970-01-01 00:00:00 GMT)以来的纳秒数.
+        self.insert_date_time: int = 0
         #: 委托单当前状态
         self.status: str = ""
-        #: 已撤单数量
-        self.volume_canceled: int = 0
-        #: 总报单股数
-        self.volume_orign: int = 0
-        #: 剩余还没有执行委托数量
-        self.volume_left: int = 0
         #: 委托单状态信息
         self.last_msg: str = ""
 
+    @property
+    def trade_records(self):
+        """
+        成交记录
+
+        :return: dict, 其中每个元素的key为成交ID, value为 :py:class:`~tqsdk.objs.Trade`
+        """
+        tdict = _get_obj(self._api._data, ["trade", self._path[1], "trades"])
+        fts = {trade_id: trade for trade_id, trade in tdict.items() if
+               (not trade_id.startswith("_")) and trade.order_id == self.order_id}
+        return fts
+
+
 class SecurityTrade(Entity):
-    """ Trade 是一个成交对象 """
+    """ SecurityTrade 是一个股票账户成交对象 """
 
     def __init__(self, api):
         self._api = api
         #: 用户客户号
         self.user_id: str = ""
-        #: 成交金额
-        self.balance: float = float("nan")
-        #: 客户订单编号
-        self.client_order_id: int = 0
-        #: 客户委托流水号
-        self.client_seq_no: str = ""
-        #: 成交累计已经发生的交易金额
-        self.cum_balance: float = float("nan")
-        #: 成交累计已经发生的交易费用
-        self.cum_fee: float = float("nan")
-        #: 成交累计已经发生的利息
-        self.cum_interest: float = float("nan")
-        #: 成交累计已经发生数量
-        self.cum_volume: float = float("nan")
-        #: 买卖类型
-        self.direction: str = ""
-        #: 交易所
+        #: 成交编号
+        self.trade_id: str = ""
+        #: 交易所代码
         self.exchange_id: str = ""
         #: 证券代码
         self.instrument_id: str = ""
-        #: 股东账户代码
-        self.inv_account_id: str = ""
-        #: 报单价格类型
-        self.price_type: str = ""
-        #: 委托价格
-        self.limit_price: int = 0
+        #: 委托单编号
+        self.order_id: str = ""
+        #: 交易所订单编号
+        self.exchange_order_id: str = ""
+        #: 下单方向, BUY=买, SELL=卖，SHARED=送股，DEVIDEND=分红
+        self.direction: str = ""
+        #: 成交数量或者送股数量
+        self.volume: int = 0
         #: 成交价格
         self.price: float = float("nan")
-        #: 产品类型
-        self.product_type: str = ""
-        #: 证券类型
-        self.security_type: str = ""
-        #: 证券子类型
-        self.security_sub_type: str = ""
-        #: 成交数量
-        self.volume: int = 0
-        #: 原始委托数量
-        self.volume_orign: int = 0
+        #: 成交发生金额或分红金额
+        self.balance: float = float("nan")
+        #: 费用
+        self.fee: float = float("nan")
+        #: 成交时间，自unix epoch(1970-01-01 00:00:00 GMT)以来的纳秒数.
+        self.trade_date_time: int = 0

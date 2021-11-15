@@ -42,8 +42,7 @@ class TqSymbols(object):
                                     self._md_send_chan.send_nowait({
                                         "aid": "ins_query",
                                         "query_id": query_id,
-                                        "query": "",
-                                        "variables": {}
+                                        "query": ""
                                     })
                 await self._sim_recv_chan.send(pack)
         finally:
@@ -53,14 +52,4 @@ class TqSymbols(object):
     async def _sim_handler(self):
         # 下游发来的数据包，直接转发到上游
         async for pack in self._sim_send_chan:
-            if pack["aid"] == "ins_query":
-                # 检查数据包格式，不同的直接返回错误
-                for v in pack["variables"].values():
-                    if v == "":
-                        raise Exception("发送的 ins_query 请求不支持空字符串。")
-                    elif isinstance(v, list):
-                        if any([s == "" for s in v]) or len(v) == 0:
-                            raise Exception("发送的 ins_query 请求不支持空列表或者列表中包括空字符串。")
-                        if len(v) > 8192:
-                            raise Exception("发送的 ins_query 请求中列表类型变量，长度最多支持 8192。")
             await self._md_send_chan.send(pack)

@@ -7,34 +7,16 @@ import random
 import secrets
 from bisect import bisect_right
 
+from sgqlc.operation import Operation
 from pandas.core.internals import BlockManager
 
+from tqsdk.ins_schema import ins_schema, _add_all_frags
 
 RD = random.Random(secrets.randbits(128))  # 初始化随机数引擎，使用随机数作为seed，防止用户同时拉起多个策略，产生同样的 seed
 
 
 def _generate_uuid(prefix=''):
     return f"{prefix + '_' if prefix else ''}{RD.getrandbits(128):032x}"
-
-
-fragments = """\
-fragment basic on basic {class trading_time{day night} trading_day instrument_id instrument_name price_tick price_decs exchange_id english_name}
-fragment stock on stock{ stock_dividend_ratio cash_dividend_ratio}
-fragment fund on fund{ cash_dividend_ratio}
-fragment bond on bond{ maturity_datetime }
-fragment tradeable on tradeable{ pre_close volume_multiple quote_multiple upper_limit lower_limit}
-fragment index on index{ index_multiple}
-fragment securities on securities{ currency face_value first_trading_datetime buy_volume_unit sell_volume_unit status public_float_share_quantity}
-fragment future on future{ pre_open_interest expired product_id product_short_name delivery_year delivery_month expire_datetime settlement_price max_market_order_volume max_limit_order_volume margin commission mmsa}
-fragment option on option{ pre_open_interest expired product_short_name expire_datetime last_exercise_datetime settlement_price max_market_order_volume max_limit_order_volume strike_price call_or_put exercise_type}
-fragment combine on combine{ expired product_id expire_datetime max_market_order_volume max_limit_order_volume leg1{ ...on basic{instrument_id}} leg2{ ...on basic{instrument_id}} }
-fragment derivative on derivative{
-    underlying{ 
-        count edges{ underlying_multiple node{...basic...stock...fund...bond...tradeable...index...securities...future}}
-    }
-}"""
-
-query_all_fields = "...basic...stock...fund...bond...tradeable...index...securities...future...option...combine...derivative"
 
 
 def _query_for_quote(symbol):
@@ -44,42 +26,26 @@ def _query_for_quote(symbol):
     用户请求合约信息一定是 PYSDK_api 开头的请求，因为用户请求的合约信息在回测时带有 timestamp 参数，是不应该调用此函数的
     """
     symbol_list = symbol if isinstance(symbol, list) else [symbol]
-    query = "query ($instrument_id:[String]) {"
-    query += "multi_symbol_info(instrument_id:$instrument_id) {" + query_all_fields + "}}" + fragments
+    op = Operation(ins_schema.rootQuery)
+    query = op.multi_symbol_info(instrument_id=symbol_list)
+    _add_all_frags(query)
     return {
         "aid": "ins_query",
         "query_id": _generate_uuid(prefix='PYSDK_quote_'),
-        "query": query,
-        "variables": {"instrument_id": symbol_list}
+        "query": op.__to_graphql__()
     }
-
-
-def _get_query_args(variables):
-    types = {
-        "instrument_id": "[String]",
-        "class": "[Class]",
-        "exchange_id": "[String]",
-        "product_id": "[String]",
-        "expired": "Boolean",
-        "has_night": "Boolean",
-        "timestamp": "Int64"
-    }
-    args_definitions = ",".join([f"${v}:{types[v]}" for v in variables])
-    args = ",".join([f"{v}:${v}" for v in variables])
-    return args_definitions, args
 
 
 def _query_for_init():
     """
-    返回某些类型合约的 query 和 variables
+    返回某些类型合约的 query
     todo: 为了兼容旧版提供给用户的 api._data["quote"].items() 类似用法，应该限制交易所 ["SHFE", "DCE", "CZCE", "INE", "CFFEX", "KQ"]
     """
-    query = "query ($class_list:[Class], $exchange_list:[String]) {"
-    query += "multi_symbol_info(class:$class_list, exchange_id:$exchange_list) {" + query_all_fields + "}}" + fragments
-    return query, {
-        "class_list": ["FUTURE", "INDEX", "OPTION", "COMBINE", "CONT"],
-        "exchange_list": ["SHFE", "DCE", "CZCE", "INE", "CFFEX", "KQ"]
-    }
+    op = Operation(ins_schema.rootQuery)
+    query = op.multi_symbol_info(class_=["FUTURE", "INDEX", "OPTION", "COMBINE", "CONT"],
+                                 exchange_id=["SHFE", "DCE", "CZCE", "INE", "CFFEX", "KQ"])
+    _add_all_frags(query)
+    return op.__to_graphql__()
 
 
 night_trading_table = {
