@@ -53,6 +53,17 @@ TqSdk 免费版本提供全部的期货、商品/金融期权和上证50、沪�
 	SZSE.90000097 - 深交所沪深300etf期权
 
 
+.. _profession_tqkqstock:
+
+股票模拟交易
+-------------------------------------------------
+TqSdk 提供了 :py:class:`~tqsdk.account.TqKqStock` 方法供用户来进行股票的模拟交易
+
+专业版用户可以长久的对同一账户进行模拟股票交易测试
+
+需要注意股票模拟交易下，get_account，get_order，get_position 会返回对应股票交易模型下的 objs ，如 :py:class:`~tqsdk.objs.SecurityAccount`， :py:class:`~tqsdk.objs.SecurityOrder`，:py:class:`~tqsdk.objs.SecurityPosition`
+
+
 下载数据功能
 -------------------------------------------------
 数据下载工具 :py:meth:`~tqsdk.tools.downloader` 是 TqSdk 专业版中的功能

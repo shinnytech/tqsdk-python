@@ -288,56 +288,10 @@ class TqBacktest(object):
     async def _send_diff(self):
         """发送数据到 api, 如果 self._diffs 不为空则发送 self._diffs, 不推进行情时间, 否则将时间推进一格, 并发送对应的行情"""
         if self._pending_peek:
-            quotes = {}
             if not self._diffs:
-                while self._generators:
-                    # self._generators 存储了 generator，self._serials 记录一些辅助的信息
-                    min_request_key = min(self._generators.keys(), key=lambda serial: self._serials[serial]["timestamp"])
-                    timestamp = self._serials[min_request_key]["timestamp"]  # 所有已订阅数据中的最小行情时间
-                    quotes_diff = self._serials[min_request_key]["quotes"]
-                    if timestamp < self._current_dt and self._quotes.get(min_request_key[0], {}).get("sended_init_quote"):
-                        # 先订阅 A 合约，再订阅 A 合约日线，那么 A 合约的行情时间会回退: 2021-01-04 09:31:59.999999 -> 2021-01-01 18:00:00.000000
-                        # 如果当前 timestamp 小于 _current_dt，那么这个 quote_diff 不需要发到下游
-                        # 如果先订阅 A 合约（有夜盘），时间停留在夜盘开始时间， 再订阅 B 合约（没有夜盘），那么 B 合约的行情（前一天收盘时间）应该发下去，
-                        # 否则 get_quote(B) 等到收到行情才返回，会直接把时间推进到第二天白盘。
-                        quotes_diff = None
-                    # 推进时间，一次只会推进最多一个(补数据时有可能是0个)行情时间，并确保<=该行情时间的行情都被发出
-                    # 如果行情时间大于当前回测时间 则 判断是否diff中已有数据；否则表明此行情时间的数据未全部保存在diff中，则继续append
-                    if timestamp > self._current_dt:
-                        if self._diffs:  # 如果diffs中已有数据：退出循环并发送数据给下游api
-                            break
-                        else:
-                            self._current_dt = timestamp  # 否则将回测时间更新至最新行情时间
-                    diff = self._serials[min_request_key]["diff"]
-                    self._diffs.append(diff)
-                    # klines 请求，需要记录已经发送 api 的数据
-                    for symbol in diff.get("klines", {}):
-                        for dur in diff["klines"][symbol]:
-                            for kid in diff["klines"][symbol][dur]["data"]:
-                                rs = self._sended_to_api.setdefault((symbol, int(dur)), [])
-                                kid = int(kid)
-                                self._sended_to_api[(symbol, int(dur))] = _rangeset_range_union(rs, (kid, kid + 1))
-                    quote_info = self._quotes[min_request_key[0]]
-                    if quotes_diff and (quote_info["min_duration"] != 0 or min_request_key[1] == 0):
-                        quotes[min_request_key[0]] = quotes_diff
-                    await self._fetch_serial(min_request_key)
-                if self._had_any_generator and not self._generators and not self._diffs:  # 当无可发送数据时则抛出BacktestFinished例外,包括未订阅任何行情 或 所有已订阅行情的最后一笔行情获取完成
-                    self._api._print("回测结束")
-                    self._logger.debug("backtest finished")
-                    if self._current_dt < self._end_dt:
-                        self._current_dt = 2145888000000000000  # 一个远大于 end_dt 的日期 20380101
-                    await self._sim_recv_chan.send({
-                        "aid": "rtn_data",
-                        "data": [{
-                            "_tqsdk_backtest": {
-                                "start_dt": self._start_dt,
-                                "current_dt": self._current_dt,
-                                "end_dt": self._end_dt
-                            }
-                        }]
-                    })
-                    await self._api._wait_until_idle()
-                    raise BacktestFinished(self._api) from None
+                quotes = await self._generator_diffs(False)
+            else:
+                quotes = await self._generator_diffs(True)
             for ins, diff in quotes.items():
                 self._quotes[ins]["sended_init_quote"] = True
                 for d in diff:
@@ -391,6 +345,62 @@ class TqBacktest(object):
                 self._diffs = []
                 self._pending_peek = False
                 await self._sim_recv_chan.send(rtn_data)
+
+    async def _generator_diffs(self, keep_current):
+        """
+        keep_current 为 True 表示不会推进行情，为 False 表示需要推进行情
+        即 self._diffs 为 None 并且 keep_current = True 会推进行情
+        """
+        quotes = {}
+        while self._generators:
+            # self._generators 存储了 generator，self._serials 记录一些辅助的信息
+            min_request_key = min(self._generators.keys(), key=lambda serial: self._serials[serial]["timestamp"])
+            timestamp = self._serials[min_request_key]["timestamp"]  # 所有已订阅数据中的最小行情时间
+            quotes_diff = self._serials[min_request_key]["quotes"]
+            if timestamp < self._current_dt and self._quotes.get(min_request_key[0], {}).get("sended_init_quote"):
+                # 先订阅 A 合约，再订阅 A 合约日线，那么 A 合约的行情时间会回退: 2021-01-04 09:31:59.999999 -> 2021-01-01 18:00:00.000000
+                # 如果当前 timestamp 小于 _current_dt，那么这个 quote_diff 不需要发到下游
+                # 如果先订阅 A 合约（有夜盘），时间停留在夜盘开始时间， 再订阅 B 合约（没有夜盘），那么 B 合约的行情（前一天收盘时间）应该发下去，
+                # 否则 get_quote(B) 等到收到行情才返回，会直接把时间推进到第二天白盘。
+                quotes_diff = None
+            # 推进时间，一次只会推进最多一个(补数据时有可能是0个)行情时间，并确保<=该行情时间的行情都被发出
+            # 如果行情时间大于当前回测时间 则 判断是否diff中已有数据；否则表明此行情时间的数据未全部保存在diff中，则继续append
+            if timestamp > self._current_dt:
+                if self._diffs or keep_current:  # 如果diffs中已有数据：退出循环并发送数据给下游api
+                    break
+                else:
+                    self._current_dt = timestamp  # 否则将回测时间更新至最新行情时间
+            diff = self._serials[min_request_key]["diff"]
+            self._diffs.append(diff)
+            # klines 请求，需要记录已经发送 api 的数据
+            for symbol in diff.get("klines", {}):
+                for dur in diff["klines"][symbol]:
+                    for kid in diff["klines"][symbol][dur]["data"]:
+                        rs = self._sended_to_api.setdefault((symbol, int(dur)), [])
+                        kid = int(kid)
+                        self._sended_to_api[(symbol, int(dur))] = _rangeset_range_union(rs, (kid, kid + 1))
+            quote_info = self._quotes[min_request_key[0]]
+            if quotes_diff and (quote_info["min_duration"] != 0 or min_request_key[1] == 0):
+                quotes[min_request_key[0]] = quotes_diff
+            await self._fetch_serial(min_request_key)
+        if self._had_any_generator and not self._generators and not self._diffs:  # 当无可发送数据时则抛出BacktestFinished例外,包括未订阅任何行情 或 所有已订阅行情的最后一笔行情获取完成
+            self._api._print("回测结束")
+            self._logger.debug("backtest finished")
+            if self._current_dt < self._end_dt:
+                self._current_dt = 2145888000000000000  # 一个远大于 end_dt 的日期 20380101
+            await self._sim_recv_chan.send({
+                "aid": "rtn_data",
+                "data": [{
+                    "_tqsdk_backtest": {
+                        "start_dt": self._start_dt,
+                        "current_dt": self._current_dt,
+                        "end_dt": self._end_dt
+                    }
+                }]
+            })
+            await self._api._wait_until_idle()
+            raise BacktestFinished(self._api) from None
+        return quotes
 
     def _get_history_cont_quotes(self, dt):
         quotes = {}

@@ -187,7 +187,7 @@ class Quote(Entity):
         :return: 标的指定的 :py:class:`~tqsdk.objs.Quote` 对象
         """
         if self.underlying_symbol:
-            return _get_obj(self._api._data, ["quotes", self.underlying_symbol], self._api._prototype["quotes"]["#"])
+            return self._api.get_quote(self.underlying_symbol)
         return None
 
     def __await__(self):
