@@ -1397,7 +1397,7 @@ class TqApi(TqBaseApi):
         Args:
             order_or_order_id (str/ :py:class:`~tqsdk.objs.Order` ): 拟撤委托单或单号
 
-            account (TqAccount/TqKq/TqSim): [可选]指定发送撤单指令的账户实例, 多账户模式下, 该参数必须指定
+            account (TqAccount/TqKq/TqKqStock/TqSim): [可选]指定发送撤单指令的账户实例, 多账户模式下, 该参数必须指定
 
         Example1::
 
@@ -1470,15 +1470,17 @@ class TqApi(TqBaseApi):
         self._send_pack(msg)
 
     # ----------------------------------------------------------------------
-    def get_account(self, account: Optional[Union[TqAccount, TqKq, TqSim]] = None) -> Account:
+    def get_account(self, account: Optional[Union[TqAccount, TqKq, TqKqStock, TqSim]] = None) -> Account:
         """
         获取用户账户资金信息
 
         Args:
-            account (TqAccount/TqKq/TqSim): [可选]指定获取账户资金信息的账户实例, 多账户模式下, 该参数必须指定
+            account (TqAccount/TqKq/TqKqStock/TqSim): [可选]指定获取账户资金信息的账户实例, 多账户模式下, 该参数必须指定
 
         Returns:
-            :py:class:`~tqsdk.objs.Account`: 返回一个账户对象引用. 其内容将在 :py:meth:`~tqsdk.api.TqApi.wait_update` 时更新.
+            :py:class:`~tqsdk.objs.Account` / :py:class:`~tqsdk.objs.SecurityAccount`: 返回一个账户对象引用. 其内容将在 :py:meth:`~tqsdk.api.TqApi.wait_update` 时更新.
+
+            期货账户资金返回对象类型为 :py:class:`~tqsdk.objs.Account`，股票账户资金返回对象类型为 :py:class:`~tqsdk.objs.SecurityAccount`。
 
         Example1::
 
@@ -1520,7 +1522,7 @@ class TqApi(TqBaseApi):
                         prototype["trade"]["*"]["accounts"]["@"])
 
     # ----------------------------------------------------------------------
-    def get_position(self, symbol: Optional[str] = None, account: Optional[Union[TqAccount, TqKq, TqSim]] = None) -> \
+    def get_position(self, symbol: Optional[str] = None, account: Optional[Union[TqAccount, TqKq, TqKqStock, TqSim]] = None) -> \
             Union[Position, Entity]:
         """
         获取用户持仓信息
@@ -1528,11 +1530,13 @@ class TqApi(TqBaseApi):
         Args:
             symbol (str): [可选]合约代码, 不填则返回所有持仓
 
-            account (TqAccount/TqKq/TqSim): [可选]指定获取持仓信息的账户实例, 多账户模式下, 必须指定
+            account (TqAccount/TqKq/TqKqStock/TqSim): [可选]指定获取持仓信息的账户实例, 多账户模式下, 必须指定
 
         Returns:
-            :py:class:`~tqsdk.objs.Position`: 当指定了 symbol 时, 返回一个持仓对象引用.
+            :py:class:`~tqsdk.objs.Position` / :py:class:`~tqsdk.objs.SecurityPosition`: 当指定了 symbol 时, 返回一个持仓对象引用.
             其内容将在 :py:meth:`~tqsdk.api.TqApi.wait_update` 时更新.
+
+            期货账户持仓返回对象类型为 :py:class:`~tqsdk.objs.Position`，股票账户持仓返回对象类型为 :py:class:`~tqsdk.objs.SecurityPosition`。
 
             不填 symbol 参数调用本函数, 将返回包含用户所有持仓的一个tqsdk.objs.Entity对象引用, 使用方法与dict一致, \
             其中每个元素的key为合约代码, value为 :py:class:`~tqsdk.objs.Position`。
@@ -1587,7 +1591,7 @@ class TqApi(TqBaseApi):
         return _get_obj(self._data, ["trade", self._account._get_account_key(account), "positions"])
 
     # ----------------------------------------------------------------------
-    def get_order(self, order_id: Optional[str] = None, account: Optional[Union[TqAccount, TqKq, TqSim]] = None) -> \
+    def get_order(self, order_id: Optional[str] = None, account: Optional[Union[TqAccount, TqKq, TqKqStock, TqSim]] = None) -> \
             Union[Order, Entity]:
         """
         获取用户委托单信息
@@ -1595,11 +1599,13 @@ class TqApi(TqBaseApi):
         Args:
             order_id (str): [可选]单号, 不填单号则返回所有委托单
 
-            account (TqAccount/TqKq/TqSim): [可选]指定获取委托单号的账户实例, 多账户模式下, 该参数必须指定
+            account (TqAccount/TqKq/TqKqStock/TqSim): [可选]指定获取委托单号的账户实例, 多账户模式下, 该参数必须指定
 
         Returns:
-            :py:class:`~tqsdk.objs.Order`: 当指定了order_id时, 返回一个委托单对象引用. \
+            :py:class:`~tqsdk.objs.Order` / :py:class:`~tqsdk.objs.SecurityOrder` : 当指定了order_id时, 返回一个委托单对象引用. \
             其内容将在 :py:meth:`~tqsdk.api.TqApi.wait_update` 时更新.
+
+            期货账户委托单返回对象类型为 :py:class:`~tqsdk.objs.Order`，股票账户委托单返回对象类型为 :py:class:`~tqsdk.objs.SecurityOrder`。
 
             不填order_id参数调用本函数, 将返回包含用户所有委托单的一个tqsdk.objs.Entity对象引用, \
             使用方法与dict一致, 其中每个元素的key为委托单号, value为 :py:class:`~tqsdk.objs.Order`
@@ -1648,7 +1654,7 @@ class TqApi(TqBaseApi):
         return _get_obj(self._data, ["trade", self._account._get_account_key(account), "orders"])
 
     # ----------------------------------------------------------------------
-    def get_trade(self, trade_id: Optional[str] = None, account: Optional[Union[TqAccount, TqKq, TqSim]] = None) -> \
+    def get_trade(self, trade_id: Optional[str] = None, account: Optional[Union[TqAccount, TqKq, TqKqStock, TqSim]] = None) -> \
             Union[Trade, Entity]:
         """
         获取用户成交信息
@@ -1656,11 +1662,13 @@ class TqApi(TqBaseApi):
         Args:
             trade_id (str): [可选]成交号, 不填成交号则返回所有委托单
 
-            account (TqAccount/TqKq/TqSim): [可选]指定获取用户成交信息的账户实例, 多账户模式下, 该参数必须指定
+            account (TqAccount/TqKq/TqKqStock/TqSim): [可选]指定获取用户成交信息的账户实例, 多账户模式下, 该参数必须指定
 
         Returns:
-            :py:class:`~tqsdk.objs.Trade`: 当指定了trade_id时, 返回一个成交对象引用. \
+            :py:class:`~tqsdk.objs.Trade` / :py:class:`~tqsdk.objs.SecurityTrade`: 当指定了trade_id时, 返回一个成交对象引用. \
             其内容将在 :py:meth:`~tqsdk.api.TqApi.wait_update` 时更新.
+
+            期货账户成交返回对象类型为 :py:class:`~tqsdk.objs.Trade`，股票账户成交返回对象类型为 :py:class:`~tqsdk.objs.SecurityTrade`。
 
             不填trade_id参数调用本函数, 将返回包含用户当前交易日所有成交记录的一个tqsdk.objs.Entity对象引用, 使用方法与dict一致, \
             其中每个元素的key为成交号, value为 :py:class:`~tqsdk.objs.Trade`
@@ -3415,7 +3423,6 @@ class TqApi(TqBaseApi):
             if update_row != serial["width"] - 1:
                 serial["init"] = True
                 serial["update_row"] = 0  # 若需发送数据给天勤，则发送所有数据
-
             # 修改行情订阅指令的 view_width
             self._send_pack({
                 "aid": "set_chart",

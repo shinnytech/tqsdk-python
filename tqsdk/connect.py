@@ -171,9 +171,9 @@ class TqConnect(object):
                             self._logger.debug("websocket received data", pack=msg)
                             await recv_chan.send(pack)
                     finally:
-                        if client.reader._start_read_message:
-                            print(f"{url}，当前时间 {time.time()}, 开始从网络层收取数据时间 {client.reader._start_read_message}，"
-                                  f"已收取数据大小 {client.reader._read_size}", file=sys.stderr)
+                        self._logger.debug("websocket connection info", current_time=time.time(),
+                                           start_read_message=client.reader._start_read_message,
+                                           read_size=client.reader._read_size)
                         send_task.cancel()
                         await send_task
             # 希望做到的效果是遇到网络问题可以断线重连, 但是可能抛出的例外太多了(TimeoutError,socket.gaierror等), 又没有文档或工具可以理出 try 代码中所有可能遇到的例外

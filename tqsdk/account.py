@@ -86,6 +86,7 @@ class TqAccount(TqModule):
         return ""
 
     async def _run(self, api, api_send_chan, api_recv_chan, md_send_chan, md_recv_chan, td_send_chan, td_recv_chan):
+        self._api = api
         req = {
             "aid": "req_login",
             "bid": self._broker_id,

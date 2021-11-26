@@ -2,6 +2,16 @@
 
 版本变更
 =============================
+3.0.1 (2021/11/26)
+
+* 修复：调用 :py:meth:`~tqsdk.api.TqApi.query_symbol_info`，当参数中包含主连/指数合约会报错的问题
+* 修复：在某些情况下，回测时获取期权及标的合约的多合约 Kline 可能报错的问题
+* 修复：回测时取主连合约，如果用 ``quote.underlying_quote`` 直接读取标的合约，在标的合约变更时，可能未重新订阅行情的问题
+* 优化：取消网络连接关闭时屏幕输出，改为存入日志文件
+* docs：完善 :py:meth:`~tqsdk.api.TqApi.get_account`、:py:meth:`~tqsdk.api.TqApi.get_position`、:py:meth:`~tqsdk.api.TqApi.get_order`、
+  :py:meth:`~tqsdk.api.TqApi.get_trade` 函数返回值类型文档说明，完善专业版 :ref:`profession_tqkqstock` 文档，完善 :ref:`tqrohon` 融航接入文档
+
+
 3.0.0 (2021/11/12)
 
 * 增加：:py:class:`~tqsdk.account.TqKqStock` **快期股票模拟** 账户类型，支持股票模拟交易。**专业版用户** 可用，专业版购买网址：https://account.shinnytech.com。
