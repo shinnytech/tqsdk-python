@@ -51,6 +51,7 @@ class TqSim(object):
         self.tqsdk_stat = {}  # 回测结束后储存回测报告信息
         self._account_id = "TQSIM" if account_id is None else account_id
         self._account_type = "FUTURE"
+        self._broker_id = "TQSIM" if self._account_type == "FUTURE" else "TQSIM_STOCK"
         self._account_key = str(id(self))
         self._init_balance = float(init_balance)
         if self._init_balance <= 0:

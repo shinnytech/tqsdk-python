@@ -296,7 +296,7 @@ class TqApi(TqBaseApi):
             while self._data.get("mdhis_more_data", True) or trade_more_data:
                 if not self.wait_update(deadline=deadline):  # 等待连接成功并收取截面数据
                     raise TqTimeoutError("接收数据超时，请检查客户端及网络是否正常")
-                trade_more_data = self._account._get_trade_more_data_and_order_id(self, self._data)
+                trade_more_data = self._account._get_trade_more_data_and_order_id(self._data)
         except:
             self.close()
             raise
@@ -3157,7 +3157,7 @@ class TqApi(TqBaseApi):
 
         self._ws_md_recv_chan = ws_md_recv_chan  # 记录 ws_md_recv_chan 引用
 
-        conn = TqConnect(md_logger)
+        conn = TqConnect(md_logger, conn_id="md")
         self.create_task(conn._run(self, self._md_url, ws_md_send_chan, ws_md_recv_chan))
 
         md_handler_logger = ShinnyLoggerAdapter(self._logger.getChild("MdReconnect"), url=self._md_url)
@@ -3288,6 +3288,7 @@ class TqApi(TqBaseApi):
             "array": np.array(array, order="F"),
             "init": False,  # 是否初始化完成. 完成状态: 订阅K线后已获取所有主、副合约的数据并填满df序列.
             "adj_type": adj_type,
+            "calc_ids_F": [],  # 前复权已经计算过的id，每个 id 只计算一次
             "update_row": 0,  # 起始更新数据行
             "all_attr": set(columns) | {"symbol" + str(i) for i in range(1, len(root_list))} | {"symbol", "duration"},
             "extra_array": {},
@@ -3364,7 +3365,8 @@ class TqApi(TqBaseApi):
                         item = item.copy()
                         for c in cols:
                             item[c] = item[c] * self._dividend_cache[symbol]["back_factor"]
-                elif serial["adj_type"] == "F" and factor != 1.0:
+                elif serial["adj_type"] == "F" and factor != 1.0 and i not in serial['calc_ids_F']:
+                    serial['calc_ids_F'].append(i)
                     for c in cols:
                         col_index = keys.index(c) + 2
                         array[:i, col_index] = array[:i, col_index] * factor

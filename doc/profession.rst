@@ -63,6 +63,28 @@ TqSdk 提供了 :py:class:`~tqsdk.account.TqKqStock` 方法供用户来进行股
 
 需要注意股票模拟交易下，get_account，get_order，get_position 会返回对应股票交易模型下的 objs ，如 :py:class:`~tqsdk.objs.SecurityAccount`， :py:class:`~tqsdk.objs.SecurityOrder`，:py:class:`~tqsdk.objs.SecurityPosition`
 
+参考代码如下::
+
+    from tqsdk import TqApi, TqAuth, TqKqStock
+
+    tq_kq_stock = TqKqStock()
+    api = TqApi(account=tq_kq_stock, auth=TqAuth("信易账户", "账户密码"))
+    quote = api.get_quote("SSE.688529")
+    print(quote)
+    # 下单限价单
+    order = api.insert_order("SSE.688529", volume=200, direction="BUY", limit_price=quote.ask_price1)
+    while order.status == 'ALIVE':
+        api.wait_update()
+        print(order)  # 打印委托单信息
+
+    print(api.get_account())  # 打印快期股票模拟账户信息
+
+    print(api.get_position("SSE.688529"))  # 打印持仓信息
+
+    for trade in order.trade_records.values():
+        print(trade)  # 打印委托单对应的成交信息
+    api.close()
+
 
 下载数据功能
 -------------------------------------------------

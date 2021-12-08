@@ -3,6 +3,7 @@
 __author__ = 'yanqiong'
 
 import asyncio
+import sys
 from logging import Logger
 from typing import Any, TYPE_CHECKING, Union
 
@@ -42,7 +43,8 @@ class TqChan(asyncio.Queue):
         elif isinstance(logger, ShinnyLoggerAdapter):
             self._logger = logger.bind(chan_id=TqChan._chan_id, chan_name=chan_name)
         TqChan._chan_id += 1
-        asyncio.Queue.__init__(self, loop=api._loop)
+        py_ver = sys.version_info
+        asyncio.Queue.__init__(self, loop=api._loop) if (py_ver.major == 3 and py_ver.minor < 10) else asyncio.Queue.__init__(self)
         self._last_only = last_only
         self._closed = False
 
