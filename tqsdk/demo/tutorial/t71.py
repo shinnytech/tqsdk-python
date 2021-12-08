@@ -11,10 +11,10 @@ from tqsdk import TqApi, TqAuth, TargetPosTask
 api = TqApi(auth=TqAuth("信易账户", "账户密码"))
 # 设定连续多少根阳线/阴线
 length = 3
-# 获得 ni2105 10秒K线的引用, 长度为 length+1
-klines = api.get_kline_serial("SHFE.ni2105", 10, data_length=length + 1)
-# 创建 ni2105 的目标持仓 task，该 task 负责调整 ni2105 的仓位到指定的目标仓位, offset_priority的用法详见文档
-target_pos = TargetPosTask(api, "SHFE.ni2105", offset_priority="今昨开")
+# 获得 ni2205 10秒K线的引用, 长度为 length+1
+klines = api.get_kline_serial("SHFE.ni2205", 10, data_length=length + 1)
+# 创建 ni2205 的目标持仓 task，该 task 负责调整 ni2105 的仓位到指定的目标仓位, offset_priority的用法详见文档
+target_pos = TargetPosTask(api, "SHFE.ni2205", offset_priority="今昨开")
 
 while True:
     api.wait_update()

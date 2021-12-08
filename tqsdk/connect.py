@@ -6,16 +6,17 @@ import asyncio
 import json
 import random
 import ssl
-import sys
 import time
 import warnings
 from abc import abstractmethod
-from asyncio import Future
 from datetime import datetime
+from logging import Logger
 from queue import Queue
+from typing import Optional
 
 import certifi
 import websockets
+from shinny_structlog import ShinnyLoggerAdapter
 
 from tqsdk.diff import _merge_diff, _get_obj
 from tqsdk.entity import Entity
@@ -90,11 +91,16 @@ class TqWebSocketClientProtocol(websockets.WebSocketClientProtocol):
 class TqConnect(object):
     """用于与 websockets 服务器通讯"""
 
-    def __init__(self, logger) -> None:
+    def __init__(self, logger, conn_id: Optional[str] = None) -> None:
         """
         创建 TqConnect 实例
         """
+        self._conn_id = conn_id if conn_id else _generate_uuid()
         self._logger = logger
+        if isinstance(logger, Logger):
+            self._logger = ShinnyLoggerAdapter(logger, conn_id=self._conn_id)
+        elif isinstance(logger, ShinnyLoggerAdapter):
+            self._logger = logger.bind(conn_id=self._conn_id)
         self._first_connect = True
         self._keywords = {"max_size": None}
 
@@ -121,6 +127,7 @@ class TqConnect(object):
                         "type": "MESSAGE",
                         "level": "WARNING",
                         "code": 2019112910,
+                        "conn_id": self._conn_id,
                         "content": f"开始与 {url} 的重新建立网络连接",
                         "url": url
                     }
@@ -140,6 +147,7 @@ class TqConnect(object):
                         "type": "MESSAGE",
                         "level": "INFO",
                         "code": 2019112901,
+                        "conn_id": self._conn_id,
                         "content": "与 %s 的网络连接已建立" % url,
                         "url": url
                     }
@@ -188,6 +196,7 @@ class TqConnect(object):
                     "type": "MESSAGE",
                     "level": "WARNING",
                     "code": 2019112911,
+                    "conn_id": self._conn_id,
                     "content": f"与 {url} 的网络连接断开，请检查客户端及网络是否正常",
                     "url": url
                 }

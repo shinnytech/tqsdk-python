@@ -60,11 +60,11 @@
 
     api = TqApi(auth=TqAuth("信易账户", "账户密码"))
 
-获得上期所 ni2010 合约的行情引用::
+获得上期所 ni2206 合约的行情引用::
 
-    quote = api.get_quote("SHFE.ni2010")
+    quote = api.get_quote("SHFE.ni2206")
 
-现在, 我们获得了一个对象 quote. 这个对象总是指向 SHFE.ni2010 合约的最新行情. 我们可以通过 quote 的各个字段访问行情数据::
+现在, 我们获得了一个对象 quote. 这个对象总是指向 SHFE.ni2206 合约的最新行情. 我们可以通过 quote 的各个字段访问行情数据::
 
     print (quote.last_price, quote.volume)
 
@@ -93,9 +93,9 @@
 
 使用K线数据
 -------------------------------------------------
-你很可能会需要合约的K线数据. 在TqSdk中, 你可以很方便的获得K线数据. 我们来请求 ni2010 合约的10秒线::
+你很可能会需要合约的K线数据. 在TqSdk中, 你可以很方便的获得K线数据. 我们来请求 ni2206 合约的10秒线::
 
-    klines = api.get_kline_serial("SHFE.ni2010", 10)
+    klines = api.get_kline_serial("SHFE.ni2206", 10)
 
 klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline_serial() 也是返回K线序列的引用对象. K线序列数据也会跟实时行情一起同步自动更新. 你也同样需要用 api.wait_update() 等待数据刷新.
 

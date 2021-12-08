@@ -6,10 +6,10 @@ from tqsdk import TqApi, TqAuth
 import datetime
 
 api = TqApi(auth=TqAuth("信易账户", "账户密码"))
-# 获得 ni2011 tick序列的引用
-ticks = api.get_tick_serial("SHFE.ni2011")
-# 获得 ni2011 10秒K线的引用
-klines = api.get_kline_serial("SHFE.ni2011", 10)
+# 获得 i2209 tick序列的引用
+ticks = api.get_tick_serial("DCE.i2209")
+# 获得 i2209 10秒K线的引用
+klines = api.get_kline_serial("DCE.i2209", 10)
 print(datetime.datetime.fromtimestamp(klines.iloc[-1]["datetime"] / 1e9))
 
 while True:

@@ -85,9 +85,6 @@ class TqWebHelper(object):
                 _data_handler_without_web_task.cancel()
                 await asyncio.gather(_data_handler_without_web_task, return_exceptions=True)
         else:
-            if len(self._api._account._account_list) > 1:
-                raise Exception("web_gui 暂不支持多账户模式, 敬请期待。")
-
             self._web_dir = os.path.join(os.path.dirname(__file__), 'web')
             file_path = os.path.abspath(sys.argv[0])
             file_name = os.path.basename(file_path)
@@ -96,13 +93,10 @@ class TqWebHelper(object):
                 "action": {
                     "mode": "replay" if isinstance(self._api._backtest, TqReplay) else "backtest" if isinstance(self._api._backtest, TqBacktest) else "run",
                     "md_url_status": '-',
-                    "td_url_status": True if isinstance(self._api._account._account_list[0], TqSim) else '-',
                     "user_name": self._api._auth._user_name,
-                    "account_id": self._api._account._account_list[0]._account_id,
-                    "account_key": self._api._account._account_list[0]._account_key,
-                    "broker_id": self._api._account._account_list[0]._broker_id if isinstance(self._api._account._account_list[0], TqAccount) else 'TQSIM',
                     "file_path": file_path[0].upper() + file_path[1:],
-                    "file_name": file_name
+                    "file_name": file_name,
+                    "accounts": self._api._account._to_dict()
                 },
                 "trade": {},
                 "subscribed": [],
@@ -211,33 +205,22 @@ class TqWebHelper(object):
         diffs = []
         for _, notify in notifies.items():
             if notify["code"] == 2019112901 or notify["code"] == 2019112902:
-                # 连接建立的通知 第一次建立 或者 重连建立
-                if notify["url"] == self._api._md_url:
-                    diffs.append({
-                        "action": {
-                            "md_url_status": True
-                        }
-                    })
-                elif notify["url"] == self._api._td_url:
-                    diffs.append({
-                        "action": {
-                            "td_url_status": True
-                        }
-                    })
+                url_status = True  # 连接建立的通知 第一次建立 或者 重连建立
             elif notify["code"] == 2019112911:
-                # 连接断开的通知
-                if notify["url"] == self._api._md_url:
-                    diffs.append({
-                        "action": {
-                            "md_url_status": False
-                        }
-                    })
-                elif notify["url"] == self._api._td_url:
-                    diffs.append({
-                        "action": {
-                            "td_url_status": False
-                        }
-                    })
+                url_status = False  # 连接断开的通知
+            else:
+                continue
+            if notify["url"] == self._api._md_url:
+                diffs.append({
+                    "action": {"md_url_status": url_status}
+                })
+            elif notify["conn_id"] in self._api._account._map_conn_id:
+                acc = self._api._account._map_conn_id[notify["conn_id"]]
+                diffs.append({
+                    "action": {
+                        "accounts": {acc._account_key: {"td_url_status": url_status}}
+                    }
+                })
         return diffs
 
     def send_to_conn_chan(self, chan, diffs):

@@ -59,7 +59,7 @@ class TqTradingStatus(TqModule):
         ws_ts_recv_chan = TqChan(self._api, chan_name="recv from ts")
         ws_ts_send_chan._logger_bind(chan_from="ts_reconn", url=ts_url)
         ws_ts_recv_chan._logger_bind(chan_to="ts_reconn", url=ts_url)
-        conn = TqConnect(logger=ShinnyLoggerAdapter(conn_logger, url=ts_url))
+        conn = TqConnect(logger=ShinnyLoggerAdapter(conn_logger, url=ts_url), conn_id="ts")
         self._api.create_task(conn._run(self._api, ts_url, ws_ts_send_chan, ws_ts_recv_chan), _caller_api=True)
         ts_reconnect = TsReconnectHandler(logger=ShinnyLoggerAdapter(self._logger.getChild("TsReconnect"), url=ts_url))
         self._ts_send_chan._logger_bind(chan_from="ts", url=ts_url)
