@@ -2,6 +2,11 @@
 
 版本变更
 =============================
+3.0.3 (2021/12/10)
+
+* 修复：从服务器更新节假日表，修复 :py:meth:`~tqsdk.api.TqApi.get_trading_calendar` 接口文档及报错信息
+
+
 3.0.2 (2021/12/07)
 
 * 修复：调用 :py:meth:`~tqsdk.api.TqApi.get_kline_serial` 接口获取股票前复权 Kline 时，复权计算结果可能出错的问题

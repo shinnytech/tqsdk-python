@@ -23,7 +23,6 @@ class TqMultiAccount(object):
 
     **注意**
 
-    - 多账户模式暂未支持 `webgui`
     - 多账户模式下, 对于 get_position，account，insert_order，set_target_volume 等函数必须指定 account 参数
     - 多账户模式下, 实盘账户的数量受限于信易账户支持实盘账户数, 详见:`更多的实盘交易账户数 <https://doc.shinnytech.com/tqsdk/latest/profession.html#id2>`_
 
