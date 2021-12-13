@@ -63,7 +63,7 @@ from tqsdk.multiaccount import TqMultiAccount
 from tqsdk.backtest import TqBacktest, TqReplay
 from tqsdk.channel import TqChan
 from tqsdk.connect import TqConnect, MdReconnectHandler, ReconnectTimer
-from tqsdk.calendar import _get_trading_calendar, TqContCalendar
+from tqsdk.calendar import _get_trading_calendar, TqContCalendar, _init_chinese_rest_days
 from tqsdk.data_extension import DataExtension
 from tqsdk.data_series import DataSeries
 from tqsdk.datetime import _get_trading_day_start_time, _get_trading_day_end_time, _get_trading_day_from_timestamp
@@ -982,7 +982,7 @@ class TqApi(TqBaseApi):
     # ----------------------------------------------------------------------
     def get_trading_calendar(self, start_dt: Union[date, datetime], end_dt: Union[date, datetime]):
         """
-        获取一段时间内的交易日历信息，交易日历可以处理的范围为 2003-01-01 ～ 2021-12-31。
+        获取一段时间内的交易日历信息，交易日历可以处理的范围为 2003-01-01 ～ 2022-12-31。
 
         Args:
             start_dt (date/datetime): 起始时间，如果类型为 date 则指的是该日期；如果为 datetime 则指的是该时间点所在日期
@@ -1024,8 +1024,9 @@ class TqApi(TqBaseApi):
             end_dt = date(year=end_dt.year, month=end_dt.month, day=end_dt.day)
         elif not isinstance(end_dt, date):
             raise Exception(f"end_dt 参数类型 {type(end_dt)} 错误, 只支持 datetime / date 类型，请检查是否正确")
-        if start_dt < date(2003, 1, 1) or end_dt > date(2021, 12, 31):
-            raise Exception(f"交易日历可以处理的范围为 2003-01-01 ～ 2021-12-31，请修改参数")
+        first_date, latest_date = _init_chinese_rest_days()
+        if start_dt < first_date or end_dt > latest_date:
+            raise Exception(f"交易日历可以处理的范围为 {first_date.strftime('%Y-%m-%d')} ～ {latest_date.strftime('%Y-%m-%d')}，请修改参数")
         return _get_trading_calendar(start_dt, end_dt)
 
     # ----------------------------------------------------------------------
