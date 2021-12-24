@@ -2,6 +2,19 @@
 
 版本变更
 =============================
+3.1.0 (2021/12/24)
+
+* 新增：为各种账户类型增加接口调用，支持 IDE 更好的提供代码提示。TqSdk 目前支持以下账户类型 :py:class:`~tqsdk.tradeable.otg.tqaccount.TqAccount`、:py:class:`~tqsdk.tradeable.otg.tqkq.TqKq`、
+  :py:class:`~tqsdk.tradeable.otg.tqkq.TqKqStock`、:py:class:`~tqsdk.tradeable.sim.tqsim.TqSim`，本次重构为以上账户类型分别添加了
+  ``get_account``、``get_position``、``get_order``、``get_trade`` 几个接口，明确了其返回值的类型。
+
+  例如：:py:class:`~tqsdk.tradeable.otg.tqkq.TqKq` 实例调用 :py:meth:`~tqsdk.tradeable.otg.tqkq.TqKq.get_account` ，返回 :py:class:`~tqsdk.objs.Account` 类型实例；
+
+  :py:class:`~tqsdk.tradeable.otg.tqkq.TqKqStock` 实例调用 :py:meth:`~tqsdk.tradeable.otg.tqkq.TqKqStock.get_account` ，返回 :py:class:`~tqsdk.objs.SecurityAccount` 类型实例。
+* 修复：:py:class:`~tqsdk.lib.target_pos_task.TargetPosTask` 及 :py:class:`~tqsdk.algorithm.twap` 增加添加红枣期货暂不支持的提示
+* docs：更新开盘抢单示例代码
+
+
 3.0.3 (2021/12/10)
 
 * 修复：从服务器更新节假日表，修复 :py:meth:`~tqsdk.api.TqApi.get_trading_calendar` 接口文档及报错信息

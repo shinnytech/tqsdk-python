@@ -57,7 +57,6 @@ else:
     from pandas.core.internals import NumericBlock as FloatBlock
 
 from tqsdk.auth import TqAuth
-from tqsdk.account import TqAccount, TqKq, TqKqStock
 from tqsdk.baseApi import TqBaseApi
 from tqsdk.multiaccount import TqMultiAccount
 from tqsdk.backtest import TqBacktest, TqReplay
@@ -77,9 +76,9 @@ from tqsdk.objs_not_entity import QuoteList, TqDataFrame, TqSymbolDataFrame, Sym
     TqSymbolRankingDataFrame, TqOptionGreeksDataFrame
 from tqsdk.risk_manager import TqRiskManager
 from tqsdk.risk_rule import TqRiskRule
-from tqsdk.sim import TqSim
 from tqsdk.ins_schema import ins_schema, basic, derivative, future, option
 from tqsdk.symbols import TqSymbols
+from tqsdk.tradeable import TqAccount, TqKq, TqKqStock, TqSim, BaseOtg
 from tqsdk.trading_status import TqTradingStatus
 from tqsdk.tqwebhelper import TqWebHelper
 from tqsdk.utils import _generate_uuid, _query_for_quote, BlockManagerUnconsolidated, _quotes_add_night, _bisect_value
@@ -95,7 +94,7 @@ class TqApi(TqBaseApi):
     通常情况下, 一个线程中 **应该只有一个** TqApi的实例, 它负责维护网络连接, 接收行情及账户数据, 并在内存中维护业务数据截面
     """
 
-    def __init__(self, account: Union[TqMultiAccount, TqAccount, TqSim, None] = None, auth: Union[TqAuth, str, None] = None, url: Optional[str] = None,
+    def __init__(self, account: Union[TqMultiAccount, TqAccount, TqKq, TqKqStock, TqSim, None] = None, auth: Union[TqAuth, str, None] = None, url: Optional[str] = None,
                  backtest: Union[TqBacktest, TqReplay, None] = None, web_gui: [bool, str] = False, debug: Union[bool, str, None] = False,
                  loop: Optional[asyncio.AbstractEventLoop] = None, disable_print: bool = False, _stock: bool = True,
                  _ins_url=None, _md_url=None, _td_url=None) -> None:
@@ -103,18 +102,20 @@ class TqApi(TqBaseApi):
         创建天勤接口实例
 
         Args:
-            account (None/TqAccount/TqSim): [可选]交易账号:
-                * None: 账号将根据环境变量决定, 默认为 :py:class:`~tqsdk.sim.TqSim`
+            account (None/TqAccount/TqKq/TqKqStock/TqSim): [可选]交易账号:
+                * None: 账号将根据环境变量决定, 默认为 :py:class:`~tqsdk.tradeable.sim.tqsim.TqSim`
 
-                * :py:class:`~tqsdk.account.TqAccount` : 使用实盘账号, 直连行情和交易服务器, 需提供期货公司/帐号/密码
+                * :py:class:`~tqsdk.tradeable.account.tqaccount.TqAccount` : 使用实盘账号, 直连行情和交易服务器, 需提供期货公司/帐号/密码
 
-                * :py:class:`~tqsdk.account.TqKq` : 使用快期账号登录，直连行情和快期模拟交易服务器, 需提供 auth 参数
+                * :py:class:`~tqsdk.tradeable.account.tqkq.TqKq` : 使用快期账号登录，直连行情和快期模拟交易服务器
 
-                * :py:class:`~tqsdk.sim.TqSim` : 使用 TqApi 自带的内部模拟账号
+                * :py:class:`~tqsdk.tradeable.account.tqkq.TqKqStock` : 使用快期账号登录，直连行情和快期股票模拟交易服务器
+
+                * :py:class:`~tqsdk.tradeable.sim.tqsim.TqSim` : 使用 TqApi 自带的内部模拟账号
 
                 * :py:class:`~tqsdk.multiaccount.TqMultiAccount` :\
-                多账户列表，列表中支持`~tqsdk.account.TqAccount`、`~tqsdk.account.TqKq` 和 \
-                `~tqsdk.sim.TqSim` 中的 0 至 N 个或者组合
+                多账户列表，列表中支持`~tqsdk.tradeable.account.tqaccount.TqAccount`、`~tqsdk.tradeable.account.tqkq.TqKq`、\
+                `~tqsdk.tradeable.account.tqkq.TqKqStock` 和 `~tqsdk.tradeable.sim.tqsim.TqSim` 中的 0 至 N 个或者组合
 
             auth (TqAuth/str): [必填]用户信易账户:
                 * :py:class:`~tqsdk.auth.TqAuth` : 添加信易账户类，例如：TqAuth("tianqin@qq.com", "123456")
@@ -123,12 +124,12 @@ class TqApi(TqBaseApi):
                 信易账户注册链接 https://www.shinnytech.com/register-intro/
 
             url (str): [可选]指定服务器的地址
-                * 当 account 为 :py:class:`~tqsdk.account.TqAccount`、:py:class:`~tqsdk.multiaccount.TqMultiAccount` 类型时, 可以通过该参数指定交易服务器地址,\
+                * 当 account 为 :py:class:`~tqsdk.tradeable.account.tqaccount.TqAccount`、:py:class:`~tqsdk.multiaccount.TqMultiAccount` 类型时, 可以通过该参数指定交易服务器地址,\
                 默认使用对应账户的交易服务地址，行情地址该信易账户对应的行情服务地址
 
-                * 当 account 为 :py:class:`~tqsdk.sim.TqSim` 类型时, 可以通过该参数指定行情服务器地址, 默认使用该信易账户对应的行情服务地址
+                * 当 account 为 :py:class:`~tqsdk.tradeable.sim.tqsim.TqSim` 类型时, 可以通过该参数指定行情服务器地址, 默认使用该信易账户对应的行情服务地址
 
-            backtest (TqBacktest/TqReplay): [可选] 进入时光机，此时强制要求 account 类型为 :py:class:`~tqsdk.sim.TqSim`
+            backtest (TqBacktest/TqReplay): [可选] 进入时光机，此时强制要求 account 类型为 :py:class:`~tqsdk.tradeable.sim.tqsim.TqSim`
                 * :py:class:`~tqsdk.backtest.TqBacktest` : 传入 TqBacktest 对象，进入回测模式 \
                 在回测模式下, TqBacktest 连接 wss://backtest.shinnytech.com/t/md/front/mobile 接收行情数据, \
                 由 TqBacktest 内部完成回测时间段内的行情推进和 K 线、Tick 更新.
@@ -139,9 +140,9 @@ class TqApi(TqBaseApi):
             debug(bool/str): [可选] 是否将调试信息输出到指定文件，默认值为 False。
                 * None [默认]: 根据账户情况不同，默认值的行为不同。
 
-                    + 使用 :py:class:`~tqsdk.account.TqAccount` 或者 :py:class:`~tqsdk.account.TqKq` 实盘账户时，调试信息输出到指定文件夹 `~/.tqsdk/logs`。
+                    + 使用 :py:class:`~tqsdk.tradeable.account.tqaccount.TqAccount` 或者 :py:class:`~tqsdk.tradeable.account.tqkq.TqKq` 实盘账户时，调试信息输出到指定文件夹 `~/.tqsdk/logs`。
 
-                    + 使用 :py:class:`~tqsdk.sim.TqSim` 模拟账户时，调试信息不输出。
+                    + 使用 :py:class:`~tqsdk.tradeable.sim.tqsim.TqSim` 模拟账户时，调试信息不输出。
 
                 * True: 调试信息会输出到指定文件夹 `~/.tqsdk/logs`。
 
@@ -1506,8 +1507,8 @@ class TqApi(TqBaseApi):
             account1 = TqAccount("N南华期货", "123456", "123456")
             account2 = TqAccount("H宏源期货", "111111", "123456")
             api = TqApi(TqMultiAccount([account1, account2]), auth=TqAuth("信易账户", "账户密码"))
-            account_info1 = api.get_account(account=account1)
-            account_info2 = api.get_account(account=account2)
+            account_info1 = account1.get_account()
+            account_info2 = account2.get_account()
             print("账户 1 浮动盈亏 %f, 账户 2 浮动盈亏 %f", account_info1.float_profit, account_info2.float_profit)
             api.close()
 
@@ -1568,8 +1569,8 @@ class TqApi(TqBaseApi):
             account1 = TqAccount("N南华期货", "123456", "123456")
             account2 = TqAccount("N宏源期货", "123456", "123456")
             api = TqApi(TqMultiAccount([account1, account2]), auth=TqAuth("信易账户", "账户密码"))
-            position1 = api.get_position("DCE.m2101", account=account1)
-            position2 = api.get_position("DCE.m2101", account=account2)
+            position1 = account1.get_position("DCE.m2101")
+            position2 = account2.get_position("DCE.m2101")
             print("账户 1 浮动盈亏 %f, 账户 2 浮动盈亏 %f", position1.float_profit_long + position2.float_profit_short,
                   position1.float_profit_long + position2.float_profit_short)
             api.close()
@@ -1638,8 +1639,8 @@ class TqApi(TqBaseApi):
             account1 = TqAccount("N南华期货", "123456", "123456")
             account2 = TqAccount("N宏源期货", "123456", "123456")
             api = TqApi(TqMultiAccount([account1, account2]), auth=TqAuth("信易账户", "账户密码"))
-            orders1 = api.get_order(account=account1))
-            order2 = api.get_order(order_id="订单号", account=account2)
+            orders1 = account1.get_order()
+            order2 = account2.get_order(order_id="订单号")
             print(len(orders1), order2.volume_left)
             api.close()
 
@@ -1684,9 +1685,9 @@ class TqApi(TqBaseApi):
             account1 = TqAccount("N南华期货", "123456", "123456")
             account2 = TqAccount("N宏源期货", "123456", "123456")
             api = TqApi(TqMultiAccount([account1, account2]), auth=TqAuth("信易账户", "账户密码"))
-            orders1 = api.get_trade(account=account1))
-            orders2 = api.get_trade(account=account2)
-            print(len(orders1), len(orders2))
+            trades1 = account1.get_trade()
+            trades2 = account2.get_trade()
+            print(len(trades1), len(trades2))
             api.close()
 
             # 预计的输出是这样的:
@@ -3112,6 +3113,18 @@ class TqApi(TqBaseApi):
             raise Exception("请输入 auth （信易账户）参数，信易账户是使用 tqsdk 的前提，如果没有请点击注册，注册地址：https://account.shinnytech.com/。")
         else:
             self._auth.login()  # tqwebhelper 有可能会设置 self._auth
+
+        # 在信易账户登录之后，对于账户的基本信息校验及更新
+        for acc in self._account._account_list:
+            if isinstance(acc, BaseOtg):
+                acc._update_otg_info(self)  # 获取交易地址；更新模拟账户 _account_id
+            # TqAccount 需要尝试自动绑定实盘账户
+            if isinstance(acc, TqAccount):
+                if not self._auth._has_account(acc._account_id):
+                    self._auth._add_account(acc._account_id)
+            elif isinstance(acc, TqKqStock):
+                if not self._auth._has_account(acc._account_id):
+                    raise Exception(f"您的账户不支持快期股票模拟，需要购买专业版本后使用。升级网址：https://account.shinnytech.com")
 
         # 等待复盘服务器启动
         if isinstance(self._backtest, TqReplay):

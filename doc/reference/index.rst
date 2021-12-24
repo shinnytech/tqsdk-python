@@ -9,12 +9,13 @@ TqSdk 模块参考
     tqsdk.api.rst
     tqsdk.auth.rst
     tqsdk.account.rst
+    tqsdk.tqkq.rst
+    tqsdk.sim.rst
     tqsdk.multiaccount.rst
     tqsdk.objs.rst
     tqsdk.lib.rst
     tqsdk.ta.rst
     tqsdk.tafunc.rst
-    tqsdk.sim.rst
     tqsdk.backtest.rst
     tqsdk.algorithm.rst
     tqsdk.risk_rule.rst

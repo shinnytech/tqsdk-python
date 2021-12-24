@@ -3,6 +3,7 @@
 
 __author__ = 'mayanqiong'
 
+import asyncio
 from abc import abstractmethod
 
 
@@ -41,8 +42,10 @@ class TqModule(object):
                 else:
                     # 处理下游发送的其他请求
                     await self._handle_req_data(pack)
+                    await self._send_diff(api_recv_chan)
         finally:
             [task.cancel() for task in up_handle_tasks]
+            await asyncio.gather(*up_handle_tasks, return_exceptions=True)
 
     async def _up_handler(self, api_send_chan, recv_chan, chan_index):
         async for pack in recv_chan:
@@ -52,6 +55,7 @@ class TqModule(object):
             await api_send_chan.send(pack)
 
     async def _send_diff(self, api_recv_chan):
+        pk = self._pending_peek
         if self._pending_peek and self._diffs:
             rtn_data = {
                 "aid": "rtn_data",
@@ -60,6 +64,7 @@ class TqModule(object):
             self._diffs = []
             self._pending_peek = False
             await api_recv_chan.send(rtn_data)
+        await self._on_send_diff(pk)
 
     @abstractmethod
     async def _handle_recv_data(self, pack, chan):
@@ -75,5 +80,13 @@ class TqModule(object):
         """
         处理所有下游发送的非 peek_message 数据包
         这里应该将发送的请求转发到指定的某个上游 channel
+        """
+        pass
+
+    async def _on_send_diff(self, peeding_pk):
+        """
+        TqModule 调用 _send_diff 时，最后会执行的回调函数；
+        TqModule 处理所有 pack 都会调用 self._send_diff()，可以在此处处理额外业务逻辑。
+        pending_peek 表示调用 _send_diff 时，self._pending_peek 的值
         """
         pass
