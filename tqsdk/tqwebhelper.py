@@ -13,13 +13,12 @@ import numpy as np
 import simplejson
 from aiohttp import web
 
-from tqsdk.account import TqAccount, TqKq
 from tqsdk.auth import TqAuth
 from tqsdk.backtest import TqBacktest, TqReplay
 from tqsdk.channel import TqChan
 from tqsdk.datetime import _get_trading_day_start_time
 from tqsdk.diff import _simple_merge_diff
-from tqsdk.sim import TqSim
+from tqsdk.tradeable import TqAccount, TqKq, TqSim
 
 
 class TqWebHelper(object):
@@ -89,6 +88,12 @@ class TqWebHelper(object):
             file_path = os.path.abspath(sys.argv[0])
             file_name = os.path.basename(file_path)
             # 初始化数据截面
+            accounts_info = {}
+            for acc in self._api._account._account_list:
+                accounts_info[acc._account_key] = {
+                    "td_url_status": True if isinstance(acc, TqSim) else '-'
+                }
+                accounts_info[acc._account_key].update(acc._get_baseinfo())
             self._data = {
                 "action": {
                     "mode": "replay" if isinstance(self._api._backtest, TqReplay) else "backtest" if isinstance(self._api._backtest, TqBacktest) else "run",
@@ -96,7 +101,7 @@ class TqWebHelper(object):
                     "user_name": self._api._auth._user_name,
                     "file_path": file_path[0].upper() + file_path[1:],
                     "file_name": file_name,
-                    "accounts": self._api._account._to_dict()
+                    "accounts": accounts_info
                 },
                 "trade": {},
                 "subscribed": [],

@@ -8,10 +8,11 @@ from typing import Optional, Union
 import numpy as np
 from pandas import DataFrame
 
-from tqsdk.api import TqApi, TqAccount, TqSim, TqKq
+from tqsdk.api import TqApi
 from tqsdk import utils
 from tqsdk.datetime import _get_trading_timestamp, _get_trade_timestamp, _get_trading_day_from_timestamp
 from tqsdk.rangeset import _rangeset_slice, _rangeset_head
+from tqsdk.tradeable import TqAccount, TqKq, TqSim
 
 
 def twap_table(api: TqApi, symbol: str, target_pos: int, duration: int, min_volume_each_step: int, max_volume_each_step: int,
@@ -145,12 +146,12 @@ def vwap_table(api: TqApi, symbol: str, target_pos: int, duration: float,
     调用 vwap_table 函数，根据以下逻辑生成 time_table：
 
     1. 根据 target_pos - 当前合约的净持仓，得到总的需要调整手数
-    1. 请求 symbol 合约的 ``1min`` K 线
-    2. 采样取用最近 10 日内，以合约当前行情时间的下一分钟为起点，每日 duration / 60 根 K 线
-        例如当前合约时间为 14:35:35，那么采样是会使用 14:36:00 开始的分钟线 K 线
-    3. 按日期分组，分别计算交易日内，每根 K 线成交量占总成交量的比例
-    4. 计算最近 10 日内相同分钟内的成交量占比的算术平均数，将第 1 步得到的总调整手数按照得到的比例分配
-    5. 每一分钟，前 58s 以追加价格下单，后 2s 以对价价格下单
+    2. 请求 symbol 合约的 ``1min`` K 线
+    3. 采样取用最近 10 日内，以合约当前行情时间的下一分钟为起点，每日 duration / 60 根 K 线, \
+    例如当前合约时间为 14:35:35，那么采样是会使用 14:36:00 开始的分钟线 K 线
+    4. 按日期分组，分别计算交易日内，每根 K 线成交量占总成交量的比例
+    5. 计算最近 10 日内相同分钟内的成交量占比的算术平均数，将第 1 步得到的总调整手数按照得到的比例分配
+    6. 每一分钟，前 58s 以追加价格下单，后 2s 以对价价格下单
 
     Args:
         api (TqApi): TqApi实例，该task依托于指定api下单/撤单
@@ -188,6 +189,7 @@ def vwap_table(api: TqApi, symbol: str, target_pos: int, duration: float,
         while not target_pos_sch.is_finished():
             api.wait_update()
         api.close()
+
 
     """
     account = api._account._check_valid(account)

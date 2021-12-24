@@ -7,11 +7,11 @@ import asyncio
 from typing import Optional, Union
 
 from tqsdk.algorithm.time_table_generater import _gen_random_list
-from tqsdk.api import TqApi, TqAccount, TqSim, TqKq
+from tqsdk.api import TqApi
 from tqsdk.channel import TqChan
 from tqsdk.datetime import _get_trading_timestamp, _get_trade_timestamp
 from tqsdk.lib import InsertOrderUntilAllTradedTask
-from tqsdk import utils
+from tqsdk.tradeable import TqAccount, TqKq, TqSim
 from tqsdk.rangeset import _rangeset_slice, _rangeset_head, _rangeset_length
 
 
@@ -117,6 +117,8 @@ class Twap(object):
           print(target_twap.average_trade_price)
           api.close()
         """
+        if symbol.startswith("CZCE.CJ"):
+            raise Exception("红枣期货不支持创建 targetpostask、twap、vwap 任务，交易所规定该品种最小开仓手数为大于等于 4 手，这些函数还未支持该规则!")
         self._api = api
         self._account = api._account._check_valid(account)
         if self._account is None:
