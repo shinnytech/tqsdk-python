@@ -2,6 +2,11 @@
 
 版本变更
 =============================
+3.1.1 (2021/12/24)
+
+* 修复：穿管采集文件读取失败
+
+
 3.1.0 (2021/12/24)
 
 * 新增：为各种账户类型增加接口调用，支持 IDE 更好的提供代码提示。TqSdk 目前支持以下账户类型 :py:class:`~tqsdk.tradeable.otg.tqaccount.TqAccount`、:py:class:`~tqsdk.tradeable.otg.tqkq.TqKq`、

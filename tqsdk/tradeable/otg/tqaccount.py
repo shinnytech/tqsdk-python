@@ -7,6 +7,7 @@ import ctypes
 import hashlib
 import logging
 import os
+from pathlib import Path
 import sys
 import uuid
 from typing import Optional
@@ -51,7 +52,8 @@ class TqAccount(BaseOtg, IFuture):
         try:
             l = ctypes.c_int(344)
             buf = ctypes.create_string_buffer(l.value)
-            lib_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ctpse")
+            path = Path(__file__, '../../../ctpse')
+            lib_path = path.resolve()  # Make the path absolute, resolving any symlinks. A new path object is returned
             if sys.platform.startswith("win") or sys.platform.startswith("linux"):
                 if sys.platform.startswith("win"):
                     if ctypes.sizeof(ctypes.c_voidp) == 4:
