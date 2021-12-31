@@ -13,10 +13,10 @@ import uuid
 from typing import Optional
 
 from tqsdk.tradeable.otg.base_otg import BaseOtg
-from tqsdk.tradeable.interface import IFuture
+from tqsdk.tradeable.mixin import FutureMixin
 
 
-class TqAccount(BaseOtg, IFuture):
+class TqAccount(BaseOtg, FutureMixin):
     """天勤实盘账户类"""
 
     def __init__(self, broker_id: str, account_id: str, password: str, front_broker: Optional[str] = None,
@@ -47,6 +47,21 @@ class TqAccount(BaseOtg, IFuture):
             raise TypeError(f"不支持以下参数 {[kwargs.keys()]}")
 
         super(TqAccount, self).__init__(broker_id, account_id, password, td_url)
+
+    def _get_account_key(self):
+        s = self._broker_id + self._account_id
+        s += self._front_broker if self._front_broker else ""
+        s += self._front_url if self._front_url else ""
+        s += self._td_url if self._td_url else ""
+        return hashlib.md5(s.encode('utf-8')).hexdigest()
+
+    @property
+    def _account_info(self):
+        info = super(TqAccount, self)._account_info
+        info.update({
+            "account_type": self._account_type
+        })
+        return info
 
     def _get_system_info(self):
         try:
@@ -96,10 +111,3 @@ class TqAccount(BaseOtg, IFuture):
         await self._td_send_chan.send({
             "aid": "confirm_settlement"
         })  # 自动发送确认结算单
-
-    def _get_account_key(self):
-        s = self._broker_id + self._account_id
-        s += self._front_broker if self._front_broker else ""
-        s += self._front_url if self._front_url else ""
-        s += self._td_url if self._td_url else ""
-        return hashlib.md5(s.encode('utf-8')).hexdigest()

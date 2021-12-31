@@ -3,8 +3,8 @@
 __author__ = 'mayanqiong'
 
 import os
+import shutil
 import struct
-from datetime import datetime
 
 import numpy as np
 import pandas as pd
@@ -179,7 +179,7 @@ class DataSeries:
                 temp_file.close()
                 if start_id is not None and end_id is not None:
                     target_filename = os.path.join(CACHE_DIR, f"{symbol}.{self._dur_nano}.{start_id}.{end_id + 1}")
-                    os.rename(temp_filename, target_filename)
+                    shutil.move(temp_filename, target_filename)
             finally:
                 task.cancel()
                 await task

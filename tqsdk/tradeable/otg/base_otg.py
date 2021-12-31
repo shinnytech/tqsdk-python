@@ -5,18 +5,41 @@ __author__ = 'yanqiong'
 import hashlib
 from typing import Optional
 
-from tqsdk.tradeable.interface import IFuture, IStock
+from tqsdk.tradeable.mixin import FutureMixin, StockMixin
 from tqsdk.tradeable.tradeable import Tradeable
 
 
 class BaseOtg(Tradeable):
     def __init__(self, broker_id: str, account_id: str, password: str, td_url: Optional[str] = None) -> None:
+        if not isinstance(broker_id, str):
+            raise Exception("broker_id 参数类型应该是 str")
+        if not isinstance(account_id, str):
+            raise Exception("account_id 参数类型应该是 str")
         if not isinstance(password, str):
             raise Exception("password 参数类型应该是 str")
+        self._broker_id = broker_id.strip()  # 期货公司（用户登录 rsp_login 填的）
+        self._account_id = account_id.strip()  # 期货账户 （用户登录 rsp_login 填的）
         self._password = password
         self._td_url = td_url
 
-        super(BaseOtg, self).__init__(broker_id=broker_id, account_id=account_id)
+        super(BaseOtg, self).__init__()
+
+    def _get_account_key(self):
+        s = self._broker_id + self._account_id
+        return hashlib.md5(s.encode('utf-8')).hexdigest()
+
+    @property
+    def _account_name(self):
+        return self._account_id
+
+    @property
+    def _account_info(self):
+        info = super(BaseOtg, self)._account_info
+        info.update({
+            "broker_id": self._broker_id,
+            "account_id": self._account_id
+        })
+        return info
 
     async def _send_login_pack(self):
         """发送登录请求"""
@@ -37,9 +60,9 @@ class BaseOtg(Tradeable):
         else:
             self._td_url, account_type = api._auth._get_td_url(self._broker_id, self._account_id)
             if account_type == "FUTURE":
-                assert isinstance(self, IFuture)
+                assert isinstance(self, FutureMixin)
             else:
-                assert isinstance(self, IStock)
+                assert isinstance(self, StockMixin)
 
     async def _run(self, api, api_send_chan, api_recv_chan, md_send_chan, md_recv_chan, td_send_chan, td_recv_chan):
         self._api = api
@@ -79,7 +102,3 @@ class BaseOtg(Tradeable):
                 if "trade" in item:
                     item["trade"][self._account_key] = item["trade"].pop(self._account_id)
             self._diffs.extend(pack_data)
-
-    def _get_account_key(self):
-        s = self._broker_id + self._account_id
-        return hashlib.md5(s.encode('utf-8')).hexdigest()

@@ -7,24 +7,25 @@ import asyncio
 import time
 from abc import abstractmethod
 from datetime import datetime
-from typing import Type
+from typing import Type, Union
 
 from tqsdk.channel import TqChan
 from tqsdk.datetime import _get_trading_day_from_timestamp, _get_trading_day_end_time, _get_trade_timestamp, \
-    _is_in_trading_time
+    _is_in_trading_time, _format_from_timestamp_nano
 from tqsdk.diff import _get_obj, _register_update_chan, _merge_diff
 from tqsdk.entity import Entity
 from tqsdk.objs import Quote
 from tqsdk.tradeable.tradeable import Tradeable
-from tqsdk.tradeable.sim.trade import SimTrade
+from tqsdk.tradeable.sim.trade_future import SimTrade
+from tqsdk.tradeable.sim.trade_stock import SimTradeStock
 from tqsdk.utils import _query_for_quote
 
 
 class BaseSim(Tradeable):
 
-    def __init__(self, broker_id, account_id, init_balance, trade_class: Type[SimTrade]) -> None:
-
-        super(BaseSim, self).__init__(broker_id=broker_id, account_id=account_id)
+    def __init__(self, account_id, init_balance, trade_class: Union[Type[SimTrade], Type[SimTradeStock]]) -> None:
+        self._account_id = account_id
+        super(BaseSim, self).__init__()
 
         self.trade_log = {}  # 日期->交易记录及收盘时的权益及持仓
         self.tqsdk_stat = {}  # 回测结束后储存回测报告信息
@@ -33,6 +34,7 @@ class BaseSim(Tradeable):
         self._trading_day_end = "1990-01-01 18:00:00.000000"
         self._local_time_record = float("nan")  # 记录获取最新行情时的本地时间
         self._sim_trade = trade_class(account_key=self._account_key,
+                                      account_id=self._account_id,
                                       init_balance=self._init_balance,
                                       get_trade_timestamp=self._get_trade_timestamp,
                                       is_in_trading_time=self._is_in_trading_time)
@@ -44,6 +46,18 @@ class BaseSim(Tradeable):
             }
         }
         self._quote_tasks = {}
+
+    @property
+    def _account_name(self):
+        return self._account_id
+
+    @property
+    def _account_info(self):
+        info = super(BaseSim, self)._account_info
+        info.update({
+            "account_id": self._account_id
+        })
+        return info
 
     async def _run(self, api, api_send_chan, api_recv_chan, md_send_chan, md_recv_chan):
         """模拟交易task"""

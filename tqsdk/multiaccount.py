@@ -9,8 +9,8 @@ from shinny_structlog import ShinnyLoggerAdapter
 
 from tqsdk.connect import TqConnect, TdReconnectHandler
 from tqsdk.channel import TqChan
-from tqsdk.tradeable import TqAccount, TqKq, TqKqStock, TqSim
-from tqsdk.tradeable.interface import IStock
+from tqsdk.tradeable import TqAccount, TqKq, TqKqStock, TqSim, TqSimStock, BaseSim, BaseOtg
+from tqsdk.tradeable.mixin import StockMixin
 
 
 class TqMultiAccount(object):
@@ -28,12 +28,12 @@ class TqMultiAccount(object):
 
     """
 
-    def __init__(self, accounts: Optional[List[Union[TqAccount, TqKq, TqKqStock, TqSim]]] = None):
+    def __init__(self, accounts: Optional[List[Union[TqAccount, TqKq, TqKqStock, TqSim, TqSimStock]]] = None):
         """
         创建 TqMultiAccount 实例
 
         Args:
-            accounts (List[Union[TqAccount, TqKq, TqKqStock, TqSim]]): [可选] 多账户列表, 若未指定任何账户, 则为 [TqSim()]
+            accounts (List[Union[TqAccount, TqKq, TqKqStock, TqSim, TqSimStock]]): [可选] 多账户列表, 若未指定任何账户, 则为 [TqSim()]
 
         Example1::
 
@@ -76,7 +76,7 @@ class TqMultiAccount(object):
 
         """
         self._account_list = accounts if accounts else [TqSim()]
-        self._has_tq_account = any([True for a in self._account_list if isinstance(a, TqAccount)])  # 是否存在实盘账户(TqAccount/TqKq/TqKqStock)
+        self._has_tq_account = any([True for a in self._account_list if isinstance(a, BaseOtg)])  # 是否存在实盘账户(TqAccount/TqKq/TqKqStock)
         self._map_conn_id = {}  # 每次建立连接时，记录每个 conn_id 对应的账户
         if self._has_duplicate_account():
             raise Exception("多账户列表中不允许使用重复的账户实例.")
@@ -86,7 +86,7 @@ class TqMultiAccount(object):
         account_set = set([a._account_key for a in self._account_list])
         return len(account_set) != len(self._account_list)
 
-    def _check_valid(self, account: Union[str, TqAccount, TqKq, TqKqStock, TqSim, None]):
+    def _check_valid(self, account: Union[str, TqAccount, TqKq, TqKqStock, TqSim, TqSimStock, None]):
         """
         查询委托、成交、资产、委托时, 需要指定账户实例
         account: 类型 str 表示 account_key，其他为账户类型或者 None
@@ -112,7 +112,7 @@ class TqMultiAccount(object):
     def _is_stock_type(self, account_or_account_key):
         """ 判断账户类型是否为股票账户 """
         acc = self._check_valid(account_or_account_key)
-        return isinstance(acc, IStock)
+        return isinstance(acc, StockMixin)
 
     def _get_trade_more_data_and_order_id(self, data):
         """ 获取业务信息截面 trade_more_data 标识，当且仅当所有账户的标识置为 false 时，业务信息截面就绪 """
@@ -133,7 +133,7 @@ class TqMultiAccount(object):
             _recv_chan._logger_bind(chan_name=f"recv from account_{index}")
             ws_md_send_chan._logger_bind(chan_from=f"account_{index}")
             ws_md_recv_chan._logger_bind(chan_to=f"account_{index}")
-            if isinstance(account, TqSim):
+            if isinstance(account, BaseSim):
                 # 启动模拟账户实例
                 self._api.create_task(
                     account._run(self._api, _send_chan, _recv_chan, ws_md_send_chan, ws_md_recv_chan))

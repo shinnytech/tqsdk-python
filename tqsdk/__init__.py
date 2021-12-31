@@ -4,7 +4,7 @@ __author__ = 'chengzhi'
 name = "tqsdk"
 
 from tqsdk.api import TqApi
-from tqsdk.tradeable import TqAccount, TqKq, TqKqStock, TqSim
+from tqsdk.tradeable import TqAccount, TqKq, TqKqStock, TqSim, TqSimStock
 from tqsdk.auth import TqAuth
 from tqsdk.channel import TqChan
 from tqsdk.backtest import TqBacktest, TqReplay
