@@ -6,22 +6,20 @@
 __author__ = 'mayanqiong'
 
 import os
+from datetime import date, datetime
 from typing import Union, List
 
-import requests
-from datetime import date, datetime
-
 import pandas as pd
-
+import requests
 
 rest_days_df = None
 chinese_holidays_range = None
 
 
-def _init_chinese_rest_days():
+def _init_chinese_rest_days(headers=None):
     global rest_days_df, chinese_holidays_range
     if rest_days_df is None:
-        rsp = requests.get("https://files.shinnytech.com/shinny_chinese_holiday.json", timeout=30)
+        rsp = requests.get("https://files.shinnytech.com/shinny_chinese_holiday.json", timeout=30, headers=headers)
         chinese_holidays = rsp.json()
         _first_day = date(int(chinese_holidays[0].split('-')[0]), 1, 1)  # 首个日期所在年份的第一天
         _last_day = date(int(chinese_holidays[-1].split('-')[0]), 12, 31)  # 截止日期所在年份的最后一天
@@ -31,7 +29,7 @@ def _init_chinese_rest_days():
     return chinese_holidays_range
 
 
-def _get_trading_calendar(start_dt: date, end_dt: date):
+def _get_trading_calendar(start_dt: date, end_dt: date, headers=None):
     """
     获取一段时间内，每天是否是交易日
 
@@ -43,7 +41,7 @@ def _get_trading_calendar(start_dt: date, end_dt: date):
     2019-12-08  False
     2019-12-09  True
     """
-    _init_chinese_rest_days()
+    _init_chinese_rest_days(headers=headers)
     df = pd.DataFrame()
     df['date'] = pd.Series(pd.date_range(start=start_dt, end=end_dt, freq="D"))
     df['trading'] = df['date'].dt.dayofweek.lt(5)
@@ -68,7 +66,7 @@ class TqContCalendar(object):
 
     continuous = None
 
-    def __init__(self, start_dt: date, end_dt: date, symbols: Union[List[str], None] = None) -> None:
+    def __init__(self, start_dt: date, end_dt: date, symbols: Union[List[str], None] = None, headers=None) -> None:
         """
         初始化主连日历表
         :param date start_dt: 开始交易日日期
@@ -76,11 +74,11 @@ class TqContCalendar(object):
         :param list[str] symbols: 主连合约列表
         :return:
         """
-        self.df = _get_trading_calendar(start_dt=start_dt, end_dt=end_dt)
+        self.df = _get_trading_calendar(start_dt=start_dt, end_dt=end_dt, headers=headers)
         self.df = self.df.loc[self.df.trading, ['date']]  # 只保留交易日
         self.df.reset_index(inplace=True, drop=True)
         if TqContCalendar.continuous is None:
-            rsp = requests.get(os.getenv("TQ_CONT_TABLE_URL", "https://files.shinnytech.com/continuous_table.json"))  # 下载历史主连合约信息
+            rsp = requests.get(os.getenv("TQ_CONT_TABLE_URL", "https://files.shinnytech.com/continuous_table.json"), headers=headers)  # 下载历史主连合约信息
             rsp.raise_for_status()
             TqContCalendar.continuous = {f"KQ.m@{k}": v for k, v in rsp.json().items()}
         if symbols is not None:

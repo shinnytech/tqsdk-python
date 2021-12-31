@@ -7,7 +7,7 @@ from typing import Dict, Optional
 import numpy as np
 from pandas import DataFrame, Series
 
-from tqsdk.objs import Account, Trade
+from tqsdk.objs import Account, Trade, SecurityAccount, SecurityTrade
 from tqsdk.tafunc import get_sharp, get_sortino, get_calmar, _cum_counts
 
 TRADING_DAYS_OF_YEAR = 250
@@ -22,7 +22,7 @@ class TqReport(object):
 
     """
 
-    def __init__(self, report_id: str, trade_log: Optional[Dict] = None, quotes: Optional[Dict] = None):
+    def __init__(self, report_id: str, trade_log: Optional[Dict] = None, quotes: Optional[Dict] = None, account_type: str = "FUTURE"):
         """
         本模块为给 TqSim 提供交易成交统计
         Args:
@@ -47,21 +47,25 @@ class TqReport(object):
         self.report_id = report_id
         self.trade_log = trade_log
         self.quotes = quotes
+        self.account_type = account_type
         self.date_keys = sorted(trade_log.keys())
         self.account_df, self.trade_df = self._get_df()
         # default metrics
-        self.default_metrics = self._get_default_metrics()
+        self.default_metrics = self._get_default_metrics() if self.account_type == "FUTURE" else self._get_stock_metrics()
 
     def _get_df(self):
+        type_account = Account if self.account_type == "FUTURE" else SecurityAccount
+        type_trade = Trade if self.account_type == "FUTURE" else SecurityTrade
         account_data = [{'date': dt} for dt in self.date_keys]
         for item in account_data:
             item.update(self.trade_log[item['date']]['account'])
-        account_df = DataFrame(data=account_data, columns=['date'] + list(Account(None).keys()))
+        account_df = DataFrame(data=account_data, columns=['date'] + list(type_account(None).keys()))
         trade_array = []
         for date in self.date_keys:
             trade_array.extend(self.trade_log[date]['trades'])
-        trade_df = DataFrame(data=trade_array, columns=list(Trade(None).keys()))
-        trade_df["offset1"] = trade_df["offset"].replace("CLOSETODAY", "CLOSE")
+        trade_df = DataFrame(data=trade_array, columns=list(type_trade(None).keys()))
+        if type_trade == Trade:
+            trade_df["offset1"] = trade_df["offset"].replace("CLOSETODAY", "CLOSE")
         return account_df, trade_df
 
     def _get_default_metrics(self):
@@ -79,6 +83,52 @@ class TqReport(object):
                 "sharpe_ratio": float('nan'),  # 年化夏普率
                 "sortino_ratio": float('nan'),  # 年化索提诺比率
                 "commission": 0,  # 总手续费
+                "tqsdk_punchline": ""
+            }
+
+    def _get_stock_metrics(self):
+        if self.account_df.shape[0] > 0:
+            init_asset = self.account_df.iloc[0]['asset_his']
+            asset = self.account_df.iloc[-1]['asset']
+            self.account_df['profit'] = self.account_df['asset'] - self.account_df['asset'].shift(fill_value=init_asset)  # 每日收益
+            self.account_df['is_profit'] = np.where(self.account_df['profit'] > 0, 1, 0)  # 是否收益
+            self.account_df['is_loss'] = np.where(self.account_df['profit'] < 0, 1, 0)  # 是否亏损
+            self.account_df['daily_yield'] = self.account_df['asset'] / self.account_df['asset'].shift(fill_value=init_asset) - 1  # 每日收益率
+            self.account_df['max_asset'] = self.account_df['asset'].cummax()  # 当前单日最大权益
+            self.account_df['drawdown'] = (self.account_df['max_asset'] - self.account_df['asset']) / self.account_df['max_asset']  # 回撤
+            _ror = asset / init_asset
+            return {
+                "start_date": self.account_df.iloc[0]["date"],
+                "end_date": self.account_df.iloc[-1]["date"],
+                "init_asset": init_asset,
+                "asset": init_asset,
+                "start_asset": init_asset,
+                "end_asset": asset,
+                "ror": _ror - 1,  # 收益率
+                "annual_yield": _ror ** (TRADING_DAYS_OF_YEAR / self.account_df.shape[0]) - 1,  # 年化收益率
+                "trading_days": self.account_df.shape[0],  # 总交易天数
+                "cum_profit_days": self.account_df['is_profit'].sum(),  # 累计盈利天数
+                "cum_loss_days": self.account_df['is_loss'].sum(),  # 累计亏损天数
+                "max_drawdown": self.account_df['drawdown'].max(),  # 最大回撤
+                "fee": self.account_df['buy_fee_today'].sum() + self.account_df['sell_fee_today'].sum(),  # 总手续费
+                "buy_times": self.trade_df.loc[self.trade_df["direction"] == "BUY"].shape[0],  # 买次数
+                "sell_times": self.trade_df.loc[self.trade_df["direction"] == "SELL"].shape[0],  # 卖次数
+                "max_cont_profit_days": _cum_counts(self.account_df['is_profit']).max(),  # 最大连续盈利天数
+                "max_cont_loss_days": _cum_counts(self.account_df['is_loss']).max(),  # 最大连续亏损天数
+                "sharpe_ratio": get_sharp(self.account_df['daily_yield']),  # 年化夏普率
+                "calmar_ratio": get_calmar(self.account_df['daily_yield'], self.account_df['drawdown'].max()),  # 年化卡玛比率
+                "sortino_ratio": get_sortino(self.account_df['daily_yield']),  # 年化索提诺比率
+                "tqsdk_punchline": self._get_tqsdk_punchlines(_ror - 1)
+            }
+        else:
+            return {
+                "profit_loss_ratio": float('nan'),  # 盈亏额比例
+                "ror": float('nan'),  # 收益率
+                "annual_yield": float('nan'),  # 年化收益率
+                "max_drawdown": float('nan'),  # 最大回撤
+                "sharpe_ratio": float('nan'),  # 年化夏普率
+                "sortino_ratio": float('nan'),  # 年化索提诺比率
+                "fee": 0,  # 总手续费
                 "tqsdk_punchline": ""
             }
 

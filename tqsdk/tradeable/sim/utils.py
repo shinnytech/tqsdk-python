@@ -2,6 +2,9 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'mayanqiong'
 
+from datetime import datetime
+
+from tqsdk.datetime import _get_trading_day_from_timestamp, _get_trade_timestamp
 
 TRADING_DAYS_OF_YEAR = 250
 
@@ -70,3 +73,36 @@ def _get_future_margin(quote={}):
     if quote.get("ins_class", "").endswith("OPTION"):
         return float('nan')
     return quote.get("user_margin", quote.get("margin", float('nan')))
+
+
+def _get_order_price(quote, order):
+    # order 预期成交价格
+    if order["price_type"] in ["ANY", "BEST", "FIVELEVEL"]:
+        ask_price, bid_price = _get_price_range(quote)
+        return ask_price if order["direction"] == "BUY" else bid_price
+    else:
+        return order["limit_price"]
+
+
+def _get_stock_fee(direction, volume, price):
+    # 费用(BUY) = 佣金; 费用(SELL) = 佣金 + 印花税
+    balance = volume * price
+    return max(balance * 0.00025, 5.0) + (0 if direction == "BUY" else balance * 0.001)
+
+
+def _get_dividend_ratio(quote):
+    # 获取合约下一个交易日的送股、分红信息
+    timestamp = _get_trading_day_from_timestamp(_get_trade_timestamp(quote['datetime'], float('nan')) + 86400000000000)  # 下一交易日
+    stock_dividend = _get_dividend_ratio_by_dt(quote['stock_dividend_ratio'], timestamp=timestamp)
+    cash_dividend = _get_dividend_ratio_by_dt(quote['cash_dividend_ratio'], timestamp=timestamp)
+    return stock_dividend, cash_dividend
+
+
+def _get_dividend_ratio_by_dt(dividend_list: list, timestamp: int) -> float:
+    # 从分红/送股列表中找到指定的数据返回
+    # ['20181102,0.400000', '20200624,0.400000', '20210716,0.400000']  '20210716'
+    dt = datetime.fromtimestamp(timestamp / 1000000000).strftime('%Y%m%d')  # 转为 str 格式
+    for item in dividend_list:
+        if item[:8] == dt:
+            return float(item[9:])
+    return 0.0

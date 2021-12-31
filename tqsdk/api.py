@@ -78,7 +78,7 @@ from tqsdk.risk_manager import TqRiskManager
 from tqsdk.risk_rule import TqRiskRule
 from tqsdk.ins_schema import ins_schema, basic, derivative, future, option
 from tqsdk.symbols import TqSymbols
-from tqsdk.tradeable import TqAccount, TqKq, TqKqStock, TqSim, BaseOtg
+from tqsdk.tradeable import TqAccount, TqKq, TqKqStock, TqSim, TqSimStock, BaseOtg
 from tqsdk.trading_status import TqTradingStatus
 from tqsdk.tqwebhelper import TqWebHelper
 from tqsdk.utils import _generate_uuid, _query_for_quote, BlockManagerUnconsolidated, _quotes_add_night, _bisect_value
@@ -94,8 +94,9 @@ class TqApi(TqBaseApi):
     通常情况下, 一个线程中 **应该只有一个** TqApi的实例, 它负责维护网络连接, 接收行情及账户数据, 并在内存中维护业务数据截面
     """
 
-    def __init__(self, account: Union[TqMultiAccount, TqAccount, TqKq, TqKqStock, TqSim, None] = None, auth: Union[TqAuth, str, None] = None, url: Optional[str] = None,
-                 backtest: Union[TqBacktest, TqReplay, None] = None, web_gui: [bool, str] = False, debug: Union[bool, str, None] = False,
+    def __init__(self, account: Union[TqMultiAccount, TqAccount, TqKq, TqKqStock, TqSim, TqSimStock, None] = None,
+                 auth: Union[TqAuth, str, None] = None, url: Optional[str] = None,
+                 backtest: Union[TqBacktest, TqReplay, None] = None, web_gui: Union[bool, str] = False, debug: Union[bool, str, None] = False,
                  loop: Optional[asyncio.AbstractEventLoop] = None, disable_print: bool = False, _stock: bool = True,
                  _ins_url=None, _md_url=None, _td_url=None) -> None:
         """
@@ -1028,7 +1029,7 @@ class TqApi(TqBaseApi):
         first_date, latest_date = _init_chinese_rest_days()
         if start_dt < first_date or end_dt > latest_date:
             raise Exception(f"交易日历可以处理的范围为 {first_date.strftime('%Y-%m-%d')} ～ {latest_date.strftime('%Y-%m-%d')}，请修改参数")
-        return _get_trading_calendar(start_dt, end_dt)
+        return _get_trading_calendar(start_dt, end_dt, headers=self._base_headers)
 
     # ----------------------------------------------------------------------
     def query_his_cont_quotes(self, symbol: Union[str, List[str]], n: int = 200):
@@ -1081,7 +1082,8 @@ class TqApi(TqBaseApi):
         now_dt = self._get_current_datetime()
         trading_day = _get_trading_day_from_timestamp(int(now_dt.timestamp() * 1000000000))
         end_dt = datetime.fromtimestamp(trading_day / 1000000000)
-        cont_calendar = TqContCalendar(start_dt=end_dt - timedelta(days=n * 2 + 30), end_dt=end_dt, symbols=symbols)
+        cont_calendar = TqContCalendar(start_dt=end_dt - timedelta(days=n * 2 + 30), end_dt=end_dt, symbols=symbols,
+                                       headers=self._base_headers)
         df = cont_calendar.df.loc[cont_calendar.df.date.le(end_dt), ['date'] + symbols]
         df = df.iloc[-n:]
         df.reset_index(inplace=True, drop=True)
@@ -3124,7 +3126,10 @@ class TqApi(TqBaseApi):
                     self._auth._add_account(acc._account_id)
             elif isinstance(acc, TqKqStock):
                 if not self._auth._has_account(acc._account_id):
-                    raise Exception(f"您的账户不支持快期股票模拟，需要购买专业版本后使用。升级网址：https://account.shinnytech.com")
+                    raise Exception(f"您的账户不支持快期股票模拟 TqKqStock，需要购买专业版本后使用。升级网址：https://account.shinnytech.com")
+            elif isinstance(acc, TqSimStock):
+                if not self._auth._has_feature("sec"):
+                    raise Exception(f"您的账户不支持本地股票模拟 TqSimStock，需要购买专业版本后使用。升级网址：https://account.shinnytech.com")
 
         # 等待复盘服务器启动
         if isinstance(self._backtest, TqReplay):

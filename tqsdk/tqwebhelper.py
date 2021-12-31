@@ -12,6 +12,7 @@ from urllib.parse import urlparse
 import numpy as np
 import simplejson
 from aiohttp import web
+from tqsdk.tradeable.sim.basesim import BaseSim
 
 from tqsdk.auth import TqAuth
 from tqsdk.backtest import TqBacktest, TqReplay
@@ -88,12 +89,12 @@ class TqWebHelper(object):
             file_path = os.path.abspath(sys.argv[0])
             file_name = os.path.basename(file_path)
             # 初始化数据截面
-            accounts_info = {}
+            accounts_info = {
+                acc._account_key: {"td_url_status": True if isinstance(acc, BaseSim) else '-'}
+                for acc in self._api._account._account_list
+            }
             for acc in self._api._account._account_list:
-                accounts_info[acc._account_key] = {
-                    "td_url_status": True if isinstance(acc, TqSim) else '-'
-                }
-                accounts_info[acc._account_key].update(acc._get_baseinfo())
+                accounts_info[acc._account_key].update(acc._account_info)
             self._data = {
                 "action": {
                     "mode": "replay" if isinstance(self._api._backtest, TqReplay) else "backtest" if isinstance(self._api._backtest, TqBacktest) else "run",

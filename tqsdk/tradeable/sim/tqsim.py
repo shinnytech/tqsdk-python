@@ -3,17 +3,17 @@
 
 __author__ = 'mayanqiong'
 
-from tqsdk.tradeable.interface import IFuture
+from tqsdk.tradeable.mixin import FutureMixin
 from tqsdk.datetime import _format_from_timestamp_nano
 from tqsdk.diff import _get_obj
 from tqsdk.objs import Quote
 from tqsdk.report import TqReport
 from tqsdk.tradeable.sim.basesim import BaseSim
-from tqsdk.tradeable.sim.trade import SimTrade
+from tqsdk.tradeable.sim.trade_future import SimTrade
 from tqsdk.tradeable.sim.utils import _get_future_margin, _get_commission
 
 
-class TqSim(BaseSim, IFuture):
+class TqSim(BaseSim, FutureMixin):
     """
     天勤模拟交易类
 
@@ -42,10 +42,17 @@ class TqSim(BaseSim, IFuture):
         """
         if float(init_balance) <= 0:
             raise Exception("初始资金(init_balance) %s 错误, 请检查 init_balance 是否填写正确" % (init_balance))
-        super(TqSim, self).__init__(broker_id="TQSIM",
-                                    account_id="TQSIM" if account_id is None else account_id,
+        super(TqSim, self).__init__(account_id="TQSIM" if account_id is None else account_id,
                                     init_balance=float(init_balance),
                                     trade_class=SimTrade)
+
+    @property
+    def _account_info(self):
+        info = super(TqSim, self)._account_info
+        info.update({
+            "account_type": self._account_type
+        })
+        return info
 
     def set_commission(self, symbol: str, commission: float=float('nan')):
         """
@@ -177,7 +184,7 @@ class TqSim(BaseSim, IFuture):
         """
         symbol = f"{order['exchange_id']}.{order['instrument_id']}"
         self._api._print(
-            f"模拟交易下单 {order['order_id']}: 时间: {_format_from_timestamp_nano(order['insert_date_time'])}, "
+            f"模拟交易下单 {self._account_name}, {order['order_id']}: 时间: {_format_from_timestamp_nano(order['insert_date_time'])}, "
             f"合约: {symbol}, 开平: {order['offset']}, 方向: {order['direction']}, 手数: {order['volume_left']}, "
             f"价格: {order.get('limit_price', '市价')}")
         self._logger.debug(msg, order_id=order["order_id"], datetime=order["insert_date_time"],
@@ -188,7 +195,7 @@ class TqSim(BaseSim, IFuture):
         """
         在 order 状态变为 FINISHED 调用，屏幕输出信息，打印日志
         """
-        self._api._print(f"模拟交易委托单 {order['order_id']}: {order['last_msg']}")
+        self._api._print(f"模拟交易委托单 {self._account_name}, {order['order_id']}: {order['last_msg']}")
         self._logger.debug(msg, order_id=order["order_id"], last_msg=order["last_msg"], status=order["status"],
                            volume_orign=order["volume_orign"], volume_left=order["volume_left"])
 
@@ -196,7 +203,7 @@ class TqSim(BaseSim, IFuture):
         if not self.trade_log:
             return
         date_keys = sorted(self.trade_log.keys())
-        self._api._print("模拟交易成交记录")
+        self._api._print(f"模拟交易成交记录, 账户: {self._account_name}")
         for d in date_keys:
             for t in self.trade_log[d]["trades"]:
                 symbol = t["exchange_id"] + "." + t["instrument_id"]
@@ -204,7 +211,7 @@ class TqSim(BaseSim, IFuture):
                                  f"开平: {t['offset']}, 方向: {t['direction']}, 手数: {t['volume']}, 价格: {t['price']:.3f},"
                                  f"手续费: {t['commission']:.2f}")
 
-        self._api._print("模拟交易账户资金")
+        self._api._print(f"模拟交易账户资金, 账户: {self._account_name}")
         for d in date_keys:
             account = self.trade_log[d]["account"]
             self._api._print(

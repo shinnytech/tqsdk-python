@@ -38,9 +38,10 @@ class SimTradeBase(object):
 
     """
 
-    def __init__(self, account_key: str, init_balance: float = 10000000.0, get_trade_timestamp: Callable = None,
-                 is_in_trading_time: Callable = None) -> None:
+    def __init__(self, account_key: str, account_id: str = "", init_balance: float = 10000000.0,
+                 get_trade_timestamp: Callable = None, is_in_trading_time: Callable = None) -> None:
         self._account_key = account_key
+        self._account_id = account_id
         self._quotes = {}  # 会记录所有的发来的行情
         # 初始化账户结构
         self._account = self._generate_account(init_balance)
@@ -163,13 +164,13 @@ class SimTradeBase(object):
         assert order["status"] == "ALIVE"
         status, last_msg, price = SimTradeBase.match_order(order, quote)
         if status == "FINISHED":
+            order["last_msg"] = last_msg
+            order["status"] = status
             if last_msg == "全部成交":
                 trade = self._generate_trade(order, quote, price)
                 self._trades.append(trade)
                 self._on_order_traded(order, trade, symbol, position, quote, underlying_quote)
             else:
-                order["last_msg"] = last_msg
-                order["status"] = status
                 self._on_order_failed(symbol, order)
             # 成交后记录 orders_event, 删除 order
             self._orders_events.append(order)
@@ -253,7 +254,7 @@ class SimTradeBase(object):
             price = order["limit_price"]
         if order["price_type"] == "ANY" and math.isnan(price):
             status, last_msg = "FINISHED", "市价指令剩余撤销"
-        if order["time_condition"] == "IOC":  # IOC 立即成交，限价下单且不能成交的价格，直接撤单
+        if order.get("time_condition") == "IOC":  # IOC 立即成交，限价下单且不能成交的价格，直接撤单
             if order["direction"] == "BUY" and price < ask_price or order["direction"] == "SELL" and price > bid_price:
                 status, last_msg = "FINISHED", "已撤单报单已提交"
         if order["direction"] == "BUY" and price >= ask_price or order["direction"] == "SELL" and price <= bid_price:

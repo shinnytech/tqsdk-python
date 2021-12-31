@@ -2,6 +2,14 @@
 
 版本变更
 =============================
+3.2.0 (2021/12/31)
+
+* 新增：:py:class:`~tqsdk.tradeable.sim.tqsim_stock.TqSimStock` 类实现本地股票模拟交易，同时支持在实盘/回测模式下使用。
+  **专业版用户** 可用，专业版购买网址：https://account.shinnytech.com。
+* web_gui：修复回测时不能正常显示结果报告的问题
+* 修复：windows 下调用 :py:meth:`~tqsdk.api.TqApi.get_kline_data_series` 时，可能出现缓存文件不允许重复重命的问题
+
+
 3.1.1 (2021/12/24)
 
 * 修复：穿管采集文件读取失败

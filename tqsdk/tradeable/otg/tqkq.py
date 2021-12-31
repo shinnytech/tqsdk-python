@@ -6,10 +6,10 @@ __author__ = 'yanqiong'
 from typing import Optional
 
 from tqsdk.tradeable.otg.base_otg import BaseOtg
-from tqsdk.tradeable.interface import IFuture, IStock
+from tqsdk.tradeable.mixin import FutureMixin, StockMixin
 
 
-class TqKq(BaseOtg, IFuture):
+class TqKq(BaseOtg, FutureMixin):
     """天勤快期模拟账户类"""
 
     def __init__(self, td_url: Optional[str] = None):
@@ -23,13 +23,21 @@ class TqKq(BaseOtg, IFuture):
         # 用于界面展示的用户信息
         return self._api._auth._user_name
 
+    @property
+    def _account_info(self):
+        info = super(TqKq, self)._account_info
+        info.update({
+            "account_type": self._account_type
+        })
+        return info
+
     def _update_otg_info(self, api):
         self._account_id = api._auth._auth_id
         self._password = api._auth._auth_id
         super(TqKq, self)._update_otg_info(api)
 
 
-class TqKqStock(BaseOtg, IStock):
+class TqKqStock(BaseOtg, StockMixin):
     """天勤实盘类"""
 
     def __init__(self, td_url: Optional[str] = None):
@@ -67,6 +75,14 @@ class TqKqStock(BaseOtg, IStock):
     def _account_name(self):
         # 用于界面展示的用户信息
         return self._api._auth._user_name + "_stock"
+
+    @property
+    def _account_info(self):
+        info = super(TqKqStock, self)._account_info
+        info.update({
+            "account_type": self._account_type
+        })
+        return info
 
     def _update_otg_info(self, api):
         self._account_id = api._auth._auth_id + "-sim-securities"

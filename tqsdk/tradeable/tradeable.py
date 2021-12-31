@@ -3,30 +3,32 @@
 
 __author__ = 'mayanqiong'
 
+from abc import ABC, abstractmethod
 
 from tqsdk.baseModule import TqModule
-from tqsdk.tradeable.interface import IFuture
 
 
-class Tradeable(TqModule):
+class Tradeable(ABC, TqModule):
 
-    def __init__(self, broker_id, account_id) -> None:
-        """这里的几项属性为每一种可交易的类都应该有的属性"""
-        if not isinstance(broker_id, str):
-            raise Exception("broker_id 参数类型应该是 str")
-        if not isinstance(account_id, str):
-            raise Exception("account_id 参数类型应该是 str")
-        self._broker_id = broker_id.strip()  # 期货公司（用户登录 rsp_login 填的） / TqSim / TqSimStock
-        self._account_id = account_id.strip()  # 期货账户 （用户登录 rsp_login 填的） / TQSIM(user-defined)
-        self._account_key = self._get_account_key()   # 每个账户的唯一标识
-
-    @property
-    def _account_name(self):
-        # 用于界面展示的用户信息
-        return self._account_id
+    def __init__(self):
+        self._account_key = self._get_account_key()  # 每个账户的唯一标识，在账户初始化时就确定下来，后续只读不写
 
     def _get_account_key(self):
         return str(id(self))
+
+    @property
+    @abstractmethod
+    def _account_name(self):
+        # 用于界面展示的用户信息
+        raise NotImplementedError
+
+    @property
+    def _account_info(self):
+        # 用于 web_helper 获取初始账户信息
+        return {
+            "account_key": self._account_key,
+            "account_name": self._account_name
+        }
 
     def _is_self_trade_pack(self, pack):
         """是否是当前交易实例应该处理的交易包"""
@@ -38,13 +40,3 @@ class Tradeable(TqModule):
                 pack.pop("account_key", None)
                 return True
         return False
-
-    def _get_baseinfo(self):
-        # 用于 web_helper 获取初始账户信息
-        return {
-            "broker_id": self._broker_id,
-            "account_id": self._account_id,
-            "account_key": self._account_key,
-            "account_name": self._account_name,
-            "account_type": "FUTURE" if isinstance(self, IFuture) else "STOCK"
-        }
