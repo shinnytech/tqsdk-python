@@ -130,7 +130,7 @@ class TqSim(BaseSim, FutureMixin):
             #   到所有 task 执行到 pending 状态时，sim 的 diffs 中有数据了，此时收到 api 发来 peek_message 不会转发给上游，用户会先收到 sim 本身的账户数据，
             #   在下一次 wait_update，sim 的 diffs 为空，才会收到行情数据
             # 在回测时，以下代码应该只经历一次 wait_update
-            while margin != self._api.get_position(symbol).get("future_margin"):
+            while margin != self.get_position(symbol).get("future_margin"):
                 self._api.wait_update()
         return margin
 

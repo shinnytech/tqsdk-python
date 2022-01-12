@@ -2,7 +2,7 @@
 # -*- coding:utf-8 -*-
 __author__ = 'yanqiong'
 
-
+import os
 import random
 import secrets
 from bisect import bisect_right
@@ -13,6 +13,18 @@ from pandas.core.internals import BlockManager
 from tqsdk.ins_schema import ins_schema, _add_all_frags
 
 RD = random.Random(secrets.randbits(128))  # 初始化随机数引擎，使用随机数作为seed，防止用户同时拉起多个策略，产生同样的 seed
+
+
+def _reinit_rd():
+    global RD
+    RD = random.Random(secrets.randbits(128))
+
+
+try:
+    # fork 构造多进程策略时，需要在子进程中重新初始化 RD，否则会不同进程会生成相同的 uuid，产生重复报单或者相同 chart_id
+    os.register_at_fork(after_in_child=_reinit_rd)  # 仅支持 Unix，且 pyversion >= 3.7
+except AttributeError:
+    pass
 
 
 def _generate_uuid(prefix=''):

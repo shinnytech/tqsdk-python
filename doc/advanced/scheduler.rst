@@ -3,21 +3,21 @@
 基于时间维度目标持仓策略
 =================================================
 
-本篇文档假设您已经了解 :py:class:`~tqsdk.lib.target_pos_task.TargetPosTask` 的用法，文档参考 :ref:`targetpostask`。
+本篇文档假设您已经了解 :py:class:`~tqsdk.TargetPosTask` 的用法，文档参考 :ref:`targetpostask`。
 
-简单来说，:py:class:`~tqsdk.lib.target_pos_task.TargetPosTask` 会创建 task，负责将指定合约调整到目标头寸（默认为账户的该合约净持仓）。
+简单来说，:py:class:`~tqsdk.TargetPosTask` 会创建 task，负责将指定合约调整到目标头寸（默认为账户的该合约净持仓）。
 
-对于简单的大单拆分功能，可以在 :py:class:`~tqsdk.lib.target_pos_task.TargetPosTask` 类中设置拆分手数的上下限，:py:class:`~tqsdk.lib.target_pos_task.TargetPosTask` 实例在下单过程中就会将下单手数随机的拆分，以减少对市场冲击。
+对于简单的大单拆分功能，可以在 :py:class:`~tqsdk.TargetPosTask` 类中设置拆分手数的上下限，:py:class:`~tqsdk.TargetPosTask` 实例在下单过程中就会将下单手数随机的拆分，以减少对市场冲击。
 
-但是，对于比较复杂的下单策略，例如 twap（基于时间拆分手数），vwap（基于成交量拆分手数）等，使用 :py:class:`~tqsdk.lib.target_pos_task.TargetPosTask` 来构造策略不是很方便。
+但是，对于比较复杂的下单策略，例如 twap（基于时间拆分手数），vwap（基于成交量拆分手数）等，使用 :py:class:`~tqsdk.TargetPosTask` 来构造策略不是很方便。
 
-我们提供 :py:class:`~tqsdk.lib.target_pos_scheduler.TargetPosScheduler` 类帮助用户完成复杂的下单策略，同时提供给用户极大的调整空间。
+我们提供 :py:class:`~tqsdk.TargetPosScheduler` 类帮助用户完成复杂的下单策略，同时提供给用户极大的调整空间。
 
 
 time_table 目标持仓任务列表
 ------------------------------------------------------------------
 
-:py:class:`~tqsdk.lib.target_pos_scheduler.TargetPosScheduler` 使用 ``time_table`` 参数来描述具体的下单策略。
+:py:class:`~tqsdk.TargetPosScheduler` 使用 ``time_table`` 参数来描述具体的下单策略。
 
 ``time_table`` 为 ``pandas.DataFrame`` 类型。每一行表示一项目标持仓任务，每项任务按照顺序一个个执行。其应该包含以下几列：
 
@@ -36,9 +36,9 @@ time_table 目标持仓任务列表
 TargetPosScheduler 执行目标持仓任务列表
 ------------------------------------------------------------------
 
-:py:class:`~tqsdk.lib.target_pos_scheduler.TargetPosScheduler` 类创建 target_pos_scheduler 实例，首先会将 ``time_table`` 中 ``interval`` 间隔时间列转为 ``deadline``，即这项任务结束时间的纳秒数。
+:py:class:`~tqsdk.TargetPosScheduler` 类创建 target_pos_scheduler 实例，首先会将 ``time_table`` 中 ``interval`` 间隔时间列转为 ``deadline``，即这项任务结束时间的纳秒数。
 
-然后，依次为 ``time_table`` 中的每一项任务创建 :py:class:`~tqsdk.lib.target_pos_task.TargetPosTask` 实例，调整目标持仓，并在到达 ``deadline`` 时退出。每一项未完成的目标持仓都会留都下一项任务中。
+然后，依次为 ``time_table`` 中的每一项任务创建 :py:class:`~tqsdk.TargetPosTask` 实例，调整目标持仓，并在到达 ``deadline`` 时退出。每一项未完成的目标持仓都会留都下一项任务中。
 
 需要注意的是，最后一项任务，是以手数达到目标的，会按照当前项参数，调整到目标持仓再退出。如果最后一项 ``price`` 参数为 ``None`` （表示不下单），由于无法调整持仓，那么会立即退出。
 
@@ -68,7 +68,7 @@ TargetPosScheduler 执行目标持仓任务列表
     #    如果上一步结束时目标持仓没有达到 18 手，这一步会继续调整目标持仓到 18 手后退出
 
 
-到此为止，您可以根据您的具体策略构造出任意的 ``time_table`` 对象，然后调用 :py:class:`~tqsdk.lib.target_pos_scheduler.TargetPosScheduler` 来执行。
+到此为止，您可以根据您的具体策略构造出任意的 ``time_table`` 对象，然后调用 :py:class:`~tqsdk.TargetPosScheduler` 来执行。
 
 为了方便用户使用，我们提供了 :py:meth:`~tqsdk.algorithm.time_table_generater.twap_table` 来生成一个默认的符合 twap 策略的 ``time_table`` 实例。
 

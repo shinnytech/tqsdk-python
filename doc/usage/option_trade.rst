@@ -42,7 +42,7 @@ TqSdk 内提供了丰富的期权指标计算&序列计算函数，参考如下�
 
 期权查询函数
 ----------------------------------------------------
-TqSdk 内提供了完善的期权查询函数 :py:meth:`~tqsdk.api.TqApi.query_options` 和对应平值虚值期权查询函数  :py:meth:`~tqsdk.api.TqApi.query_atm_options` ，供用户搜索符合自己需求的期权::
+TqSdk 内提供了完善的期权查询函数 :py:meth:`~tqsdk.TqApi.query_options` 和对应平值虚值期权查询函数  :py:meth:`~tqsdk.TqApi.query_atm_options` ，供用户搜索符合自己需求的期权::
 
 
 

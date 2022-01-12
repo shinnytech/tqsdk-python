@@ -171,9 +171,9 @@ TqSdk 为这类需求提供三种解决方案, 您可任意选择一种.
 -------------------------------------------------
 TqSdk 内核支持以异步方式实现多任务。 如果用户策略代码实现为一个异步任务, 即可在单线程内执行多个策略。
 
-TqSdk（2.6.1 版本）对几个常用接口 :py:meth:`~tqsdk.api.TqApi.get_quote`, :py:meth:`~tqsdk.api.TqApi.get_quote_list`, :py:meth:`~tqsdk.api.TqApi.get_kline_serial`, :py:meth:`~tqsdk.api.TqApi.get_tick_serial` 支持协程中调用。
+TqSdk（2.6.1 版本）对几个常用接口 :py:meth:`~tqsdk.TqApi.get_quote`, :py:meth:`~tqsdk.TqApi.get_quote_list`, :py:meth:`~tqsdk.TqApi.get_kline_serial`, :py:meth:`~tqsdk.TqApi.get_tick_serial` 支持协程中调用。
 
-对于 :py:meth:`~tqsdk.api.TqApi.get_quote` 接口，在异步代码中可以写为 ``await api.get_quote('SHFE.cu2110')``，代码更加紧凑，可读性更好。
+对于 :py:meth:`~tqsdk.TqApi.get_quote` 接口，在异步代码中可以写为 ``await api.get_quote('SHFE.cu2110')``，代码更加紧凑，可读性更好。
 
 示例代码如下::
 

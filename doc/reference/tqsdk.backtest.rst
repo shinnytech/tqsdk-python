@@ -1,7 +1,6 @@
 .. _tqsdk.backtest:
 
-tqsdk.backtest - 策略回测
+tqsdk.TqBacktest - 策略回测
 ------------------------------------------------------------------
-.. automodule:: tqsdk.backtest
-    :members: TqBacktest
-
+.. autoclass:: tqsdk.TqBacktest
+    :members:

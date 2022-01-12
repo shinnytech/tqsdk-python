@@ -39,6 +39,7 @@ class TqAuth(object):
         self._access_token = ""
         self._refresh_token = ""
         self._auth_id = ""
+        self._mode = "real"  # 行情模式 real bt
         self._grants = {
             "features": [],
             "accounts": []
@@ -52,6 +53,9 @@ class TqAuth(object):
             "Accept": "application/json",
             "Authorization": "Bearer %s" % self._access_token
         }
+
+    def init(self, mode="real"):
+        self._mode = mode
 
     def login(self):
         self._logger.debug("login", user_name=self._user_name)
@@ -133,6 +137,9 @@ class TqAuth(object):
             raise Exception(f"调用名称服务失败: {response.status_code}, {response.content}")
 
     def _has_feature(self, feature):
+        if self._mode == "bt" and feature in ["futr", "sec", "lmt_idx"]:
+            # 在回测模式中所有用户都有 futr sec lmt_idx 权限
+            return True
         return feature in self._grants["features"]
 
     def _has_account(self, account):

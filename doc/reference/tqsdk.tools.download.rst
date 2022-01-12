@@ -1,7 +1,7 @@
 .. _tqsdk.tools.downloader:
 
-tqsdk.tools.downloader - 数据下载工具
+tqsdk.tools.DataDownloader - 数据下载工具
 ------------------------------------------------------------------
-.. automodule:: tqsdk.tools.downloader
+.. autoclass:: tqsdk.tools.DataDownloader
     :members:
 

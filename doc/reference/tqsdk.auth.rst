@@ -1,7 +1,7 @@
 .. _tqsdk.auth:
 
-tqsdk.auth - 用户认证类
+tqsdk.TqAuth - 用户认证类
 ------------------------------------------------------------------
-.. automodule:: tqsdk.auth
+.. autoclass:: tqsdk.TqAuth
     :members:
 

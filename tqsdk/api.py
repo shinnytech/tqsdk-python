@@ -27,6 +27,7 @@ import platform
 import re
 import sys
 import time
+import warnings
 from datetime import datetime, date, timedelta
 from typing import Union, List, Any, Optional, Coroutine, Callable, Tuple
 
@@ -87,6 +88,9 @@ from tqsdk.tafunc import get_dividend_df, get_dividend_factor
 from .__version__ import __version__
 
 
+UnionTradeable = Union[TqAccount, TqKq, TqKqStock, TqSim, TqSimStock]
+
+
 class TqApi(TqBaseApi):
     """
     天勤接口及数据管理类
@@ -94,56 +98,57 @@ class TqApi(TqBaseApi):
     通常情况下, 一个线程中 **应该只有一个** TqApi的实例, 它负责维护网络连接, 接收行情及账户数据, 并在内存中维护业务数据截面
     """
 
-    def __init__(self, account: Union[TqMultiAccount, TqAccount, TqKq, TqKqStock, TqSim, TqSimStock, None] = None,
-                 auth: Union[TqAuth, str, None] = None, url: Optional[str] = None,
-                 backtest: Union[TqBacktest, TqReplay, None] = None, web_gui: Union[bool, str] = False, debug: Union[bool, str, None] = False,
+    def __init__(self, account: Optional[Union[TqMultiAccount, UnionTradeable]] = None, auth: Union[TqAuth, str, None] = None,
+                 url: Optional[str] = None, backtest: Union[TqBacktest, TqReplay, None] = None,
+                 web_gui: Union[bool, str] = False, debug: Union[bool, str, None] = False,
                  loop: Optional[asyncio.AbstractEventLoop] = None, disable_print: bool = False, _stock: bool = True,
                  _ins_url=None, _md_url=None, _td_url=None) -> None:
         """
         创建天勤接口实例
 
         Args:
-            account (None/TqAccount/TqKq/TqKqStock/TqSim): [可选]交易账号:
-                * None: 账号将根据环境变量决定, 默认为 :py:class:`~tqsdk.tradeable.sim.tqsim.TqSim`
+            account (None/TqAccount/TqKq/TqKqStock/TqSim/TqSimStock/TqMultiAccount): [可选]交易账号:
+                * None: 账号将根据环境变量决定, 默认为 :py:class:`~tqsdk.TqSim`
 
-                * :py:class:`~tqsdk.tradeable.account.tqaccount.TqAccount` : 使用实盘账号, 直连行情和交易服务器, 需提供期货公司/帐号/密码
+                * :py:class:`~tqsdk.TqAccount` : 使用实盘账号, 直连行情和交易服务器, 需提供期货公司/帐号/密码
 
-                * :py:class:`~tqsdk.tradeable.account.tqkq.TqKq` : 使用快期账号登录，直连行情和快期模拟交易服务器
+                * :py:class:`~tqsdk.TqKq` : 使用快期账号登录，直连行情和快期模拟交易服务器
 
-                * :py:class:`~tqsdk.tradeable.account.tqkq.TqKqStock` : 使用快期账号登录，直连行情和快期股票模拟交易服务器
+                * :py:class:`~tqsdk.TqKqStock` : 使用快期账号登录，直连行情和快期股票模拟交易服务器
 
-                * :py:class:`~tqsdk.tradeable.sim.tqsim.TqSim` : 使用 TqApi 自带的内部模拟账号
+                * :py:class:`~tqsdk.TqSim` : 使用 TqApi 自带的内部模拟账号
 
-                * :py:class:`~tqsdk.multiaccount.TqMultiAccount` :\
-                多账户列表，列表中支持`~tqsdk.tradeable.account.tqaccount.TqAccount`、`~tqsdk.tradeable.account.tqkq.TqKq`、\
-                `~tqsdk.tradeable.account.tqkq.TqKqStock` 和 `~tqsdk.tradeable.sim.tqsim.TqSim` 中的 0 至 N 个或者组合
+                * :py:class:`~tqsdk.TqSimStock` : 使用 TqApi 自带的内部股票模拟账号
+
+                * :py:class:`~tqsdk.TqMultiAccount` : 多账户列表，列表中支持 :py:class:`~tqsdk.TqAccount`、:py:class:`~tqsdk.TqKq`、\
+                  :py:class:`~tqsdk.TqKqStock`、:py:class:`~tqsdk.TqSim` 和 :py:class:`~tqsdk.TqSimStock` 中的 0 至 N 个或者组合
 
             auth (TqAuth/str): [必填]用户信易账户:
-                * :py:class:`~tqsdk.auth.TqAuth` : 添加信易账户类，例如：TqAuth("tianqin@qq.com", "123456")
+                * :py:class:`~tqsdk.TqAuth` : 添加信易账户类，例如：TqAuth("tianqin@qq.com", "123456")
 
                 * str: 用户权限认证对象为天勤用户论坛的邮箱和密码，中间以英文逗号分隔，例如： "tianqin@qq.com,123456"\
                 信易账户注册链接 https://www.shinnytech.com/register-intro/
 
             url (str): [可选]指定服务器的地址
-                * 当 account 为 :py:class:`~tqsdk.tradeable.account.tqaccount.TqAccount`、:py:class:`~tqsdk.multiaccount.TqMultiAccount` 类型时, 可以通过该参数指定交易服务器地址,\
+                * 当 account 为 :py:class:`~tqsdk.TqAccount`、:py:class:`~tqsdk.TqMultiAccount` 类型时, 可以通过该参数指定交易服务器地址,\
                 默认使用对应账户的交易服务地址，行情地址该信易账户对应的行情服务地址
 
-                * 当 account 为 :py:class:`~tqsdk.tradeable.sim.tqsim.TqSim` 类型时, 可以通过该参数指定行情服务器地址, 默认使用该信易账户对应的行情服务地址
+                * 当 account 为 :py:class:`~tqsdk.TqSim`、:py:class:`~tqsdk.TqSimStock` 类型时, 可以通过该参数指定行情服务器地址, 默认使用该信易账户对应的行情服务地址
 
-            backtest (TqBacktest/TqReplay): [可选] 进入时光机，此时强制要求 account 类型为 :py:class:`~tqsdk.tradeable.sim.tqsim.TqSim`
-                * :py:class:`~tqsdk.backtest.TqBacktest` : 传入 TqBacktest 对象，进入回测模式 \
+            backtest (TqBacktest/TqReplay): [可选] 进入时光机，此时强制要求 account 类型为 :py:class:`~tqsdk.TqSim`
+                * :py:class:`~tqsdk.TqBacktest` : 传入 TqBacktest 对象，进入回测模式 \
                 在回测模式下, TqBacktest 连接 wss://backtest.shinnytech.com/t/md/front/mobile 接收行情数据, \
                 由 TqBacktest 内部完成回测时间段内的行情推进和 K 线、Tick 更新.
 
-                * :py:class:`~tqsdk.backtest.TqReplay` : 传入 TqReplay 对象, 进入复盘模式 \
+                * :py:class:`~tqsdk.TqReplay` : 传入 TqReplay 对象, 进入复盘模式 \
                 在复盘模式下, TqReplay 会在服务器申请复盘日期的行情资源, 由服务器推送复盘日期的行情.
 
             debug(bool/str): [可选] 是否将调试信息输出到指定文件，默认值为 False。
                 * None [默认]: 根据账户情况不同，默认值的行为不同。
 
-                    + 使用 :py:class:`~tqsdk.tradeable.account.tqaccount.TqAccount` 或者 :py:class:`~tqsdk.tradeable.account.tqkq.TqKq` 实盘账户时，调试信息输出到指定文件夹 `~/.tqsdk/logs`。
+                    + 当有以下账户之一时，:py:class:`~tqsdk.TqAccount`、:py:class:`~tqsdk.TqKq`、:py:class:`~tqsdk.TqKqStock` 账户时，调试信息输出到指定文件夹 `~/.tqsdk/logs`。
 
-                    + 使用 :py:class:`~tqsdk.tradeable.sim.tqsim.TqSim` 模拟账户时，调试信息不输出。
+                    + 其他情况，即仅有本地模拟账户 :py:class:`~tqsdk.TqSim`、:py:class:`~tqsdk.TqSimStock` 时，调试信息不输出。
 
                 * True: 调试信息会输出到指定文件夹 `~/.tqsdk/logs`。
 
@@ -1123,8 +1128,7 @@ class TqApi(TqBaseApi):
     # ----------------------------------------------------------------------
     def insert_order(self, symbol: str, direction: str, offset: str = "", volume: int = 0,
                      limit_price: Union[str, float, None] = None, advanced: Optional[str] = None,
-                     order_id: Optional[str] = None,
-                     account: Optional[Union[TqAccount, TqKq, TqKqStock, TqSim]] = None) -> Order:
+                     order_id: Optional[str] = None, account: Optional[UnionTradeable] = None) -> Order:
         """
         发送下单指令. **注意: 指令将在下次调用** :py:meth:`~tqsdk.api.TqApi.wait_update` **时发出**
 
@@ -1318,7 +1322,7 @@ class TqApi(TqBaseApi):
             return order
 
     def _get_insert_order_future_pack(self, symbol, direction, offset, volume, limit_price, advanced, order_id,
-                               account: Optional[Union[TqAccount, TqKq, TqSim]] = None):
+                                      account: Optional[UnionTradeable] = None):
         quote = self._data["quotes"][symbol]
         (exchange_id, instrument_id) = symbol.split(".", 1)
         msg = {
@@ -1362,7 +1366,7 @@ class TqApi(TqBaseApi):
         return msg
 
     def _get_insert_order_stock_pack(self, symbol, direction, volume, limit_price, order_id,
-                                     account: Optional[Union[TqAccount, TqKq, TqSim]] = None):
+                                     account: Optional[UnionTradeable] = None):
         (exchange_id, instrument_id) = symbol.split(".", 1)
         msg = {
             "aid": "insert_order",
@@ -1382,7 +1386,7 @@ class TqApi(TqBaseApi):
         return msg
 
     async def _insert_order_async(self, symbol, direction, offset, volume, limit_price, advanced, order_id,
-                                  account: Optional[Union[TqAccount, TqKq, TqSim]] = None):
+                                  account: Optional[UnionTradeable] = None):
         await self._ensure_symbol_async(symbol)  # 合约是否存在
         self._auth._has_td_grants(symbol)  # 用户是否有该合约交易权限
         quote = self._data["quotes"][symbol]
@@ -1393,15 +1397,14 @@ class TqApi(TqBaseApi):
         self._send_pack(pack)
 
     # ----------------------------------------------------------------------
-    def cancel_order(self, order_or_order_id: Union[str, Order],
-                     account: Optional[Union[TqAccount, TqKq, TqSim]] = None) -> None:
+    def cancel_order(self, order_or_order_id: Union[str, Order], account: Optional[UnionTradeable] = None) -> None:
         """
         发送撤单指令. **注意: 指令将在下次调用** :py:meth:`~tqsdk.api.TqApi.wait_update` **时发出**
 
         Args:
             order_or_order_id (str/ :py:class:`~tqsdk.objs.Order` ): 拟撤委托单或单号
 
-            account (TqAccount/TqKq/TqKqStock/TqSim): [可选]指定发送撤单指令的账户实例, 多账户模式下, 该参数必须指定
+            account (TqAccount/TqKq/TqKqStock/TqSim/TqSimStock): [可选]指定发送撤单指令的账户实例, 多账户模式下, 该参数必须指定
 
         Example1::
 
@@ -1474,12 +1477,12 @@ class TqApi(TqBaseApi):
         self._send_pack(msg)
 
     # ----------------------------------------------------------------------
-    def get_account(self, account: Optional[Union[TqAccount, TqKq, TqKqStock, TqSim]] = None) -> Account:
+    def get_account(self, account: Optional[UnionTradeable] = None) -> Account:
         """
         获取用户账户资金信息
 
         Args:
-            account (TqAccount/TqKq/TqKqStock/TqSim): [可选]指定获取账户资金信息的账户实例, 多账户模式下, 该参数必须指定
+            account (TqAccount/TqKq/TqKqStock/TqSim/TqSimStock): [可选]指定获取账户资金信息的账户实例, 多账户模式下, 该参数必须指定
 
         Returns:
             :py:class:`~tqsdk.objs.Account` / :py:class:`~tqsdk.objs.SecurityAccount`: 返回一个账户对象引用. 其内容将在 :py:meth:`~tqsdk.api.TqApi.wait_update` 时更新.
@@ -1526,15 +1529,14 @@ class TqApi(TqBaseApi):
                         prototype["trade"]["*"]["accounts"]["@"])
 
     # ----------------------------------------------------------------------
-    def get_position(self, symbol: Optional[str] = None, account: Optional[Union[TqAccount, TqKq, TqKqStock, TqSim]] = None) -> \
-            Union[Position, Entity]:
+    def get_position(self, symbol: Optional[str] = None, account: Optional[UnionTradeable] = None) -> Union[Position, Entity]:
         """
         获取用户持仓信息
 
         Args:
             symbol (str): [可选]合约代码, 不填则返回所有持仓
 
-            account (TqAccount/TqKq/TqKqStock/TqSim): [可选]指定获取持仓信息的账户实例, 多账户模式下, 必须指定
+            account (TqAccount/TqKq/TqKqStock/TqSim/TqSimStock): [可选]指定获取持仓信息的账户实例, 多账户模式下, 必须指定
 
         Returns:
             :py:class:`~tqsdk.objs.Position` / :py:class:`~tqsdk.objs.SecurityPosition`: 当指定了 symbol 时, 返回一个持仓对象引用.
@@ -1595,15 +1597,14 @@ class TqApi(TqBaseApi):
         return _get_obj(self._data, ["trade", self._account._get_account_key(account), "positions"])
 
     # ----------------------------------------------------------------------
-    def get_order(self, order_id: Optional[str] = None, account: Optional[Union[TqAccount, TqKq, TqKqStock, TqSim]] = None) -> \
-            Union[Order, Entity]:
+    def get_order(self, order_id: Optional[str] = None, account: Optional[UnionTradeable] = None) -> Union[Order, Entity]:
         """
         获取用户委托单信息
 
         Args:
             order_id (str): [可选]单号, 不填单号则返回所有委托单
 
-            account (TqAccount/TqKq/TqKqStock/TqSim): [可选]指定获取委托单号的账户实例, 多账户模式下, 该参数必须指定
+            account (TqAccount/TqKq/TqKqStock/TqSim/TqSimStock): [可选]指定获取委托单号的账户实例, 多账户模式下, 该参数必须指定
 
         Returns:
             :py:class:`~tqsdk.objs.Order` / :py:class:`~tqsdk.objs.SecurityOrder` : 当指定了order_id时, 返回一个委托单对象引用. \
@@ -1658,15 +1659,14 @@ class TqApi(TqBaseApi):
         return _get_obj(self._data, ["trade", self._account._get_account_key(account), "orders"])
 
     # ----------------------------------------------------------------------
-    def get_trade(self, trade_id: Optional[str] = None, account: Optional[Union[TqAccount, TqKq, TqKqStock, TqSim]] = None) -> \
-            Union[Trade, Entity]:
+    def get_trade(self, trade_id: Optional[str] = None, account: Optional[UnionTradeable] = None) -> Union[Trade, Entity]:
         """
         获取用户成交信息
 
         Args:
             trade_id (str): [可选]成交号, 不填成交号则返回所有委托单
 
-            account (TqAccount/TqKq/TqKqStock/TqSim): [可选]指定获取用户成交信息的账户实例, 多账户模式下, 该参数必须指定
+            account (TqAccount/TqKq/TqKqStock/TqSim/TqSimStock): [可选]指定获取用户成交信息的账户实例, 多账户模式下, 该参数必须指定
 
         Returns:
             :py:class:`~tqsdk.objs.Trade` / :py:class:`~tqsdk.objs.SecurityTrade`: 当指定了trade_id时, 返回一个成交对象引用. \
@@ -1704,8 +1704,8 @@ class TqApi(TqBaseApi):
         return _get_obj(self._data, ["trade", self._account._get_account_key(account), "trades"])
 
     # ----------------------------------------------------------------------
-    def get_risk_management_rule(self, exchange_id: Optional[str] = None,
-                                 account: Optional[Union[TqAccount, TqKq, TqSim]] = None) -> Union[RiskManagementRule, Entity]:
+    def get_risk_management_rule(self, exchange_id: Optional[str] = None, account: Optional[UnionTradeable] = None) -> \
+            Union[RiskManagementRule, Entity]:
         """
         获取账户风控统计规则
 
@@ -1742,7 +1742,7 @@ class TqApi(TqBaseApi):
     def set_risk_management_rule(self, exchange_id: str, enable: bool, count_limit: int = None, insert_order_count_limit: Optional[int] = None,
                                  cancel_order_count_limit: Optional[int] = None, cancel_order_percent_limit: Optional[float] = None,
                                  trade_units_limit: Optional[int] = None, trade_position_ratio_limit: Optional[float] = None,
-                                 account: Optional[Union[TqAccount, TqKq, TqSim]] = None):
+                                 account: Optional[UnionTradeable] = None):
         """
         设置交易所风控规则. **注意: 指令将在下次调用** :py:meth:`~tqsdk.api.TqApi.wait_update` **时发出**
         调用本函数时，没有填写的可选参数会被服务器设置为默认值。
@@ -1820,8 +1820,8 @@ class TqApi(TqBaseApi):
         return rule
 
     # ----------------------------------------------------------------------
-    def get_risk_management_data(self, symbol: Optional[str] = None, account: Optional[Union[TqAccount, TqKq, TqSim]] = None
-                                 ) -> Union[RiskManagementData, Entity]:
+    def get_risk_management_data(self, symbol: Optional[str] = None, account: Optional[UnionTradeable] = None) -> \
+            Union[RiskManagementData, Entity]:
         """
         获取账户风控统计数据
 
@@ -2755,7 +2755,7 @@ class TqApi(TqBaseApi):
             api = TqApi(auth=TqAuth("信易账户", "账户密码"))
 
             ls = api.query_options("SSE.510050", option_class="CALL", expired=False)  # 所有未下市上交所上证50etf期权
-            df = api.query_symbol_info(symbol_list)
+            df = api.query_symbol_info(ls)
             print(df.to_string())
             api.close()
 
@@ -2764,7 +2764,7 @@ class TqApi(TqBaseApi):
             from tqsdk import TqApi, TqAuth
             api = TqApi(auth=TqAuth("信易账户", "账户密码"))
 
-            ls = api.query_options(quote, option_class="CALL", expired=False)
+            ls = api.query_options("SSE.510050", option_class="CALL", expired=False)
 
             # 在异步代码中使用
             async def show_symbols_info(symbols):
@@ -3100,8 +3100,7 @@ class TqApi(TqBaseApi):
 
         # TqWebHelper 初始化可能会修改 self._account、self._backtest，所以在这里才初始化 logger
         # 在此之前使用 self._logger 不会打印日志
-        if not self._logger.handlers and (self._debug or
-                                          (self._account._has_tq_account and self._debug is not False )):
+        if not self._logger.handlers and (self._debug or (self._account._has_tq_account and self._debug is not False)):
             log_name = self._debug if isinstance(self._debug, str) else _get_log_name()
             fh = logging.FileHandler(filename=log_name)
             fh.setFormatter(JSONFormatter())
@@ -3114,6 +3113,7 @@ class TqApi(TqBaseApi):
         if self._auth is None:
             raise Exception("请输入 auth （信易账户）参数，信易账户是使用 tqsdk 的前提，如果没有请点击注册，注册地址：https://account.shinnytech.com/。")
         else:
+            self._auth.init(mode="bt" if isinstance(self._backtest, TqBacktest) else "real")
             self._auth.login()  # tqwebhelper 有可能会设置 self._auth
 
         # 在信易账户登录之后，对于账户的基本信息校验及更新
@@ -3600,7 +3600,6 @@ class TqApi(TqBaseApi):
 
     async def _notify_watcher(self):
         """将从服务器收到的通知打印出来"""
-        notify_logger = self._logger.getChild("Notify")
         processed_notify = set()
         notify = _get_obj(self._data, ["notify"])
         async with self.register_update_notify(notify) as update_chan:
@@ -3613,7 +3612,8 @@ class TqApi(TqBaseApi):
                         level = getattr(logging, notify[n]["level"])
                     except (AttributeError, KeyError):
                         level = logging.INFO
-                    self._print(f"通知: {notify[n]['content']}", level=level)
+                    account_name = notify[n].get('_account_name', '')
+                    self._print(f"通知 {account_name}: {notify[n]['content']}", level=level)
 
     async def _fetch_msg(self):
         while not self._pending_diffs:
@@ -3935,6 +3935,10 @@ class TqApi(TqBaseApi):
 
 
 print("在使用天勤量化之前，默认您已经知晓并同意以下免责条款，如果不同意请立即停止使用：https://www.shinnytech.com/blog/disclaimer/", file=sys.stderr)
+
+if platform.python_version().startswith('3.6'):
+    warnings.warn("TqSdk 计划在 20220601 之后放弃支持 Python 3.6 版本，请尽快升级 Python 版本。", FutureWarning, stacklevel=3)
+
 
 try:
     res = requests.get("https://shinny-tqsdk.oss-cn-shanghai.aliyuncs.com/tqsdk_metadata.json", timeout=10)
