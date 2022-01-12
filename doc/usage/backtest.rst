@@ -10,7 +10,7 @@
 
 执行策略回测
 -------------------------------------------------
-使用 TqSdk 编写的策略程序，不需要修改策略代码，只需要在创建 api 实例时给backtest参数传入 :py:class:`~tqsdk.backtest.TqBacktest` , 策略就会进入历史回测模式::
+使用 TqSdk 编写的策略程序，不需要修改策略代码，只需要在创建 api 实例时给backtest参数传入 :py:class:`~tqsdk.TqBacktest` , 策略就会进入历史回测模式::
 
   from datetime import date
   from tqsdk import TqApi, TqAuth, TqSim, TqBacktest
@@ -117,7 +117,7 @@
 -------------------------------------------------
 在天勤中回测时，除了期货、期权合约以外，我们还支持使用 **指数** 进行回测和在回测中交易，指数合约代码格式参见 :ref:`mddatas`
 
-策略回测时使用内置模拟账户 :py:class:`~tqsdk.sim.TqSim` , 默认回测资金为1000w , 如果需要修改初始回测资金，只需给 TqSim 传入需要设定的金额即可::
+策略回测时使用内置模拟账户 :py:class:`~tqsdk.TqSim` , 默认回测资金为1000w , 如果需要修改初始回测资金，只需给 TqSim 传入需要设定的金额即可::
 
   from datetime import date
   from tqsdk import TqApi, TqAuth, TqSim, TqBacktest

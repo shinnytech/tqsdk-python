@@ -1,7 +1,7 @@
 .. _tqsdk.multiaccount:
 
-tqsdk.multiaccount - 多账户
+tqsdk.TqMultiAccount - 多账户
 ------------------------------------------------------------------
-.. automodule:: tqsdk.multiaccount
+.. autoclass:: tqsdk.TqMultiAccount
     :members:
 

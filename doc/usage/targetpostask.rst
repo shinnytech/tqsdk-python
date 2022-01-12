@@ -3,7 +3,7 @@
 交易辅助工具
 ====================================================
 
-:py:class:`~tqsdk.lib.TargetPosTask` 是按照目标持仓手数自动调整 账户持仓中某合约的净持仓 的工具, 使用示例如下::
+:py:class:`~tqsdk.TargetPosTask` 是按照目标持仓手数自动调整 账户持仓中某合约的净持仓 的工具, 使用示例如下::
 
     target_pos = TargetPosTask(api, "SHFE.rb1901")      #创建一个自动调仓工具, 负责调整SHFE.rb1901的持仓
     target_pos.set_target_volume(5)                     #要求自动调仓工具将持仓调整到5手
@@ -72,5 +72,5 @@
 
 
 
-:py:class:`~tqsdk.lib.InsertOrderUntilAllTradedTask` 是追价下单task, 该task会在行情变化后自动撤单重下，直到全部成交.
+:py:class:`~tqsdk.InsertOrderUntilAllTradedTask` 是追价下单task, 该task会在行情变化后自动撤单重下，直到全部成交.
 

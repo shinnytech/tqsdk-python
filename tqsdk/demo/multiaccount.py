@@ -16,18 +16,18 @@ with TqApi(TqMultiAccount([tqact, sim, kq]), auth=TqAuth("信易账户", "账户
     while order1.status != "FINISHED" or order2.status != "FINISHED":
         api.wait_update()
     # 分别获取账户资金信息
-    account_info1 = api.get_account(account=tqact)
-    account_info2 = api.get_account(account=sim)
-    account_info3 = api.get_account(account=kq)
+    account_info1 = tqact.get_account()
+    account_info2 = sim.get_account()
+    account_info3 = kq.get_account()
     # 分别获取账户持仓信息
-    position1 = api.get_position("DCE.m2101", account=tqact)
-    position2 = api.get_position(account=sim)
-    position3 = api.get_position(account=kq)
+    position1 = tqact.get_position("DCE.m2101", )
+    position2 = sim.get_position()
+    position3 = kq.get_position()
     # 分别获取账户委托数据
-    orders1 = api.get_order(order_id=order1.order_id, account=tqact)
-    orders2 = api.get_position(account=sim)
-    orders3 = api.get_position(account=kq)
+    orders1 = tqact.get_order(order_id=order1.order_id, )
+    orders2 = sim.get_position()
+    orders3 = kq.get_position()
     # 分别获取账户成交数据
-    trades1 = api.get_trade(account=tqact)
-    trades2 = api.get_trade(account=sim)
-    trades3 = api.get_trade(account=kq)
+    trades1 = tqact.get_trade()
+    trades2 = sim.get_trade()
+    trades3 = kq.get_trade()

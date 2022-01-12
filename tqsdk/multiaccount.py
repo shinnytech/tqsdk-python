@@ -37,7 +37,7 @@ class TqMultiAccount(object):
 
         Example1::
 
-            from tqsdk import TqApi, TqMultiAccount
+            from tqsdk import TqApi, TqAccount, TqMultiAccount
 
             account1 = TqAccount("H海通期货", "123456", "123456")
             account2 = TqAccount("H宏源期货", "654321", "123456")
@@ -49,13 +49,13 @@ class TqMultiAccount(object):
                  api.wait_update()
             # 分别获取账户资金信息
             account_info1 = account1.get_account()
-            account_info2 = account1.get_account()
+            account_info2 = account2.get_account()
             api.close()
 
         Example2::
 
             # 多账户模式下使用 TargetPosTask
-            from tqsdk import TqApi, TqMultiAccount, TqAuth, TargetPosTask
+            from tqsdk import TqApi, TqAccount, TqMultiAccount, TqAuth, TargetPosTask
 
             account1 = TqAccount("H海通期货", "123456", "123456")
             account2 = TqAccount("H宏源期货", "654321", "123456")

@@ -1,7 +1,7 @@
 .. _tqsdk.account:
 
-tqsdk.account - 实盘账户类
+tqsdk.TqAccount - 实盘账户类
 ------------------------------------------------------------------
-.. automodule:: tqsdk.tradeable.otg.tqaccount
+.. autoclass:: tqsdk.TqAccount
     :members:
     :inherited-members:

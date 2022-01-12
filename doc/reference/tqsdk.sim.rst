@@ -1,16 +1,16 @@
 .. _tqsdk.sim:
 
-tqsdk.tqsim - 本地模拟交易
+tqsdk.TqSim - 本地模拟交易
 ------------------------------------------------------------------
-.. autoclass:: tqsdk.tradeable.sim.tqsim.TqSim
+.. autoclass:: tqsdk.TqSim
     :members:
     :inherited-members:
 
 
 .. _tqsdk.sim_stock:
 
-tqsdk.tqsim_stock - 本地股票模拟交易
+tqsdk.TqSimStock - 本地股票模拟交易
 ------------------------------------------------------------------
-.. autoclass:: tqsdk.tradeable.sim.tqsim_stock.TqSimStock
+.. autoclass:: tqsdk.TqSimStock
     :members:
     :inherited-members:

@@ -190,7 +190,7 @@ VNPY按照事件回调模型设计, 使用 CtaTemplate 的 on_xxx 回调函数�
       self.put_event()
  
 
-TqSdk则不使用事件回调机制. :py:meth:`~tqsdk.api.TqApi.wait_update` 函数设计用来获取任意数据更新, 像这样::
+TqSdk则不使用事件回调机制. :py:meth:`~tqsdk.TqApi.wait_update` 函数设计用来获取任意数据更新, 像这样::
 
   api = TqApi(auth=TqAuth("信易账户", "账户密码"))
   ks = api.get_kline_serial("SHFE.cu1901", 60)
@@ -200,7 +200,7 @@ TqSdk则不使用事件回调机制. :py:meth:`~tqsdk.api.TqApi.wait_update` 函
     print(ks.close.iloc[-1])      # <- 最后一根K线的收盘价
 
 
-一次 wait_update 可能更新多个实体, 在这种情况下, :py:meth:`~tqsdk.api.TqApi.is_changing` 被用来判断某个实体是否有变更::
+一次 wait_update 可能更新多个实体, 在这种情况下, :py:meth:`~tqsdk.TqApi.is_changing` 被用来判断某个实体是否有变更::
 
   api = TqApi(auth=TqAuth("信易账户", "账户密码"))
   q = api.get_quote("SHFE.cu1901")

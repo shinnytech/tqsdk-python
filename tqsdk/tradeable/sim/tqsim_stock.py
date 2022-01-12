@@ -65,12 +65,12 @@ class TqSimStock(BaseSim, StockMixin):
         Example3::
 
             # 在回测模式下，同时使用 TqSim 交易期货，TqSimStock 交易股票
+
+            tqsim_future = TqSim()
+            tqsim_stock = TqSimStock()
             api = TqApi(account=TqMultiAccount([tqsim_future, tqsim_stock]),
                         backtest=TqBacktest(start_dt=datetime(2021, 7, 12), end_dt=datetime(2021, 7, 14)),
                         auth=TqAuth("信易账户", "账户密码"))
-
-            future_account = api.get_account(tqsim_future)
-            stock_account = api.get_account(tqsim_stock)
 
             future_quote = api.get_quote("SHFE.cu2112")
             future_stock = api.get_quote("SSE.603666")
@@ -83,6 +83,11 @@ class TqSimStock(BaseSim, StockMixin):
             order2 = api.insert_order(symbol="SSE.603666", direction="BUY", volume=300, account=tqsim_stock)
             while order1.status != 'FINISHED' or order2.status != 'FINISHED':
                 api.wait_update()
+
+            future_account = tqsim_future.get_account()
+            stock_account = tqsim_stock.get_account()
+            # 打印账户当前可用资金
+            print(future_account.available, stock_account.available)
 
             # 等待行情回测到第二天
             while datetime.strptime(future_stock.datetime, "%Y-%m-%d %H:%M:%S.%f") < datetime(2021, 7, 13, 10, 30):
@@ -97,6 +102,9 @@ class TqSimStock(BaseSim, StockMixin):
                 while True:
                     api.wait_update()
             except BacktestFinished:
+                # 打印回测时间内账户交易信息统计结果
+                print(tqsim_future.tqsdk_stat)
+                print(tqsim_stock.tqsdk_stat)
                 api.close()
 
         """

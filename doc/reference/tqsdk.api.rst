@@ -1,7 +1,7 @@
 .. _tqsdk.api:
 
-tqsdk.api - 框架及核心业务
+tqsdk.TqApi - 框架及核心业务
 ------------------------------------------------------------------
-.. automodule:: tqsdk.api
+.. autoclass:: tqsdk.TqApi
     :members:
 

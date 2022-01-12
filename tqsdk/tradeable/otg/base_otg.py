@@ -86,6 +86,11 @@ class BaseOtg(Tradeable):
             else:
                 await self._api_recv_chan.send(pack)  # 有可能是另一个 account 的 rsp_login
         elif chan == self._td_recv_chan:  # 从交易收到的数据包
+            # 收到通知时，在通知里加上 account_name 信息
+            if pack["aid"] == "rtn_data":
+                for data in pack.get('data', []):
+                    for notify_id, notify in data.get('notify', {}).items():
+                        notify['_account_name'] = self._account_name
             self._td_handler(pack)
 
     async def _handle_req_data(self, pack):

@@ -93,7 +93,7 @@ class TargetPosScheduler(object):
             api.close()
         """
         self._api = api
-        self._account = account
+        self._account = api._account._check_valid(account)
 
         # 这些参数直接传给 TargetPosTask，由 TargetPosTask 来检查其合法性
         self._symbol = symbol
@@ -136,7 +136,7 @@ class TargetPosScheduler(object):
                                 await asyncio.gather(target_pos_task._task, return_exceptions=True)
                             break
                 elif target_pos_task:  # 最后一项，如果有 target_pos_task 等待持仓调整完成，否则直接退出
-                    position = self._api.get_position(self._symbol, self._account)
+                    position = self._account.get_position(self._symbol)
                     async for _ in self._api.register_update_notify(position):
                         if position.pos == row['target_pos']:
                             break

@@ -81,7 +81,7 @@ Ctp接口按照事件回调模型设计, 使用 CThostFtdcTraderSpi 的 OnXXX �
     virtual void OnRtnTrade(CThostFtdcTradeField *pTrade);
   }
     
-TqSdk则不使用事件回调机制. :py:meth:`~tqsdk.api.TqApi.wait_update` 函数设计用来获取任意数据更新, 像这样::
+TqSdk则不使用事件回调机制. :py:meth:`~tqsdk.TqApi.wait_update` 函数设计用来获取任意数据更新, 像这样::
 
   api = TqApi(auth=TqAuth("信易账户", "账户密码"))
   x = api.insert_order("SHFE.cu1901", direction="BUY", offset="OPEN", volume=1, limit_price=50000)
@@ -91,7 +91,7 @@ TqSdk则不使用事件回调机制. :py:meth:`~tqsdk.api.TqApi.wait_update` 函
     print(x)                # <- 显示委托单最新状态
 
 
-一次 wait_update 可能更新多个实体, 在这种情况下, :py:meth:`~tqsdk.api.TqApi.is_changing` 被用来判断某个实体是否有变更::
+一次 wait_update 可能更新多个实体, 在这种情况下, :py:meth:`~tqsdk.TqApi.is_changing` 被用来判断某个实体是否有变更::
 
   api = TqApi(auth=TqAuth("信易账户", "账户密码"))
   q = api.get_quote("SHFE.cu1901")

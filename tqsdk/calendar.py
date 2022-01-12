@@ -19,7 +19,8 @@ chinese_holidays_range = None
 def _init_chinese_rest_days(headers=None):
     global rest_days_df, chinese_holidays_range
     if rest_days_df is None:
-        rsp = requests.get("https://files.shinnytech.com/shinny_chinese_holiday.json", timeout=30, headers=headers)
+        url = os.getenv("TQ_CHINESE_HOLIDAY_URL", "https://files.shinnytech.com/shinny_chinese_holiday.json")
+        rsp = requests.get(url, timeout=30, headers=headers)
         chinese_holidays = rsp.json()
         _first_day = date(int(chinese_holidays[0].split('-')[0]), 1, 1)  # 首个日期所在年份的第一天
         _last_day = date(int(chinese_holidays[-1].split('-')[0]), 12, 31)  # 截止日期所在年份的最后一天

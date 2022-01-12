@@ -199,13 +199,13 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
             raise Exception("红枣期货不支持创建 targetpostask、twap、vwap 任务，交易所规定该品种最小开仓手数为大于等于 4 手，这些函数还未支持该规则!")
         super(TargetPosTask, self).__init__()
         self._api = api
-        self._account = account
+        self._account = api._account._check_valid(account)
         self._symbol = symbol
         self._exchange = symbol.split(".")[0]
         self._offset_priority = _check_offset_priority(offset_priority)
         self._min_volume, self._max_volume = _check_volume_limit(min_volume, max_volume)
         self._price = _check_price(price)
-        self._pos = self._api.get_position(self._symbol, account)
+        self._pos = self._account.get_position(self._symbol)
         self._pos_chan = TqChan(self._api, last_only=True)
         self._trade_chan = trade_chan
         self._trade_objs_chan = trade_objs_chan

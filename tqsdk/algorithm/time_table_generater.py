@@ -202,7 +202,7 @@ def vwap_table(api: TqApi, symbol: str, target_pos: int, duration: float,
     if duration % TIME_CELL or duration < 60:
         raise Exception(f"duration {duration} 参数应该为 {TIME_CELL} 的整数倍")
 
-    pos = api.get_position(symbol, account)
+    pos = account.get_position(symbol)
     target_pos = int(target_pos)
     delta_pos = target_pos - pos.pos
     target_volume = abs(delta_pos)  # 总的下单手数

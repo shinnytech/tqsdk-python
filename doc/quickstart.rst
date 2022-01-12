@@ -75,7 +75,7 @@
         api.wait_update()
         print (quote.datetime, quote.last_price)
 
-:py:meth:`~tqsdk.api.TqApi.wait_update` 是一个阻塞函数, 程序在这行上等待, 直到收到数据包才返回.
+:py:meth:`~tqsdk.TqApi.wait_update` 是一个阻塞函数, 程序在这行上等待, 直到收到数据包才返回.
 
 上面这个例子的完整程序请见 :ref:`tutorial-t10` . 你也可以在自己电脑python安装目录的 site_packages/tqsdk/demo 下找到它
 
@@ -111,7 +111,7 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 
     klines = api.get_kline_serial(["SHFE.au1912", "SHFE.au2006"], 5)  # 获取SHFE.au2006向SHFE.au1912对齐的K线
 
-详细使用方法及说明请见 :py:meth:`~tqsdk.api.TqApi.get_kline_serial` 函数说明。
+详细使用方法及说明请见 :py:meth:`~tqsdk.TqApi.get_kline_serial` 函数说明。
 
 到这里为止, 你已经知道了如何获取实时行情和K线数据, 下面一段将介绍如何访问你的交易账户并发送交易指令
 
@@ -119,7 +119,7 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 
 生成图形化界面
 -------------------------------------------------
-如果想要将你订阅的K线或策略图形化显示, 只需在 :py:meth:`~tqsdk.api.TqApi` 中传入参数 web_gui = True即可::
+如果想要将你订阅的K线或策略图形化显示, 只需在 :py:meth:`~tqsdk.TqApi` 中传入参数 web_gui = True即可::
 
         # 引入TqSdk模块
         from tqsdk import TqApi, TqAuth
@@ -203,7 +203,7 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 
 按照目标持仓自动交易
 -------------------------------------------------
-在某些场景中, 我们可能会发现, 自己写代码管理下单撤单是一件很麻烦的事情. 在这种情况下, 你可以使用 :py:class:`tqsdk.lib.TargetPosTask`. 你只需要指定账户中预期应有的持仓手数, TqSdk 会自动通过一系列指令调整仓位直到达成目标. 请看例子::
+在某些场景中, 我们可能会发现, 自己写代码管理下单撤单是一件很麻烦的事情. 在这种情况下, 你可以使用 :py:class:`tqsdk.TargetPosTask`. 你只需要指定账户中预期应有的持仓手数, TqSdk 会自动通过一系列指令调整仓位直到达成目标. 请看例子::
 
 
     # 创建 ni2010 的目标持仓 task，该 task 负责调整 ni2010 的仓位到指定的目标仓位
@@ -247,7 +247,7 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 
 实盘交易
 -------------------------------------------------
-要让策略程序在实盘账号运行, 请在创建TqApi时传入一个 :py:class:`~tqsdk.api.TqAccount` , 填入 期货公司, 账号, 密码 和信易账户信息(使用前请先 import TqAccount)::
+要让策略程序在实盘账号运行, 请在创建TqApi时传入一个 :py:class:`~tqsdk.TqAccount` , 填入 期货公司, 账号, 密码 和信易账户信息(使用前请先 import TqAccount)::
 
   from tqsdk import TqApi, TqAuth, TqAccount
 
@@ -267,7 +267,7 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 
 .. figure:: images/tq_register.png
 
-刚刚注册完成的信易账户的【手机号】/【邮箱地址】/【用户名】和【密码】可以作为 快期模拟 账号，通过 :py:class:`~tqsdk.api.TqKq` 对 auth 传入参数进行登录，这个 快期模拟 账户在快期APP、快期V3 pro 和天勤量化上是互通的
+刚刚注册完成的信易账户的【手机号】/【邮箱地址】/【用户名】和【密码】可以作为 快期模拟 账号，通过 :py:class:`~tqsdk.TqKq` 对 auth 传入参数进行登录，这个 快期模拟 账户在快期APP、快期V3 pro 和天勤量化上是互通的
 
 快期模拟的资金可以通过快期APP、快期专业版的模拟银行进行出入金::
 
