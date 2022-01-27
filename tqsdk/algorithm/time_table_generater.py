@@ -6,6 +6,7 @@ from datetime import datetime, time, timedelta
 from typing import Optional, Union
 
 import numpy as np
+import pandas as pd
 from pandas import DataFrame
 
 from tqsdk.api import TqApi
@@ -126,10 +127,11 @@ def twap_table(api: TqApi, symbol: str, target_pos: int, duration: int, min_volu
     for index, volume in enumerate(volume_list):
         assert interval_list[index] >= 3
         active_interval = 2
-        time_table = time_table.append([
+        append_time_table = pd.DataFrame([
             {"interval": interval_list[index] - active_interval, "volume": volume, "price": "PASSIVE"},
             {"interval": active_interval, "volume": 0, "price": "ACTIVE"}
-        ], ignore_index=True)
+        ])
+        time_table = pd.concat([time_table, append_time_table], ignore_index=True)
     time_table['volume'] = time_table['volume'].mul(-1 if delta_pos < 0 else 1)
     time_table['target_pos'] = time_table['volume'].cumsum()
     time_table['target_pos'] = time_table['target_pos'].add(pos.pos)
@@ -257,10 +259,11 @@ def vwap_table(api: TqApi, symbol: str, target_pos: int, duration: float,
         volume = round(target_volume * (value / percent_left))
         volume_left -= volume
         percent_left -= value
-        time_table = time_table.append([
+        append_time_table = pd.DataFrame([
             {"interval": TIME_CELL - 2, "volume": volume, "price": "PASSIVE"},
             {"interval": 2, "volume": 0, "price": "ACTIVE"}
-        ], ignore_index=True)
+        ])
+        time_table = pd.concat([time_table, append_time_table], ignore_index=True)
 
     time_table['volume'] = time_table['volume'].mul(np.sign(delta_pos))
     time_table['target_pos'] = time_table['volume'].cumsum()

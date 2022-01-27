@@ -174,25 +174,6 @@ backtest - 回测
 .. literalinclude:: ../../tqsdk/demo/tutorial/backtest.py
   :language: python
 
-
-.. _tutorial-replay:
-
-replay - 指定日期行情复盘
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-.. literalinclude:: ../../tqsdk/demo/tutorial/replay.py
-  :language: python
-
-
-.. _tutorial-replay2:
-
-replay2 - 指定日期行情复盘并策略交易
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-.. literalinclude:: ../../tqsdk/demo/tutorial/replay2.py
-  :language: python
-
-
 .. _tutorial-downloader:
 
 downloader - 下载数据

@@ -240,7 +240,9 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 
 这样, 程序运行时就会按照 TqBacktest 指定的时间范围进行模拟交易测试, 并输出测试结果.
 
-关于策略程序回测的详细信息, 请见 :ref:`backtest`
+此外 TqSdk 同时还支持股票的回测交易，请见 :ref:`security_backtest`
+
+更多关于策略程序回测的详细信息, 请见 :ref:`backtest`
 
 
 .. _real_trading:

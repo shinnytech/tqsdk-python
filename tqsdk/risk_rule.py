@@ -26,6 +26,10 @@ class TqRiskRule(object):
     def _on_insert_order(self, pack):
         pass
 
+    @abstractmethod
+    def _on_settle(self):
+        pass
+
 
 class TqRuleOpenCountsLimit(TqRiskRule):
     """
@@ -96,6 +100,10 @@ class TqRuleOpenCountsLimit(TqRiskRule):
             symbol = pack["exchange_id"] + "." + pack["instrument_id"]
             if pack["offset"] == "OPEN" and symbol in self.symbol_list:
                 self.data[symbol] += 1
+
+    def _on_settle(self):
+        for k in self.data.keys():
+            self.data[k] = 0
 
 
 class TqRuleOpenVolumesLimit(TqRiskRule):
@@ -188,6 +196,10 @@ class TqRuleOpenVolumesLimit(TqRiskRule):
             if pack["offset"] == "OPEN" and symbol in self.symbol_list:
                 self.data[symbol] += pack["volume"]
 
+    def _on_settle(self):
+        for k in self.data.keys():
+            self.data[k] = 0
+
 
 class TqRuleAccOpenVolumesLimit(TqRiskRule):
     """
@@ -267,3 +279,6 @@ class TqRuleAccOpenVolumesLimit(TqRiskRule):
         if pack['account_key'] == self._account_key and symbol in self.symbol_list:  # 当前账户下单
             if pack["offset"] == "OPEN":  # 开仓单把手数累加
                 self.open_volumes += pack['volume']
+
+    def _on_settle(self):
+        self.open_volumes = 0

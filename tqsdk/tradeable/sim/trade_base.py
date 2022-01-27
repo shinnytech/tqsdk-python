@@ -8,7 +8,7 @@ from abc import abstractmethod
 from datetime import datetime
 from typing import Callable
 
-from tqsdk.datetime import _is_in_trading_time
+from tqsdk.datetime import _is_in_trading_time, _str_to_timestamp_nano
 from tqsdk.diff import _simple_merge_diff
 from tqsdk.tradeable.sim.utils import _get_price_range
 
@@ -230,7 +230,7 @@ class SimTradeBase(object):
 
     def _default_get_trade_timestamp(self):
         """获取交易时间的默认方法，为当前所有 quote 的最大行情时间"""
-        return int(datetime.strptime(self._max_datetime, "%Y-%m-%d %H:%M:%S.%f").timestamp() * 1e6) * 1000
+        return _str_to_timestamp_nano(self._max_datetime)
 
     def _default_is_in_trading_time(self, quote):
         """判断是否在交易时间段"""

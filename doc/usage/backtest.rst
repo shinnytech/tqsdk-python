@@ -139,6 +139,37 @@
   api.wait_update()                     # 这个 wait_update 更新了行情
 
   
+
+.. _security_backtest:
+
+对股票合约进行回测
+-------------------------------------------------
+TqSdk 在 3.2.0 版本后支持了对股票合约进行回测功能，在回测过程中用户需要初始化 :py:class:`~tqsdk.TqSimStock` 类，且该类只能支持股票模拟交易
+
+由于股票市场 T+1 的规则, :py:class:`~tqsdk.lib.TargetPosTask`  函数目前还不支持在股票交易中使用，股票合约交易时只支持使用 :py:class:`~tqsdk.TqApi.insert_order`
+
+如果您想要在回测中同时交易期货和股票合约，则可以使用 :py:class:`~tqsdk.TqMultiAccount` 来实现该需求::
+
+    # 同时使用 TqSim 交易期货，TqSimStock 交易股票
+    from tqsdk import TqApi, TqAuth, TqMultiAccount, TqSim, TqSimStock
+
+    tqsim_future = TqSim()
+    tqsim_stock = TqSimStock()
+
+    api = TqApi(account=TqMultiAccount([tqsim_future, tqsim_stock]), auth=TqAuth("信易账户", "账户密码"))
+
+    # 多账户下单，需要指定下单账户
+    order1 = api.insert_order(symbol="SHFE.cu2112", direction="BUY", offset="OPEN", volume=10, limit_price=72250.0, account=tqsim_future)
+    order2 = api.insert_order(symbol="SSE.603666", direction="BUY", volume=300, account=tqsim_stock)
+    while order1.status != 'FINISHED' or order2.status != 'FINISHED':
+        api.wait_update()
+
+    # 打印账户可用资金
+    future_account = tqsim_future.get_account()
+    stock_account = tqsim_stock.get_account()
+    print(future_account.available, stock_account.available)
+    api.close()
+
 回测使用多行情序列的策略程序
 -------------------------------------------------
 TqSdk 允许一个策略程序中使用多个行情序列, 比如这样::
@@ -201,7 +232,6 @@ TqSdk回测框架使用一套复杂的规则来推进行情：
 
 了解更多
 -------------------------------------------------
-* 如果策略回测的精度或仿真性不能满足你的要求, 那你可能需要 :ref:`replay` 
 * 如果你要做大量回测, 或者试图做参数优化/参数搜索, 请看 :ref:`batch_backtest`
 * 如果你在回测时需要图形化界面支持，我们提供 TqSdk 内置强大的图形化界面解决方案 :ref:`web_gui`
 

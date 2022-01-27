@@ -36,19 +36,7 @@ import psutil
 from sgqlc.operation import Operation
 from shinny_structlog import ShinnyLoggerAdapter, JSONFormatter
 
-try:
-    import pandas as pd
-except ImportError as e:
-    err_msg = f"执行 import pandas 时发生错误： {e}。\n"
-    err_msg += """
-    当遇到此问题时，如果您是 windows 用户，并且安装的 pandas 版本大于等于 1.0.2，可以尝试以下解决方案之一，再重新运行程序即可。
-    （您使用的机器缺少 pandas 需要的运行时环境）
-    1. 到微软官网下载您机器上安装 python 对应版本的 vc_redist 文件运行安装即可。https://www.microsoft.com/en-us/download/details.aspx?id=48145 
-       vc_redist.x64.exe（64 位 python）、 vc_redist.x86.exe（32 位 python）
-    2. 卸载当前的 pandas (pip uninstall pandas)
-       安装 pandas 1.0.1 版本 (pip install pandas==1.0.1)
-    """
-    raise Exception(err_msg)
+import pandas as pd
 import requests
 from pandas import RangeIndex, Index
 from pandas._libs.internals import BlockPlacement
@@ -135,13 +123,10 @@ class TqApi(TqBaseApi):
 
                 * 当 account 为 :py:class:`~tqsdk.TqSim`、:py:class:`~tqsdk.TqSimStock` 类型时, 可以通过该参数指定行情服务器地址, 默认使用该信易账户对应的行情服务地址
 
-            backtest (TqBacktest/TqReplay): [可选] 进入时光机，此时强制要求 account 类型为 :py:class:`~tqsdk.TqSim`
+            backtest (TqBacktest): [可选] 进入时光机，此时强制要求 account 类型为 :py:class:`~tqsdk.TqSim`
                 * :py:class:`~tqsdk.TqBacktest` : 传入 TqBacktest 对象，进入回测模式 \
                 在回测模式下, TqBacktest 连接 wss://backtest.shinnytech.com/t/md/front/mobile 接收行情数据, \
                 由 TqBacktest 内部完成回测时间段内的行情推进和 K 线、Tick 更新.
-
-                * :py:class:`~tqsdk.TqReplay` : 传入 TqReplay 对象, 进入复盘模式 \
-                在复盘模式下, TqReplay 会在服务器申请复盘日期的行情资源, 由服务器推送复盘日期的行情.
 
             debug(bool/str): [可选] 是否将调试信息输出到指定文件，默认值为 False。
                 * None [默认]: 根据账户情况不同，默认值的行为不同。
@@ -1920,6 +1905,7 @@ class TqApi(TqBaseApi):
                     diff_without_trade = {k : v for k, v in d.items() if k != "trade"}
                     if diff_without_trade:
                         _merge_diff(self._data, diff_without_trade, self._prototype, False)
+                self._risk_manager._on_recv_data(self._diffs)
                 for _, serial in self._serials.items():
                     # K线df的更新与原始数据、left_id、right_id、more_data、last_id相关，其中任何一个发生改变都应重新计算df
                     # 注：订阅某K线后再订阅合约代码、周期相同但长度更短的K线时, 服务器不会再发送已有数据到客户端，即chart发生改变但内存中原始数据未改变。
@@ -3937,7 +3923,7 @@ class TqApi(TqBaseApi):
 print("在使用天勤量化之前，默认您已经知晓并同意以下免责条款，如果不同意请立即停止使用：https://www.shinnytech.com/blog/disclaimer/", file=sys.stderr)
 
 if platform.python_version().startswith('3.6'):
-    warnings.warn("TqSdk 计划在 20220601 之后放弃支持 Python 3.6 版本，请尽快升级 Python 版本。", FutureWarning, stacklevel=3)
+    warnings.warn("TqSdk 计划在 20220601 之后放弃支持 Python 3.6 版本，请尽快升级 Python 版本。", FutureWarning, stacklevel=1)
 
 
 try:

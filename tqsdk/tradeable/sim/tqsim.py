@@ -4,7 +4,7 @@
 __author__ = 'mayanqiong'
 
 from tqsdk.tradeable.mixin import FutureMixin
-from tqsdk.datetime import _format_from_timestamp_nano
+from tqsdk.datetime import _timestamp_nano_to_str
 from tqsdk.diff import _get_obj
 from tqsdk.objs import Quote
 from tqsdk.report import TqReport
@@ -184,7 +184,7 @@ class TqSim(BaseSim, FutureMixin):
         """
         symbol = f"{order['exchange_id']}.{order['instrument_id']}"
         self._api._print(
-            f"模拟交易下单 {self._account_name}, {order['order_id']}: 时间: {_format_from_timestamp_nano(order['insert_date_time'])}, "
+            f"模拟交易下单 {self._account_name}, {order['order_id']}: 时间: {_timestamp_nano_to_str(order['insert_date_time'])}, "
             f"合约: {symbol}, 开平: {order['offset']}, 方向: {order['direction']}, 手数: {order['volume_left']}, "
             f"价格: {order.get('limit_price', '市价')}")
         self._logger.debug(msg, order_id=order["order_id"], datetime=order["insert_date_time"],
@@ -207,7 +207,7 @@ class TqSim(BaseSim, FutureMixin):
         for d in date_keys:
             for t in self.trade_log[d]["trades"]:
                 symbol = t["exchange_id"] + "." + t["instrument_id"]
-                self._api._print(f"时间: {_format_from_timestamp_nano(t['trade_date_time'])}, 合约: {symbol}, "
+                self._api._print(f"时间: {_timestamp_nano_to_str(t['trade_date_time'])}, 合约: {symbol}, "
                                  f"开平: {t['offset']}, 方向: {t['direction']}, 手数: {t['volume']}, 价格: {t['price']:.3f},"
                                  f"手续费: {t['commission']:.2f}")
 

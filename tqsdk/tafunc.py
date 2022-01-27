@@ -14,22 +14,10 @@ import math
 from typing import Union
 
 import numpy as np
-try:
-    import pandas as pd
-except ImportError as e:
-    err_msg = f"执行 import pandas 时发生错误： {e}。\n"
-    err_msg += """
-    当遇到此问题时，如果您是 windows 用户，并且安装的 pandas 版本大于等于 1.0.2，可以尝试以下解决方案之一，再重新运行程序即可。
-    （您使用的机器缺少 pandas 需要的运行时环境）
-    1. 到微软官网下载您机器上安装 python 对应版本的 vc_redist 文件运行安装即可。https://www.microsoft.com/en-us/download/details.aspx?id=48145 
-       vc_redist.x64.exe（64 位 python）、 vc_redist.x86.exe（32 位 python）
-    2. 卸载当前的 pandas (pip uninstall pandas)
-       安装 pandas 1.0.1 版本 (pip install pandas==1.0.1)
-    """
-    raise Exception(err_msg)
+import pandas as pd
 from scipy import stats
 
-from tqsdk.datetime import _get_period_timestamp
+from tqsdk.datetime import _get_period_timestamp, _str_to_timestamp_nano
 
 
 def ref(series, n):
@@ -671,14 +659,10 @@ def _to_ns_timestamp(input_time):
             return int(input_time)
         else:  # 秒
             return int(input_time * 1e9)
-
     elif isinstance(input_time, str):  # str 类型时间
-        d = datetime.datetime.strptime(input_time, "%Y-%m-%d %H:%M:%S.%f")
-        d = int(d.timestamp() * 1e9)
-        return d
+        return _str_to_timestamp_nano(input_time)
     elif isinstance(input_time, datetime.datetime):  # datetime 类型时间
-        d = int(input_time.timestamp() * 1e9)
-        return d
+        return int(input_time.timestamp() * 1e9)
     else:
         raise TypeError("暂不支持此类型的转换")
 
@@ -852,12 +836,12 @@ def _get_d1(series: pd.Series, k: float, r: float, v: Union[float, pd.Series], t
 
 def _get_cdf(series: pd.Series):
     s = series.loc[series.notna()]
-    return series.loc[series.isna()].append(pd.Series(stats.norm.cdf(s), index=s.index), verify_integrity=True)
+    return pd.concat([series.loc[series.isna()], pd.Series(stats.norm.cdf(s), index=s.index)], verify_integrity=True)
 
 
 def _get_pdf(series: pd.Series):
     s = series.loc[series.notna()]
-    return series.loc[series.isna()].append(pd.Series(stats.norm.pdf(s), index=s.index), verify_integrity=True)
+    return pd.concat([series.loc[series.isna()], pd.Series(stats.norm.pdf(s), index=s.index)], verify_integrity=True)
 
 
 def _get_options_class(series: pd.Series, option_class: Union[str, pd.Series]):

@@ -10,8 +10,12 @@ import datetime
 import time
 
 
-def _format_from_timestamp_nano(nano, fmt="%Y-%m-%d %H:%M:%S.%f"):
+def _timestamp_nano_to_str(nano: int, fmt="%Y-%m-%d %H:%M:%S.%f") -> str:
     return datetime.datetime.fromtimestamp(nano / 1e9).strftime(fmt)
+
+
+def _str_to_timestamp_nano(current_datetime: str, fmt="%Y-%m-%d %H:%M:%S.%f") -> int:
+    return int(datetime.datetime.strptime(current_datetime, fmt).timestamp() * 1e6) * 1000
 
 
 def _get_trading_day_start_time(trading_day):
@@ -44,8 +48,7 @@ def _get_trading_day_from_timestamp(timestamp):
 def _get_trading_timestamp(quote, current_datetime: str):
     """ 将 quote 在 current_datetime 所在交易日的所有可交易时间段转换为纳秒时间戳(tqsdk内部使用的时间戳统一为纳秒)并返回 """
     # 获取当前交易日时间戳
-    current_trading_day_timestamp = _get_trading_day_from_timestamp(
-        int(datetime.datetime.strptime(current_datetime, "%Y-%m-%d %H:%M:%S.%f").timestamp() * 1e6) * 1000)
+    current_trading_day_timestamp = _get_trading_day_from_timestamp(_str_to_timestamp_nano(current_datetime))
     # 获取上一交易日时间戳
     last_trading_day_timestamp = _get_trading_day_from_timestamp(
         _get_trading_day_start_time(current_trading_day_timestamp) - 1)
@@ -86,10 +89,9 @@ def _is_in_trading_time(quote, current_datetime, local_time_record):
 def _get_trade_timestamp(current_datetime, local_time_record):
     # 根据最新行情时间获取模拟的(预估的)当前交易所纳秒时间戳（tqsdk内部使用的时间戳统一为纳秒）
     # 如果local_time_record为nan，則不加时间差
-    return int((datetime.datetime.strptime(current_datetime,
-                                           "%Y-%m-%d %H:%M:%S.%f").timestamp() + (
-                    0 if local_time_record != local_time_record else (
-                            time.time() - local_time_record))) * 1e6) * 1000
+    cur_nano = _str_to_timestamp_nano(current_datetime)
+    mock_delay_nano = 0 if local_time_record != local_time_record else int((time.time() - local_time_record) * 1e6) * 1000
+    return cur_nano + mock_delay_nano
 
 
 def _get_expire_rest_days(expire_dt, current_dt):
