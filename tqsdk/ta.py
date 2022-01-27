@@ -10,19 +10,7 @@ tqsdk.ta 模块包含了一批常用的技术指标计算函数
 import math
 
 import numpy as np
-try:
-    import pandas as pd
-except ImportError as e:
-    err_msg = f"执行 import pandas 时发生错误： {e}。\n"
-    err_msg += """
-    当遇到此问题时，如果您是 windows 用户，并且安装的 pandas 版本大于等于 1.0.2，可以尝试以下解决方案之一，再重新运行程序即可。
-    （您使用的机器缺少 pandas 需要的运行时环境）
-    1. 到微软官网下载您机器上安装 python 对应版本的 vc_redist 文件运行安装即可。https://www.microsoft.com/en-us/download/details.aspx?id=48145 
-       vc_redist.x64.exe（64 位 python）、 vc_redist.x86.exe（32 位 python）
-    2. 卸载当前的 pandas (pip uninstall pandas)
-       安装 pandas 1.0.1 版本 (pip install pandas==1.0.1)
-    """
-    raise Exception(err_msg)
+import pandas as pd
 
 import tqsdk.tafunc
 

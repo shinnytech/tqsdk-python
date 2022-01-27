@@ -11,7 +11,7 @@ from pandas import DataFrame, Series
 from sgqlc.operation import Operation
 from tqsdk.backtest import TqBacktest
 
-from tqsdk.datetime import _get_expire_rest_days
+from tqsdk.datetime import _get_expire_rest_days, _str_to_timestamp_nano
 from tqsdk.ins_schema import ins_schema, _add_all_frags
 from tqsdk.objs import Quote
 from tqsdk.diff import _get_obj
@@ -450,7 +450,7 @@ class TqOptionGreeksDataFrame(DataFrame):
         series_close = Series(data=[q.last_price for q in quotes])  # 期权最新价
         series_close1 = Series(data=[q.underlying_quote.last_price for q in quotes])  # 标的最新价
         series_o = Series(data=[q.option_class for q in quotes])
-        series_datetime = Series(data=[datetime.strptime(q.datetime, "%Y-%m-%d %H:%M:%S.%f").timestamp() * 1000000000 for q in quotes])
+        series_datetime = Series(data=[_str_to_timestamp_nano(q.datetime) for q in quotes])
         series_expire_datetime = Series(data=[q.expire_datetime for q in quotes])
         series_t = _get_t_series(series_datetime, 0, series_expire_datetime)  # 到期时间
         if self.__dict__["_v_list"] is None:

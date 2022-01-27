@@ -11,7 +11,8 @@ from typing import Union, Any
 
 from tqsdk.backtest.utils import TqBacktestContinuous, TqBacktestDividend
 from tqsdk.channel import TqChan
-from tqsdk.datetime import _get_trading_day_start_time, _get_trading_day_end_time, _get_trading_day_from_timestamp
+from tqsdk.datetime import _get_trading_day_start_time, _get_trading_day_end_time, _get_trading_day_from_timestamp, \
+    _timestamp_nano_to_str
 from tqsdk.diff import _merge_diff, _get_obj
 from tqsdk.entity import Entity
 from tqsdk.exceptions import BacktestFinished
@@ -679,14 +680,14 @@ class TqBacktest(object):
     @staticmethod
     def _get_quotes_from_tick(tick):
         quote = {k: v for k, v in tick.items()}
-        quote["datetime"] = datetime.fromtimestamp(tick["datetime"] / 1e9).strftime("%Y-%m-%d %H:%M:%S.%f")
+        quote["datetime"] = _timestamp_nano_to_str(tick["datetime"])
         return [quote]
 
     @staticmethod
     def _get_quotes_from_kline_open(info, timestamp, kline):
         return [
             {  # K线刚生成时的数据都为开盘价
-                "datetime": datetime.fromtimestamp(timestamp / 1e9).strftime("%Y-%m-%d %H:%M:%S.%f"),
+                "datetime": _timestamp_nano_to_str(timestamp),
                 "ask_price1": kline["open"] + info["price_tick"],
                 "ask_volume1": 1,
                 "bid_price1": kline["open"] - info["price_tick"],
@@ -711,7 +712,7 @@ class TqBacktest(object):
         """
         return [
             {
-                "datetime": datetime.fromtimestamp(timestamp / 1e9).strftime("%Y-%m-%d %H:%M:%S.%f"),
+                "datetime": _timestamp_nano_to_str(timestamp),
                 "ask_price1": kline["high"] + info["price_tick"],
                 "ask_volume1": 1,
                 "bid_price1": kline["high"] - info["price_tick"],

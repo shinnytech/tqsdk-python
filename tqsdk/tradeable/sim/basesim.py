@@ -11,7 +11,7 @@ from typing import Type, Union
 
 from tqsdk.channel import TqChan
 from tqsdk.datetime import _get_trading_day_from_timestamp, _get_trading_day_end_time, _get_trade_timestamp, \
-    _is_in_trading_time, _format_from_timestamp_nano
+    _is_in_trading_time, _timestamp_nano_to_str, _str_to_timestamp_nano
 from tqsdk.diff import _get_obj, _register_update_chan, _merge_diff
 from tqsdk.entity import Entity
 from tqsdk.objs import Quote
@@ -263,8 +263,7 @@ class BaseSim(Tradeable):
             if _tqsdk_backtest:
                 # 回测时，用 _tqsdk_backtest 对象中 current_dt 作为 TqSim 的 _current_datetime
                 self._tqsdk_backtest.update(_tqsdk_backtest)
-                self._current_datetime = datetime.fromtimestamp(
-                    self._tqsdk_backtest["current_dt"] / 1e9).strftime("%Y-%m-%d %H:%M:%S.%f")
+                self._current_datetime = _timestamp_nano_to_str(self._tqsdk_backtest["current_dt"])
                 self._local_time_record = float("nan")
                 # 1. 回测时不使用时间差来模拟交易所时间的原因(_local_time_record始终为初始值nan)：
                 #   在sim收到行情后记录_local_time_record，然后下发行情到api进行merge_diff(),api需要处理完k线和quote才能结束wait_update(),
@@ -294,8 +293,7 @@ class BaseSim(Tradeable):
                     self._settle()
                     # 若当前行情时间大于交易日的结束时间(切换交易日)，则根据此行情时间更新交易日及交易日结束时间
                     trading_day = _get_trading_day_from_timestamp(self._get_current_timestamp())
-                    self._trading_day_end = datetime.fromtimestamp(
-                        (_get_trading_day_end_time(trading_day) - 999) / 1e9).strftime("%Y-%m-%d %H:%M:%S.%f")
+                    self._trading_day_end = _timestamp_nano_to_str(_get_trading_day_end_time(trading_day) - 999)
             if quotes_diff:
                 _merge_diff(self._data, {"quotes": quotes_diff}, self._prototype, False, True)
 
@@ -339,7 +337,7 @@ class BaseSim(Tradeable):
         pass
 
     def _get_current_timestamp(self):
-        return int(datetime.strptime(self._current_datetime, "%Y-%m-%d %H:%M:%S.%f").timestamp() * 1e6) * 1000
+        return _str_to_timestamp_nano(self._current_datetime)
 
     def _get_trade_timestamp(self):
         return _get_trade_timestamp(self._current_datetime, self._local_time_record)
