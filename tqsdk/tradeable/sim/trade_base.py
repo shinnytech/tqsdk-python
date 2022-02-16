@@ -147,7 +147,7 @@ class SimTradeBase(object):
     def update_quotes(self, symbol, pack):
         for q in pack.get("quotes", {}).values():
             self._max_datetime = max(q.get("datetime", ""), self._max_datetime)
-        _simple_merge_diff(self._quotes, pack.get("quotes", {}), reduce_diff=False)
+        _simple_merge_diff(self._quotes, pack.get("quotes", {}))
         quote, underlying_quote = self._get_quotes_by_symbol(symbol)
         # 某些非交易时间段，ticks 回测是 quote 的最新价有可能是 nan，无效的行情直接跳过
         if math.isnan(quote["last_price"]):

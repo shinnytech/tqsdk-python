@@ -97,7 +97,7 @@ class TradeExtension():
         for d in pack.get("data", {}):
             self._datetime_state.update_state(d)
             _simple_merge_diff(self._data_quotes, d.get('quotes', {}))
-            _merge_diff(self._data, {"trade": d.get('trade', {})}, prototype=self._prototype, persist=False)
+            _merge_diff(self._data, {"trade": d.get('trade', {})}, prototype=self._prototype, persist=False, reduce_diff=False)
             self._diffs.append(d)  # 添加至 self._diff 等待被发送
 
         for obj in self._new_objs_list:

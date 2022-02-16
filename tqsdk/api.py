@@ -29,7 +29,7 @@ import sys
 import time
 import warnings
 from datetime import datetime, date, timedelta
-from typing import Union, List, Any, Optional, Coroutine, Callable, Tuple
+from typing import Union, List, Any, Optional, Coroutine, Callable, Tuple, Dict
 
 import numpy as np
 import psutil
@@ -320,7 +320,7 @@ class TqApi(TqBaseApi):
         _copy_diff = {}
         TqApi._deep_copy_dict(self._data, _copy_diff)
         slave_api._auth = self._auth
-        _merge_diff(slave_api._data, _copy_diff, slave_api._prototype, False)
+        _merge_diff(slave_api._data, _copy_diff, slave_api._prototype, persist=False)
         return slave_api
 
     def close(self) -> None:
@@ -1024,7 +1024,7 @@ class TqApi(TqBaseApi):
     # ----------------------------------------------------------------------
     def query_his_cont_quotes(self, symbol: Union[str, List[str]], n: int = 200):
         """
-        获取指定的主连合约最近 n 天的标的，可以处理的范围为 2003-01-01 ～ 2021-12-31。
+        获取指定的主连合约最近 n 天的标的，可以处理的范围为 2003-01-01 ～ 2022-12-31。
 
         Args:
             symbol (str/list of str): 指定主连合约代码或主连合约代码列表.
@@ -1709,7 +1709,7 @@ class TqApi(TqBaseApi):
             from tqsdk import TqApi, TqAuth, TqAccount
             api = TqApi(TqAccount("H海通期货", "022631", "123456"), auth=TqAuth("信易账户", "账户密码"))
             rule = api.get_risk_management_rule(exchange_id="SSE")
-            print(exchange_id, rule['enable']")
+            print(exchange_id, rule['enable'])
             print("自成交限制:", rule.self_trade)
             print("频繁报撤单限制:", rule.frequent_cancellation)
             print("成交持仓比限制:", rule.trade_position_ratio)
@@ -1900,17 +1900,18 @@ class TqApi(TqBaseApi):
                     if "trade" in d:
                         for k, v in d.get('trade').items():
                             prototype = self._security_prototype if self._account._is_stock_type(k) else self._prototype
-                            _merge_diff(self._data, {'trade': {k: v} }, prototype, False)
+                            _merge_diff(self._data, {'trade': {k: v}}, prototype, persist=False, reduce_diff=True)
                     # 非交易数据均按照期货处理逻辑
                     diff_without_trade = {k : v for k, v in d.items() if k != "trade"}
                     if diff_without_trade:
-                        _merge_diff(self._data, diff_without_trade, self._prototype, False)
+                        _merge_diff(self._data, diff_without_trade, self._prototype, persist=False, reduce_diff=True)
                 self._risk_manager._on_recv_data(self._diffs)
                 for _, serial in self._serials.items():
                     # K线df的更新与原始数据、left_id、right_id、more_data、last_id相关，其中任何一个发生改变都应重新计算df
                     # 注：订阅某K线后再订阅合约代码、周期相同但长度更短的K线时, 服务器不会再发送已有数据到客户端，即chart发生改变但内存中原始数据未改变。
                     # 检测到K线数据或chart的任何字段发生改变则更新serial的数据
-                    if self.is_changing(serial["df"]) or self.is_changing(serial["chart"]):
+                    if self._is_obj_changing(serial["df"], diffs=self._diffs, key=[]) \
+                            or self._is_obj_changing(serial["chart"], diffs=self._diffs, key=[]):
                         if len(serial["root"]) == 1:  # 订阅单个合约
                             self._update_serial_single(serial)
                         else:  # 订阅多个合约
@@ -1958,16 +1959,18 @@ class TqApi(TqBaseApi):
         """
         if obj is None:
             return False
-        if isinstance(obj, list):
-            for o in obj:
-                if self._is_obj_changing(o, key):
-                    return True
-        else:
-            return self._is_obj_changing(obj, key)
-
-    def _is_obj_changing(self, obj: Any, key: Union[str, List[str], None] = None) -> bool:
+        # is_changing 区分同步 / 异步中，根据不同的 diffs 判断
+        diffs = self._diffs if self._loop.is_running() else self._sync_diffs
         if not isinstance(key, list):
             key = [key] if key else []
+        if isinstance(obj, list):
+            for o in obj:
+                if self._is_obj_changing(o, diffs=diffs, key=key):
+                    return True
+        else:
+            return self._is_obj_changing(obj, diffs=diffs, key=key)
+
+    def _is_obj_changing(self, obj: Any, diffs: List[Dict[str, Any]], key: List[str]) -> bool:
         try:
             if isinstance(obj, pd.DataFrame):
                 if id(obj) in self._serials:
@@ -2007,8 +2010,7 @@ class TqApi(TqBaseApi):
                 paths = [obj["_path"]]
         except (KeyError, IndexError):
             return False
-        # is_changing 区分同步 / 异步中，根据不同的 diffs 判断
-        for diff in (self._diffs if self._loop.is_running() else self._sync_diffs):
+        for diff in diffs:
             # 如果传入key：生成一个dict（key:序号，value: 字段）, 遍历这个dict并在_is_key_exist()判断key是否存在
             if (isinstance(obj, pd.DataFrame) or isinstance(obj, pd.Series)) and len(key) != 0:
                 k_dict = {}
@@ -2668,19 +2670,20 @@ class TqApi(TqBaseApi):
 
         def filter(query_result):
             options = self._convert_query_result_to_list(query_result)
-            if options:
-                options = self._get_options_filtered(options, option_class=option_class, exercise_year=exercise_year, exercise_month=exercise_month, has_A=has_A)
-                options, option_0_index = self._get_options_sorted(options, underlying_price, option_class)
-                rst_options = []
-                for pl in price_level:
-                    option_index = option_0_index - pl
-                    if 0 <= option_index < len(options):
-                        rst_options.append(options[option_index]["instrument_id"])
-                    else:
-                        rst_options.append(None)
-                return rst_options
-            else:
+            if len(options) == 0:
                 return []
+            options = self._get_options_filtered(options, option_class=option_class, exercise_year=exercise_year, exercise_month=exercise_month, has_A=has_A)
+            if len(options) == 0:
+                return []
+            options, option_0_index = self._get_options_sorted(options, underlying_price, option_class)
+            rst_options = []
+            for pl in price_level:
+                option_index = option_0_index - pl
+                if 0 <= option_index < len(options):
+                    rst_options.append(options[option_index]["instrument_id"])
+                else:
+                    rst_options.append(None)
+            return rst_options
 
         return self._get_symbol_list(query=query, filter=filter)
 
@@ -2833,18 +2836,19 @@ class TqApi(TqBaseApi):
 
         def filter(query_result):
             options = self._convert_query_result_to_list(query_result)
-            if options:
-                options = self._get_options_filtered(options, option_class=option_class, exercise_year=exercise_year, exercise_month=exercise_month, has_A=has_A)
-                options, option_0_index = self._get_options_sorted(options, underlying_price, option_class)
-                # 实值期权
-                in_money_options = [o['instrument_id'] for o in options[:option_0_index]]
-                # 平值期权
-                at_money_options = [options[option_0_index]['instrument_id']]
-                # 虚值期权
-                out_of_money_options = [o['instrument_id'] for o in options[option_0_index+1:]]
-                return in_money_options, at_money_options, out_of_money_options
-            else:
+            if len(options) == 0:
                 return [], [], []
+            options = self._get_options_filtered(options, option_class=option_class, exercise_year=exercise_year, exercise_month=exercise_month, has_A=has_A)
+            if len(options) == 0:
+                return [], [], []
+            options, option_0_index = self._get_options_sorted(options, underlying_price, option_class)
+            # 实值期权
+            in_money_options = [o['instrument_id'] for o in options[:option_0_index]]
+            # 平值期权
+            at_money_options = [options[option_0_index]['instrument_id']]
+            # 虚值期权
+            out_of_money_options = [o['instrument_id'] for o in options[option_0_index + 1:]]
+            return in_money_options, at_money_options, out_of_money_options
 
         return self._get_symbol_level_list(query=query, filter=filter)
 
@@ -2939,15 +2943,16 @@ class TqApi(TqBaseApi):
 
         def filter(query_result):
             options = self._convert_query_result_to_list(query_result)
-            if options:
-                options = self._get_options_filtered(options, option_class=option_class, has_A=has_A, nearbys=nearbys)
-                options, option_0_index = self._get_options_sorted(options, underlying_price, option_class)
-                in_money_options = [o['instrument_id'] for o in options[:option_0_index]]  # 实值期权
-                at_money_options = [options[option_0_index]['instrument_id']]  # 平值期权
-                out_of_money_options = [o['instrument_id'] for o in options[option_0_index + 1:]]  # 虚值期权
-                return in_money_options, at_money_options, out_of_money_options
-            else:
+            if len(options) == 0:
                 return [], [], []
+            options = self._get_options_filtered(options, option_class=option_class, has_A=has_A, nearbys=nearbys)
+            if len(options) == 0:
+                return [], [], []
+            options, option_0_index = self._get_options_sorted(options, underlying_price, option_class)
+            in_money_options = [o['instrument_id'] for o in options[:option_0_index]]  # 实值期权
+            at_money_options = [options[option_0_index]['instrument_id']]  # 平值期权
+            out_of_money_options = [o['instrument_id'] for o in options[option_0_index + 1:]]  # 虚值期权
+            return in_money_options, at_money_options, out_of_money_options
 
         return self._get_symbol_level_list(query=query, filter=filter)
 

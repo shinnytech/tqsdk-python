@@ -92,7 +92,7 @@ class TqStockProfit():
                 if not math.isnan(last_price):
                     diff = self._update_position(account_key, symbol, last_price)
                     pend_diff['trade'][account_key]['positions'][symbol] = diff
-                    _simple_merge_diff(self._data["trade"][account_key]["positions"], {symbol: diff}, reduce_diff=False)
+                    _simple_merge_diff(self._data["trade"][account_key]["positions"], {symbol: diff})
 
         # 当截面完整时, 全量刷新所有账户的资产盈亏
         if self._is_diff_complete():

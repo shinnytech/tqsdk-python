@@ -129,7 +129,7 @@ class DataExtension(object):
             if d.get('quotes', None):
                 self._update_quotes(d)
         pend_diff = {}
-        _simple_merge_diff(pend_diff, self._get_positions_pend_diff(), reduce_diff=False)
+        _simple_merge_diff(pend_diff, self._get_positions_pend_diff())
         orders_set = set()  # 计算过委托单，is_dead、is_online、is_error
         orders_price_set = set()  # 根据成交计算哪些 order 需要重新计算平均成交价 trade_price
         for path in self._diffs_paths:
