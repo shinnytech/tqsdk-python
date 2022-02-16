@@ -1,13 +1,13 @@
 .. _for_vnpy_user:
 
-TqSdk 与 VNPY 有哪些差别
+TqSdk 与 vn.py 有哪些差别
 =================================================
-TqSdk 与 VNPY 有非常多的差别. 如果您是一位有经验的 VNPY 用户, 刚开始接触 TqSdk, 下面的信息将帮助您尽快理解 TqSdk.
+TqSdk 与 vn.py 有非常多的差别. 如果您是一位有经验的 vn.py 用户, 刚开始接触 TqSdk, 下面的信息将帮助您尽快理解 TqSdk.
 
 
 系统整体架构
 -------------------------------------------------
-VNPY 是一套 all-in-one 的结构, 在一个Python软件包中包含了数据库, 行情接收/存储, 交易接口, 图形界面等功能. 
+vn.py 是一套 all-in-one 的结构, 在一个Python软件包中包含了数据库, 行情接收/存储, 交易接口, 图形界面等功能.
 
 TqSdk 则使用基于网络协作的组件设计. 如下图:
 
@@ -31,14 +31,14 @@ TqSdk 则使用基于网络协作的组件设计. 如下图:
 * 交易相关接口被大幅度简化, 不再需要处理CTP接口的复杂回调, 也不需要发起任何查询请求
 
 
-也有一些不如VNPY方便的地方:
+也有一些不如vn.py方便的地方:
 
 * 由于交易指令经交易网关转发, 用户无法直接指定CTP服务器地址. 用户如果需要连接到官方交易网关不支持的期货公司, 需要自行部署交易网关.
 
 
 每个策略是一个单独运行的py文件
 -------------------------------------------------
-在 VNPY 中, 要实现一个策略程序, 通常是从 CtaTemplate 等基类派生一个子类, 像这样::
+在 vn.py 中, 要实现一个策略程序, 通常是从 CtaTemplate 等基类派生一个子类, 像这样::
 
   class DoubleMaStrategy(CtaTemplate):
 
@@ -54,7 +54,7 @@ TqSdk 则使用基于网络协作的组件设计. 如下图:
     def on_bar(self, bar: BarData):
       ...
 
-这个 DoubleMaStrategy 类写好以后, 由VNPY的策略管理器负责加载运行. 整个程序结构中, VNPY作为调用方, 用户代码作为被调用方, 结构图是这样的:
+这个 DoubleMaStrategy 类写好以后, 由vn.py的策略管理器负责加载运行. 整个程序结构中, vn.py作为调用方, 用户代码作为被调用方, 结构图是这样的:
 
 .. raw:: html
 
@@ -150,12 +150,12 @@ TqSdk将每个策略作为一个独立进程运行, 这样就可以:
 
 K线数据与指标计算
 -------------------------------------------------
-使用VNPY时, K线是由VNPY接收实时行情, 并在用户电脑上生成K线, 存储于用户电脑上的数据库中. 
+使用vn.py时, K线是由vn.py接收实时行情, 并在用户电脑上生成K线, 存储于用户电脑上的数据库中.
 
 而在TqSdk中, K线数据和其它行情数据一样是由行情网关生成并推送的. 这带来了一些差别:
 
 * 用户不再需要维护K线数据库. 用户电脑实时行情中断后, 也不再需要补历史数据
-* 行情服务器生成K线时, 采用了按K线时间严格补全对齐的算法. 这与VNPY或其它软件有明显区别, 详见 https://www.shinnytech.com/blog/why-our-kline-different/
+* 行情服务器生成K线时, 采用了按K线时间严格补全对齐的算法. 这与vn.py或其它软件有明显区别, 详见 https://www.shinnytech.com/blog/why-our-kline-different/
 * 行情数据只在每次程序运行时通过网络获取, 不在用户硬盘保存. 如果策略研究工作需要大量静态历史数据, 我们推荐使用数据下载工具, 另行下载csv文件使用.
 
 TqSdk中的K线序列采用 pandas.DataFrame 格式. pandas 提供了 `非常丰富的数据处理函数 <https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html>`_ , 使我们可以非常方便的进行数据处理, 例如::
@@ -177,7 +177,7 @@ TqSdk 也通过 :py:mod:`tqsdk.tafunc` 提供了一批行情分析中常用的�
 
 数据接收和更新
 -------------------------------------------------
-VNPY按照事件回调模型设计, 使用 CtaTemplate 的 on_xxx 回调函数进行行情数据和回单处理::
+vn.py按照事件回调模型设计, 使用 CtaTemplate 的 on_xxx 回调函数进行行情数据和回单处理::
 
   class DoubleMaStrategy(CtaTemplate):
     def on_tick(self, tick: TickData):

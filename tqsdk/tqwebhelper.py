@@ -232,7 +232,7 @@ class TqWebHelper(object):
     def send_to_conn_chan(self, chan, diffs):
         last_diff = chan.recv_latest({})
         for d in diffs:
-            _simple_merge_diff(last_diff, d, reduce_diff = False)
+            _simple_merge_diff(last_diff, d)
         if last_diff != {}:
             chan.send_nowait(last_diff)
 

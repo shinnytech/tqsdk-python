@@ -265,7 +265,7 @@ class TqReconnect(object):
                     self._pending_diffs.extend(pack_data)
                     for d in pack_data:
                         # _merge_diff 之后， self._data 会用于判断是否接收到了完整截面数据
-                        _merge_diff(self._data, d, self._api._prototype, False)
+                        _merge_diff(self._data, d, self._api._prototype, persist=False, reduce_diff=False)
                     if self._is_all_received():
                         # 重连后收到完整数据截面
                         self._un_processed = False
@@ -298,7 +298,7 @@ class TqReconnect(object):
                         self._data = Entity()
                         self._data._instance_entity([])
                         for d in self._pending_diffs:
-                            _merge_diff(self._data, d, self._api._prototype, False)
+                            _merge_diff(self._data, d, self._api._prototype, persist=False, reduce_diff=False)
                         # 发送所有 resend_request
                         for msg in self._resend_request.values():
                             # 这里必须用 send_nowait 而不是 send，因为如果使用异步写法，在循环中，代码可能执行到 send_task, 可能会修改 _resend_request

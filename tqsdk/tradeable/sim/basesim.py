@@ -6,7 +6,6 @@ __author__ = 'mayanqiong'
 import asyncio
 import time
 from abc import abstractmethod
-from datetime import datetime
 from typing import Type, Union
 
 from tqsdk.channel import TqChan
@@ -295,7 +294,7 @@ class BaseSim(Tradeable):
                     trading_day = _get_trading_day_from_timestamp(self._get_current_timestamp())
                     self._trading_day_end = _timestamp_nano_to_str(_get_trading_day_end_time(trading_day) - 999)
             if quotes_diff:
-                _merge_diff(self._data, {"quotes": quotes_diff}, self._prototype, False, True)
+                _merge_diff(self._data, {"quotes": quotes_diff}, self._prototype, persist=False, reduce_diff=False, notify_update_diff=True)
 
     def _handle_diffs(self, diffs, orders_events, msg):
         """

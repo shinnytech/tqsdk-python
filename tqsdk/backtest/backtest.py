@@ -7,7 +7,7 @@ __author__ = 'mayanqiong'
 import asyncio
 import math
 from datetime import date, datetime
-from typing import Union, Any
+from typing import Union, Any, List, Dict
 
 from tqsdk.backtest.utils import TqBacktestContinuous, TqBacktestDividend
 from tqsdk.channel import TqChan
@@ -139,7 +139,7 @@ class TqBacktest(object):
         self._had_any_generator = False  # 回测过程中是否有过 generator 对象
         self._sim_recv_chan_send_count = 0  # 统计向下游发送的 diff 的次数，每 1w 次执行一次 gc
         self._quotes = {}  # 记录 min_duration 记录某一合约的最小duration； sended_init_quote 是否已经过这个合约的初始行情
-        self._diffs: list[dict[str, Any]] = []
+        self._diffs: List[Dict[str, Any]] = []
         self._is_first_send = True
         md_task = self._api.create_task(self._md_handler())
         try:
@@ -201,7 +201,7 @@ class TqBacktest(object):
             })
             recv_quotes = False
             for d in pack.get("data", []):
-                _merge_diff(self._data, d, self._prototype, False)
+                _merge_diff(self._data, d, self._prototype, persist=False, reduce_diff=False)
                 # 收到的 quotes 转发给下游
                 quotes = d.get("quotes", {})
                 if quotes:

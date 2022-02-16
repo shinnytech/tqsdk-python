@@ -8,18 +8,23 @@ from typing import Set, Union, Dict, Tuple
 from tqsdk.entity import Entity
 
 
-def _merge_diff(result, diff, prototype, persist, notify_update_diff=False):
+def _merge_diff(result, diff, prototype, persist, reduce_diff=False, notify_update_diff=False):
     """
-        更新业务数据,并同步发送更新通知，保证业务数据的更新和通知是原子操作
-        notify_update_diff=True 表示发送更新通知的发送的是包含diff的完整数据包，反之发送True
-        为了在 TqSim 中能每个合约的 task 可以单独维护自己的数据
+    更新业务数据,并同步发送更新通知，保证业务数据的更新和通知是原子操作
+    :param result: 更新结果
+    :param diff: diff pack
+    :param persist: 是否保留 result 中所有字段，如果为 True，则 diff 里为 None 的对象在 result 中不会删除；如果是 False，则 result 结果中会删除 diff 里为 None 的对象
+    :param reduce_diff: 表示是否修改 diff 对象本身，如果为 True 函数运行完成后，diff 会更新为与 result 真正的有区别的字段；如果为 False，diff 不会修改
+        默认不会修改 diff，只有 api 中 is_changing 接口需要 diffs 为真正有变化的数据
+    :param notify_update_diff: 为 True 表示发送更新通知的发送的是包含 diff 的完整数据包（方便 TqSim 中能每个合约的 task 可以单独维护自己的数据），反之只发送 True
+    :return:
     """
     for key in list(diff.keys()):
         value_type = type(diff[key])
         if value_type is str and key in prototype and not type(prototype[key]) is str:
             diff[key] = prototype[key]
         if diff[key] is None:
-            if persist or "#" in prototype:
+            if (persist or "#" in prototype) and reduce_diff:
                 del diff[key]
             else:
                 if notify_update_diff:
@@ -45,10 +50,10 @@ def _merge_diff(result, diff, prototype, persist, notify_update_diff=False):
             else:
                 tpt = {}
             target = _get_obj(result, [key], default=default)
-            _merge_diff(target, diff[key], tpt, tpersist, notify_update_diff)
-            if len(diff[key]) == 0:
+            _merge_diff(target, diff[key], tpt, persist=tpersist, reduce_diff=reduce_diff, notify_update_diff=notify_update_diff)
+            if reduce_diff and len(diff[key]) == 0:
                 del diff[key]
-        elif key in result and (
+        elif reduce_diff and key in result and (
                 result[key] == diff[key] or (diff[key] != diff[key] and result[key] != result[key])):
             # 判断 diff[key] != diff[key] and result[key] != result[key] 以处理 value 为 nan 的情况
             del diff[key]
@@ -119,29 +124,19 @@ def _is_key_exist(diff, path, key):
     return len(key) == 0
 
 
-def _simple_merge_diff(result, diff, reduce_diff=True, persist=False):
+def _simple_merge_diff(result, diff):
     """
     更新业务数据
     :param result: 更新结果
     :param diff: diff pack
-    :param reduce_diff: 表示是否修改 diff 对象本身，因为如果 merge_diff 的 result 是 conn_chan 内部的 last_diff，那么 diff 会在循环中多次使用，这时候一定不能修改 diff 本身
-            如果为True 函数运行完成后，diff 会更新为与 result 真正的有区别的字段；如果为 False，diff 不会修改
-    :param persist: 是否一定存储当前 diff 涉及的字段，如果为 True，则 result 为 None 的对象不会删除；如果是 False，则 result 为 None 的对象会被删除
     :return:
     """
     for key in list(diff.keys()):
         if diff[key] is None:
-            if persist and reduce_diff:
-                del diff[key]
-            if not persist:
-                result.pop(key, None)
+            result.pop(key, None)
         elif isinstance(diff[key], dict):
             target = result.setdefault(key, {})
-            _simple_merge_diff(target, diff[key], reduce_diff=reduce_diff)
-            if len(diff[key]) == 0:
-                del diff[key]
-        elif reduce_diff and key in result and result[key] == diff[key]:
-            del diff[key]
+            _simple_merge_diff(target, diff[key])
         else:
             result[key] = diff[key]
 
@@ -149,8 +144,7 @@ def _simple_merge_diff(result, diff, reduce_diff=True, persist=False):
 def _simple_merge_diff_and_collect_paths(result, diff, path: Tuple, diff_paths: Set, prototype: Union[Dict, None]):
     """
     更新业务数据并收集指定节点的路径
-    默认行为 reduce_diff = True，表示函数运行完成后，diff 会更新为与 result 真正的有区别的字段。
-    这个函数只在 data_extension 中用到，diff 只使用一次，并且全部转发到 api，可以执行 reduce_diff = True 的行为。
+    默认行为 reduce_diff=False，表示函数运行过程中不会修改 diff 本身
     :param result: 更新结果
     :param diff: diff pack
     :param path: 当前迭代 merge_diff 的节点路径
@@ -172,10 +166,8 @@ def _simple_merge_diff_and_collect_paths(result, diff, path: Tuple, diff_paths: 
                 if sub_prototype is None:
                     diff_paths.add(sub_path)
             _simple_merge_diff_and_collect_paths(target, diff[key], path=sub_path, prototype=sub_prototype, diff_paths=diff_paths)
-            if len(diff[key]) == 0:
-                del diff[key]
         elif key in result and result[key] == diff[key]:
-            del diff[key]
+            pass
         else:
             result[key] = diff[key]
             # 只有确实有变更的字段，会出现在 diff_paths 里
