@@ -197,6 +197,8 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
         """
         if symbol.startswith("CZCE.CJ"):
             raise Exception("红枣期货不支持创建 targetpostask、twap、vwap 任务，交易所规定该品种最小开仓手数为大于等于 4 手，这些函数还未支持该规则!")
+        if symbol.startswith("CZCE.ZC"):
+            raise Exception("动力煤期货不支持创建 targetpostask、twap、vwap 任务，交易所规定该品种最小开仓手数为大于等于 2 手，这些函数还未支持该规则!")
         super(TargetPosTask, self).__init__()
         self._api = api
         self._account = api._account._check_valid(account)
