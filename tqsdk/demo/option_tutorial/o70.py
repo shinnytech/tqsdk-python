@@ -20,7 +20,7 @@ while True:
     # 以对手价来计算买入看涨期权然后行权后的期货成本价格
     option_buy = quote_option.strike_price + quote_option.ask_price1
     # 判断当期货的买入1档，即卖出期货价格大于买入看涨期权的期货成本价格，形成套利空间时进行限价下单
-    if quote.bid_price1 < option_buy and times == 0:
+    if quote.bid_price1 > option_buy and times == 0:
         times += 1
         # 以现在卖1档价格买入看涨期权
         order_opiton = api.insert_order('CZCE.MA109C2950', "BUY", "OPEN", 1, quote_option.ask_price1)

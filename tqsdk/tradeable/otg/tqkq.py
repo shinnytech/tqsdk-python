@@ -15,6 +15,31 @@ class TqKq(BaseOtg, FutureMixin):
     def __init__(self, td_url: Optional[str] = None):
         """
         创建快期模拟账户实例
+
+        快期模拟的账户和交易信息可以在快期专业版查看，可以点击 `快期专业版 <https://www.shinnytech.com/qpro/>`_ 进行下载
+
+        Example::
+
+            from tqsdk import TqApi, TqAuth, TqKq
+
+            tq_kq_stock = TqKq()
+            api = TqApi(account=tq_kq, auth=TqAuth("信易账户", "账户密码"))
+            quote = api.get_quote("SHFE.cu2206")
+            print(quote)
+            # 下单限价单
+            order = api.insert_order(symbol="SHFE.cu2206", direction='BUY', offset='OPEN', limit_price=quote.last_price, volume=1)
+            while order.status == 'ALIVE':
+                api.wait_update()
+                print(order)  # 打印委托单信息
+
+            print(tq_kq.get_account())  # 打印快期模拟账户信息
+
+            print(tq_kq.get_position("SHFE.cu2206"))  # 打印持仓信息
+
+            for trade in order.trade_records.values():
+                print(trade)  # 打印委托单对应的成交信息
+            api.close()
+
         """
         super().__init__("快期模拟", "", "", td_url=td_url)
 

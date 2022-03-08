@@ -2,6 +2,14 @@
 
 版本变更
 =============================
+3.2.4 (2022/03/07)
+
+* 优化：某些情况下启用 web_gui 后网页卡顿的问题
+* 修复：修正上交所 ETF 期权的昨结算（pre_settlement）字段
+* 修复：:py:class:`~tqsdk.TargetPosTask` 及 :py:class:`~tqsdk.algorithm.twap` 添加动力煤期货暂不支持的提示
+* docs：修正文档，增加 tqkq() 的示例，增加 :ref:`tqsdk2ctptest` 文档
+
+
 3.2.3 (2022/02/16)
 
 * 修复：query_all_level_options 接口查询 ETF 期权可能报错的问题

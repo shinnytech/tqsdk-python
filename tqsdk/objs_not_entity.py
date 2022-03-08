@@ -342,6 +342,7 @@ class TqSymbolRankingDataFrame(DataFrame):
                 })
 
     async def async_update(self):
+        await self.__dict__["_api"]._ensure_symbol_async(self.__dict__["_symbol"])
         ranking_id = _generate_uuid("PYSDK_rank")
         self.__dict__["_api"].create_task(self._get_ranking_data(ranking_id), _caller_api=True)  # 错误会抛给 api 处理
         symbol_rankings = _get_obj(self.__dict__["_api"]._data, ["_symbol_rankings"])

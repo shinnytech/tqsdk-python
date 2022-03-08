@@ -22,7 +22,7 @@ class TqSymbols(object):
         self._quotes_all_keys = set(Quote(None).keys())
         self._quotes_all_keys = self._quotes_all_keys.union({'margin', 'commission'})
         # 以下字段合约服务也会请求，但是不应该记在 quotes 中，quotes 中的这些字段应该有行情服务负责
-        self._quotes_all_keys.difference_update({'pre_open_interest', 'pre_settlement', 'pre_close', 'upper_limit', 'lower_limit'})
+        self._quotes_all_keys.difference_update({'pre_open_interest', 'pre_close', 'upper_limit', 'lower_limit'})
         sim_task = self._api.create_task(self._sim_handler())
         try:
             async for pack in self._md_recv_chan:
@@ -36,8 +36,13 @@ class TqSymbols(object):
                                 if query_result.get("error", None):
                                     raise Exception(f"查询合约服务报错 {query_result['error']}")
                                 elif query_id.startswith("PYSDK_quote"):
+                                    quotes = self._api._symbols_to_quotes(query_result, self._quotes_all_keys)
+                                    for quote in quotes.values():
+                                        if not (quote["ins_class"] == "OPTION" and quote["exchange_id"] == "SSE"):
+                                            # quotes 中的 pre_settlement 字段应该由行情服务负责，行情没有上交所期权的 pre_settlement，需要从合约服务取，其他合约不变
+                                            quote.pop("pre_settlement", None)
                                     data.append(
-                                        {"quotes": self._api._symbols_to_quotes(query_result, self._quotes_all_keys)}
+                                        {"quotes": quotes}
                                     )
                                     self._md_send_chan.send_nowait({
                                         "aid": "ins_query",
