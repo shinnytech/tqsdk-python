@@ -2,6 +2,13 @@
 
 版本变更
 =============================
+3.2.5 (2022/03/09)
+
+* 修复：修正上交所 ETF 期权的昨结算（pre_settlement）字段未正确显示的问题
+* 修复：:py:class:`~tqsdk.TargetPosTask` 及 :py:class:`~tqsdk.algorithm.twap` 添加强麦期货暂不支持的提示
+* 修复：api.insert_order 没有检查 advanced 参数
+
+
 3.2.4 (2022/03/07)
 
 * 优化：某些情况下启用 web_gui 后网页卡顿的问题

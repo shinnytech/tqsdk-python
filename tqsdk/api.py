@@ -1246,6 +1246,8 @@ class TqApi(TqBaseApi):
             raise Exception(f"账户 {account._broker_id}, {account._account_id} 不支持交易合约 {symbol}。")
         if isinstance(account, TqKq) and exchange_id in ["SSE", "SZSE"]:  # 快期模拟暂不支持，提前抛错
             raise Exception(f"快期模拟暂不支持股票及 ETF 期权交易，股票交易请使用 TqKqStock。")
+        if not (advanced is None or advanced in ["FAK", "FOK"]):
+            raise Exception("advanced 参数错误，只支持以下选项之一 'FAK', 'FOK', None。")
         order_id = order_id if order_id else _generate_uuid("PYSDK_insert")
 
         # 股票下单时, 不支持 offset 参数
