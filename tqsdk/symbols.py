@@ -19,7 +19,7 @@ class TqSymbols(object):
         self._sim_recv_chan = sim_recv_chan
         self._md_send_chan = md_send_chan
         self._md_recv_chan = md_recv_chan
-        self._sse_options = set()
+        self._etf_options = set()
         self._quotes_all_keys = set(Quote(None).keys())
         self._quotes_all_keys = self._quotes_all_keys.union({'margin', 'commission'})
         # 以下字段合约服务也会请求，但是不应该记在 quotes 中，quotes 中的这些字段应该有行情服务负责
@@ -42,8 +42,8 @@ class TqSymbols(object):
                                 elif query_id.startswith("PYSDK_quote"):
                                     quotes = self._api._symbols_to_quotes(query_result, self._quotes_all_keys)
                                     for quote in quotes.values():
-                                        if quote["ins_class"] == "OPTION" and quote["exchange_id"] == "SSE":
-                                            self._sse_options.add(quote["instrument_id"])
+                                        if quote["ins_class"] == "OPTION" and quote["exchange_id"] in ["SSE", "SZSE"]:
+                                            self._etf_options.add(quote["instrument_id"])
                                         else:
                                             # quotes 中的 pre_settlement 字段应该由行情服务负责，行情没有上交所期权的 pre_settlement，需要从合约服务取，其他合约不变
                                             quote.pop("pre_settlement", None)
@@ -55,7 +55,7 @@ class TqSymbols(object):
                                     })
                     for d in data:
                         for symbol, quote in d.get("quotes", {}).items():
-                            if symbol in self._sse_options:
+                            if symbol in self._etf_options:
                                 quote.pop("pre_settlement", None)
                     data.append({"quotes": updated_quotes})
                 await self._sim_recv_chan.send(pack)
