@@ -451,7 +451,7 @@ class Position(Entity):
     @property
     def orders(self):
         """
-        与此持仓相关的开仓/平仓挂单
+        与此持仓相关的且目前委托单状态为ALIVE的开仓/平仓挂单
 
         :return: dict, 其中每个元素的key为委托单ID, value为 :py:class:`~tqsdk.objs.Order`
         """

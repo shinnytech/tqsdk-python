@@ -147,22 +147,24 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
         Example2::
 
             # ... 用户代码 ...
-            quote1 = api.get_quote("SHFE.cu2012")
-            quote2 = api.get_quote("SHFE.au2012")
+            quote_list = api.get_quote_list(["SHFE.cu2012","SHFE.au2012"])
 
-            def get_price(direction, quote):
-                # 在 BUY 时使用买一价加一档价格，SELL 时使用卖一价减一档价格
-                if direction == "BUY":
-                    price = quote.bid_price1 + quote.price_tick
-                else:
-                    price = quote.ask_price1 - quote.price_tick
-                # 如果 price 价格是 nan，使用最新价报单
-                if price != price:
-                    price = quote.last_price
-                return price
+            def get_price_by_quote(quote):
+                def get_price(direction):
+                    # 在 BUY 时使用买一价加一档价格，SELL 时使用卖一价减一档价格
+                    if direction == "BUY":
+                        price = quote["upper_limit"]
+                    else:
+                        price = quote.lower_limit
+                    # 如果 price 价格是 nan，使用最新价报单
+                    if price != price:
+                        price = quote.last_price
+                    return price
+                return get_price
 
-            target_pos1 = TargetPosTask(api, "SHFE.cu2012", price=lambda direction: get_price(direction, quote1))
-            target_pos2 = TargetPosTask(api, "SHFE.au2012", price=lambda direction: get_price(direction, quote2))
+            for quote in quote_list:
+                target_pos_active_dict[quote.instrument_id] = TargetPosTask(api, quote.instrument_id, price=get_price_by_quote(quote))
+
             # ... 用户代码 ...
 
         Example3::

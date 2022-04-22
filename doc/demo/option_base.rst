@@ -84,3 +84,9 @@ o73 - 查询标的对应期权按虚值平值实值分类方法二
 
 .. literalinclude:: ../../tqsdk/demo/option_tutorial/o73.py
   :language: python
+
+o74 - 本地计算ETF期权卖方开仓保证金
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. literalinclude:: ../../tqsdk/demo/option_tutorial/o74.py
+  :language: python
