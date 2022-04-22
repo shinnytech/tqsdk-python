@@ -18,7 +18,7 @@ print(ls)  # 标的为 "SHFE.au2012" 的看跌期权, 未下市的
 ls = api.query_options("SHFE.au2012", strike_price=340)
 print(ls)  # 标的为 "SHFE.au2012" 、行权价为 340 的期权
 
-ls = api.query_options("SSE.510300", exchange_id="CFFEX")
+ls = api.query_options("SSE.000300", exchange_id="CFFEX")
 print(ls)  # 中金所沪深300股指期权
 
 ls = api.query_options("SSE.510300", exchange_id="SSE")

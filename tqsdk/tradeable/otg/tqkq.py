@@ -22,7 +22,7 @@ class TqKq(BaseOtg, FutureMixin):
 
             from tqsdk import TqApi, TqAuth, TqKq
 
-            tq_kq_stock = TqKq()
+            tq_kq = TqKq()
             api = TqApi(account=tq_kq, auth=TqAuth("信易账户", "账户密码"))
             quote = api.get_quote("SHFE.cu2206")
             print(quote)

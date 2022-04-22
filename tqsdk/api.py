@@ -58,7 +58,7 @@ from tqsdk.datetime import _get_trading_day_start_time, _get_trading_day_end_tim
 from tqsdk.diff import _merge_diff, _get_obj, _is_key_exist, _register_update_chan
 from tqsdk.entity import Entity
 from tqsdk.exceptions import TqTimeoutError
-from tqsdk.log import _get_log_name, _clear_logs
+from tqsdk.log import _clear_logs, _get_log_name, _get_disk_free
 from tqsdk.objs import Quote, TradingStatus, Kline, Tick, Account, Position, Order, Trade, QuotesEntity, RiskManagementRule, RiskManagementData
 from tqsdk.objs import SecurityAccount, SecurityOrder, SecurityTrade, SecurityPosition
 from tqsdk.objs_not_entity import QuoteList, TqDataFrame, TqSymbolDataFrame, SymbolList, SymbolLevelList, \
@@ -88,7 +88,7 @@ class TqApi(TqBaseApi):
 
     def __init__(self, account: Optional[Union[TqMultiAccount, UnionTradeable]] = None, auth: Union[TqAuth, str, None] = None,
                  url: Optional[str] = None, backtest: Union[TqBacktest, TqReplay, None] = None,
-                 web_gui: Union[bool, str] = False, debug: Union[bool, str, None] = False,
+                 web_gui: Union[bool, str] = False, debug: Union[bool, str, None] = None,
                  loop: Optional[asyncio.AbstractEventLoop] = None, disable_print: bool = False, _stock: bool = True,
                  _ins_url=None, _md_url=None, _td_url=None) -> None:
         """
@@ -128,10 +128,11 @@ class TqApi(TqBaseApi):
                 在回测模式下, TqBacktest 连接 wss://backtest.shinnytech.com/t/md/front/mobile 接收行情数据, \
                 由 TqBacktest 内部完成回测时间段内的行情推进和 K 线、Tick 更新.
 
-            debug(bool/str): [可选] 是否将调试信息输出到指定文件，默认值为 False。
+            debug(bool/str): [可选] 是否将调试信息输出到指定文件，默认值为 None。
                 * None [默认]: 根据账户情况不同，默认值的行为不同。
 
-                    + 当有以下账户之一时，:py:class:`~tqsdk.TqAccount`、:py:class:`~tqsdk.TqKq`、:py:class:`~tqsdk.TqKqStock` 账户时，调试信息输出到指定文件夹 `~/.tqsdk/logs`。
+                    + 当有以下账户之一时，:py:class:`~tqsdk.TqAccount`、:py:class:`~tqsdk.TqKq`、:py:class:`~tqsdk.TqKqStock` 账户时，\
+                    调试信息输出到指定文件夹 `~/.tqsdk/logs`（如果磁盘剩余空间不足 3G 则不会输出调试信息）。
 
                     + 其他情况，即仅有本地模拟账户 :py:class:`~tqsdk.TqSim`、:py:class:`~tqsdk.TqSimStock` 时，调试信息不输出。
 
@@ -271,7 +272,9 @@ class TqApi(TqBaseApi):
                 raise Exception("不可以为slave再创建slave")
             self._master._slaves.append(self)
             self._account = self._master._account
-            self._web_gui = False # 如果是slave, _web_gui 一定是 False
+            if isinstance(self._account, TqMultiAccount):
+                warnings.warn("TqSdk 多账户功能暂不支持在多线程下使用")
+            self._web_gui = False  # 如果是slave, _web_gui 一定是 False
             return  # 注: 如果是slave,则初始化到这里结束并返回,以下代码不执行
 
         self._web_gui = web_gui
@@ -349,7 +352,6 @@ class TqApi(TqBaseApi):
         super(TqApi, self)._close()
         mem = psutil.virtual_memory()
         self._logger.debug("process end", mem_total=mem.total, mem_free=mem.free)
-        _clear_logs()  # 清除过期日志文件
 
     def __enter__(self):
         return self
@@ -591,7 +593,7 @@ class TqApi(TqBaseApi):
             注意: 周期在日线以内时此参数可以任意填写, 在日线以上时只能是日线(86400)的整数倍, 最大为28天 (86400*28)。
 
             data_length (int): 需要获取的序列长度。默认200根, 返回的K线序列数据是从当前最新一根K线开始往回取data_length根。\
-            每个序列最大支持请求 8964 个数据
+            每个序列最大支持请求 8000 个数据
 
             chart_id (str): [可选]指定序列id, 默认由 api 自动生成
 
@@ -607,7 +609,7 @@ class TqApi(TqBaseApi):
 
             3. 若设置了较大的序列长度参数，而所有可对齐的数据并没有这么多，则序列前面部分数据为NaN（这与获取单合约K线且数据不足序列长度时情况相似）。
 
-            4. 若主合约与副合约的交易时间在所有合约数据中最晚一根K线时间开始往回的 8964*周期 时间段内完全不重合，则无法生成多合约K线，程序会报出获取数据超时异常。
+            4. 若主合约与副合约的交易时间在所有合约数据中最晚一根K线时间开始往回的 8000*周期 时间段内完全不重合，则无法生成多合约K线，程序会报出获取数据超时异常。
 
             5. datetime、duration是所有合约公用的字段，则未单独为每个副合约增加一份副本，这两个字段使用原始字段名（即没有数字后缀）。
 
@@ -737,7 +739,7 @@ class TqApi(TqBaseApi):
         Args:
             symbol (str): 指定合约代码.
 
-            data_length (int): 需要获取的序列长度。每个序列最大支持请求 8964 个数据
+            data_length (int): 需要获取的序列长度。每个序列最大支持请求 8000 个数据
 
             chart_id (str): [可选]指定序列id, 默认由 api 自动生成
 
@@ -3094,11 +3096,14 @@ class TqApi(TqBaseApi):
         # TqWebHelper 初始化可能会修改 self._account、self._backtest，所以在这里才初始化 logger
         # 在此之前使用 self._logger 不会打印日志
         if not self._logger.handlers and (self._debug or (self._account._has_tq_account and self._debug is not False)):
+            _clear_logs()  # 先清空日志
             log_name = self._debug if isinstance(self._debug, str) else _get_log_name()
-            fh = logging.FileHandler(filename=log_name)
-            fh.setFormatter(JSONFormatter())
-            fh.setLevel(logging.DEBUG)
-            self._logger.addHandler(fh)
+            if self._debug is not None or _get_disk_free() >= 3:
+                # self._debug is None 并且磁盘剩余空间小于 3G 则不写入日志
+                fh = logging.FileHandler(filename=log_name)
+                fh.setFormatter(JSONFormatter())
+                fh.setLevel(logging.DEBUG)
+                self._logger.addHandler(fh)
         mem = psutil.virtual_memory()
         self._logger.debug("process start", product="tqsdk-python", version=__version__, os=platform.platform(),
                            py_version=platform.python_version(), py_arch=platform.architecture()[0],
