@@ -303,13 +303,12 @@ class DataDownloader:
                         continue
                     left_id = chart.get("left_id", -1)
                     right_id = chart.get("right_id", -1)
-                    if (left_id == -1 and right_id == -1) or self._api._data.get("mdhis_more_data", True):
+                    if (left_id == -1 and right_id == -1) or chart.get("more_data", True):
                         # 定位信息还没收到, 或数据序列还没收到
                         continue
-                    for serial in serials:
-                        # 检查合约的数据是否收到
-                        if serial.get("last_id", -1) == -1:
-                            continue
+                    # 检查合约的数据是否收到
+                    if any([serial.get("last_id", -1) == -1 for serial in serials]):
+                        continue
                     if current_id is None:
                         current_id = max(left_id, 0)
                     while current_id <= right_id:

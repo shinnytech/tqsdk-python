@@ -2,6 +2,12 @@
 
 版本变更
 =============================
+3.2.8 (2022/04/29)
+
+* 修复：下载多合约 klines 时数据可能未完全收全的问题
+* 修复：支持多进程下使用 :py:meth:`~tqsdk.TqApi.get_kline_data_series`、:py:meth:`~tqsdk.TqApi.get_tick_data_series` 接口
+
+
 3.2.7 (2022/04/22)
 
 * 优化：对多线程用例，增加可能的错误提示
