@@ -36,7 +36,7 @@ with open("README.md", mode="r", encoding='utf-8') as fh:
 
 setuptools.setup(
     name='tqsdk',
-    version="3.2.7",
+    version="3.2.8",
     description='TianQin SDK',
     author='TianQin',
     author_email='tianqincn@gmail.com',
@@ -47,7 +47,7 @@ setuptools.setup(
     zip_safe=False,
     python_requires='>=3.6.4',
     install_requires=["websockets>=8.1", "requests", "numpy", "pandas>=1.1.0", "scipy", "simplejson", "aiohttp",
-                      "certifi", "pyjwt", "psutil", "shinny_structlog", "sgqlc"],
+                      "certifi", "pyjwt", "psutil", "shinny_structlog", "sgqlc", "filelock"],
     cmdclass={'bdist_wheel': bdist_wheel},
     classifiers=[
         "Programming Language :: Python :: 3",
