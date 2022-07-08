@@ -29,7 +29,7 @@
 
 我们可能需要将这个策略运行多份, 每份的 SYMBOL, LONG, SHORT 都不同.
 
-TqSdk 为这类需求提供三种解决方案, 您可任意选择一种.
+TqSdk 为这类需求提供两种解决方案, 您可任意选择一种.
 
 
 每个进程执行一个策略实例
@@ -109,60 +109,6 @@ TqSdk 为这类需求提供三种解决方案, 您可任意选择一种.
 缺点:
 
 * 每个策略进程要建立一个单独的服务器连接, 数量过大时可能无法连接成功
-
-
-单进程中多线程, 每个线程执行一个策略实例
--------------------------------------------------
-一般情况下, 我们推荐用户使用上一方案. 仅当用户策略实例很多, 导致网络连接数无法容纳时, 可以考虑使用本方案.
-
-* 首先需要正常创建一个 TqApi 实例 api_master, 并用 TqApi.copy 函数获得多个slave副本
-* 启动多个线程, 每个线程中使用一个 TqApi 实例副本.
-* 主线程中的 api_master 仍然需要持续调用 wait_update
-* 每个线程中的策略代码可以如常工作
-
-示例代码如下::
-
-    import threading
-
-    class WorkerThread(threading.Thread):
-        def __init__(self, api, symbol):
-            threading.Thread.__init__(self)
-            self.api = api
-            self.symbol = symbol
-
-        def run(self):
-            SHORT = 30  # 短周期
-            LONG = 60  # 长周期
-            data_length = LONG + 2  # k线数据长度
-            klines = self.api.get_kline_serial(self.symbol, duration_seconds=60, data_length=data_length)
-            target_pos = TargetPosTask(self.api, self.symbol)
-
-            while True:
-                self.api.wait_update()
-                if self.api.is_changing(klines.iloc[-1], "datetime"):  # 产生新k线:重新计算SMA
-                    short_avg = ma(klines["close"], SHORT)  # 短周期
-                    long_avg = ma(klines["close"], LONG)  # 长周期
-                    if long_avg.iloc[-2] < short_avg.iloc[-2] and long_avg.iloc[-1] > short_avg.iloc[-1]:
-                        target_pos.set_target_volume(-3)
-                        print("均线下穿，做空")
-                    if short_avg.iloc[-2] < long_avg.iloc[-2] and short_avg.iloc[-1] > long_avg.iloc[-1]:
-                        target_pos.set_target_volume(3)
-                        print("均线上穿，做多")
-
-
-    if __name__ == "__main__":
-        api_master = TqApi(TqSim())
-
-        # Create new threads
-        thread1 = WorkerThread(api_master.copy(), "SHFE.cu1901")
-        thread2 = WorkerThread(api_master.copy(), "SHFE.rb1901")
-
-        # Start new Threads
-        thread1.start()
-        thread2.start()
-
-        while True:
-            api_master.wait_update()
 
 
 .. _multi_async_task:

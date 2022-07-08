@@ -6,14 +6,14 @@ import asyncio
 import csv
 import os
 from datetime import date, datetime
-from typing import Union, List
+from typing import Union, List, Optional
 import lzma
 
 import pandas
 
 from tqsdk.api import TqApi
 from tqsdk.channel import TqChan
-from tqsdk.datetime import _get_trading_day_start_time, _get_trading_day_end_time
+from tqsdk.datetime import _get_trading_day_start_time, _get_trading_day_end_time, _datetime_to_timestamp_nano
 from tqsdk.diff import _get_obj
 from tqsdk.tafunc import get_dividend_df, get_dividend_factor
 from tqsdk.utils import _generate_uuid
@@ -94,13 +94,13 @@ class DataDownloader:
         if not self._api._auth._has_feature("tq_dl"):
             raise Exception("您的账户不支持下载历史数据功能，需要购买专业版本后使用。升级网址：https://account.shinnytech.com")
         if isinstance(start_dt, datetime):
-            self._start_dt_nano = int(start_dt.timestamp() * 1e9)
+            self._start_dt_nano = _datetime_to_timestamp_nano(start_dt)
         else:
-            self._start_dt_nano = _get_trading_day_start_time(int(datetime(start_dt.year, start_dt.month, start_dt.day).timestamp()) * 1000000000)
+            self._start_dt_nano = _get_trading_day_start_time(_datetime_to_timestamp_nano(datetime(start_dt.year, start_dt.month, start_dt.day)))
         if isinstance(end_dt, datetime):
-            self._end_dt_nano = int(end_dt.timestamp() * 1e9)
+            self._end_dt_nano = _datetime_to_timestamp_nano(end_dt)
         else:
-            self._end_dt_nano = _get_trading_day_end_time(int(datetime(end_dt.year, end_dt.month, end_dt.day).timestamp()) * 1000000000)
+            self._end_dt_nano = _get_trading_day_end_time(_datetime_to_timestamp_nano(datetime(end_dt.year, end_dt.month, end_dt.day)))
         self._current_dt_nano = self._start_dt_nano
         self._symbol_list = symbol_list if isinstance(symbol_list, list) else [symbol_list]
         # 下载合约超时时间（默认 30s），已下市的没有交易的合约，超时时间可以设置短一点（2s），用户不希望自己的程序因为没有下载到数据而中断
@@ -113,7 +113,9 @@ class DataDownloader:
         self._adj_type = adj_type[0] if adj_type else adj_type
         self._csv_file_name = csv_file_name
         self._csv_header = self._get_headers()
-        self._dividend_cache = {}  # 缓存合约对应的复权系数矩阵，每个合约只计算一次
+        # 缓存合约对应的复权系数矩阵，每个合约只计算一次
+        # 含义为截止 datetime 之前(不包含) 应使用 factor 复权
+        self._dividend_cache = {}
         self._data_series = None
         self._task = self._api.create_task(self._run())
 
@@ -136,7 +138,7 @@ class DataDownloader:
         return 100.0 if self._task.done() else (self._current_dt_nano - self._start_dt_nano) / (
                 self._end_dt_nano - self._start_dt_nano) * 100
 
-    def _get_data_series(self) -> pandas.DataFrame:
+    def _get_data_series(self) -> Optional[pandas.DataFrame]:
         """
         获取下载的 DataFrame 格式数据
 
@@ -170,25 +172,25 @@ class DataDownloader:
             self._data_series = pandas.read_csv(self._csv_file_name)
         return self._data_series
 
-    async def _update_dividend_factor(self):
-        for s in self._dividend_cache:
+    async def _ensure_dividend_factor(self, quote, timestamp):
+        if quote.instrument_id not in self._dividend_cache:
             # 对每个除权除息矩阵增加 factor 序列，为当日的复权因子
-            df = self._dividend_cache[s]["df"]
+            df = get_dividend_df(quote.stock_dividend_ratio, quote.cash_dividend_ratio)
+            df = df[df["datetime"].between(timestamp, self._end_dt_nano, inclusive="right")]  # 只需要第一笔行情时间～结束时间之间的复权因子, 左开右闭
             df["pre_close"] = float('nan')  # 初始化 pre_close 为 nan
-            between = df["datetime"].between(self._start_dt_nano, self._end_dt_nano)  # 只需要开始时间～结束时间之间的复权因子
-            for i in df[between].index:
+            for i in range(len(df)):
                 chart_info = {
                     "aid": "set_chart",
                     "chart_id": _generate_uuid("PYSDK_downloader"),
-                    "ins_list": s,
+                    "ins_list": quote.instrument_id,
                     "duration": 86400 * 1000000000,
                     "view_width": 2,
-                    "focus_datetime": int(df.iloc[i].datetime),
+                    "focus_datetime": int(df["datetime"].iloc[i]),
                     "focus_position": 1
                 }
                 await self._api._send_chan.send(chart_info)
                 chart = _get_obj(self._api._data, ["charts", chart_info["chart_id"]])
-                serial = _get_obj(self._api._data, ["klines", s, str(86400000000000)])
+                serial = _get_obj(self._api._data, ["klines", quote.instrument_id, str(86400000000000)])
                 try:
                     async with self._api.register_update_notify() as update_chan:
                         async for _ in update_chan:
@@ -211,20 +213,27 @@ class DataDownloader:
                         "view_width": 2
                     })
             df["factor"] = (df["pre_close"] - df["cash_dividend"]) / df["pre_close"] / (1 + df["stock_dividend"])
-            df["factor"].fillna(1, inplace=True)
+            df["factor"].fillna(1.0, inplace=True)
+            # 插入结束时间这条记录, 因为可能存在行情时间等于 _end_dt_nano 的行情，因此这里 +1
+            df = df.append({"datetime": self._end_dt_nano+1, "factor": 1.0}, ignore_index=True)
+            if self._adj_type == "F":
+                df["factor"] = df["factor"].iloc[::-1].cumprod().iloc[::-1]
+            elif self._adj_type == "B":
+                # 后复权按定义上应该从第一笔行情之后产生的复权事件开始
+                # 第一笔行情时间一定小于 df["datetime"].iloc[0], 因此复权是从 df["datetime"].iloc[0] 开始
+                df["factor"] = 1.0 / df["factor"].cumprod()
+                # 至此 df 每行的含义为从 datetime 开始应使用 factor 复权
+                # 该格式并不好用，需要改为截止 datetime 之前(不包含) 应使用 factor 复权
+                df["factor"] = df["factor"].shift(1)
+                df["factor"].iloc[0] = 1.0
+            self._dividend_cache[quote.instrument_id] = {
+                "df": df,
+                "last_dt": 0,
+                "factor": float("nan"),
+            }
 
     async def _run(self):
         self._quote_list = await self._api.get_quote_list(self._symbol_list)
-        # 如果存在 STOCK / FUND 并且 adj_type is not None, 这里需要提前准备下载时间段内的复权因子
-        if self._adj_type:
-            for quote in self._quote_list:
-                if quote.ins_class in ["STOCK", "FUND"]:
-                    self._dividend_cache[quote.instrument_id] = {
-                        "df": get_dividend_df(quote.stock_dividend_ratio, quote.cash_dividend_ratio),
-                        "back_factor": 1.0
-                    }
-        # 前复权需要提前计算除权因子
-        await self._update_dividend_factor()
         self._data_chan = TqChan(self._api)
         task = self._api.create_task(self._download_data())
         # cols 是复权需要重新计算的列名
@@ -238,30 +247,26 @@ class DataDownloader:
             with open(self._csv_file_name, 'w', newline='') as csvfile:
                 csv_writer = csv.writer(csvfile, dialect='excel')
                 csv_writer.writerow(self._csv_header)
-                last_dt = None
                 async for item in self._data_chan:
                     for quote in self._quote_list:
                         symbol = quote.instrument_id
                         if self._adj_type and quote.ins_class in ["STOCK", "FUND"]:
-                            dividend_df = self._dividend_cache[symbol]["df"]
-                            factor = 1
-                            if self._adj_type == "F":
-                                gt = dividend_df["datetime"].gt(item[index_datetime_nano])
-                                if gt.any():
-                                    factor = dividend_df[gt]["factor"].cumprod().iloc[-1]
-                            elif self._adj_type == "B" and last_dt:
-                                gt = dividend_df['datetime'].gt(last_dt)
-                                if gt.any():
-                                    index = dividend_df[gt].index[0]
-                                    if item[index_datetime_nano] >= dividend_df.loc[index, 'datetime']:
-                                        self._dividend_cache[symbol]["back_factor"] *= (1 / dividend_df[gt].loc[index, 'factor'])
-                                factor = self._dividend_cache[symbol]["back_factor"]
-                            last_dt = item[index_datetime_nano]
-                            if factor != 1:
+                            # 如果存在 STOCK / FUND 并且 adj_type is not None, 这里需要提前准备下载时间段内的复权因子
+                            # 前复权需要提前计算除权因子
+                            await self._ensure_dividend_factor(quote, item[index_datetime_nano])
+                            dividend_cache = self._dividend_cache[symbol]
+                            # dividend_df 和 _data_chan 中取出的数据都是按时间升序排列的，因此可以使用归并算法
+                            if dividend_cache["last_dt"] <= item[index_datetime_nano]:
+                                dividend_df = dividend_cache["df"]
+                                dividend_df = dividend_df[dividend_df["datetime"].gt(item[index_datetime_nano])]
+                                dividend_cache["df"] = dividend_df
+                                dividend_cache["last_dt"] = dividend_df["datetime"].iloc[0]
+                                dividend_cache["factor"] = dividend_df["factor"].iloc[0]
+                            if dividend_cache["factor"] != 1:
                                 item = item.copy()
                                 for c in cols:  # datetime_nano
                                     index = self._csv_header.index(f"{symbol}.{c}")
-                                    item[index] = item[index] * factor
+                                    item[index] = item[index] * dividend_cache["factor"]
                     csv_writer.writerow(item)
         finally:
             task.cancel()
@@ -354,7 +359,7 @@ class DataDownloader:
         if self._dur_nano != 0:
             return ["open", "high", "low", "close", "volume", "open_oi", "close_oi"]
         else:
-            cols = ["last_price", "highest", "lowest", "volume", "amount", "open_interest"]
+            cols = ["last_price", "highest", "lowest", "average", "volume", "amount", "open_interest"]
             price_range = 1
             for symbol in self._symbol_list:
                 if symbol.split('.')[0] in {"SHFE", "INE", "SSE", "SZSE"}:
@@ -366,18 +371,17 @@ class DataDownloader:
 
     @staticmethod
     def _get_value(obj, key, price_decs):
-        if key not in obj:
+        try:
+            if key in PRICE_KEYS:
+                return round(obj[key], price_decs)
+            else:
+                return obj[key]
+        except KeyError:
             return "#N/A"
-        if isinstance(obj[key], str):
+        except TypeError:
             return float("nan")
-        if key in PRICE_KEYS:
-            return round(obj[key], price_decs)
-        else:
-            return obj[key]
 
     @staticmethod
     def _nano_to_str(nano):
         dt = datetime.fromtimestamp(nano // 1000000000)
-        s = dt.strftime('%Y-%m-%d %H:%M:%S')
-        s += '.' + str(int(nano % 1000000000)).zfill(9)
-        return s
+        return "%d-%02d-%02d %02d:%02d:%02d.%09d" % (dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second, int(nano) % 1000000000)

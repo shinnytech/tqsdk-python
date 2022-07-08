@@ -2,6 +2,16 @@
 
 版本变更
 =============================
+3.2.9 (2022/07/07)
+
+* 增加：下载 tick 数据时增加 average 列
+* 增加：:py:meth:`~tqsdk.TqApi.get_tick_data_series` 接口返回值中增加 average 列
+* 优化：下载数据时优化 cpu 占用
+* 优化：tqsdk 内部各个模块使用统一的时间处理函数
+* 修复：:py:class:`~tqsdk.TargetPosTask` 及 :py:class:`~tqsdk.algorithm.twap` 增加添加普麦、早籼稻、粳稻及晚籼稻期货暂不支持的提示
+* 修复：:py:meth:`~tqsdk.TqApi.query_symbol_ranking` 接口某些情况可能报错的问题
+
+
 3.2.8 (2022/04/29)
 
 * 修复：下载多合约 klines 时数据可能未完全收全的问题

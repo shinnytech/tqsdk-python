@@ -12,7 +12,7 @@ from typing import Union, Any, List, Dict
 from tqsdk.backtest.utils import TqBacktestContinuous, TqBacktestDividend
 from tqsdk.channel import TqChan
 from tqsdk.datetime import _get_trading_day_start_time, _get_trading_day_end_time, _get_trading_day_from_timestamp, \
-    _timestamp_nano_to_str
+    _timestamp_nano_to_str, _datetime_to_timestamp_nano
 from tqsdk.diff import _merge_diff, _get_obj
 from tqsdk.entity import Entity
 from tqsdk.exceptions import BacktestFinished
@@ -72,17 +72,17 @@ class TqBacktest(object):
             end_dt (date/datetime): 回测结束时间, 如果类型为 date 则指的是交易日, 如果为 datetime 则指的是具体时间点
         """
         if isinstance(start_dt, datetime):
-            self._start_dt = int(start_dt.timestamp() * 1e9)
+            self._start_dt = _datetime_to_timestamp_nano(start_dt)
         elif isinstance(start_dt, date):
             self._start_dt = _get_trading_day_start_time(
-                int(datetime(start_dt.year, start_dt.month, start_dt.day).timestamp()) * 1000000000)
+                _datetime_to_timestamp_nano(datetime(start_dt.year, start_dt.month, start_dt.day)))
         else:
             raise Exception("回测起始时间(start_dt)类型 %s 错误, 请检查 start_dt 数据类型是否填写正确" % (type(start_dt)))
         if isinstance(end_dt, datetime):
-            self._end_dt = int(end_dt.timestamp() * 1e9)
+            self._end_dt = _datetime_to_timestamp_nano(end_dt)
         elif isinstance(end_dt, date):
             self._end_dt = _get_trading_day_end_time(
-                int(datetime(end_dt.year, end_dt.month, end_dt.day).timestamp()) * 1000000000)
+                _datetime_to_timestamp_nano(datetime(end_dt.year, end_dt.month, end_dt.day)))
         else:
             raise Exception("回测结束时间(end_dt)类型 %s 错误, 请检查 end_dt 数据类型是否填写正确" % (type(end_dt)))
         self._current_dt = self._start_dt
@@ -231,7 +231,7 @@ class TqBacktest(object):
                 quote.pop("underlying_symbol", None)
             if quote.get('expire_datetime'):
                 # 先删除所有的 quote 的 expired 字段，只在有 expire_datetime 字段时才会添加 expired 字段
-                quote['expired'] = quote.get('expire_datetime') * 1e9 <= self._trading_day_start
+                quote['expired'] = quote.get('expire_datetime') * 1000000000 <= self._trading_day_start
         return quotes
 
     async def _send_snapshot(self):

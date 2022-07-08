@@ -11,7 +11,8 @@ from pandas import DataFrame
 
 from tqsdk.api import TqApi
 from tqsdk import utils
-from tqsdk.datetime import _get_trading_timestamp, _get_trade_timestamp, _get_trading_day_from_timestamp
+from tqsdk.datetime import _get_trading_timestamp, _get_trade_timestamp, _get_trading_day_from_timestamp, \
+    _datetime_to_timestamp_nano
 from tqsdk.rangeset import _rangeset_slice, _rangeset_head
 from tqsdk.tradeable import TqAccount, TqKq, TqSim
 
@@ -228,7 +229,7 @@ def vwap_table(api: TqApi, symbol: str, target_pos: int, duration: float,
     current_datetime = datetime.fromtimestamp(current_timestamp_nano//1000000000)
     # 下一分钟的开始时间
     next_datetime = current_datetime.replace(second=0) + timedelta(minutes=1)
-    start_datetime_nano = int(next_datetime.timestamp()) * 1000000000
+    start_datetime_nano = _datetime_to_timestamp_nano(next_datetime)
     r = _rangeset_head(_rangeset_slice(trading_timestamp_nano_range, start_datetime_nano), int(duration * 1e9))
     if not (r and trading_timestamp_nano_range[0][0] <= r[-1][-1] < trading_timestamp_nano_range[-1][1]):
         raise Exception("指定时间段超出当前交易日")
