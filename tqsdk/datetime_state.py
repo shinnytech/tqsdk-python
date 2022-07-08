@@ -23,7 +23,7 @@ class TqDatetimeState:
         if self.tqsdk_backtest:
             return self.tqsdk_backtest.get('current_dt')
         else:
-            return int(time.time() * 1e9)
+            return int(time.time() * 1000000) * 1000
 
     def update_state(self, diff):
         self.tqsdk_backtest.update(diff.get('_tqsdk_backtest', {}))

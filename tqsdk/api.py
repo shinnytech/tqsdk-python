@@ -54,7 +54,8 @@ from tqsdk.connect import TqConnect, MdReconnectHandler, ReconnectTimer
 from tqsdk.calendar import _get_trading_calendar, TqContCalendar, _init_chinese_rest_days
 from tqsdk.data_extension import DataExtension
 from tqsdk.data_series import DataSeries
-from tqsdk.datetime import _get_trading_day_start_time, _get_trading_day_end_time, _get_trading_day_from_timestamp
+from tqsdk.datetime import _get_trading_day_start_time, _get_trading_day_end_time, _get_trading_day_from_timestamp, \
+    _datetime_to_timestamp_nano
 from tqsdk.diff import _merge_diff, _get_obj, _is_key_exist, _register_update_chan
 from tqsdk.entity import Entity
 from tqsdk.exceptions import TqTimeoutError
@@ -86,7 +87,8 @@ class TqApi(TqBaseApi):
     通常情况下, 一个线程中 **应该只有一个** TqApi的实例, 它负责维护网络连接, 接收行情及账户数据, 并在内存中维护业务数据截面
     """
 
-    def __init__(self, account: Optional[Union[TqMultiAccount, UnionTradeable]] = None, auth: Union[TqAuth, str, None] = None,
+    def __init__(self, account: Optional[Union[TqMultiAccount, UnionTradeable]] = None,
+                 auth: Union[TqAuth, str, None] = None,
                  url: Optional[str] = None, backtest: Union[TqBacktest, TqReplay, None] = None,
                  web_gui: Union[bool, str] = False, debug: Union[bool, str, None] = None,
                  loop: Optional[asyncio.AbstractEventLoop] = None, disable_print: bool = False, _stock: bool = True,
@@ -273,7 +275,7 @@ class TqApi(TqBaseApi):
             self._master._slaves.append(self)
             self._account = self._master._account
             if isinstance(self._account, TqMultiAccount):
-                warnings.warn("TqSdk 多账户功能暂不支持在多线程下使用")
+                warnings.warn("TqSdk 暂不支持在多线程下使用")
             self._web_gui = False  # 如果是slave, _web_gui 一定是 False
             return  # 注: 如果是slave,则初始化到这里结束并返回,以下代码不执行
 
@@ -427,7 +429,7 @@ class TqApi(TqBaseApi):
         return self.get_quote_list([symbol])[0]
 
     # ----------------------------------------------------------------------
-    def get_quote_list(self, symbols: List[str]) -> List[Quote]:
+    def get_quote_list(self, symbols: List[str]) -> QuoteList:
         """
         获取指定合约列表的盘口行情.
 
@@ -590,7 +592,7 @@ class TqApi(TqBaseApi):
                 * list of str: 合约代码列表 （一次提取多个合约的K线并根据相同的时间向第一个合约（主合约）对齐)
 
             duration_seconds (int): K线数据周期, 以秒为单位。例如: 1分钟线为60,1小时线为3600,日线为86400。\
-            注意: 周期在日线以内时此参数可以任意填写, 在日线以上时只能是日线(86400)的整数倍, 最大为28天 (86400*28)。
+                注意: 周期在日线以内时此参数可以任意填写, 在日线以上时只能是日线(86400)的整数倍, 最大为28天 (86400*28)。
 
             data_length (int): 需要获取的序列长度。默认200根, 返回的K线序列数据是从当前最新一根K线开始往回取data_length根。\
             每个序列最大支持请求 8000 个数据
@@ -701,7 +703,7 @@ class TqApi(TqBaseApi):
             "view_width": data_length if len(symbol) == 1 else 8964,
             # 如果同时订阅了两个以上合约K线，初始化数据时默认获取 1w 根K线(初始化完成后修改指令为设定长度)
         }
-        #将数据权转移给TqChan时其所有权也随之转移，因pack还需要被用到，所以传入副本
+        # 将数据权转移给TqChan时其所有权也随之转移，因pack还需要被用到，所以传入副本
         task = self.create_task(self._get_serial_async(symbol, chart_id, serial, pack.copy()), _caller_api=True)
         if serial is None:
             serial = self._init_serial([_get_obj(self._data, ["klines", s, str(dur_id)]) for s in symbol],
@@ -829,7 +831,7 @@ class TqApi(TqBaseApi):
             symbol (str): 指定合约代码。当前只支持单个合约。
 
             duration_seconds (int): K 线数据周期, 以秒为单位。例如: 1 分钟线为 60，1 小时线为 3600，日线为 86400。\
-            注意: 周期在日线以内时此参数可以任意填写, 在日线以上时只能是日线(86400)的整数倍
+                注意: 周期在日线以内时此参数可以任意填写, 在日线以上时只能是日线(86400)的整数倍
 
             start_dt (date/datetime): 起始时间, 如果类型为 date 则指的是交易日, 如果为 datetime 则指的是具体时间点
 
@@ -950,17 +952,17 @@ class TqApi(TqBaseApi):
             raise Exception(f"{call_func} 数据获取方式暂不支持多合约请求")
         self._ensure_symbol(symbol_list)  # 检查合约代码是否存在
         if isinstance(start_dt, datetime):
-            start_dt_nano = int(start_dt.timestamp() * 1e9)
+            start_dt_nano = _datetime_to_timestamp_nano(start_dt)
         elif isinstance(start_dt, date):
             start_dt_nano = _get_trading_day_start_time(
-                int(datetime(start_dt.year, start_dt.month, start_dt.day).timestamp() * 1e9))
+                _datetime_to_timestamp_nano(datetime(start_dt.year, start_dt.month, start_dt.day)))
         else:
             raise Exception(f"start_dt 参数类型 {type(start_dt)} 错误, 只支持 datetime / date 类型，请检查是否正确")
         if isinstance(end_dt, datetime):
-            end_dt_nano = int(end_dt.timestamp() * 1e9)
+            end_dt_nano = _datetime_to_timestamp_nano(end_dt)
         elif isinstance(end_dt, date):
             end_dt_nano = _get_trading_day_end_time(
-                int(datetime(end_dt.year, end_dt.month, end_dt.day).timestamp() * 1e9))
+                _datetime_to_timestamp_nano(datetime(end_dt.year, end_dt.month, end_dt.day)))
         else:
             raise Exception(f"end_dt 参数类型 {type(end_dt)} 错误, 只支持 datetime / date 类型，请检查是否正确")
         if adj_type not in [None, "F", "B"]:
@@ -974,7 +976,7 @@ class TqApi(TqBaseApi):
         return ds.df
 
     # ----------------------------------------------------------------------
-    def get_trading_calendar(self, start_dt: Union[date, datetime], end_dt: Union[date, datetime]):
+    def get_trading_calendar(self, start_dt: Union[date, datetime], end_dt: Union[date, datetime]) -> pd.DataFrame:
         """
         获取一段时间内的交易日历信息，交易日历可以处理的范围为 2003-01-01 ～ 2022-12-31。
 
@@ -1024,7 +1026,7 @@ class TqApi(TqBaseApi):
         return _get_trading_calendar(start_dt, end_dt, headers=self._base_headers)
 
     # ----------------------------------------------------------------------
-    def query_his_cont_quotes(self, symbol: Union[str, List[str]], n: int = 200):
+    def query_his_cont_quotes(self, symbol: Union[str, List[str]], n: int = 200) -> pd.DataFrame:
         """
         获取指定的主连合约最近 n 天的标的，可以处理的范围为 2003-01-01 ～ 2022-12-31。
 
@@ -1072,7 +1074,7 @@ class TqApi(TqBaseApi):
         if n <= 0:
             raise Exception(f"参数错误，n={n} 应该是大于等于 1 的整数")
         now_dt = self._get_current_datetime()
-        trading_day = _get_trading_day_from_timestamp(int(now_dt.timestamp() * 1000000000))
+        trading_day = _get_trading_day_from_timestamp(_datetime_to_timestamp_nano(now_dt))
         end_dt = datetime.fromtimestamp(trading_day / 1000000000)
         cont_calendar = TqContCalendar(start_dt=end_dt - timedelta(days=n * 2 + 30), end_dt=end_dt, symbols=symbols,
                                        headers=self._base_headers)
@@ -1082,7 +1084,7 @@ class TqApi(TqBaseApi):
         return df
 
     # ----------------------------------------------------------------------
-    def add_risk_rule(self, rule: TqRiskRule):
+    def add_risk_rule(self, rule: TqRiskRule) -> None:
         """
         添加一项风控规则实例，此接口为 TqSdk 专业版提供。
 
@@ -1098,7 +1100,7 @@ class TqApi(TqBaseApi):
             raise Exception("传入参数对象必须是 TqRiskRule 的类型")
         self._risk_manager.append(rule)
 
-    def delete_risk_rule(self, rule: TqRiskRule):
+    def delete_risk_rule(self, rule: TqRiskRule) -> None:
         """
         删除一项风控规则实例，此接口为 TqSdk 专业版提供。
 
@@ -1125,8 +1127,8 @@ class TqApi(TqBaseApi):
             direction (str): "BUY" 或 "SELL"
 
             offset (str): "OPEN", "CLOSE" 或 "CLOSETODAY"  \
-            (上期所和原油分平今/平昨, 平今用"CLOSETODAY", 平昨用"CLOSE"; 其他交易所直接用"CLOSE" 按照交易所的规则平仓), \
-            股票交易中该参数无需填写
+                (上期所和原油分平今/平昨, 平今用"CLOSETODAY", 平昨用"CLOSE"; 其他交易所直接用"CLOSE" 按照交易所的规则平仓), \
+                股票交易中该参数无需填写
 
             volume (int): 下单交易数量, 期货为下单手数, A 股股票为股数
 
@@ -1731,7 +1733,7 @@ class TqApi(TqBaseApi):
     def set_risk_management_rule(self, exchange_id: str, enable: bool, count_limit: int = None, insert_order_count_limit: Optional[int] = None,
                                  cancel_order_count_limit: Optional[int] = None, cancel_order_percent_limit: Optional[float] = None,
                                  trade_units_limit: Optional[int] = None, trade_position_ratio_limit: Optional[float] = None,
-                                 account: Optional[UnionTradeable] = None):
+                                 account: Optional[UnionTradeable] = None) -> Optional[RiskManagementRule]:
         """
         设置交易所风控规则. **注意: 指令将在下次调用** :py:meth:`~tqsdk.api.TqApi.wait_update` **时发出**
         调用本函数时，没有填写的可选参数会被服务器设置为默认值。
@@ -1906,7 +1908,7 @@ class TqApi(TqBaseApi):
                             prototype = self._security_prototype if self._account._is_stock_type(k) else self._prototype
                             _merge_diff(self._data, {'trade': {k: v}}, prototype, persist=False, reduce_diff=True)
                     # 非交易数据均按照期货处理逻辑
-                    diff_without_trade = {k : v for k, v in d.items() if k != "trade"}
+                    diff_without_trade = {k: v for k, v in d.items() if k != "trade"}
                     if diff_without_trade:
                         _merge_diff(self._data, diff_without_trade, self._prototype, persist=False, reduce_diff=True)
                 self._risk_manager._on_recv_data(self._diffs)
@@ -2151,7 +2153,7 @@ class TqApi(TqBaseApi):
         return _register_update_chan(registing_objs, chan)
 
     # ----------------------------------------------------------------------
-    def query_graphql(self, query: str, variables: dict, query_id: Optional[str] = None):
+    def query_graphql(self, query: str, variables: dict, query_id: Optional[str] = None) -> Entity:
         """
         发送基于 GraphQL 的合约服务请求查询，在同步代码中返回查询结果；异步代码中返回查询结果的引用地址。
 
@@ -2226,7 +2228,8 @@ class TqApi(TqBaseApi):
                 })
         return _get_obj(self._data, ["symbols", query_id])
 
-    def query_symbol_ranking(self, symbol: str, ranking_type: str, days: int = 1, start_dt: date = None, broker: str = None):
+    def query_symbol_ranking(self, symbol: str, ranking_type: str, days: int = 1, start_dt: date = None, broker: str = None)\
+            -> TqSymbolRankingDataFrame:
         """
         查询合约成交排名/持仓排名
 
@@ -2307,7 +2310,7 @@ class TqApi(TqBaseApi):
         return df
 
     def query_quotes(self, ins_class: str = None, exchange_id: str = None, product_id: str = None, expired: bool = None,
-                     has_night: bool = None) -> List[str]:
+                     has_night: bool = None) -> SymbolList:
         """
         根据相应的参数发送合约服务请求查询，并返回查询结果
 
@@ -2414,7 +2417,7 @@ class TqApi(TqBaseApi):
 
         return self._get_symbol_list(query=op.__to_graphql__(), filter=filter)
 
-    def _get_symbol_list(self, query: str, filter: Callable[[dict], list]):
+    def _get_symbol_list(self, query: str, filter: Callable[[dict], list]) -> SymbolList:
         result = SymbolList(self, query_id=_generate_uuid("PYSDK_api"), query=query, filter=filter)
         if not self._loop.is_running():
             deadline = time.time() + 30
@@ -2423,7 +2426,7 @@ class TqApi(TqBaseApi):
                     raise TqTimeoutError(f"查询合约服务 {query} 超时，请检查客户端及网络是否正常")
         return result
 
-    def query_cont_quotes(self, exchange_id: str = None, product_id: str = None, has_night: bool = None) -> List[str]:
+    def query_cont_quotes(self, exchange_id: str = None, product_id: str = None, has_night: bool = None) -> SymbolList:
         """
         根据填写的参数筛选，返回主力连续合约对应的标的合约列表
 
@@ -2506,7 +2509,7 @@ class TqApi(TqBaseApi):
 
     def query_options(self, underlying_symbol: str, option_class: str = None, exercise_year: int = None,
                       exercise_month: int = None, strike_price: float = None, expired: bool = None, has_A: bool = None,
-                      **kwargs) -> List[str]:
+                      **kwargs) -> SymbolList:
         """
         发送合约服务请求查询，查询符合条件的期权列表，并返回查询结果
 
@@ -2584,7 +2587,7 @@ class TqApi(TqBaseApi):
         return self._get_symbol_list(query=query, filter=filter)
 
     def query_atm_options(self, underlying_symbol, underlying_price, price_level, option_class, exercise_year: int = None,
-                         exercise_month: int = None, has_A: bool = None):
+                         exercise_month: int = None, has_A: bool = None) -> SymbolList:
         """
         Args:
             underlying_symbol (str): [必填] 标的合约 （目前每个标的只对应一个交易所的期权）
@@ -2691,7 +2694,7 @@ class TqApi(TqBaseApi):
 
         return self._get_symbol_list(query=query, filter=filter)
 
-    def query_symbol_info(self, symbol: Union[str, List[str]]):
+    def query_symbol_info(self, symbol: Union[str, List[str]]) -> TqSymbolDataFrame:
         """
         查询合约信息
 
@@ -2776,7 +2779,8 @@ class TqApi(TqBaseApi):
         symbol_list = [symbol] if isinstance(symbol, str) else symbol
         if any([s == "" for s in symbol_list]):
             raise Exception(f"symbol 参数 {symbol} 中不能有空字符串。")
-        backtest_timestamp = int(self._get_current_datetime().timestamp() * 1e9) if isinstance(self._backtest, TqBacktest) else None
+        backtest_timestamp = _datetime_to_timestamp_nano(self._get_current_datetime()) if isinstance(self._backtest,
+                                                                                               TqBacktest) else None
         df = TqSymbolDataFrame(self, symbol_list, backtest_timestamp=backtest_timestamp)
         deadline = time.time() + 30
         while not self._loop.is_running() and not df.__dict__["_task"].done():
@@ -2785,7 +2789,7 @@ class TqApi(TqBaseApi):
         return df
 
     def query_all_level_options(self, underlying_symbol, underlying_price, option_class, exercise_year: int = None,
-                         exercise_month: int = None, has_A: bool = None):
+                         exercise_month: int = None, has_A: bool = None) -> SymbolList:
         """
         发送合约服务请求查询，查询符合条件的期权列表，返回全部的实值、平值、虚值期权
 
@@ -2866,7 +2870,7 @@ class TqApi(TqBaseApi):
         return result
 
     def query_all_level_finance_options(self, underlying_symbol, underlying_price, option_class,
-                                        nearbys: Union[int, List[int]], has_A: bool = None):
+                                        nearbys: Union[int, List[int]], has_A: bool = None) -> SymbolList:
         """
         发送合约服务请求查询，针对 ETF 期权和股指期权，只查询未下市合约，可以按照距离最后行权日的距离的远近，查询符合条件的期权列表，返回全部的实值、平值、虚值期权
 
@@ -3030,7 +3034,8 @@ class TqApi(TqBaseApi):
             options.sort(key=lambda x: x['strike_price'], reverse=True)  # 看跌期权按照行权价倒序排序, 保证实值在前虚值在后
         return options, options.index(mid_option)
 
-    def query_option_greeks(self, symbol: Union[str, List[str]], v: Union[float, List[float], None] = None, r=0.025):
+    def query_option_greeks(self, symbol: Union[str, List[str]], v: Union[float, List[float], None] = None, r=0.025)\
+            -> TqOptionGreeksDataFrame:
         """
         返回指定期权的希腊指标
 
@@ -3203,7 +3208,7 @@ class TqApi(TqBaseApi):
                 "aid": "rtn_data",
                 "data": [{
                     "_tqsdk_replay": {
-                        "replay_dt": int(datetime.combine(self._backtest._replay_dt, datetime.min.time()).timestamp() * 1e9)}
+                        "replay_dt": _datetime_to_timestamp_nano(datetime.combine(self._backtest._replay_dt, datetime.min.time()))}
                 }]
             })
             self.create_task(self._backtest._run())
@@ -3242,7 +3247,9 @@ class TqApi(TqBaseApi):
         data_extension_recv_chan = TqChan(self, chan_name="recv from data_extension")
         self._send_chan._logger_bind(chan_from="data_extension")
         self._recv_chan._logger_bind(chan_to="data_extension")
-        self.create_task(data_extension._run(data_extension_send_chan, data_extension_recv_chan, self._send_chan, self._recv_chan), _caller_api=True)
+        self.create_task(
+            data_extension._run(data_extension_send_chan, data_extension_recv_chan, self._send_chan, self._recv_chan),
+            _caller_api=True)
         self._send_chan, self._recv_chan = data_extension_send_chan, data_extension_recv_chan
         self._send_chan._logger_bind(chan_from="api")
         self._recv_chan._logger_bind(chan_to="api")
@@ -3369,7 +3376,8 @@ class TqApi(TqBaseApi):
                                                           range(1, 6)]
         for i in range(serial["update_row"], serial["width"]):
             index = last_id - serial["width"] + 1 + i
-            item = serial["default"] if index < 0 else _get_obj(serial["root"][0], ["data", str(index)], serial["default"])
+            item = serial["default"] if index < 0 else _get_obj(serial["root"][0], ["data", str(index)],
+                                                                serial["default"])
             # 如果需要复权，计算复权
             if index > 0 and serial["adj_type"] in ["B", "F"] and quote.ins_class in ["STOCK", "FUND"]:
                 self._ensure_dividend_factor(symbol)
@@ -3789,7 +3797,8 @@ class TqApi(TqBaseApi):
         self._send_chart_data(base_k_dataframe, id, serial)
 
     def draw_line(self, base_k_dataframe: pd.DataFrame, x1: int, y1: float, x2: int, y2: float,
-                  id: Optional[str] = None, board: str = "MAIN", line_type: str = "LINE", color: Union[str, int] = "red",
+                  id: Optional[str] = None, board: str = "MAIN", line_type: str = "LINE",
+                  color: Union[str, int] = "red",
                   width: int = 1) -> None:
         """
         配合天勤使用时, 在天勤的行情图上绘制一个直线/线段/射线
@@ -3832,7 +3841,8 @@ class TqApi(TqBaseApi):
         self._send_chart_data(base_k_dataframe, id, serial)
 
     def draw_box(self, base_k_dataframe: pd.DataFrame, x1: int, y1: float, x2: int, y2: float, id: Optional[str] = None,
-                 board: str = "MAIN", bg_color: Union[str, int] = "black", color: Union[str, int] = "red", width: int = 1) -> None:
+                 board: str = "MAIN", bg_color: Union[str, int] = "black", color: Union[str, int] = "red",
+                 width: int = 1) -> None:
         """
         配合天勤使用时, 在天勤的行情图上绘制一个矩形
 
@@ -3915,7 +3925,9 @@ class TqApi(TqBaseApi):
         elif x >= 0:
             return int(base_k_dataframe["id"].iloc[0]) + x
 
-    def _symbols_to_quotes(self, symbols, keys=set(Quote(None).keys())):
+    def _symbols_to_quotes(self, symbols, keys=None):
+        if keys is None:
+            keys = set(Quote(None).keys())
         quotes = _symbols_to_quotes(symbols, keys)
         if isinstance(self._backtest, TqBacktest):
             _quotes_add_night(quotes)

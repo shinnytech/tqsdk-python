@@ -16,7 +16,7 @@ from tqsdk.rangeset import _rangeset_difference, _rangeset_intersection
 from tqsdk.tafunc import get_dividend_df
 from tqsdk.utils import _generate_uuid
 
-CACHE_DIR = os.path.join(os.path.expanduser('~'), ".tqsdk/data_series")
+CACHE_DIR = os.path.join(os.path.expanduser('~'), ".tqsdk/data_series_1")
 
 
 class DataSeries:
@@ -395,7 +395,7 @@ class DataSeries:
         if dur_nano != 0:
             return ["open", "high", "low", "close", "volume", "open_oi", "close_oi"]
         else:
-            cols = ["last_price", "highest", "lowest", "volume", "amount", "open_interest"]
+            cols = ["last_price", "highest", "lowest", "average", "volume", "amount", "open_interest"]
             price_length = 5 if symbol.split('.')[0] in {"SHFE", "SSE", "SZSE"} else 1
             for i in range(1, price_length + 1):
                 cols.extend(f"{x}{i}" for x in ["bid_price", "bid_volume", "ask_price", "ask_volume"])
@@ -407,7 +407,7 @@ class DataSeries:
         if dur_nano != 0:
             return ["open", "high", "low", "close"]
         else:
-            cols = ["last_price", "highest", "lowest"]
+            cols = ["last_price", "highest", "lowest", "average"]
             price_length = 5 if symbol.split('.')[0] in {"SHFE", "SSE", "SZSE"} else 1
             cols.extend(f"{x}{i}" for x in ["bid_price", "ask_price"] for i in range(1, price_length + 1))
             return cols

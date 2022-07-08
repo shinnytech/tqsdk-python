@@ -17,7 +17,7 @@ from tqsdk.tradeable.sim.basesim import BaseSim
 from tqsdk.auth import TqAuth
 from tqsdk.backtest import TqBacktest, TqReplay
 from tqsdk.channel import TqChan
-from tqsdk.datetime import _get_trading_day_start_time
+from tqsdk.datetime import _get_trading_day_start_time, _datetime_to_timestamp_nano
 from tqsdk.diff import _simple_merge_diff
 from tqsdk.tradeable import TqAccount, TqKq, TqSim
 
@@ -253,7 +253,7 @@ class TqWebHelper(object):
             else:
                 return tqsim_current_timestamp
         else:
-            return int(datetime.now().timestamp() * 1e9)
+            return _datetime_to_timestamp_nano(datetime.now())
 
     def get_snapshot(self):
         account = self._data.get("trade", {}).get(self._api._account._get_account_key(account=None), {}).get("accounts", {}).get("CNY", {})
@@ -298,7 +298,7 @@ class TqWebHelper(object):
             }
             # TODO：在复盘模式下发送 replay_dt 给 web 端，服务器改完后可以去掉
             if isinstance(self._api._backtest, TqReplay):
-                url_response["replay_dt"] = int(datetime.combine(self._api._backtest._replay_dt, datetime.min.time()).timestamp() * 1e9)
+                url_response["replay_dt"] = _datetime_to_timestamp_nano(datetime.combine(self._api._backtest._replay_dt, datetime.min.time()))
             app = web.Application()
             app.router.add_get(path='/url', handler=lambda request: TqWebHelper.httpserver_url_handler(url_response))
             app.router.add_get(path='/', handler=self.httpserver_index_handler)

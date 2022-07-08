@@ -17,7 +17,7 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-from tqsdk.datetime import _get_period_timestamp, _str_to_timestamp_nano
+from tqsdk.datetime import _get_period_timestamp, _str_to_timestamp_nano, _datetime_to_timestamp_nano
 
 
 def ref(series, n):
@@ -662,7 +662,7 @@ def _to_ns_timestamp(input_time):
     elif isinstance(input_time, str):  # str 类型时间
         return _str_to_timestamp_nano(input_time)
     elif isinstance(input_time, datetime.datetime):  # datetime 类型时间
-        return int(input_time.timestamp() * 1e9)
+        return _datetime_to_timestamp_nano(input_time)
     else:
         raise TypeError("暂不支持此类型的转换")
 
@@ -1408,13 +1408,13 @@ def get_dividend_df(stock_dividend_ratio, cash_dividend_ratio):
     """
     # 除权矩阵
     stock_dividend_df = pd.DataFrame({
-        "datetime": [datetime.datetime.strptime(s.split(",")[0], "%Y%m%d").timestamp() * 1e9 for s in
+        "datetime": [_datetime_to_timestamp_nano(datetime.datetime.strptime(s.split(",")[0], "%Y%m%d")) for s in
                      stock_dividend_ratio],
         "stock_dividend": np.array([float(s.split(",")[1]) for s in stock_dividend_ratio])
     })
     # 除息矩阵
     cash_dividend_df = pd.DataFrame({
-        "datetime": [datetime.datetime.strptime(s.split(",")[0], "%Y%m%d").timestamp() * 1e9 for s in
+        "datetime": [_datetime_to_timestamp_nano(datetime.datetime.strptime(s.split(",")[0], "%Y%m%d")) for s in
                      cash_dividend_ratio],
         "cash_dividend": [float(s.split(",")[1]) for s in cash_dividend_ratio]
     })

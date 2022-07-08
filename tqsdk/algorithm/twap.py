@@ -123,6 +123,14 @@ class Twap(object):
             raise Exception("动力煤期货不支持创建 targetpostask、twap、vwap 任务，交易所规定该品种最小开仓手数为大于等于 4 手，这些函数还未支持该规则!")
         if symbol.startswith("CZCE.WH"):
             raise Exception("强麦期货不支持创建 targetpostask、twap、vwap 任务，交易所规定该品种最小开仓手数为大于等于 10 手，这些函数还未支持该规则!")
+        if symbol.startswith("CZCE.PM"):
+            raise Exception("普麦期货不支持创建 targetpostask、twap、vwap 任务，交易所规定该品种最小开仓手数为大于等于 10 手，这些函数还未支持该规则!")
+        if symbol.startswith("CZCE.RI"):
+            raise Exception("早籼稻期货不支持创建 targetpostask、twap、vwap 任务，交易所规定该品种最小开仓手数为大于等于 10 手，这些函数还未支持该规则!")
+        if symbol.startswith("CZCE.JR"):
+            raise Exception("粳稻期货不支持创建 targetpostask、twap、vwap 任务，交易所规定该品种最小开仓手数为大于等于 10 手，这些函数还未支持该规则!")
+        if symbol.startswith("CZCE.LR"):
+            raise Exception("晚籼稻期货不支持创建 targetpostask、twap、vwap 任务，交易所规定该品种最小开仓手数为大于等于 10 手，这些函数还未支持该规则!")
         self._api = api
         self._account = api._account._check_valid(account)
         if self._account is None:

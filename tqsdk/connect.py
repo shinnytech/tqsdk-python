@@ -216,7 +216,6 @@ class TqConnect(object):
                     raise
                 if self._first_connect and in_ops_time:
                     raise Exception(f'与 {url} 的连接失败，每日 19:00-19:30 为日常运维时间，请稍后再试')
-            finally:
                 if self._first_connect:
                     self._first_connect = False
                 # 下次重连的时间距离现在当前时间秒数，会等待相应的时间，否则立即发起重连

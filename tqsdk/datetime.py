@@ -10,12 +10,17 @@ import datetime
 import time
 
 
+def _datetime_to_timestamp_nano(dt: datetime.datetime) -> int:
+    # timestamp() 返回值精度为 microsecond，直接乘以 1e9 可能有精度问题
+    return int(dt.timestamp() * 1000000) * 1000
+
+
 def _timestamp_nano_to_str(nano: int, fmt="%Y-%m-%d %H:%M:%S.%f") -> str:
     return datetime.datetime.fromtimestamp(nano / 1e9).strftime(fmt)
 
 
 def _str_to_timestamp_nano(current_datetime: str, fmt="%Y-%m-%d %H:%M:%S.%f") -> int:
-    return int(datetime.datetime.strptime(current_datetime, fmt).timestamp() * 1e6) * 1000
+    return _datetime_to_timestamp_nano(datetime.datetime.strptime(current_datetime, fmt))
 
 
 def _get_trading_day_start_time(trading_day):

@@ -337,6 +337,9 @@ class TqSymbolRankingDataFrame(DataFrame):
                     "data": [{
                         "_symbol_rankings": {
                             ranking_id: content
+                        },
+                        "_symbol_rankings_finished": {
+                            ranking_id: True
                         }
                     }]
                 })
@@ -345,12 +348,12 @@ class TqSymbolRankingDataFrame(DataFrame):
         await self.__dict__["_api"]._ensure_symbol_async(self.__dict__["_symbol"])
         ranking_id = _generate_uuid("PYSDK_rank")
         self.__dict__["_api"].create_task(self._get_ranking_data(ranking_id), _caller_api=True)  # 错误会抛给 api 处理
-        symbol_rankings = _get_obj(self.__dict__["_api"]._data, ["_symbol_rankings"])
-        async with self.__dict__["_api"].register_update_notify(symbol_rankings) as update_chan:
+        symbol_rankings_finished = _get_obj(self.__dict__["_api"]._data, ["_symbol_rankings_finished"])
+        async with self.__dict__["_api"].register_update_notify(symbol_rankings_finished) as update_chan:
             async for _ in update_chan:
-                content = symbol_rankings.get(ranking_id, None)
-                if content is None:
+                if not symbol_rankings_finished.get(ranking_id, False):
                     continue
+                content = self.__dict__["_api"]._data.get("_symbol_rankings", {}).get(ranking_id, {})
                 data = self._content_to_list(content)
                 for i, d in enumerate(data):
                     self.loc[i] = d
@@ -361,6 +364,9 @@ class TqSymbolRankingDataFrame(DataFrame):
                     "aid": "rtn_data",
                     "data": [{
                         "_symbol_rankings": {
+                            ranking_id: None
+                        },
+                        "_symbol_rankings_finished": {
                             ranking_id: None
                         }
                     }]
