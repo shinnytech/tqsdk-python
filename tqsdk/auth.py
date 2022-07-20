@@ -152,7 +152,7 @@ class TqAuth(object):
                 continue
             elif symbol.split('.', 1)[0] in ["SSE", "SZSE"] and self._has_feature("sec"):
                 continue
-            elif symbol in ["SSE.000016", "SSE.000300", "SSE.000905"] and self._has_feature("lmt_idx"):
+            elif symbol in ["SSE.000016", "SSE.000300", "SSE.000905", "SSE.000852"] and self._has_feature("lmt_idx"):
                 continue
             else:
                 raise Exception(f"您的账户不支持查看 {symbol} 的行情数据，需要购买专业版本后使用。升级网址：https://account.shinnytech.com")
