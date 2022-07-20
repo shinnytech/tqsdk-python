@@ -41,7 +41,10 @@ class DataExtension(object):
 
     def __init__(self, api):
         self._api = api
-        self._data = {'trade': {}}  # 数据截面, 现在的功能只需要记录 trade
+        self._data = {
+            'trade': {},
+            'quotes': {}  # 记录 quotes 的 expire_datetime，并不是每一次 diff 更新都会重新发送 expire_datetime，重新 expire_rest_days 时需要这个信息
+        }  # 数据截面, 现在的功能只需要记录 trade
         self._diffs = []
         self._diffs_paths = set()
         self._prototype = {
@@ -109,6 +112,11 @@ class DataExtension(object):
         """将行情数据和交易数据合并至 self._data """
         for d in pack.get("data", []):
             self._datetime_state.update_state(d)
+            if d.get('quotes', None):
+                _simple_merge_diff(
+                    result=self._data['quotes'],
+                    diff=d['quotes']
+                )
             if d.get('trade', None):
                 _simple_merge_diff_and_collect_paths(
                     result=self._data['trade'],
@@ -160,9 +168,7 @@ class DataExtension(object):
 
     def _update_quotes(self, diff):
         for symbol in diff['quotes']:
-            if not _is_key_exist(diff, path=['quotes', symbol], key=['expire_datetime']):
-                continue
-            expire_datetime = diff['quotes'][symbol]['expire_datetime']
+            expire_datetime = self._data['quotes'].get(symbol, {}).get('expire_datetime', None)
             if expire_datetime and expire_datetime == expire_datetime:  # 排除 None 和 nan
                 # expire_rest_days 距离到期日的剩余天数（自然日天数），正数表示距离到期日的剩余天数，0表示到期日当天，负数表示距离到期日已经过去的天数
                 # 直接修改在 diff 里面的数据，当 diffs 里有多个对同个合约的修改时，保持数据截面的一致

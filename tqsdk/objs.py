@@ -6,7 +6,6 @@ import copy
 import json
 import warnings
 
-from tqsdk.datetime import _get_expire_rest_days
 from tqsdk.diff import _get_obj
 from tqsdk.entity import Entity
 from tqsdk.utils import _query_for_init, _generate_uuid
