@@ -6,6 +6,7 @@ import asyncio
 import csv
 import os
 from datetime import date, datetime
+from encodings.utf_8 import StreamWriter
 from typing import Union, List, Optional
 import lzma
 
@@ -42,7 +43,8 @@ class DataDownloader:
     """
 
     def __init__(self, api: TqApi, symbol_list: Union[str, List[str]], dur_sec: int, start_dt: Union[date, datetime],
-                 end_dt: Union[date, datetime], csv_file_name: str, adj_type: Union[str, None] = None) -> None:
+                 end_dt: Union[date, datetime], csv_file_name: Union[str, asyncio.StreamWriter],
+                 adj_type: Union[str, None] = None) -> None:
         """
         创建历史数据下载器实例
 
@@ -57,7 +59,10 @@ class DataDownloader:
 
             end_dt (date/datetime): 结束时间, 如果类型为 date 则指的是交易日, 如果为 datetime 则指的是具体时间点
 
-            csv_file_name (str): 输出 csv 的文件名
+            csv_file_name (str/StreamWriter): [必填]输出方式:
+                * str : 输出 csv 的文件名
+
+                * StreamWriter: 直接将内容输出到 StreamWriter
 
             adj_type (str/None): 复权计算方式，默认值为 None。"F" 为前复权；"B" 为后复权；None 表示不复权。只对股票、基金合约有效。
 
@@ -111,7 +116,10 @@ class DataDownloader:
         if adj_type not in [None, "F", "B", "FORWARD", "BACK"]:
             raise Exception("adj_type 参数只支持 None (不复权) ｜ 'F' (前复权) ｜ 'B' (后复权)")
         self._adj_type = adj_type[0] if adj_type else adj_type
-        self._csv_file_name = csv_file_name
+        if isinstance(csv_file_name, str) or isinstance(csv_file_name, asyncio.StreamWriter):
+            self._csv_file_name = csv_file_name
+        else:
+            raise Exception("csv_file_name 参数只支持 str ｜ StreamWriter 类型")
         self._csv_header = self._get_headers()
         # 缓存合约对应的复权系数矩阵，每个合约只计算一次
         # 含义为截止 datetime 之前(不包含) 应使用 factor 复权
@@ -168,9 +176,12 @@ class DataDownloader:
         """
         if not self._task.done():
             return None
-        if not self._data_series:
-            self._data_series = pandas.read_csv(self._csv_file_name)
-        return self._data_series
+        if isinstance(self._csv_file_name, str):
+            if not self._data_series:
+                self._data_series = pandas.read_csv(self._csv_file_name)
+            return self._data_series
+        else:
+            raise Exception('DataDownloader._get_data_series 接口仅支持 csv_file_name 參數为 str 时使用')
 
     async def _ensure_dividend_factor(self, quote, timestamp):
         if quote.instrument_id not in self._dividend_cache:
@@ -234,8 +245,8 @@ class DataDownloader:
 
     async def _run(self):
         self._quote_list = await self._api.get_quote_list(self._symbol_list)
-        self._data_chan = TqChan(self._api)
-        task = self._api.create_task(self._download_data())
+        # 下载数据的 async generator
+        gen = self._download_data()
         # cols 是复权需要重新计算的列名
         index_datetime_nano = self._csv_header.index("datetime_nano")
         if self._dur_nano != 0:
@@ -244,33 +255,43 @@ class DataDownloader:
             cols = ["last_price", "highest", "lowest"]
             cols.extend(f"{x}{i}" for x in ["bid_price", "ask_price"] for i in range(1, 6))
         try:
-            with open(self._csv_file_name, 'w', newline='') as csvfile:
-                csv_writer = csv.writer(csvfile, dialect='excel')
-                csv_writer.writerow(self._csv_header)
-                async for item in self._data_chan:
-                    for quote in self._quote_list:
-                        symbol = quote.instrument_id
-                        if self._adj_type and quote.ins_class in ["STOCK", "FUND"]:
-                            # 如果存在 STOCK / FUND 并且 adj_type is not None, 这里需要提前准备下载时间段内的复权因子
-                            # 前复权需要提前计算除权因子
-                            await self._ensure_dividend_factor(quote, item[index_datetime_nano])
-                            dividend_cache = self._dividend_cache[symbol]
-                            # dividend_df 和 _data_chan 中取出的数据都是按时间升序排列的，因此可以使用归并算法
-                            if dividend_cache["last_dt"] <= item[index_datetime_nano]:
-                                dividend_df = dividend_cache["df"]
-                                dividend_df = dividend_df[dividend_df["datetime"].gt(item[index_datetime_nano])]
-                                dividend_cache["df"] = dividend_df
-                                dividend_cache["last_dt"] = dividend_df["datetime"].iloc[0]
-                                dividend_cache["factor"] = dividend_df["factor"].iloc[0]
-                            if dividend_cache["factor"] != 1:
-                                item = item.copy()
-                                for c in cols:  # datetime_nano
-                                    index = self._csv_header.index(f"{symbol}.{c}")
-                                    item[index] = item[index] * dividend_cache["factor"]
-                    csv_writer.writerow(item)
+            if isinstance(self._csv_file_name, asyncio.StreamWriter):
+                writer = StreamWriter(self._csv_file_name)
+            else:
+                writer = open(self._csv_file_name, 'w', newline='')
+            csv_writer = csv.writer(writer, dialect='excel')
+            csv_writer.writerow(self._csv_header)
+            async for item in gen:
+                for quote in self._quote_list:
+                    symbol = quote.instrument_id
+                    if self._adj_type and quote.ins_class in ["STOCK", "FUND"]:
+                        # 如果存在 STOCK / FUND 并且 adj_type is not None, 这里需要提前准备下载时间段内的复权因子
+                        # 前复权需要提前计算除权因子
+                        await self._ensure_dividend_factor(quote, item[index_datetime_nano])
+                        dividend_cache = self._dividend_cache[symbol]
+                        # dividend_df 和 _data_chan 中取出的数据都是按时间升序排列的，因此可以使用归并算法
+                        if dividend_cache["last_dt"] <= item[index_datetime_nano]:
+                            dividend_df = dividend_cache["df"]
+                            dividend_df = dividend_df[dividend_df["datetime"].gt(item[index_datetime_nano])]
+                            dividend_cache["df"] = dividend_df
+                            dividend_cache["last_dt"] = dividend_df["datetime"].iloc[0]
+                            dividend_cache["factor"] = dividend_df["factor"].iloc[0]
+                        if dividend_cache["factor"] != 1:
+                            item = item.copy()
+                            for c in cols:  # datetime_nano
+                                index = self._csv_header.index(f"{symbol}.{c}")
+                                item[index] = item[index] * dividend_cache["factor"]
+                csv_writer.writerow(item)
+                if isinstance(self._csv_file_name, asyncio.StreamWriter):
+                    await self._csv_file_name.drain()
         finally:
-            task.cancel()
-            await asyncio.gather(task, return_exceptions=True)
+            if isinstance(self._csv_file_name, asyncio.StreamWriter):
+                self._csv_file_name.write_eof()
+            else:
+                writer.close()
+            # 这里 `await gen.aclose()` 实际测试代码与文档描述不符，无论文件全部下载完正常退出还是写文件过程中抛出例外退出，都没有再抛出任何例外
+            # https://docs.python.org/3/reference/expressions.html#agen.aclose
+            await gen.aclose()
 
     async def _timeout_handle(self, timeout, chart):
         await asyncio.sleep(timeout)
@@ -330,7 +351,7 @@ class DataDownloader:
                             k = {} if tid == -1 else serials[i]["data"].get(str(tid), {})
                             for col in data_cols:
                                 row.append(self._get_value(k, col, self._quote_list[i]["price_decs"]))
-                        await self._data_chan.send(row)
+                        yield row
                         current_id += 1
                         self._current_dt_nano = item["datetime"]
                     # 当前 id 已超出订阅范围, 需重新订阅后续数据
@@ -340,7 +361,6 @@ class DataDownloader:
                     await self._api._send_chan.send(chart_info)
         finally:
             # 释放chart资源
-            await self._data_chan.close()
             await self._api._send_chan.send({
                 "aid": "set_chart",
                 "chart_id": chart_info["chart_id"],
@@ -349,7 +369,7 @@ class DataDownloader:
                 "view_width": 2000,
             })
             timeout_task.cancel()
-            await timeout_task
+            await asyncio.gather(timeout_task, return_exceptions=True)
 
     def _get_headers(self):
         data_cols = self._get_data_cols()
