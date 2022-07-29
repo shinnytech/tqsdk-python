@@ -1127,7 +1127,7 @@ class TqApi(TqBaseApi):
             direction (str): "BUY" 或 "SELL"
 
             offset (str): "OPEN", "CLOSE" 或 "CLOSETODAY"  \
-                (上期所和原油分平今/平昨, 平今用"CLOSETODAY", 平昨用"CLOSE"; 其他交易所直接用"CLOSE" 按照交易所的规则平仓), \
+                (上期所和上期能源分平今/平昨, 平今用"CLOSETODAY", 平昨用"CLOSE"; 其他交易所直接用"CLOSE" 按照交易所的规则平仓), \
                 股票交易中该参数无需填写
 
             volume (int): 下单交易数量, 期货为下单手数, A 股股票为股数

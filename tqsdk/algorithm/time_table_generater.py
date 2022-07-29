@@ -257,7 +257,7 @@ def vwap_table(api: TqApi, symbol: str, target_pos: int, duration: float,
     volume_left = target_volume  # 剩余手数
     percent_left = 1  # 剩余百分比
     for index, value in predicted_percent.items():
-        volume = round(target_volume * (value / percent_left))
+        volume = round(volume_left * (value / percent_left))
         volume_left -= volume
         percent_left -= value
         append_time_table = pd.DataFrame([
