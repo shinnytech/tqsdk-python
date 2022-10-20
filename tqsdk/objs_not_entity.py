@@ -279,14 +279,14 @@ class TqSymbolDataFrame(DataFrame):
         for col in self.__dict__["_columns"]:
             if col == "expire_rest_days":
                 current_dt = self._api._get_current_datetime().timestamp()
-                self.loc[:, col] = [_get_expire_rest_days(quotes[s]['expire_datetime'], current_dt)
+                self[col] = [_get_expire_rest_days(quotes[s]['expire_datetime'], current_dt)
                                     if quotes[s].get('expire_datetime') else float('nan')
                                     for s in self.__dict__["_symbol_list"]]
             elif col == "trading_time_day" or col == "trading_time_night":
                 k = 'day' if col == "trading_time_day" else 'night'
-                self.loc[:, col] = Series([self._get_trading_time(quotes, s, k) for s in self.__dict__["_symbol_list"]])
+                self[col] = Series([self._get_trading_time(quotes, s, k) for s in self.__dict__["_symbol_list"]])
             else:
-                self.loc[:, col] = Series([quotes[s].get(col, default_quote[col]) for s in self.__dict__["_symbol_list"]])
+                self[col] = Series([quotes[s].get(col, default_quote[col]) for s in self.__dict__["_symbol_list"]])
 
     def __await__(self):
         return self.__dict__["_task"].__await__()
