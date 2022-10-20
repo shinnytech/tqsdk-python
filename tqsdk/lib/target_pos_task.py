@@ -151,7 +151,7 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
 
             def get_price_by_quote(quote):
                 def get_price(direction):
-                    # 在 BUY 时使用买一价加一档价格，SELL 时使用卖一价减一档价格
+                    # 在 BUY 时使用涨停价，SELL 时使用跌停价
                     if direction == "BUY":
                         price = quote["upper_limit"]
                     else:

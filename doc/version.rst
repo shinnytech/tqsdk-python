@@ -2,6 +2,12 @@
 
 版本变更
 =============================
+3.2.12 (2022/10/20)
+
+* 优化: :py:meth:`~tqsdk.TqApi.query_all_level_finance_options` 增加 ETF 期权标的，文档补充完整 ETF 基金名称
+* docs：修正文档，添加上交所和深交所中证1000ETF和深交所创业板ETF代码示例
+
+
 3.2.11 (2022/07/27)
 
 * 增加：下载数据时 csv_file_name 参数支持 str / asyncio.StreamWriter 两种类型

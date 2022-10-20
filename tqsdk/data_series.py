@@ -150,7 +150,8 @@ class DataSeries:
                         factor = factor_df.iloc[i].factor
                         adj_cols = DataSeries._get_adj_cols(symbol, self._dur_nano)
                         lt = self.df["datetime"].lt(dt)
-                        self.df.loc[lt, adj_cols] = self.df.loc[lt, adj_cols] * factor
+                        for col in adj_cols:
+                            self.df.loc[lt, col] = self.df.loc[lt, col] * factor
                 if self._adj_type == "B":
                     # 正序循环 factor_df, 对于大于等于当前 factor_df[datetime] 的行 乘以 1 / factor_df[factor]
                     for i in range(factor_df.shape[0]):
