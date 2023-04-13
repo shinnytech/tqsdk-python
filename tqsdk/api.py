@@ -382,6 +382,7 @@ class TqApi(TqBaseApi):
             * INE: 能源交易所(原油)
             * SSE: 上交所
             * SZSE: 深交所
+            * GFEX: 广期所
 
         Example1::
 
@@ -449,6 +450,7 @@ class TqApi(TqBaseApi):
             * INE: 能源交易所(原油)
             * SSE: 上交所
             * SZSE: 深交所
+            * GFEX: 广期所
 
         Example::
 
@@ -1201,7 +1203,7 @@ class TqApi(TqBaseApi):
 
         Example4::
 
-            # 多账户模式下, 使用不同期货公司交易账户进行下单操作
+            # 多账户模式下, 分别获取各账户的成交记录
             from tqsdk import TqApi, TqAuth, TqMultiAccount
 
             account1 = TqAccount("H海通期货", "123456", "123456")

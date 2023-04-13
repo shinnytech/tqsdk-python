@@ -55,7 +55,7 @@ def _query_for_init():
     """
     op = Operation(ins_schema.rootQuery)
     query = op.multi_symbol_info(class_=["FUTURE", "INDEX", "OPTION", "COMBINE", "CONT"],
-                                 exchange_id=["SHFE", "DCE", "CZCE", "INE", "CFFEX", "KQ"])
+                                 exchange_id=["SHFE", "DCE", "CZCE", "INE", "CFFEX", "KQ", "GFEX"])
     _add_all_frags(query)
     return op.__to_graphql__()
 
