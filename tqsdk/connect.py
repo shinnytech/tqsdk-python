@@ -8,11 +8,13 @@ import random
 import ssl
 import time
 import warnings
+import base64
 from abc import abstractmethod
 from datetime import datetime
 from logging import Logger
 from queue import Queue
 from typing import Optional
+from urllib.parse import urlparse
 
 import certifi
 import websockets
@@ -22,6 +24,7 @@ from tqsdk.diff import _merge_diff, _get_obj
 from tqsdk.entity import Entity
 from tqsdk.exceptions import TqBacktestPermissionError
 from tqsdk.utils import _generate_uuid
+from tqsdk.sm import SMContext, NullContext
 
 """
 优化代码结构，修改为
@@ -114,24 +117,106 @@ class TqConnect(object):
 
         self._keywords["extra_headers"] = self._api._base_headers
         self._keywords["create_protocol"] = TqWebSocketClientProtocol
-        if url.startswith("wss://"):
+        url_info = urlparse(url)
+        cm = NullContext()
+        if url_info.scheme == "wss":
             ssl_context = ssl.create_default_context()
             ssl_context.load_verify_locations(certifi.where())
             self._keywords["ssl"] = ssl_context
+        elif url_info.scheme.startswith("sm"):
+            sm_info = url_info.path.split("/", 4)
+            cm = SMContext(self._logger, self._api, url_info.scheme, sm_info[1], base64.urlsafe_b64decode(sm_info[2]).decode("utf-8"), base64.urlsafe_b64decode(sm_info[3]).decode("utf-8"))
+            url_info = url_info._replace(scheme="ws", path="/".join(sm_info[:1]+sm_info[4:]))
+
         count = 0
-        while True:
-            try:
-                if not self._first_connect:
+        async with cm:
+            while True:
+                try:
+                    if isinstance(cm, SMContext):
+                        addr = await cm.get_addr()
+                        url = url_info._replace(netloc=addr).geturl()
+                    if not self._first_connect:
+                        notify_id = _generate_uuid()
+                        notify = {
+                            "type": "MESSAGE",
+                            "level": "WARNING",
+                            "code": 2019112910,
+                            "conn_id": self._conn_id,
+                            "content": f"开始与 {url} 的重新建立网络连接",
+                            "url": url
+                        }
+                        self._logger.debug("websocket connection connecting")
+                        await recv_chan.send({
+                            "aid": "rtn_data",
+                            "data": [{
+                                "notify": {
+                                    notify_id: notify
+                                }
+                            }]
+                        })
+                    async with websockets.connect(url, **self._keywords) as client:
+                        # 发送网络连接建立的通知，code = 2019112901
+                        notify_id = _generate_uuid()
+                        notify = {
+                            "type": "MESSAGE",
+                            "level": "INFO",
+                            "code": 2019112901,
+                            "conn_id": self._conn_id,
+                            "content": "与 %s 的网络连接已建立" % url,
+                            "url": url
+                        }
+                        if not self._first_connect:  # 如果不是第一次连接, 即为重连
+                            # 发送网络连接重新建立的通知，code = 2019112902
+                            notify["code"] = 2019112902
+                            notify["level"] = "WARNING"
+                            notify["content"] = "与 %s 的网络连接已恢复" % url
+                            self._logger.debug("websocket reconnected")
+                        else:
+                            self._logger.debug("websocket connected")
+                        # 发送网络连接建立的通知，code = 2019112901 or 2019112902，这里区分了第一次连接和重连
+                        await self._api._wait_until_idle()
+                        await recv_chan.send({
+                            "aid": "rtn_data",
+                            "data": [{
+                                "notify": {
+                                    notify_id: notify
+                                }
+                            }]
+                        })
+                        count = 0
+                        self._api._reconnect_timer.set_count(count)
+                        send_task = self._api.create_task(self._send_handler(send_chan, client))
+                        try:
+                            async for msg in client:
+                                pack = json.loads(msg)
+                                await self._api._wait_until_idle()
+                                self._logger.debug("websocket received data", pack=msg)
+                                await recv_chan.send(pack)
+                        finally:
+                            self._logger.debug("websocket connection info", current_time=time.time(),
+                                               start_read_message=client.reader._start_read_message,
+                                               read_size=client.reader._read_size)
+                            send_task.cancel()
+                            await send_task
+                # 希望做到的效果是遇到网络问题可以断线重连, 但是可能抛出的例外太多了(TimeoutError,socket.gaierror等), 又没有文档或工具可以理出 try 代码中所有可能遇到的例外
+                # 而这里的 except 又需要处理所有子函数及子函数的子函数等等可能抛出的例外, 因此这里只能遇到问题之后再补, 并且无法避免 false positive 和 false negative
+                except (websockets.exceptions.ConnectionClosed, websockets.exceptions.InvalidStatusCode, websockets.exceptions.InvalidURI,
+                        websockets.exceptions.InvalidState, websockets.exceptions.ProtocolError, OSError, EOFError,
+                        TqBacktestPermissionError) as e:
+                    in_ops_time = datetime.now().hour == 19 and 0 <= datetime.now().minute <= 30
+                    # 发送网络连接断开的通知，code = 2019112911
                     notify_id = _generate_uuid()
                     notify = {
                         "type": "MESSAGE",
                         "level": "WARNING",
-                        "code": 2019112910,
+                        "code": 2019112911,
                         "conn_id": self._conn_id,
-                        "content": f"开始与 {url} 的重新建立网络连接",
+                        "content": f"与 {url} 的网络连接断开，请检查客户端及网络是否正常",
                         "url": url
                     }
-                    self._logger.debug("websocket connection connecting")
+                    if in_ops_time:
+                        notify['content'] += '，每日 19:00-19:30 为日常运维时间，请稍后再试'
+                    self._logger.debug("websocket connection closed", error=str(e))
                     await recv_chan.send({
                         "aid": "rtn_data",
                         "data": [{
@@ -140,90 +225,19 @@ class TqConnect(object):
                             }
                         }]
                     })
-                async with websockets.connect(url, **self._keywords) as client:
-                    # 发送网络连接建立的通知，code = 2019112901
-                    notify_id = _generate_uuid()
-                    notify = {
-                        "type": "MESSAGE",
-                        "level": "INFO",
-                        "code": 2019112901,
-                        "conn_id": self._conn_id,
-                        "content": "与 %s 的网络连接已建立" % url,
-                        "url": url
-                    }
-                    if not self._first_connect:  # 如果不是第一次连接, 即为重连
-                        # 发送网络连接重新建立的通知，code = 2019112902
-                        notify["code"] = 2019112902
-                        notify["level"] = "WARNING"
-                        notify["content"] = "与 %s 的网络连接已恢复" % url
-                        self._logger.debug("websocket reconnected")
-                    else:
-                        self._logger.debug("websocket connected")
-                    # 发送网络连接建立的通知，code = 2019112901 or 2019112902，这里区分了第一次连接和重连
-                    await self._api._wait_until_idle()
-                    await recv_chan.send({
-                        "aid": "rtn_data",
-                        "data": [{
-                            "notify": {
-                                notify_id: notify
-                            }
-                        }]
-                    })
-                    count = 0
+                    if isinstance(e, TqBacktestPermissionError):
+                        # 如果错误类型是用户无回测权限，直接返回
+                        raise
+                    if self._first_connect and in_ops_time:
+                        raise Exception(f'与 {url} 的连接失败，每日 19:00-19:30 为日常运维时间，请稍后再试')
+                    if self._first_connect:
+                        self._first_connect = False
+                    # 下次重连的时间距离现在当前时间秒数，会等待相应的时间，否则立即发起重连
+                    sleep_seconds = self._api._reconnect_timer.timer - time.time()
+                    if sleep_seconds > 0:
+                        await asyncio.sleep(sleep_seconds)
+                    count += 1
                     self._api._reconnect_timer.set_count(count)
-                    send_task = self._api.create_task(self._send_handler(send_chan, client))
-                    try:
-                        async for msg in client:
-                            pack = json.loads(msg)
-                            await self._api._wait_until_idle()
-                            self._logger.debug("websocket received data", pack=msg)
-                            await recv_chan.send(pack)
-                    finally:
-                        self._logger.debug("websocket connection info", current_time=time.time(),
-                                           start_read_message=client.reader._start_read_message,
-                                           read_size=client.reader._read_size)
-                        send_task.cancel()
-                        await send_task
-            # 希望做到的效果是遇到网络问题可以断线重连, 但是可能抛出的例外太多了(TimeoutError,socket.gaierror等), 又没有文档或工具可以理出 try 代码中所有可能遇到的例外
-            # 而这里的 except 又需要处理所有子函数及子函数的子函数等等可能抛出的例外, 因此这里只能遇到问题之后再补, 并且无法避免 false positive 和 false negative
-            except (websockets.exceptions.ConnectionClosed, websockets.exceptions.InvalidStatusCode,
-                    websockets.exceptions.InvalidState, websockets.exceptions.ProtocolError, OSError, EOFError,
-                    TqBacktestPermissionError) as e:
-                in_ops_time = datetime.now().hour == 19 and 0 <= datetime.now().minute <= 30
-                # 发送网络连接断开的通知，code = 2019112911
-                notify_id = _generate_uuid()
-                notify = {
-                    "type": "MESSAGE",
-                    "level": "WARNING",
-                    "code": 2019112911,
-                    "conn_id": self._conn_id,
-                    "content": f"与 {url} 的网络连接断开，请检查客户端及网络是否正常",
-                    "url": url
-                }
-                if in_ops_time:
-                    notify['content'] += '，每日 19:00-19:30 为日常运维时间，请稍后再试'
-                self._logger.debug("websocket connection closed", error=str(e))
-                await recv_chan.send({
-                    "aid": "rtn_data",
-                    "data": [{
-                        "notify": {
-                            notify_id: notify
-                        }
-                    }]
-                })
-                if isinstance(e, TqBacktestPermissionError):
-                    # 如果错误类型是用户无回测权限，直接返回
-                    raise
-                if self._first_connect and in_ops_time:
-                    raise Exception(f'与 {url} 的连接失败，每日 19:00-19:30 为日常运维时间，请稍后再试')
-                if self._first_connect:
-                    self._first_connect = False
-                # 下次重连的时间距离现在当前时间秒数，会等待相应的时间，否则立即发起重连
-                sleep_seconds = self._api._reconnect_timer.timer - time.time()
-                if sleep_seconds > 0:
-                    await asyncio.sleep(sleep_seconds)
-                count += 1
-                self._api._reconnect_timer.set_count(count)
 
     async def _send_handler(self, send_chan, client):
         """websocket客户端数据发送协程"""

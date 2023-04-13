@@ -3,6 +3,8 @@
 __author__ = 'yanqiong'
 
 import hashlib
+import base64
+from urllib.parse import urlparse
 from typing import Optional
 
 from tqsdk.tradeable.mixin import FutureMixin, StockMixin
@@ -10,7 +12,7 @@ from tqsdk.tradeable.tradeable import Tradeable
 
 
 class BaseOtg(Tradeable):
-    def __init__(self, broker_id: str, account_id: str, password: str, td_url: Optional[str] = None) -> None:
+    def __init__(self, broker_id: str, account_id: str, password: str, td_url: Optional[str] = None, sm: bool = False) -> None:
         if not isinstance(broker_id, str):
             raise Exception("broker_id 参数类型应该是 str")
         if not isinstance(account_id, str):
@@ -21,6 +23,7 @@ class BaseOtg(Tradeable):
         self._account_id = account_id.strip()  # 期货账户 （用户登录 rsp_login 填的）
         self._password = password
         self._td_url = td_url
+        self._sm = sm
 
         super(BaseOtg, self).__init__()
 
@@ -58,11 +61,19 @@ class BaseOtg(Tradeable):
         if api._td_url:
             self._td_url = api._td_url
         else:
-            self._td_url, account_type = api._auth._get_td_url(self._broker_id, self._account_id)
+            self._td_url, account_type, sm_type, sm_config = api._auth._get_td_url(self._broker_id, self._account_id)
             if account_type == "FUTURE":
                 assert isinstance(self, FutureMixin)
             else:
                 assert isinstance(self, StockMixin)
+            if self._sm and sm_type and sm_config:
+                url_account = base64.urlsafe_b64encode(self._account_id.encode("utf-8")).decode("utf-8")
+                url_password = base64.urlsafe_b64encode(self._password.encode("utf-8")).decode("utf-8")
+                url_info = urlparse(self._td_url)
+                # http://example.org -> http://example.org/smcfg/smuser/smpasswd
+                # http://example.org/ -> http://example.org/smcfg/smuser/smpasswd/
+                # http://example.org/foo/bar -> http://example.org/smcfg/smuser/smpasswd/foo/bar
+                self._td_url = url_info._replace(scheme=sm_type, path=f"/{sm_config}/{url_account}/{url_password}{url_info.path}").geturl()
 
     async def _run(self, api, api_send_chan, api_recv_chan, md_send_chan, md_recv_chan, td_send_chan, td_recv_chan):
         self._api = api

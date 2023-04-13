@@ -2,15 +2,12 @@
 # -*- coding:utf-8 -*-
 __author__ = 'yanqiong'
 
-import base64
-import ctypes
 import hashlib
 import logging
-import os
-from pathlib import Path
-import sys
 import uuid
 from typing import Optional
+
+from tqsdk_ctpse import get_system_info, TqCTPSEUnsupportedPlatform
 
 from tqsdk.tradeable.otg.base_otg import BaseOtg
 from tqsdk.tradeable.mixin import FutureMixin
@@ -20,7 +17,7 @@ class TqAccount(BaseOtg, FutureMixin):
     """天勤实盘账户类"""
 
     def __init__(self, broker_id: str, account_id: str, password: str, front_broker: Optional[str] = None,
-                 front_url: Optional[str] = None, td_url: Optional[str] = None, **kwargs) -> None:
+                 front_url: Optional[str] = None, td_url: Optional[str] = None, sm: bool = False, **kwargs) -> None:
         """
         创建天勤实盘账户实例
 
@@ -32,6 +29,8 @@ class TqAccount(BaseOtg, FutureMixin):
             password (str): 密码
 
             td_url(str): [可选]用于指定账户连接的交易服务器地址, eg: "tcp://1.2.3.4:1234/"
+
+            sm(bool): [可选]是否通过国密连接到服务器
         """
         if bool(front_broker) != bool(front_url):
             raise Exception("front_broker 和 front_url 参数需同时填写")
@@ -46,7 +45,7 @@ class TqAccount(BaseOtg, FutureMixin):
         if len(kwargs) > 0:
             raise TypeError(f"不支持以下参数 {[kwargs.keys()]}")
 
-        super(TqAccount, self).__init__(broker_id, account_id, password, td_url)
+        super(TqAccount, self).__init__(broker_id, account_id, password, td_url, sm)
 
     def _get_account_key(self):
         s = self._broker_id + self._account_id
@@ -65,27 +64,9 @@ class TqAccount(BaseOtg, FutureMixin):
 
     def _get_system_info(self):
         try:
-            l = ctypes.c_int(344)
-            buf = ctypes.create_string_buffer(l.value)
-            path = Path(__file__, '../../../ctpse')
-            lib_path = path.resolve()  # Make the path absolute, resolving any symlinks. A new path object is returned
-            if sys.platform.startswith("win") or sys.platform.startswith("linux"):
-                if sys.platform.startswith("win"):
-                    if ctypes.sizeof(ctypes.c_voidp) == 4:
-                        selib = ctypes.cdll.LoadLibrary(os.path.join(lib_path, "WinDataCollect32.dll"))
-                        ret = getattr(selib, "?CTP_GetSystemInfo@@YAHPADAAH@Z")(buf, ctypes.byref(l))
-                    else:
-                        selib = ctypes.cdll.LoadLibrary(os.path.join(lib_path, "WinDataCollect64.dll"))
-                        ret = getattr(selib, "?CTP_GetSystemInfo@@YAHPEADAEAH@Z")(buf, ctypes.byref(l))
-                else:
-                    selib = ctypes.cdll.LoadLibrary(os.path.join(lib_path, "LinuxDataCollect64.so"))
-                    ret = selib._Z17CTP_GetSystemInfoPcRi(buf, ctypes.byref(l))
-                if ret == 0:
-                    return base64.b64encode(buf.raw[:l.value]).decode("utf-8")
-                else:
-                    raise Exception("错误码: %d" % ret)
-            else:
-                logging.getLogger("TqApi.TqAccount").debug("ctpse error", error="不支持该平台")
+            return get_system_info()
+        except TqCTPSEUnsupportedPlatform as e:
+            logging.getLogger("TqApi.TqAccount").debug("ctpse error", error="不支持该平台", platform=e.platform)
         except Exception as e:
             self._api._print(f"采集穿透式监管客户端信息失败: {e}", level="ERROR")
             logging.getLogger("TqApi.TqAccount").error("ctpse error", error=e)

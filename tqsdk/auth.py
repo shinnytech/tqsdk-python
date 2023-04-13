@@ -117,7 +117,7 @@ class TqAuth(object):
         if "TQ" not in broker_list[broker_id]["category"]:
             raise Exception(f"该期货公司 - {broker_id} 暂不支持 TqSdk 登录，请联系期货公司。")
 
-        return broker_list[broker_id]["url"], broker_list[broker_id].get('broker_type', 'FUTURE')
+        return broker_list[broker_id]["url"], broker_list[broker_id].get('broker_type', 'FUTURE'), broker_list[broker_id].get('smtype'), broker_list[broker_id].get('smconfig')
 
     def _get_md_url(self, stock, backtest):
         """获取行情网关地址"""
@@ -148,7 +148,7 @@ class TqAuth(object):
     def _has_md_grants(self, symbol):
         symbol_list = symbol if isinstance(symbol, list) else [symbol]
         for symbol in symbol_list:
-            if symbol.split('.', 1)[0] in ["SHFE", "DCE", "CZCE", "INE", "CFFEX", "KQ", "SSWE"] and self._has_feature("futr"):
+            if symbol.split('.', 1)[0] in ["SHFE", "DCE", "CZCE", "INE", "CFFEX", "KQ", "SSWE", "GFEX"] and self._has_feature("futr"):
                 continue
             elif symbol.split('.', 1)[0] in ["SSE", "SZSE"] and self._has_feature("sec"):
                 continue
@@ -162,6 +162,6 @@ class TqAuth(object):
         # 对于 opt / cmb / adv 权限的检查由 OTG 做
         if symbol.split('.', 1)[0] in ["SSE", "SZSE"] and self._has_feature("sec"):
             return True
-        if symbol.split('.', 1)[0] in ["SHFE", "DCE", "CZCE", "INE", "CFFEX", "KQ"] and self._has_feature("futr"):
+        if symbol.split('.', 1)[0] in ["SHFE", "DCE", "CZCE", "INE", "CFFEX", "KQ", "GFEX"] and self._has_feature("futr"):
             return True
         raise Exception(f"您的账户不支持交易 {symbol}，需要购买专业版本后使用。升级网址：https://account.shinnytech.com")

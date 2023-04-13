@@ -26,7 +26,7 @@ def _symbols_to_quotes(symbols, keys=set(Quote(None).keys())):
                     # 为期权补充 delivery_year delivery_month 完全是为了兼容旧版合约服务
                     for key in ["delivery_year", "delivery_month"]:
                         if key in keys and symbol["class"] == "OPTION":
-                            if symbol["exchange_id"] in ["DCE", "CZCE", "SHFE"]:
+                            if symbol["exchange_id"] in ["DCE", "CZCE", "SHFE", "GFEX"]:
                                 quote[key] = underlying_quote[key]
                             if symbol["exchange_id"] == "CFFEX" and "last_exercise_datetime" in symbol:
                                 if key == "delivery_year":
