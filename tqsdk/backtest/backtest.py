@@ -268,7 +268,7 @@ class TqBacktest(object):
                     "min_market_order_volume": quote["min_market_order_volume"],
                     "underlying_symbol": quote["underlying_symbol"],
                     "strike_price": quote["strike_price"],
-                    "expired": quote.get('expire_datetime', float('nan')) <= self._trading_day_start,  # expired 默认值就是 False
+                    "expired": quote.get('expire_datetime', float('nan')) * 1000000000 <= self._trading_day_start,  # expired 默认值就是 False
                     "trading_time": {"day": trading_time.get("day", []), "night": trading_time.get("night", [])},
                     "expire_datetime": quote.get("expire_datetime"),
                     "delivery_month": quote.get("delivery_month"),
@@ -321,7 +321,7 @@ class TqBacktest(object):
                         "quotes": self._stock_dividend._get_dividend(self._data.get('quotes'), self._trading_day)
                     })
                     self._diffs.append({
-                        "quotes": {k: {'expired': v.get('expire_datetime', float('nan')) <= self._trading_day_start}
+                        "quotes": {k: {'expired': v.get('expire_datetime', float('nan')) * 1000000000 <= self._trading_day_start}
                                    for k, v in self._data.get('quotes').items()}
                     })
 
