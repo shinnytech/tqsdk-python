@@ -104,7 +104,7 @@ ENV/
 .mypy_cache/
 
 .idea/
-.vscode/
+# .vscode/
 .reports/
 .DS_Store
 
