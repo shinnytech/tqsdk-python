@@ -13,7 +13,8 @@
             "justMyCode": true,
             "env": {
                 "PYTHONPATH": "${workspaceFolder}${pathSeparator}${env:PYTHONPATH}"
-            }
+            },
+            "envFile": "${workspaceFolder}/custom.env"
         }
     ]
 }

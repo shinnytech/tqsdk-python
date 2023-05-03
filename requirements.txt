@@ -15,3 +15,8 @@ Sphinx==2.3.1
 autodocsumm
 sphinx_rtd_theme
 jieba
+
+shinny_structlog
+tqsdk_sm
+tqsdk_ctpse
+filelock
