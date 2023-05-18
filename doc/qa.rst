@@ -9,6 +9,6 @@
 * 提出待解决的新问题
 * 回答/讨论他人提出的问题
 
-点击进入 `用户论坛 <https://www.shinnytech.com/qa>`_ ，加入讨论.
+点击进入 `用户论坛 <https://forum.shinnytech.com/>`_ ，加入讨论.
 
 .. figure:: images/qa_pic.png
