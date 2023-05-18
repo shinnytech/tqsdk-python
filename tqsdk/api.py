@@ -3310,6 +3310,7 @@ class TqApi(TqBaseApi):
         columns = ["datetime"] + default_keys
         for i in range(1, len(root_list)):
             columns += [k + str(i) for k in default_keys]
+        default_attr = set(columns) | {"symbol" + str(i) for i in range(1, len(root_list))} | {"symbol", "duration"}
         serial = {
             "root": root_list,
             "width": width,
@@ -3319,7 +3320,8 @@ class TqApi(TqBaseApi):
             "adj_type": adj_type,
             "calc_ids_F": [],  # 前复权已经计算过的id，每个 id 只计算一次
             "update_row": 0,  # 起始更新数据行
-            "all_attr": set(columns) | {"symbol" + str(i) for i in range(1, len(root_list))} | {"symbol", "duration"},
+            "default_attr": default_attr,
+            "all_attr": default_attr,
             "extra_array": {},
         }
         columns = Index(columns)
@@ -3526,8 +3528,11 @@ class TqApi(TqBaseApi):
                     array[-1, 1] + 1)  # array[-1, 1] + 1： 保持左闭右开规范
 
     def _process_serial_extra_array(self, serial):
-        for col in set(serial["df"].columns.values) - serial["all_attr"]:
-            serial["update_row"] = 0
+        for col in set(serial["df"].columns.values) - serial["default_attr"]:
+            if col not in serial["all_attr"]:
+                serial["update_row"] = 0  # 只有在第一次添加某个列时，才会赋值为 0。
+            # klines["ma_MAIN"] = ma.ma 不是在原来的序列上原地修改，而是返回一个新的序列，
+            # 所以这里 serial["extra_array"] 中的列每次需要重新赋值。
             serial["extra_array"][col] = serial["df"][col].to_numpy()
         # 如果策略中删除了之前添加到 df 中的序列，则 extra_array 中也将其删除
         for col in serial["all_attr"] - set(serial["df"].columns.values):
