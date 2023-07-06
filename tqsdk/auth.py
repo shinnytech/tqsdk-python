@@ -150,7 +150,7 @@ class TqAuth(object):
         for symbol in symbol_list:
             if symbol.split('.', 1)[0] in ["SHFE", "DCE", "CZCE", "INE", "CFFEX", "KQ", "SSWE", "GFEX"] and self._has_feature("futr"):
                 continue
-            elif symbol.split('.', 1)[0] in ["SSE", "SZSE"] and self._has_feature("sec"):
+            elif symbol.split('.', 1)[0] in ["CSI", "SSE", "SZSE"] and self._has_feature("sec"):
                 continue
             elif symbol in ["SSE.000016", "SSE.000300", "SSE.000905", "SSE.000852"] and self._has_feature("lmt_idx"):
                 continue
