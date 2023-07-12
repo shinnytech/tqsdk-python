@@ -812,7 +812,7 @@ def barlast(cond):
 
     """
     cond = cond.to_numpy()
-    v = np.array(~cond, dtype=np.int)
+    v = np.array(~cond, dtype=int)
     c = np.cumsum(v)
     x = c[cond]
     d = np.diff(np.concatenate(([0], x)))
