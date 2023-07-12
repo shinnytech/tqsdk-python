@@ -3349,18 +3349,18 @@ class TqApi(TqBaseApi):
                 array[0:serial["width"] - shift] = array[shift:serial["width"]]
                 for ext in serial["extra_array"].values():
                     ext[0:serial["width"] - shift] = ext[shift:serial["width"]]
-                    if np.issubdtype(ext.dtype, np.floating):
+                    if np.issubdtype(ext.dtype, np.timedelta64):
+                        ext[serial["width"] - shift:] = np.timedelta64('nat')
+                    elif np.issubdtype(ext.dtype, np.integer):
+                        ext[serial["width"] - shift:] = 0
+                    elif np.issubdtype(ext.dtype, np.floating):
                         ext[serial["width"] - shift:] = np.nan
                     elif np.issubdtype(ext.dtype, np.object_):
                         ext[serial["width"] - shift:] = None
-                    elif np.issubdtype(ext.dtype, np.integer):
-                        ext[serial["width"] - shift:] = 0
                     elif np.issubdtype(ext.dtype, np.bool_):
                         ext[serial["width"] - shift:] = False
                     elif np.issubdtype(ext.dtype, np.datetime64):
                         ext[serial["width"] - shift:] = np.datetime64('nat')
-                    elif np.issubdtype(ext.dtype, np.timedelta64):
-                        ext[serial["width"] - shift:] = np.timedelta64('nat')
                     else:
                         ext[serial["width"] - shift:] = np.nan
             serial["update_row"] = max(serial["width"] - shift - 1, 0)
@@ -3505,18 +3505,18 @@ class TqApi(TqBaseApi):
                 remain = max(2 * serial["width"] - 1 - new_data_index, 0)
                 for ext in serial["extra_array"].values():
                     ext[:remain] = ext[serial["width"] - remain:]
-                    if ext.dtype == np.float:
-                        ext[remain:] = np.nan
-                    elif ext.dtype == np.object:
-                        ext[remain:] = None
-                    elif ext.dtype == np.int:
-                        ext[remain:] = 0
-                    elif ext.dtype == np.bool:
-                        ext[remain:] = False
-                    elif ext.dtype == np.datetime64:
-                        ext[remain:] = np.datetime64('nat')
-                    elif ext.dtype == np.timedelta64:
+                    if np.issubdtype(ext.dtype, np.timedelta64):
                         ext[remain:] = np.timedelta64('nat')
+                    elif np.issubdtype(ext.dtype, np.integer):
+                        ext[remain:] = 0
+                    elif np.issubdtype(ext.dtype, np.floating):
+                        ext[remain:] = np.nan
+                    elif np.issubdtype(ext.dtype, np.object_):
+                        ext[remain:] = None
+                    elif np.issubdtype(ext.dtype, np.bool_):
+                        ext[remain:] = False
+                    elif np.issubdtype(ext.dtype, np.datetime64):
+                        ext[remain:] = np.datetime64('nat')
                     else:
                         ext[remain:] = np.nan
 
