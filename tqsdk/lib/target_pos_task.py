@@ -197,8 +197,6 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
             # 2021-03-15 11:29:48 -     INFO - 时间: 2021-03-15 11:29:47.533515, 合约: SHFE.rb2106, 开平: OPEN, 方向: BUY, 手数: 3, 价格: 4687.000,手续费: 14.12
 
         """
-        if symbol.startswith("CZCE.CJ"):
-            raise Exception("红枣期货不支持创建 targetpostask、twap、vwap 任务，交易所规定该品种最小开仓手数为大于等于 4 手，这些函数还未支持该规则!")
         if symbol.startswith("CZCE.ZC"):
             raise Exception("动力煤期货不支持创建 targetpostask、twap、vwap 任务，交易所规定该品种最小开仓手数为大于等于 4 手，这些函数还未支持该规则!")
         if symbol.startswith("CZCE.WH"):

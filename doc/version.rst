@@ -2,6 +2,11 @@
 
 版本变更
 =============================
+3.4.5 (2023/07/17)
+
+* 修复：:py:class:`~tqsdk.TargetPosTask` 及 :py:class:`~tqsdk.algorithm.twap` 支持红枣期货下单
+
+
 3.4.4 (2023/07/12)
 
 * 修复: 升级 numpy 后，tafunc.barlast 报错的问题
