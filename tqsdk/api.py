@@ -3310,6 +3310,7 @@ class TqApi(TqBaseApi):
         columns = ["datetime"] + default_keys
         for i in range(1, len(root_list)):
             columns += [k + str(i) for k in default_keys]
+        default_attr = set(columns) | {"symbol" + str(i) for i in range(1, len(root_list))} | {"symbol", "duration"}
         serial = {
             "root": root_list,
             "width": width,
@@ -3319,7 +3320,8 @@ class TqApi(TqBaseApi):
             "adj_type": adj_type,
             "calc_ids_F": [],  # 前复权已经计算过的id，每个 id 只计算一次
             "update_row": 0,  # 起始更新数据行
-            "all_attr": set(columns) | {"symbol" + str(i) for i in range(1, len(root_list))} | {"symbol", "duration"},
+            "default_attr": default_attr,
+            "all_attr": default_attr,
             "extra_array": {},
         }
         columns = Index(columns)
@@ -3347,18 +3349,18 @@ class TqApi(TqBaseApi):
                 array[0:serial["width"] - shift] = array[shift:serial["width"]]
                 for ext in serial["extra_array"].values():
                     ext[0:serial["width"] - shift] = ext[shift:serial["width"]]
-                    if np.issubdtype(ext.dtype, np.floating):
+                    if np.issubdtype(ext.dtype, np.timedelta64):
+                        ext[serial["width"] - shift:] = np.timedelta64('nat')
+                    elif np.issubdtype(ext.dtype, np.integer):
+                        ext[serial["width"] - shift:] = 0
+                    elif np.issubdtype(ext.dtype, np.floating):
                         ext[serial["width"] - shift:] = np.nan
                     elif np.issubdtype(ext.dtype, np.object_):
                         ext[serial["width"] - shift:] = None
-                    elif np.issubdtype(ext.dtype, np.integer):
-                        ext[serial["width"] - shift:] = 0
                     elif np.issubdtype(ext.dtype, np.bool_):
                         ext[serial["width"] - shift:] = False
                     elif np.issubdtype(ext.dtype, np.datetime64):
                         ext[serial["width"] - shift:] = np.datetime64('nat')
-                    elif np.issubdtype(ext.dtype, np.timedelta64):
-                        ext[serial["width"] - shift:] = np.timedelta64('nat')
                     else:
                         ext[serial["width"] - shift:] = np.nan
             serial["update_row"] = max(serial["width"] - shift - 1, 0)
@@ -3503,18 +3505,18 @@ class TqApi(TqBaseApi):
                 remain = max(2 * serial["width"] - 1 - new_data_index, 0)
                 for ext in serial["extra_array"].values():
                     ext[:remain] = ext[serial["width"] - remain:]
-                    if ext.dtype == np.float:
-                        ext[remain:] = np.nan
-                    elif ext.dtype == np.object:
-                        ext[remain:] = None
-                    elif ext.dtype == np.int:
-                        ext[remain:] = 0
-                    elif ext.dtype == np.bool:
-                        ext[remain:] = False
-                    elif ext.dtype == np.datetime64:
-                        ext[remain:] = np.datetime64('nat')
-                    elif ext.dtype == np.timedelta64:
+                    if np.issubdtype(ext.dtype, np.timedelta64):
                         ext[remain:] = np.timedelta64('nat')
+                    elif np.issubdtype(ext.dtype, np.integer):
+                        ext[remain:] = 0
+                    elif np.issubdtype(ext.dtype, np.floating):
+                        ext[remain:] = np.nan
+                    elif np.issubdtype(ext.dtype, np.object_):
+                        ext[remain:] = None
+                    elif np.issubdtype(ext.dtype, np.bool_):
+                        ext[remain:] = False
+                    elif np.issubdtype(ext.dtype, np.datetime64):
+                        ext[remain:] = np.datetime64('nat')
                     else:
                         ext[remain:] = np.nan
 
@@ -3526,8 +3528,11 @@ class TqApi(TqBaseApi):
                     array[-1, 1] + 1)  # array[-1, 1] + 1： 保持左闭右开规范
 
     def _process_serial_extra_array(self, serial):
-        for col in set(serial["df"].columns.values) - serial["all_attr"]:
-            serial["update_row"] = 0
+        for col in set(serial["df"].columns.values) - serial["default_attr"]:
+            if col not in serial["all_attr"]:
+                serial["update_row"] = 0  # 只有在第一次添加某个列时，才会赋值为 0。
+            # klines["ma_MAIN"] = ma.ma 不是在原来的序列上原地修改，而是返回一个新的序列，
+            # 所以这里 serial["extra_array"] 中的列每次需要重新赋值。
             serial["extra_array"][col] = serial["df"][col].to_numpy()
         # 如果策略中删除了之前添加到 df 中的序列，则 extra_array 中也将其删除
         for col in serial["all_attr"] - set(serial["df"].columns.values):

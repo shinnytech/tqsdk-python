@@ -18,6 +18,34 @@ TqSdk2 直连功能
 * 减少了交易服务器依赖，程序运行稳定性提升
 
 
+.. _tqjees:
+
+TqSdk2 连接资管平台功能
+-------------------------------------------------
+TqSdk2 提供了资管平台的对接支持，支持用户连接到指定资管平台
+
+以连接杰宜斯的模拟服务器为例::
+
+  from tqsdk2 import TqApi, TqAuth, TqJees
+
+  acc = TqJees(td_url="tcp://129.211.138.170:10001", broker_id="JeesDemo", app_id="shinny_tqsdk_01", auth_code= "0000000000000000", user_name="杰宜斯模拟账户", password="杰宜斯模拟账户密码")
+  api = TqApi(acc,auth= TqAuth("信易账户","账户密码"))
+
+其中杰宜斯的 **模拟账户** 和 **模拟账户密码** 需要自行和杰宜斯联系获取，其他参数在杰宜斯模拟下为
+
+td_url="tcp://39.101.174.218:40205"
+
+broker_id="JeesDemo"
+
+app_id="shinny_tqsdk_01"
+
+auth_code="0000000000000000"
+
+杰宜斯实盘情况下将对应信息换成实盘信息即可
+
+资管平台连接模式的详细介绍，请点击 :py:class:`~tqsdk2.api.TqJees` .
+
+
 .. _tqrohon:
 
 TqSdk2 连接资管平台功能
@@ -34,8 +62,11 @@ TqSdk2 提供了资管平台的对接支持，支持用户连接到指定资管�
 其中融航模拟的 **模拟账户** 和 **模拟账户密码** 需要自行和融航联系获取，其他参数在融航模拟下为
 
 td_url="tcp://129.211.138.170:10001"
+
 broker_id="RohonDemo"
+
 app_id="shinny_tqsdk_01"
+
 auth_code="qZWmA7iTXaEO2w40"
 
 融航实盘情况下将对应信息换成实盘信息即可
