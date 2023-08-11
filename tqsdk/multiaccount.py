@@ -7,9 +7,8 @@ from typing import List, Union, Optional
 
 from shinny_structlog import ShinnyLoggerAdapter
 
-from tqsdk.connect import TqConnect, TdReconnectHandler
 from tqsdk.channel import TqChan
-from tqsdk.tradeable import TqAccount, TqKq, TqKqStock, TqSim, TqSimStock, BaseSim, BaseOtg
+from tqsdk.tradeable import TqAccount, TqKq, TqKqStock, TqSim, TqSimStock, BaseSim
 from tqsdk.tradeable.mixin import StockMixin
 
 
@@ -24,7 +23,7 @@ class TqMultiAccount(object):
     **注意**
 
     - 多账户模式下, 对于 get_position，account，insert_order，set_target_volume 等函数必须指定 account 参数
-    - 多账户模式下, 实盘账户的数量受限于信易账户支持实盘账户数, 详见:`更多的实盘交易账户数 <https://doc.shinnytech.com/tqsdk/latest/profession.html#id2>`_
+    - 多账户模式下, 实盘账户的数量受限于快期账户支持实盘账户数, 详见:`更多的实盘交易账户数 <https://doc.shinnytech.com/tqsdk/latest/profession.html#id2>`_
 
     """
 
@@ -41,7 +40,7 @@ class TqMultiAccount(object):
 
             account1 = TqAccount("H海通期货", "123456", "123456")
             account2 = TqAccount("H宏源期货", "654321", "123456")
-            api = TqApi(TqMultiAccount([account1, account2]), auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(TqMultiAccount([account1, account2]), auth=TqAuth("快期账户", "账户密码"))
             # 分别获取账户资金信息
             order1 = api.insert_order(symbol="DCE.m2101", direction="BUY", offset="OPEN", volume=3, account=account1)
             order2 = api.insert_order(symbol="SHFE.au2012C308", direction="BUY", offset="OPEN", volume=3, limit_price=78.0, account=account2)
@@ -59,7 +58,7 @@ class TqMultiAccount(object):
 
             account1 = TqAccount("H海通期货", "123456", "123456")
             account2 = TqAccount("H宏源期货", "654321", "123456")
-            api = TqApi(TqMultiAccount([account1, account2]), auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(TqMultiAccount([account1, account2]), auth=TqAuth("快期账户", "账户密码"))
             symbol1 = "DCE.m2105"
             symbol2 = "DCE.i2101"
             position1 = account1.get_position(symbol1)
@@ -76,7 +75,7 @@ class TqMultiAccount(object):
 
         """
         self._account_list = accounts if accounts else [TqSim()]
-        self._has_tq_account = any([True for a in self._account_list if isinstance(a, BaseOtg)])  # 是否存在实盘账户(TqAccount/TqKq/TqKqStock)
+        self._all_sim_account = all([isinstance(a, BaseSim) for a in self._account_list])  # 是否全部为本地模拟帐号
         self._map_conn_id = {}  # 每次建立连接时，记录每个 conn_id 对应的账户
         if self._has_duplicate_account():
             raise Exception("多账户列表中不允许使用重复的账户实例.")
@@ -114,7 +113,7 @@ class TqMultiAccount(object):
         acc = self._check_valid(account_or_account_key)
         return isinstance(acc, StockMixin)
 
-    def _get_trade_more_data_and_order_id(self, data):
+    def _get_trade_more_data(self, data):
         """ 获取业务信息截面 trade_more_data 标识，当且仅当所有账户的标识置为 false 时，业务信息截面就绪 """
         trade_more_datas = []
         for account in self._account_list:
@@ -123,8 +122,9 @@ class TqMultiAccount(object):
             trade_more_datas.append(trade_more_data)
         return any(trade_more_datas)
 
-    def _run(self, api, api_send_chan, api_recv_chan, ws_md_send_chan, ws_md_recv_chan):
+    def _setup_connection(self, api, api_send_chan, api_recv_chan, ws_md_send_chan, ws_md_recv_chan):
         self._api = api
+        # 将多个 account chain 起来
         log = ShinnyLoggerAdapter(self._api._logger.getChild("TqMultiAccount"))
         for index, account in enumerate(self._account_list):
             _send_chan = api_send_chan if index == len(self._account_list) - 1 else TqChan(self._api, logger=log)
@@ -133,45 +133,9 @@ class TqMultiAccount(object):
             _recv_chan._logger_bind(chan_name=f"recv from account_{index}")
             ws_md_send_chan._logger_bind(chan_from=f"account_{index}")
             ws_md_recv_chan._logger_bind(chan_to=f"account_{index}")
-            if isinstance(account, BaseSim):
-                # 启动模拟账户实例
-                self._api.create_task(
-                    account._run(self._api, _send_chan, _recv_chan, ws_md_send_chan, ws_md_recv_chan))
-            else:
-                # 连接交易服务器
-                ws_td_send_chan, ws_td_recv_chan = self._connect_td(account, index)
-                ws_td_send_chan._logger_bind(chan_from=f"account_{index}")
-                ws_td_recv_chan._logger_bind(chan_to=f"account_{index}")
-                # 账户处理消息
-                self._api.create_task(
-                    account._run(self._api, _send_chan, _recv_chan, ws_md_send_chan, ws_md_recv_chan, ws_td_send_chan,
-                                 ws_td_recv_chan)
-                )
+            conn_id = account._connect_td(self._api, index)
+            if conn_id:
+                self._map_conn_id[conn_id] = account
+            # 启动账户实例
+            self._api.create_task(account._run(self._api, _send_chan, _recv_chan, ws_md_send_chan, ws_md_recv_chan))
             ws_md_send_chan, ws_md_recv_chan = _send_chan, _recv_chan
-
-    def _connect_td(self, account: Union[TqAccount, TqKq, TqKqStock] = None, index: int = 0):
-        # 连接交易服务器
-        td_logger = self._format_logger("TqConnect", account)
-        conn_id = f"td_{index}"
-        ws_td_send_chan = TqChan(self._api, chan_name=f"send to {conn_id}", logger=td_logger)
-        ws_td_recv_chan = TqChan(self._api, chan_name=f"recv from {conn_id}", logger=td_logger)
-        conn = TqConnect(td_logger, conn_id=conn_id)
-        self._api.create_task(conn._run(self._api, account._td_url, ws_td_send_chan, ws_td_recv_chan))
-        ws_td_send_chan._logger_bind(chan_from=f"td_reconn_{index}")
-        ws_td_recv_chan._logger_bind(chan_to=f"td_reconn_{index}")
-
-        td_handler_logger = self._format_logger("TdReconnect", account)
-        td_reconnect = TdReconnectHandler(td_handler_logger)
-        send_to_recon = TqChan(self._api, chan_name=f"send to td_reconn_{index}", logger=td_handler_logger)
-        recv_from_recon = TqChan(self._api, chan_name=f"recv from td_reconn_{index}", logger=td_handler_logger)
-        self._api.create_task(
-            td_reconnect._run(self._api, send_to_recon, recv_from_recon, ws_td_send_chan, ws_td_recv_chan)
-        )
-        self._map_conn_id[conn_id] = account
-        return send_to_recon, recv_from_recon
-
-    def _format_logger(self, log_name: str, account: Union[TqAccount, TqKq, TqKqStock, TqSim]):
-        return ShinnyLoggerAdapter(self._api._logger.getChild(log_name),
-                                   url=account._td_url,
-                                   broker_id=account._broker_id,
-                                   account_id=account._account_id)

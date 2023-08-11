@@ -8,7 +8,7 @@ tqact = TqAccount("H海通期货", "123456", "123456")
 sim = TqSim()
 kq = TqKq()
 
-with TqApi(TqMultiAccount([tqact, sim, kq]), auth=TqAuth("信易账户", "账户密码")) as api:
+with TqApi(TqMultiAccount([tqact, sim, kq]), auth=TqAuth("快期账户", "账户密码")) as api:
     order1 = api.insert_order(symbol="DCE.m2101", direction="BUY", offset="OPEN", volume=5, account=tqact)
     order2 = api.insert_order(symbol="SHFE.au2012C308", direction="BUY", offset="OPEN", volume=5, limit_price=78.1, account=sim)
     order3 = api.insert_order(symbol="SHFE.cu2101", direction="Sell", offset="OPEN", volume=10, limit_price=51610, account=kq)

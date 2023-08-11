@@ -4,8 +4,8 @@ __author__ = 'ringo'
 
 from tqsdk import TqApi, TqAuth
 
-# 创建API实例,传入自己的信易账户
-api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+# 创建API实例,传入自己的快期账户
+api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 
 # 获取大商所豆粕期权行情
 quote_m = api.get_quote("DCE.m1807-C-2450")

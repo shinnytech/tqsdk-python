@@ -15,7 +15,7 @@ SYMBOL = "SHFE.au2006"  # 合约代码
 CLOSE_HOUR, CLOSE_MINUTE = 14, 50  # 平仓时间
 STOP_LOSS_PRICE = 10  # 止损点(价格)
 
-api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 print("策略开始运行")
 
 

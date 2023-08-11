@@ -13,7 +13,7 @@
 
     from tqsdk import TqApi, TqAuth, TargetPosTask
 
-    api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+    api = TqApi(auth=TqAuth("快期账户", "账户密码"))
     # 创建 rb1810 的目标持仓 task，该 task 负责调整 rb1810 的仓位到指定的目标仓位
     target_pos_near = TargetPosTask(api, "SHFE.rb1810")
     # 创建 rb1901 的目标持仓 task，该 task 负责调整 rb1901 的仓位到指定的目标仓位
@@ -42,7 +42,7 @@
 
         from tqsdk import TqApi, TqAuth, TargetPosTask
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         target_pos = TargetPosTask(api, "SHFE.rb2001")
         # 设定目标净持仓为空头1手
         target_pos.set_target_volume(-1)

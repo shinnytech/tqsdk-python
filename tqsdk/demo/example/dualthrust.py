@@ -15,7 +15,7 @@ NDAY = 5  # 天数
 K1 = 0.2  # 上轨K值
 K2 = 0.2  # 下轨K值
 
-api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 print("策略开始运行")
 
 quote = api.get_quote(SYMBOL)

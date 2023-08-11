@@ -4,7 +4,7 @@ __author__ = 'chengzhi'
 
 from tqsdk import TqApi, TqAuth
 
-api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 # 获得 m2105 的持仓引用，当持仓有变化时 position 中的字段会对应更新
 position = api.get_position("DCE.m2105")
 # 获得资金账户引用，当账户有变化时 account 中的字段会对应更新

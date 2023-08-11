@@ -13,7 +13,7 @@ SHORT = 30  # 短周期
 LONG = 60  # 长周期
 SYMBOL = "SHFE.bu2012"  # 合约代码
 
-api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 print("策略开始运行")
 
 data_length = LONG + 2  # k线数据长度

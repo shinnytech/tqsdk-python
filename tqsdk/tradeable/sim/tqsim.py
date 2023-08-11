@@ -37,7 +37,7 @@ class TqSim(BaseSim, FutureMixin):
 
             # 修改TqSim模拟帐号的初始资金为100000
             from tqsdk import TqApi, TqSim, TqAuth
-            api = TqApi(TqSim(init_balance=100000), auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(TqSim(init_balance=100000), auth=TqAuth("快期账户", "账户密码"))
 
         """
         if float(init_balance) <= 0:
@@ -71,7 +71,7 @@ class TqSim(BaseSim, FutureMixin):
             from tqsdk import TqSim, TqApi, TqAuth
 
             sim = TqSim()
-            api = TqApi(sim, auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(sim, auth=TqAuth("快期账户", "账户密码"))
 
             sim.set_commission("SHFE.cu2112", 50)
 
@@ -104,7 +104,7 @@ class TqSim(BaseSim, FutureMixin):
             from tqsdk import TqSim, TqApi, TqAuth
 
             sim = TqSim()
-            api = TqApi(sim, auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(sim, auth=TqAuth("快期账户", "账户密码"))
 
             sim.set_margin("SHFE.cu2112", 26000)
 
@@ -149,7 +149,7 @@ class TqSim(BaseSim, FutureMixin):
             from tqsdk import TqSim, TqApi, TqAuth
 
             sim = TqSim()
-            api = TqApi(sim, auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(sim, auth=TqAuth("快期账户", "账户密码"))
 
             quote = api.get_quote("SHFE.cu2112")
             print(sim.get_margin("SHFE.cu2112"))
@@ -171,7 +171,7 @@ class TqSim(BaseSim, FutureMixin):
             from tqsdk import TqSim, TqApi, TqAuth
 
             sim = TqSim()
-            api = TqApi(sim, auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(sim, auth=TqAuth("快期账户", "账户密码"))
 
             quote = api.get_quote("SHFE.cu2112")
             print(sim.get_commission("SHFE.cu2112"))

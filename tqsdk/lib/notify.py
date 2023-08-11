@@ -23,7 +23,7 @@ class TqNotify(object):
 
             from tqsdk import TqApi, TqAuth, TqKq, TqNotify
 
-            api = TqApi(account=TqKq(), auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(account=TqKq(), auth=TqAuth("快期账户", "账户密码"))
             tqNotify = TqNotify(api)  # 构造实例类
             while True:
                 api.wait_update()

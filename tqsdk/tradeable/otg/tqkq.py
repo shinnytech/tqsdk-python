@@ -12,18 +12,23 @@ from tqsdk.tradeable.mixin import FutureMixin, StockMixin
 class TqKq(BaseOtg, FutureMixin):
     """天勤快期模拟账户类"""
 
-    def __init__(self, td_url: Optional[str] = None):
+    def __init__(self, td_url: Optional[str] = None, number: Optional[int] = None):
         """
         创建快期模拟账户实例
 
         快期模拟的账户和交易信息可以在快期专业版查看，可以点击 `快期专业版 <https://www.shinnytech.com/qpro/>`_ 进行下载
+
+        Args:
+            td_url (str): [可选]指定交易服务器的地址, 默认使用快期账户对应的交易服务地址
+
+            number (int): [可选]模拟交易账号编号, 默认为主模拟账号, 可以通过指定 1~99 的数字来使用辅模拟帐号, 各个帐号的数据完全独立
 
         Example::
 
             from tqsdk import TqApi, TqAuth, TqKq
 
             tq_kq = TqKq()
-            api = TqApi(account=tq_kq, auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(account=tq_kq, auth=TqAuth("快期账户", "账户密码"))
             quote = api.get_quote("SHFE.cu2206")
             print(quote)
             # 下单限价单
@@ -42,11 +47,15 @@ class TqKq(BaseOtg, FutureMixin):
 
         """
         super().__init__("快期模拟", "", "", td_url=td_url)
+        self._account_no = number
 
     @property
     def _account_name(self):
         # 用于界面展示的用户信息
-        return self._api._auth._user_name
+        if self._account_no:
+            return f'{self._api._auth._user_name}:{self._account_no:03d}'
+        else:
+            return self._api._auth._user_name
 
     @property
     def _account_info(self):
@@ -56,27 +65,40 @@ class TqKq(BaseOtg, FutureMixin):
         })
         return info
 
+    @property
+    def _account_auth(self):
+        return {
+            "feature": "tq_ma" if self._account_no else None,
+            "account_id": None,
+            "auto_add": False,
+        }
+
     def _update_otg_info(self, api):
-        self._account_id = api._auth._auth_id
-        self._password = api._auth._auth_id
+        self._account_id = f'{api._auth._auth_id}{self._account_no:03d}' if self._account_no else api._auth._auth_id
+        self._password = f'shinnytech{self._account_no:03d}' if self._account_no else api._auth._auth_id
         super(TqKq, self)._update_otg_info(api)
 
 
 class TqKqStock(BaseOtg, StockMixin):
     """天勤实盘类"""
 
-    def __init__(self, td_url: Optional[str] = None):
+    def __init__(self, td_url: Optional[str] = None, number: Optional[int] = None):
         """
         创建快期股票模拟账户实例
 
         快期股票模拟为专业版功能，可以点击 `天勤量化专业版 <https://www.shinnytech.com/tqsdk_professional/>`_ 申请试用或购买
+
+        Args:
+            td_url (str): [可选]指定交易服务器的地址, 默认使用快期账户对应的交易服务地址
+
+            number (int): [可选]模拟交易账号编号, 默认为主模拟账号, 可以通过指定 1~99 的数字来使用辅模拟帐号, 各个帐号的数据完全独立
 
         Example::
 
             from tqsdk import TqApi, TqAuth, TqKqStock, TqChan
 
             tq_kq_stock = TqKqStock()
-            api = TqApi(account=tq_kq_stock, auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(account=tq_kq_stock, auth=TqAuth("快期账户", "账户密码"))
             quote = api.get_quote("SSE.688529")
             print(quote)
             # 下单限价单
@@ -95,11 +117,15 @@ class TqKqStock(BaseOtg, StockMixin):
 
         """
         super().__init__("快期股票模拟", "", "", td_url=td_url)
+        self._account_no = number
 
     @property
     def _account_name(self):
         # 用于界面展示的用户信息
-        return self._api._auth._user_name + "_stock"
+        if self._account_no:
+            return f'{self._api._auth._user_name}_stock:{self._account_no:03d}'
+        else:
+            return self._api._auth._user_name + "_stock"
 
     @property
     def _account_info(self):
@@ -109,7 +135,16 @@ class TqKqStock(BaseOtg, StockMixin):
         })
         return info
 
+    @property
+    def _account_auth(self):
+        return {
+            "feature": "tq_ma" if self._account_no else None,
+            "account_id": self._auth_account_id,
+            "auto_add": False,
+        }
+
     def _update_otg_info(self, api):
-        self._account_id = api._auth._auth_id + "-sim-securities"
-        self._password = api._auth._auth_id
+        self._auth_account_id = api._auth._auth_id + "-sim-securities"
+        self._account_id = f'{api._auth._auth_id}{self._account_no:03d}-sim-securities' if self._account_no else self._auth_account_id
+        self._password = f'shinnytech{self._account_no:03d}' if self._account_no else api._auth._auth_id
         super(TqKqStock, self)._update_otg_info(api)

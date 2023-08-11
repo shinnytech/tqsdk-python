@@ -73,7 +73,7 @@ TqSdk 则使用基于网络协作的组件设计. 如下图:
   LONG = 60
   SYMBOL = "SHFE.bu1912"
 
-  api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+  api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 
   data_length = LONG + 2
   klines = api.get_kline_serial(SYMBOL, duration_seconds=60, data_length=data_length)
@@ -122,7 +122,7 @@ TqSdk将每个策略作为一个独立进程运行, 这样就可以:
   当近月-远月的价差大于200时做空近月，做多远月
   当价差小于150时平仓
   '''
-  api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+  api = TqApi(auth=TqAuth("快期账户", "账户密码"))
   quote_near = api.get_quote("SHFE.rb1910")
   quote_deferred = api.get_quote("SHFE.rb2001")
   # 创建 rb1910 的目标持仓 task，该 task 负责调整 rb1910 的仓位到指定的目标仓位
@@ -192,7 +192,7 @@ vn.py按照事件回调模型设计, 使用 CtaTemplate 的 on_xxx 回调函数�
 
 TqSdk则不使用事件回调机制. :py:meth:`~tqsdk.TqApi.wait_update` 函数设计用来获取任意数据更新, 像这样::
 
-  api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+  api = TqApi(auth=TqAuth("快期账户", "账户密码"))
   ks = api.get_kline_serial("SHFE.cu1901", 60)
   
   while True:
@@ -202,7 +202,7 @@ TqSdk则不使用事件回调机制. :py:meth:`~tqsdk.TqApi.wait_update` 函数�
 
 一次 wait_update 可能更新多个实体, 在这种情况下, :py:meth:`~tqsdk.TqApi.is_changing` 被用来判断某个实体是否有变更::
 
-  api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+  api = TqApi(auth=TqAuth("快期账户", "账户密码"))
   q = api.get_quote("SHFE.cu1901")
   ks = api.get_kline_serial("SHFE.cu1901", 60)
   x = api.insert_order("SHFE.cu1901", direction="BUY", offset="OPEN", volume=1, limit_price=50000)
@@ -235,7 +235,7 @@ TqSdk 提供  :ref:`web_gui` 来供有图形化需求的用户使用:
 
 TqSdk配合web_gui使用时, 还支持自定义绘制行情图表, 像这样::
 
-  api = TqApi(auth=TqAuth("信易账户","账户密码"), web_gui=True)
+  api = TqApi(auth=TqAuth("快期账户","账户密码"), web_gui=True)
   # 获取 cu1905 和 cu1906 的日线数据
   klines = api.get_kline_serial("SHFE.cu1905", 86400)
   klines2 = api.get_kline_serial("SHFE.cu1906", 86400)

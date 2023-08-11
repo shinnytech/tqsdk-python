@@ -28,7 +28,7 @@ def calc_macd_klines(klines):
     klines["dea.color"] = "rgb(255,128,0)"
 
 
-api = TqApi(auth=TqAuth("信易账户", "账户密码"), web_gui=True)
+api = TqApi(auth=TqAuth("快期账户", "账户密码"), web_gui=True)
 klines = api.get_kline_serial("SHFE.rb2105", 5*60, 200)
 while True:
     calc_macd_klines(klines)

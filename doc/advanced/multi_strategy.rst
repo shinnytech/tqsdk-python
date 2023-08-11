@@ -10,7 +10,7 @@
     SHORT = 30  # 短周期
     LONG = 60  # 长周期
 
-    api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+    api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 
     klines = api.get_kline_serial(SYMBOL, duration_seconds=60, data_length=LONG + 2)
     target_pos = TargetPosTask(api, SYMBOL)
@@ -148,7 +148,7 @@ TqSdk（2.6.1 版本）对几个常用接口 :py:meth:`~tqsdk.TqApi.get_quote`, 
                     print(SYMBOL, quote.datetime, quote.last_price)
                 # ... 策略代码 ...
 
-    api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+    api = TqApi(auth=TqAuth("快期账户", "账户密码"))
     # 为每个合约创建异步任务
     api.create_task(demo("SHFE.rb2107"))
     api.create_task(demo("DCE.m2109"))
@@ -162,7 +162,7 @@ TqSdk（2.6.1 版本）对几个常用接口 :py:meth:`~tqsdk.TqApi.get_quote`, 
     # 协程示例，为每个合约创建 task
     from tqsdk import TqApi
 
-    api = TqApi(auth=TqAuth("信易账户", "账户密码"))  # 构造 api 实例
+    api = TqApi(auth=TqAuth("快期账户", "账户密码"))  # 构造 api 实例
 
     async def demo(SYMBOL, SHORT, LONG):
         """

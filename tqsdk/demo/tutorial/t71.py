@@ -8,7 +8,7 @@ from tqsdk import TqApi, TqAuth, TargetPosTask
 连续3根阴线就做空，连续3根阳线就做多，否则空仓
 '''
 
-api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 # 设定连续多少根阳线/阴线
 length = 3
 # 获得 ni2205 10秒K线的引用, 长度为 length+1

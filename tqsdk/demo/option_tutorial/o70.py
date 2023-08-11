@@ -4,7 +4,7 @@ from tqsdk import TqApi, TqAuth
 如果买入看涨期权构建多头期货的价格小于卖出期货价格
 存在套利机会则发出双边挂单
 '''
-api = TqApi(auth=TqAuth("信易账户", "账号密码"))
+api = TqApi(auth=TqAuth("快期账户", "账号密码"))
 
 # 获取行权价为2950的MA109看涨期权的quote数据
 quote_option = api.get_quote('CZCE.MA109C2950')

@@ -39,7 +39,7 @@ def write_csv(file_name, cols, datas):
             csv_writer.writerow(row)
 
 
-with TqApi(TqKq(), auth=TqAuth("信易账户", "账户密码")) as api:
+with TqApi(TqKq(), auth=TqAuth("快期账户", "账户密码")) as api:
     # 将当前账户下全部委托单、成交信息写入 csv 文件中
     write_csv("orders.csv", order_cols, api.get_order())
     write_csv("trades.csv", trade_cols, api.get_trade())

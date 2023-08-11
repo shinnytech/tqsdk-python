@@ -21,7 +21,7 @@
 然后配置如下信息
 
 * 实盘交易账号(选填)
-* 信易账号(必填，没有的话可以前往 :ref:`shinny_account` 注册)
+* 快期账号(必填，没有的话可以前往 :ref:`shinny_account` 注册)
 
 .. figure:: ../images/vscode_setting_account.png
 
@@ -58,7 +58,7 @@ Vs Code插件策略运行
 
 Vs Code插件回测策略
 ----------------------------------------------------
-回测功能为 TqSdk 专业版功能，如果需要使用 `可以购买专业版或申请试用 <https://www.shinnytech.com/tqsdk_professional/>`_ ，在获得专业版权限后，设置正确的信易账户，我们即可回测自己的策略
+回测功能为 TqSdk 专业版功能，如果需要使用 `可以购买专业版或申请试用 <https://www.shinnytech.com/tqsdk_professional/>`_ ，在获得专业版权限后，设置正确的快期账户，我们即可回测自己的策略
 
 右键菜单中提供默认【回测7天】和【回测30天】
 

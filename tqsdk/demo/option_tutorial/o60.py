@@ -1,7 +1,7 @@
 from tqsdk import TqApi, TqAuth
 from tqsdk.ta import VOLATILITY_CURVE
 
-api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 
 # 获取 m2112 的看跌期权
 underlying = "DCE.m2101"

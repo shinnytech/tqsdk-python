@@ -4,8 +4,8 @@ __author__ = 'chengzhi'
 
 from tqsdk import TqApi, TqAuth
 
-# 创建API实例,传入自己的信易账户
-api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+# 创建API实例,传入自己的快期账户
+api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 # 获得上期所 ni2206 的行情引用，当行情有变化时 quote 中的字段会对应更新
 quote = api.get_quote("SHFE.ni2206")
 

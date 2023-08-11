@@ -27,7 +27,7 @@
   from datetime import date
   from tqsdk import TqApi, TqReplay
 
-  api = TqApi(backtest = TqReplay(date(2019,12,23)), auth=TqAuth("信易账户", "账户密码"))
+  api = TqApi(backtest = TqReplay(date(2019,12,23)), auth=TqAuth("快期账户", "账户密码"))
 
 
 此外我们认为复盘模式结合图形化界面会有更好的体验，可以参考 :ref:`web_gui` 

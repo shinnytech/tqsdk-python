@@ -79,7 +79,7 @@ class Twap(object):
           from tqsdk import TqApi
           from tqsdk.algorithm import Twap
 
-          api = TqApi(auth="信易账户,用户密码")
+          api = TqApi(auth="快期账户,用户密码")
           # 设置twap任务参数
           target_twap = Twap(api,"SHFE.rb2012","BUY","OPEN",500,300,10,25)
           # 启动循环
@@ -94,7 +94,7 @@ class Twap(object):
           from tqsdk import TqApi
           from tqsdk.algorithm import Twap
 
-          api = TqApi(auth="信易账户,用户密码")
+          api = TqApi(auth="快期账户,用户密码")
           target_twap = Twap(api,"SHFE.rb2012","BUY","OPEN",500,300,10,25)
 
           num_of_trades = 0
@@ -271,7 +271,7 @@ class Twap(object):
           from tqsdk import TqApi
           from tqsdk.algorithm import Twap
 
-          api = TqApi(auth="信易账户,用户密码")
+          api = TqApi(auth="快期账户,用户密码")
           # 设置twap任务参数
           quote = api.get_quote("SHFE.rb2012")
           target_twap = Twap(api,"SHFE.rb2012","BUY","OPEN",500,300,10,25)

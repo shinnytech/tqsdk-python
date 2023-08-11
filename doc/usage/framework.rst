@@ -7,7 +7,7 @@ TqApi
 ----------------------------------------------------
 :py:class:`tqsdk.TqApi` 是 TqSdk 的核心类. 通常情况下, 每个使用了 TqSdk 的程序都应该包括 **一个** TqApi 实例::
 
-    api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+    api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 
 TqApi 实例负责:
 
@@ -23,7 +23,7 @@ TqApi 创建时, 需要提供一个account参数. 它可以是:
 * 一个 :py:class:`tqsdk.TqSim` 实例: 使用 Api 自带的模拟功能, 直连行情服务器接收行情数据
 * 如果未提供 account 参数, 或者 account == None, 则会自动创建并使用一个 :py:class:`tqsdk.TqSim` 实例
 
-此外还需要传入用户的信易账户，参见 :ref:`shinny_account`
+此外还需要传入用户的快期账户，参见 :ref:`shinny_account`
 
 TqApi 的其它构建参数请见 :py:class:`tqsdk.TqApi`
 
@@ -79,7 +79,7 @@ TqApi 实例内存中保存了一份完整业务数据截面, 包括行情/K线�
 
     from tqsdk import TqApi, TqAuth, TqSim, TargetPosTask
 
-    api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+    api = TqApi(auth=TqAuth("快期账户", "账户密码"))
     klines = api.get_kline_serial("SHFE.rb1901", 60)
     position = api.get_position("SHFE.rb1901")
     target_pos = TargetPosTask(api, "SHFE.rb1901")

@@ -4,7 +4,7 @@ __author__ = 'ringo'
 
 from tqsdk import TqApi, TqAuth
 
-api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 
 quote = api.get_quote("SHFE.au2012")
 

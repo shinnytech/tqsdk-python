@@ -4,7 +4,7 @@
 from tqsdk import TqApi, TqAuth, tafunc
 from tqsdk.ta import *
 
-api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 
 underlying_quote = api.get_quote("SHFE.cu2009")
 klines = api.get_kline_serial('SHFE.cu2009', 24 * 60 * 60, 20)

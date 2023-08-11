@@ -15,7 +15,7 @@
   from datetime import date
   from tqsdk import TqApi, TqAuth, TqSim, TqBacktest
 
-  api = TqApi(TqSim(), backtest=TqBacktest(start_dt=date(2018, 5, 1), end_dt=date(2018, 10, 1)), auth=TqAuth("信易账户", "账户密码"))
+  api = TqApi(TqSim(), backtest=TqBacktest(start_dt=date(2018, 5, 1), end_dt=date(2018, 10, 1)), auth=TqAuth("快期账户", "账户密码"))
 
 使用tqsdk在回测结束后会输出交易记录和每日收盘时的账户资金情况，以及最大回撤、夏普比率等指标，这些数据可以导入到 excel 中或使用其他分析工具进一步处理。
 
@@ -31,7 +31,7 @@
   acc = TqSim()
 
   try:
-    api = TqApi(acc, backtest=TqBacktest(start_dt=date(2018, 5, 1), end_dt=date(2018, 10, 1)), auth=TqAuth("信易账户", "账户密码"))
+    api = TqApi(acc, backtest=TqBacktest(start_dt=date(2018, 5, 1), end_dt=date(2018, 10, 1)), auth=TqAuth("快期账户", "账户密码"))
     #策略代码在这里
     #...
 
@@ -71,7 +71,7 @@
   acc = TqSim()
 
   try:
-    api = TqApi(acc, backtest=TqBacktest(start_dt=date(2018, 5, 1), end_dt=date(2018, 10, 1)), auth=TqAuth("信易账户", "账户密码"))
+    api = TqApi(acc, backtest=TqBacktest(start_dt=date(2018, 5, 1), end_dt=date(2018, 10, 1)), auth=TqAuth("快期账户", "账户密码"))
     #策略代码在这里
     #...
   except BacktestFinished as e:
@@ -92,7 +92,7 @@
     from datetime import date
     from tqsdk import TqApi, TqAuth, TqBacktest, BacktestFinished
 
-    api = TqApi(backtest=TqBacktest(start_dt=date(2020, 1, 1), end_dt=date(2020, 10, 1)), auth=TqAuth("信易账户", "账户密码"))
+    api = TqApi(backtest=TqBacktest(start_dt=date(2020, 1, 1), end_dt=date(2020, 10, 1)), auth=TqAuth("快期账户", "账户密码"))
 
     quote = api.get_quote("KQ.m@CFFEX.T")
     print(quote.datetime, quote.underlying_symbol)
@@ -122,7 +122,7 @@
   from datetime import date
   from tqsdk import TqApi, TqAuth, TqSim, TqBacktest
 
-  api = TqApi(TqSim(10000), backtest=TqBacktest(start_dt=date(2018, 5, 1), end_dt=date(2018, 10, 1)), auth=TqAuth("信易账户", "账户密码"))
+  api = TqApi(TqSim(10000), backtest=TqBacktest(start_dt=date(2018, 5, 1), end_dt=date(2018, 10, 1)), auth=TqAuth("快期账户", "账户密码"))
 
 撮合成交规则为对价成交. 即限价单的价格达到对手盘价格时判定为成交. 不会出现委托单部分成交的情况.
 
@@ -156,7 +156,7 @@ TqSdk 在 3.2.0 版本后支持了对股票合约进行回测功能，在回测�
     tqsim_future = TqSim()
     tqsim_stock = TqSimStock()
 
-    api = TqApi(account=TqMultiAccount([tqsim_future, tqsim_stock]), auth=TqAuth("信易账户", "账户密码"))
+    api = TqApi(account=TqMultiAccount([tqsim_future, tqsim_stock]), auth=TqAuth("快期账户", "账户密码"))
 
     # 多账户下单，需要指定下单账户
     order1 = api.insert_order(symbol="SHFE.cu2112", direction="BUY", offset="OPEN", volume=10, limit_price=72250.0, account=tqsim_future)

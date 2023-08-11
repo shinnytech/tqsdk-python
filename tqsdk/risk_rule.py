@@ -56,7 +56,7 @@ class TqRuleOpenCountsLimit(TqRiskRule):
             from tqsdk import TqApi
             from tqsdk.risk_rule import TqRuleOpenCountsLimit
 
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 
             rule = TqRuleOpenCountsLimit(api, open_counts_limit=10, symbol="DCE.m2112")  # 创建风控规则实例
             api.add_risk_rule(rule)  # 添加风控规则
@@ -131,7 +131,7 @@ class TqRuleOpenVolumesLimit(TqRiskRule):
             from tqsdk import TqApi
             from tqsdk.risk_rule import TqRuleOpenVolumesLimit
 
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 
             rule = TqRuleOpenVolumesLimit(api, open_volumes_limit=10, symbol="DCE.m2112")  # 创建风控规则实例
             api.add_risk_rule(rule)  # 添加风控规则
@@ -155,7 +155,7 @@ class TqRuleOpenVolumesLimit(TqRiskRule):
             from tqsdk.risk_rule import TqRuleOpenVolumesLimit
 
             account = TqKq()
-            api = TqApi(account=account, auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(account=account, auth=TqAuth("快期账户", "账户密码"))
 
             rule = TqRuleOpenVolumesLimit(api, open_volumes_limit=10, symbol="DCE.m2112", account=account)  # 创建风控规则实例
             api.add_risk_rule(rule)  # 添加风控规则
@@ -231,7 +231,7 @@ class TqRuleAccOpenVolumesLimit(TqRiskRule):
             from tqsdk.risk_rule import TqRuleAccOpenVolumesLimit
 
             account = TqKq()
-            api = TqApi(account=account, auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(account=account, auth=TqAuth("快期账户", "账户密码"))
 
             quote = api.get_quote("SSE.000300")
             call_in, call_at, call_out = api.query_all_level_finance_options("SSE.000300", quote.last_price, "CALL", nearbys=0)

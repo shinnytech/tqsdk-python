@@ -3,6 +3,7 @@
 
 __author__ = 'mayanqiong'
 
+from typing import Optional
 from abc import ABC, abstractmethod
 
 from tqsdk.baseModule import TqModule
@@ -30,6 +31,15 @@ class Tradeable(ABC, TqModule):
             "account_name": self._account_name
         }
 
+    @property
+    def _account_auth(self):
+        # 使用该账户需要的授权信息
+        return {
+            "feature": None,
+            "account_id": None,
+            "auto_add": False,
+        }
+
     def _is_self_trade_pack(self, pack):
         """是否是当前交易实例应该处理的交易包"""
         if pack["aid"] in ["insert_order", "cancel_order", "set_risk_management_rule"]:
@@ -40,3 +50,7 @@ class Tradeable(ABC, TqModule):
                 pack.pop("account_key", None)
                 return True
         return False
+
+    def _connect_td(self, api, index: int) -> Optional[str]:
+        # 用于建立交易连接
+        return None

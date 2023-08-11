@@ -62,6 +62,14 @@ class TqAccount(BaseOtg, FutureMixin):
         })
         return info
 
+    @property
+    def _account_auth(self):
+        return {
+            "feature": None,
+            "account_id": self._account_id,
+            "auto_add": True,
+        }
+
     def _get_system_info(self):
         try:
             return get_system_info()

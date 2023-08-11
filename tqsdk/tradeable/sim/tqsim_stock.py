@@ -38,7 +38,7 @@ class TqSimStock(BaseSim, StockMixin):
 
             # 修改TqSim模拟帐号的初始资金为100000
             from tqsdk import TqApi, TqSimStock, TqAuth
-            api = TqApi(TqSimStock(init_balance=100000), auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(TqSimStock(init_balance=100000), auth=TqAuth("快期账户", "账户密码"))
 
         Example2::
 
@@ -48,7 +48,7 @@ class TqSimStock(BaseSim, StockMixin):
             tqsim_future = TqSim()
             tqsim_stock = TqSimStock()
 
-            api = TqApi(account=TqMultiAccount([tqsim_future, tqsim_stock]), auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(account=TqMultiAccount([tqsim_future, tqsim_stock]), auth=TqAuth("快期账户", "账户密码"))
 
             # 多账户下单，需要指定下单账户
             order1 = api.insert_order(symbol="SHFE.cu2112", direction="BUY", offset="OPEN", volume=10, limit_price=72250.0, account=tqsim_future)
@@ -70,7 +70,7 @@ class TqSimStock(BaseSim, StockMixin):
             tqsim_stock = TqSimStock()
             api = TqApi(account=TqMultiAccount([tqsim_future, tqsim_stock]),
                         backtest=TqBacktest(start_dt=datetime(2021, 7, 12), end_dt=datetime(2021, 7, 14)),
-                        auth=TqAuth("信易账户", "账户密码"))
+                        auth=TqAuth("快期账户", "账户密码"))
 
             future_quote = api.get_quote("SHFE.cu2112")
             future_stock = api.get_quote("SSE.603666")
@@ -121,6 +121,14 @@ class TqSimStock(BaseSim, StockMixin):
             "account_type": self._account_type
         })
         return info
+
+    @property
+    def _account_auth(self):
+        return {
+            "feature": "sec",
+            "account_id": None,
+            "auto_add": False,
+        }
 
     def _handle_on_alive(self, msg, order):
         """

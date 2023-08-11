@@ -47,7 +47,7 @@ TqSdk 内提供了完善的期权查询函数 :py:meth:`~tqsdk.TqApi.query_optio
 
 
     from tqsdk import TqApi, TqAuth
-    api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+    api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 
     ls = api.query_options("SHFE.au2012")
     print(ls)  # 标的为 "SHFE.au2012" 的所有期权

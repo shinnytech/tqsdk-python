@@ -9,7 +9,7 @@ from tqsdk import TqApi, TqAuth, TargetPosTask
 当近月-远月的价差大于250时做空近月，做多远月
 当价差小于200时平仓
 '''
-api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 quote_near = api.get_quote("SHFE.rb2104")
 quote_deferred = api.get_quote("SHFE.rb2105")
 # 创建 rb2104 的目标持仓 task，该 task 负责调整 rb2104 的仓位到指定的目标仓位

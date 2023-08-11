@@ -11,10 +11,10 @@ TqSdk 没有直接提供查询保证金的接口，但是你可以通过使用 T
     import tqsdk2
 
     account = tqsdk2.TqCtp(front_url, front_broker, app_id, auth_code, account_id, password)
-    api_margin = tqsdk2.TqApi(account = account, auth=tqsdk2.TqAuth("信易账户", "账户密码"))
+    api_margin = tqsdk2.TqApi(account = account, auth=tqsdk2.TqAuth("快期账户", "账户密码"))
     rate = api_margin.get_margin_rates("SHFE.cu2201")
     print(rate)
-    api = TqApi(TqAccount("期货公司","账号","密码"),auth=TqAuth("信易账户", "账户密码"))
+    api = TqApi(TqAccount("期货公司","账号","密码"),auth=TqAuth("快期账户", "账户密码"))
     quote = api.get_quote("SHFE.cu2201")
     while True:
         api.wait_update()

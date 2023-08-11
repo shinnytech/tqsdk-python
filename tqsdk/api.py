@@ -68,7 +68,7 @@ from tqsdk.risk_manager import TqRiskManager
 from tqsdk.risk_rule import TqRiskRule
 from tqsdk.ins_schema import ins_schema, basic, derivative, future, option
 from tqsdk.symbols import TqSymbols
-from tqsdk.tradeable import TqAccount, TqKq, TqKqStock, TqSim, TqSimStock, BaseOtg
+from tqsdk.tradeable import TqAccount, TqKq, TqKqStock, TqSim, TqSimStock, BaseSim, BaseOtg
 from tqsdk.trading_status import TqTradingStatus
 from tqsdk.tqwebhelper import TqWebHelper
 from tqsdk.utils import _generate_uuid, _query_for_quote, BlockManagerUnconsolidated, _quotes_add_night, _bisect_value
@@ -113,19 +113,19 @@ class TqApi(TqBaseApi):
                 * :py:class:`~tqsdk.TqMultiAccount` : 多账户列表，列表中支持 :py:class:`~tqsdk.TqAccount`、:py:class:`~tqsdk.TqKq`、\
                   :py:class:`~tqsdk.TqKqStock`、:py:class:`~tqsdk.TqSim` 和 :py:class:`~tqsdk.TqSimStock` 中的 0 至 N 个或者组合
 
-            auth (TqAuth/str): [必填]用户信易账户:
-                * :py:class:`~tqsdk.TqAuth` : 添加信易账户类，例如：TqAuth("tianqin@qq.com", "123456")
+            auth (TqAuth/str): [必填]用户快期账户:
+                * :py:class:`~tqsdk.TqAuth` : 添加快期账户类，例如：TqAuth("tianqin@qq.com", "123456")
 
                 * str: 用户权限认证对象为天勤用户论坛的邮箱和密码，中间以英文逗号分隔，例如： "tianqin@qq.com,123456"\
-                信易账户注册链接 https://www.shinnytech.com/register-intro/
+                快期账户注册链接 https://www.shinnytech.com/register-intro/
 
             url (str): [可选]指定服务器的地址
-                * 当 account 为 :py:class:`~tqsdk.TqAccount`、:py:class:`~tqsdk.TqMultiAccount` 类型时, 可以通过该参数指定交易服务器地址,\
-                默认使用对应账户的交易服务地址，行情地址该信易账户对应的行情服务地址
+                * 当 account 为 :py:class:`~tqsdk.TqAccount`、:py:class:`~tqsdk.TqKq`、:py:class:`~tqsdk.TqKqStock` 类型时, 可以通过该参数指定交易服务器地址,\
+                默认使用对应账户的交易服务地址，行情地址使用快期账户对应的行情服务地址
 
-                * 当 account 为 :py:class:`~tqsdk.TqSim`、:py:class:`~tqsdk.TqSimStock` 类型时, 可以通过该参数指定行情服务器地址, 默认使用该信易账户对应的行情服务地址
+                * 当 account 为 :py:class:`~tqsdk.TqSim`、:py:class:`~tqsdk.TqSimStock` 类型时, 可以通过该参数指定行情服务器地址, 默认使用快期账户对应的行情服务地址
 
-            backtest (TqBacktest): [可选] 进入时光机，此时强制要求 account 类型为 :py:class:`~tqsdk.TqSim`
+            backtest (TqBacktest): [可选] 进入时光机，此时强制要求 account 类型为 :py:class:`~tqsdk.TqSim` 或 :py:class:`~tqsdk.TqSimStock`
                 * :py:class:`~tqsdk.TqBacktest` : 传入 TqBacktest 对象，进入回测模式 \
                 在回测模式下, TqBacktest 连接 wss://backtest.shinnytech.com/t/md/front/mobile 接收行情数据, \
                 由 TqBacktest 内部完成回测时间段内的行情推进和 K 线、Tick 更新.
@@ -133,10 +133,10 @@ class TqApi(TqBaseApi):
             debug(bool/str): [可选] 是否将调试信息输出到指定文件，默认值为 None。
                 * None [默认]: 根据账户情况不同，默认值的行为不同。
 
-                    + 当有以下账户之一时，:py:class:`~tqsdk.TqAccount`、:py:class:`~tqsdk.TqKq`、:py:class:`~tqsdk.TqKqStock` 账户时，\
-                    调试信息输出到指定文件夹 `~/.tqsdk/logs`（如果磁盘剩余空间不足 3G 则不会输出调试信息）。
+                    + 仅有本地模拟账户 :py:class:`~tqsdk.TqSim`、:py:class:`~tqsdk.TqSimStock` 时，调试信息不输出。
 
-                    + 其他情况，即仅有本地模拟账户 :py:class:`~tqsdk.TqSim`、:py:class:`~tqsdk.TqSimStock` 时，调试信息不输出。
+                    + 当有其他类型账户时，即 :py:class:`~tqsdk.TqAccount`、:py:class:`~tqsdk.TqKq`、:py:class:`~tqsdk.TqKqStock`，\
+                    调试信息输出到指定文件夹 `~/.tqsdk/logs`（如果磁盘剩余空间不足 3G 则不会输出调试信息）。
 
                 * True: 调试信息会输出到指定文件夹 `~/.tqsdk/logs`。
 
@@ -158,45 +158,45 @@ class TqApi(TqBaseApi):
 
             # 使用实盘帐号直连行情和交易服务器
             from tqsdk import TqApi, TqAuth, TqAccount
-            api = TqApi(TqAccount("H海通期货", "022631", "123456"), auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(TqAccount("H海通期货", "022631", "123456"), auth=TqAuth("快期账户", "账户密码"))
 
         Example2::
 
             # 使用快期模拟帐号连接行情服务器
             from tqsdk import TqApi, TqAuth, TqKq
-            api = TqApi(TqKq(), auth=TqAuth("信易账户", "账户密码"))  # 根据填写的信易账户参数连接指定的快期模拟账户
+            api = TqApi(TqKq(), auth=TqAuth("快期账户", "账户密码"))  # 根据填写的快期账户参数连接指定的快期模拟账户
 
         Example3::
 
             # 使用模拟帐号直连行情服务器
             from tqsdk import TqApi, TqAuth, TqSim
-            api = TqApi(TqSim(), auth=TqAuth("信易账户", "账户密码"))  # 不填写参数则默认为 TqSim() 模拟账号
+            api = TqApi(TqSim(), auth=TqAuth("快期账户", "账户密码"))  # 不填写参数则默认为 TqSim() 模拟账号
 
         Example4::
 
             # 进行策略回测
             from datetime import date
             from tqsdk import TqApi, TqAuth, TqBacktest
-            api = TqApi(backtest=TqBacktest(start_dt=date(2018, 5, 1), end_dt=date(2018, 10, 1)), auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(backtest=TqBacktest(start_dt=date(2018, 5, 1), end_dt=date(2018, 10, 1)), auth=TqAuth("快期账户", "账户密码"))
 
         Example5::
 
             # 进行策略复盘
             from datetime import date
             from tqsdk import TqApi, TqAuth, TqReplay
-            api = TqApi(backtest=TqReplay(replay_dt=date(2019, 12, 16)), auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(backtest=TqReplay(replay_dt=date(2019, 12, 16)), auth=TqAuth("快期账户", "账户密码"))
 
         Example6::
 
             # 开启 web_gui 功能，使用默认参数True
             from tqsdk import TqApi, TqAuth
-            api = TqApi(web_gui=True, auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(web_gui=True, auth=TqAuth("快期账户", "账户密码"))
 
         Example7::
 
             # 开启 web_gui 功能，使用本机IP端口固定网址生成
             from tqsdk import TqApi, TqAuth
-            api = TqApi(web_gui=":9876", auth=TqAuth("信易账户", "账户密码"))  # 等价于 api = TqApi(web_gui="0.0.0.0:9876", auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(web_gui=":9876", auth=TqAuth("快期账户", "账户密码"))  # 等价于 api = TqApi(web_gui="0.0.0.0:9876", auth=TqAuth("快期账户", "账户密码"))
 
         """
 
@@ -226,12 +226,12 @@ class TqApi(TqBaseApi):
         self._ins_url = os.getenv("TQ_INS_URL", "https://openmd.shinnytech.com/t/md/symbols/latest.json")
         self._md_url = os.getenv("TQ_MD_URL", None)
         self._td_url = os.getenv("TQ_TD_URL", None)
-        if url and isinstance(self._account, TqMultiAccount):
-            raise Exception("多账户模式下，交易服务器地址需在创建账户实例时单独指定")
-        if url and isinstance(self._account, TqSim):
+        if url and isinstance(self._account, BaseSim):
             self._md_url = url
-        if url and isinstance(self._account, TqAccount):
+        elif url and isinstance(self._account, BaseOtg):
             self._td_url = url
+        elif url:
+            raise Exception("交易服务器地址需在创建账户实例时单独指定")
         if _ins_url:
             self._ins_url = _ins_url
         if _md_url:
@@ -274,8 +274,7 @@ class TqApi(TqBaseApi):
                 raise Exception("不可以为slave再创建slave")
             self._master._slaves.append(self)
             self._account = self._master._account
-            if isinstance(self._account, TqMultiAccount):
-                warnings.warn("TqSdk 暂不支持在多线程下使用")
+            warnings.warn("TqSdk 暂不支持在多线程下使用")
             self._web_gui = False  # 如果是slave, _web_gui 一定是 False
             return  # 注: 如果是slave,则初始化到这里结束并返回,以下代码不执行
 
@@ -293,7 +292,7 @@ class TqApi(TqBaseApi):
             while self._data.get("mdhis_more_data", True) or trade_more_data:
                 if not self.wait_update(deadline=deadline):  # 等待连接成功并收取截面数据
                     raise TqTimeoutError("接收数据超时，请检查客户端及网络是否正常")
-                trade_more_data = self._account._get_trade_more_data_and_order_id(self._data)
+                trade_more_data = self._account._get_trade_more_data(self._data)
         except:
             self.close()
             raise
@@ -338,7 +337,7 @@ class TqApi(TqBaseApi):
             from tqsdk import TqApi, TqAuth
             from contextlib import closing
 
-            with closing(TqApi(auth=TqAuth("信易账户", "账户密码")) as api:
+            with closing(TqApi(auth=TqAuth("快期账户", "账户密码")) as api:
                 api.insert_order(symbol="DCE.m1901", direction="BUY", offset="OPEN", volume=3)
         """
         if self._loop.is_closed():
@@ -389,7 +388,7 @@ class TqApi(TqBaseApi):
             # 获取 SHFE.cu1812 合约的报价
             from tqsdk import TqApi, TqAuth
 
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
             quote = api.get_quote("SHFE.cu1812")
             print(quote.last_price)
             while api.wait_update():
@@ -415,7 +414,7 @@ class TqApi(TqBaseApi):
                             print(SYMBOL, quote.datetime, quote.last_price)
                         # ... 策略代码 ...
 
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 
             symbol_list = ["SHFE.rb2107", "DCE.m2109"]  # 设置合约代码
             for symbol in symbol_list:
@@ -457,7 +456,7 @@ class TqApi(TqBaseApi):
             # 获取 SHFE.cu1812 合约的报价
             from tqsdk import TqApi, TqAuth
 
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
             quote_list = api.get_quote_list(["SHFE.cu2105", "SHFE.cu2112"])
             print(quote_list[0].last_price, quote_list[1].last_price)
             while api.wait_update():
@@ -538,7 +537,7 @@ class TqApi(TqBaseApi):
 
             # 在集合竞价时下单
             from tqsdk import TqApi, TqAuth
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
             ts = api.get_trading_status("SHFE.cu2201")
             print(ts.trade_status)
             while True:
@@ -554,7 +553,7 @@ class TqApi(TqBaseApi):
         if symbol == "":
             raise Exception(f"get_trading_status 中合约代码不能为空字符串")
         if not self._auth._has_feature('tq_trading_status'):
-            raise Exception(f"您的账户不支持查看交易状态信息，需要购买专业版本后使用。升级网址：https://account.shinnytech.com")
+            raise Exception(f"您的账户不支持查看交易状态信息，需要购买后才能使用。升级网址：https://www.shinnytech.com/tqsdk_professional/")
         if self._backtest:
             raise Exception('回测/复盘不支持查看交易状态信息')
         ts = _get_obj(self._data, ['trading_status', symbol], self._prototype["trading_status"]["#"])
@@ -637,7 +636,7 @@ class TqApi(TqBaseApi):
             # 获取 SHFE.cu1812 的1分钟线
             from tqsdk import TqApi, TqAuth
 
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
             klines = api.get_kline_serial("SHFE.cu1812", 60)
             print(klines.iloc[-1].close)
             while True:
@@ -655,7 +654,7 @@ class TqApi(TqBaseApi):
             # 获取按时间对齐的多合约K线
             from tqsdk import TqApi, TqAuth
 
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
             # 获取 CFFEX.IF1912 按照K线时间向 SHFE.au2006 对齐的K线
             klines = api.get_kline_serial(["SHFE.au2006", "CFFEX.IF2006"], 5, data_length=10)
             print("多合约K线：", klines.iloc[-1])
@@ -772,7 +771,7 @@ class TqApi(TqBaseApi):
             # 获取 SHFE.cu1812 的Tick序列
             from tqsdk import TqApi, TqAuth
 
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
             serial = api.get_tick_serial("SHFE.cu1812")
             while True:
                 api.wait_update()
@@ -861,7 +860,7 @@ class TqApi(TqBaseApi):
             from tqsdk import TqApi, TqAuth
             from tqsdk.ta import MA, MACD
 
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 
             kline_data = api.get_kline_data_series(symbol = "SHFE.cu1805", duration_seconds=60,
                         start_dt = datetime(2018, 1, 1, 6, 0, 0), end_dt = datetime(2018, 6, 1, 16, 0, 0))
@@ -924,7 +923,7 @@ class TqApi(TqBaseApi):
             # 获取 SHFE.cu1805 合约 20180201-06:00:00 ~ 20180301-16:00:00 的 tick 数据
             from tqsdk import TqApi, TqAuth
 
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 
             tick_data = api.get_tick_data_series(symbol = "SHFE.cu1805",
                         start_dt = datetime(2018, 2, 1, 6, 0, 0), end_dt = datetime(2018, 3, 1, 16, 0, 0))
@@ -998,7 +997,7 @@ class TqApi(TqBaseApi):
             from datetime import date
             from tqsdk import TqApi, TqAuth
 
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
             cld = api.get_trading_calendar(start_dt=date(2021,2,1), end_dt=date(2021,3,1))
             print(cld)
 
@@ -1054,7 +1053,7 @@ class TqApi(TqBaseApi):
             from datetime import date
             from tqsdk import TqApi, TqAuth
 
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
             conts = api.query_his_cont_quotes(symbol=['KQ.m@DCE.a', 'KQ.m@DCE.eg'], n=20)
             print(conts)
 
@@ -1145,7 +1144,7 @@ class TqApi(TqBaseApi):
                 * "FAK": 剩余即撤销，指在指定价位成交，剩余委托自动被系统撤销。(限价单、市价单、最优一档、最优五档有效)
                 * "FOK": 全成或全撤，指在指定价位要么全部成交，否则全部自动被系统撤销。(限价单、市价单有效，郑商所期货品种不支持 FOK)
 
-            order_id (str): [可选]指定下单单号, 默认由 api 自动生成, 股票交易下单时, 无需指定
+            order_id (str): [可选]指定下单单号, 默认由 api 自动生成
 
             account (TqAccount/TqKq/TqKqStock/TqSim): [可选]指定发送下单指令的账户实例, 多账户模式下，该参数必须指定
 
@@ -1157,7 +1156,7 @@ class TqApi(TqBaseApi):
             # 市价开3手 DCE.m1809 多仓
             from tqsdk import TqApi, TqAuth
 
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
             order = api.insert_order(symbol="DCE.m1809", direction="BUY", offset="OPEN", volume=3)
             while True:
                 api.wait_update()
@@ -1173,7 +1172,7 @@ class TqApi(TqBaseApi):
 
             # 限价开多3手 DCE.m1901
             from tqsdk import TqApi, TqAuth
-            with TqApi(auth=TqAuth("信易账户", "账户密码")) as api:
+            with TqApi(auth=TqAuth("快期账户", "账户密码")) as api:
                 order = api.insert_order(symbol="DCE.m2009", direction="BUY", offset="OPEN", volume=3, limit_price=3000)
                 while True:
                     api.wait_update()
@@ -1189,7 +1188,7 @@ class TqApi(TqBaseApi):
 
             # 市价开多3手 DCE.m1901 FAK
             from tqsdk import TqApi, TqAuth
-            with TqApi(auth=TqAuth("信易账户", "账户密码")) as api:
+            with TqApi(auth=TqAuth("快期账户", "账户密码")) as api:
                 order = api.insert_order(symbol="DCE.m2009", direction="BUY", offset="OPEN", volume=3, advanced="FAK")
                 while True:
                     api.wait_update()
@@ -1208,7 +1207,7 @@ class TqApi(TqBaseApi):
 
             account1 = TqAccount("H海通期货", "123456", "123456")
             account2 = TqAccount("H宏源期货", "123456", "123456")
-            with TqApi(TqMultiAccount([account1, account2]), auth=TqAuth("信易账户", "账户密码")) as api:
+            with TqApi(TqMultiAccount([account1, account2]), auth=TqAuth("快期账户", "账户密码")) as api:
                 order1 = api.insert_order(symbol="DCE.m2101", direction="BUY", offset="OPEN", volume=3, account=account1)
                 order2 = api.insert_order(symbol="DCE.m2103", direction="BUY", offset="OPEN", volume=3, account=account2)
                 while order1.status != "FINISHED" or order2.status != "FINISHED":
@@ -1226,7 +1225,7 @@ class TqApi(TqBaseApi):
             from tqsdk import TqApi, TqAuth, TqKqStock
 
             account = TqKqStock()
-            with TqApi(account=account, auth=TqAuth("信易账户", "账户密码")) as api:
+            with TqApi(account=account, auth=TqAuth("快期账户", "账户密码")) as api:
                 order = api.insert_order("SSE.601456", direction="BUY", limit_price=None, volume=200)
                 while order.status != "FINISHED":
                     api.wait_update()
@@ -1404,7 +1403,7 @@ class TqApi(TqBaseApi):
             # 挂价开3手 DCE.m1809 多仓, 如果价格变化则撤单重下，直到全部成交
             from tqsdk import TqApi, TqAuth
 
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
             quote = api.get_quote("DCE.m1809")
             order = {}
 
@@ -1438,7 +1437,7 @@ class TqApi(TqBaseApi):
 
             future_account = TqAccount("N南华期货", "123456", "123456")
             stock_account = TqAccount("N南华期货_股票", "88888888", "123456")
-            api = TqApi(TqMultiAccount([account1, account2]), auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(TqMultiAccount([account1, account2]), auth=TqAuth("快期账户", "账户密码"))
             quote = api.get_quote("CFFEX.IF2011")
             order1 = api.insert_order(symbol="CFFEX.IF2011", direction="SELL", offset="OPEN", volume=3, account=future_account)
             while True:
@@ -1487,7 +1486,7 @@ class TqApi(TqBaseApi):
             # 获取当前浮动盈亏
             from tqsdk import TqApi, TqAuth
 
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
             account = api.get_account()
             print(account.float_profit)
 
@@ -1504,7 +1503,7 @@ class TqApi(TqBaseApi):
 
             account1 = TqAccount("N南华期货", "123456", "123456")
             account2 = TqAccount("H宏源期货", "111111", "123456")
-            api = TqApi(TqMultiAccount([account1, account2]), auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(TqMultiAccount([account1, account2]), auth=TqAuth("快期账户", "账户密码"))
             account_info1 = account1.get_account()
             account_info2 = account2.get_account()
             print("账户 1 浮动盈亏 %f, 账户 2 浮动盈亏 %f", account_info1.float_profit, account_info2.float_profit)
@@ -1547,7 +1546,7 @@ class TqApi(TqBaseApi):
             # 获取 DCE.m1809 当前浮动盈亏
             from tqsdk import TqApi, TqAuth
 
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
             position = api.get_position("DCE.m1809")
             print(position.float_profit_long + position.float_profit_short)
             while api.wait_update():
@@ -1565,7 +1564,7 @@ class TqApi(TqBaseApi):
 
             account1 = TqAccount("N南华期货", "123456", "123456")
             account2 = TqAccount("N宏源期货", "123456", "123456")
-            api = TqApi(TqMultiAccount([account1, account2]), auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(TqMultiAccount([account1, account2]), auth=TqAuth("快期账户", "账户密码"))
             position1 = account1.get_position("DCE.m2101")
             position2 = account2.get_position("DCE.m2101")
             print("账户 1 浮动盈亏 %f, 账户 2 浮动盈亏 %f", position1.float_profit_long + position2.float_profit_short,
@@ -1615,7 +1614,7 @@ class TqApi(TqBaseApi):
             # 获取当前总挂单手数
             from tqsdk import TqApi, TqAuth
 
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
             orders = api.get_order()
             while True:
                 api.wait_update()
@@ -1634,7 +1633,7 @@ class TqApi(TqBaseApi):
 
             account1 = TqAccount("N南华期货", "123456", "123456")
             account2 = TqAccount("N宏源期货", "123456", "123456")
-            api = TqApi(TqMultiAccount([account1, account2]), auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(TqMultiAccount([account1, account2]), auth=TqAuth("快期账户", "账户密码"))
             orders1 = account1.get_order()
             order2 = account2.get_order(order_id="订单号")
             print(len(orders1), order2.volume_left)
@@ -1679,7 +1678,7 @@ class TqApi(TqBaseApi):
 
             account1 = TqAccount("N南华期货", "123456", "123456")
             account2 = TqAccount("N宏源期货", "123456", "123456")
-            api = TqApi(TqMultiAccount([account1, account2]), auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(TqMultiAccount([account1, account2]), auth=TqAuth("快期账户", "账户密码"))
             trades1 = account1.get_trade()
             trades2 = account2.get_trade()
             print(len(trades1), len(trades2))
@@ -1715,7 +1714,7 @@ class TqApi(TqBaseApi):
         Example::
 
             from tqsdk import TqApi, TqAuth, TqAccount
-            api = TqApi(TqAccount("H海通期货", "022631", "123456"), auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(TqAccount("H海通期货", "022631", "123456"), auth=TqAuth("快期账户", "账户密码"))
             rule = api.get_risk_management_rule(exchange_id="SSE")
             print(exchange_id, rule['enable'])
             print("自成交限制:", rule.self_trade)
@@ -1763,7 +1762,7 @@ class TqApi(TqBaseApi):
         Example::
 
             from tqsdk import TqApi, TqAuth, TqAccount
-            api = TqApi(TqAccount("H海通期货", "022631", "123456"), auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(TqAccount("H海通期货", "022631", "123456"), auth=TqAuth("快期账户", "账户密码"))
             # 开启 SSE 风控限制
             api.set_risk_management_rule(exchange_id="SSE", enable=True)
             api.wait_update()  # 真正把设置规则数据包发送到服务器
@@ -1857,7 +1856,7 @@ class TqApi(TqBaseApi):
 
                 from tqsdk import TqApi, TqAuth
 
-                api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+                api = TqApi(auth=TqAuth("快期账户", "账户密码"))
                 quote = api.get_quote("SHFE.cu1812")
                 api.wait_update()
                 print(quote.datetime)
@@ -1951,7 +1950,7 @@ class TqApi(TqBaseApi):
             # 追踪 SHFE.cu1812 的最新价更新
             from tqsdk import TqApi, TqAuth
 
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
             quote = api.get_quote("SHFE.cu1812")
             print(quote.last_price)
             while True:
@@ -2056,7 +2055,7 @@ class TqApi(TqBaseApi):
             # 判断是否已经从服务器收到了最后 3000 根 SHFE.cu1812 的分钟线数据
             from tqsdk import TqApi, TqAuth
 
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
             klines = api.get_kline_serial("SHFE.cu1812", 60, data_length=3000)
             while True:
                 api.wait_update()
@@ -2091,7 +2090,7 @@ class TqApi(TqBaseApi):
                 await asyncio.sleep(3)
                 print("hello world")
 
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
             api.create_task(hello())
             while True:
                 api.wait_update()
@@ -2129,7 +2128,7 @@ class TqApi(TqBaseApi):
                     async for _ in update_chan:
                         print(quote.last_price)
 
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
             api.create_task(demo())
             while True:
                 api.wait_update()
@@ -2176,7 +2175,7 @@ class TqApi(TqBaseApi):
             # 查询 "SHFE.au2012" 对应的全部期权
             from tqsdk import TqApi, TqAuth
 
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
             variables = {
                 "derivative_class": ["OPTION"],
                 "underlying_symbol": ["SHFE.au2012"]
@@ -2285,7 +2284,7 @@ class TqApi(TqBaseApi):
         Example::
 
             from tqsdk import TqApi, TqAuth
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
             df = api.query_symbol_ranking("SHFE.cu2109", ranking_type='VOLUME')
             print(df.to_string())  # 最近 1 天持仓排名信息，以成交量排序
 
@@ -2349,7 +2348,7 @@ class TqApi(TqBaseApi):
         Example::
 
             from tqsdk import TqApi, TqAuth
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 
             # 不推荐使用以下方式获取符合某种条件的合约列表，推荐使用接口来完成此功能。
             # ls = [k for k,v in api._data["quotes"].items() if k.startswith("KQ.m")]
@@ -2402,7 +2401,7 @@ class TqApi(TqBaseApi):
         if has_night is not None:
             variables["has_night"] = has_night
         if isinstance(self._backtest, TqBacktest):
-            variables["timestamp"] = int(self._get_current_datetime().timestamp() * 1e9)
+            variables["timestamp"] = _datetime_to_timestamp_nano(self._get_current_datetime())
         op = Operation(ins_schema.rootQuery)
         query = op.multi_symbol_info(**variables)
         query.__as__(basic).instrument_id()
@@ -2453,7 +2452,7 @@ class TqApi(TqBaseApi):
         Example1::
 
             from tqsdk import TqApi, TqAuth
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 
             ls = api.query_cont_quotes()
             print(ls)  # 全部主连合约对应的标的合约
@@ -2468,7 +2467,7 @@ class TqApi(TqBaseApi):
         Example2::
 
             from tqsdk import TqApi, TqAuth
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 
             print(api.query_cont_quotes(exchange_id="DCE", has_night=True))
             print(api.query_cont_quotes(exchange_id="DCE", has_night=False))
@@ -2487,7 +2486,7 @@ class TqApi(TqBaseApi):
         if has_night is not None:
             variables["has_night"] = has_night
         if isinstance(self._backtest, TqBacktest):
-            variables["timestamp"] = int(self._get_current_datetime().timestamp() * 1e9)
+            variables["timestamp"] = _datetime_to_timestamp_nano(self._get_current_datetime())
         op = Operation(ins_schema.rootQuery)
         query = op.multi_symbol_info(**variables)
         query.__as__(basic).instrument_id()
@@ -2538,7 +2537,7 @@ class TqApi(TqBaseApi):
         Example::
 
             from tqsdk import TqApi, TqAuth
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 
             ls = api.query_options("SHFE.au2012")
             print(ls)  # 标的为 "SHFE.au2012" 的所有期权
@@ -2623,7 +2622,7 @@ class TqApi(TqBaseApi):
         Example1::
 
             from tqsdk import TqApi, TqAuth
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
             ls = api.query_atm_options("SHFE.au2012", quote.last_price, 0, "CALL")
             # 预计输出的为以au2012现在最新价来比对的认购的平值期权，当没有符合的平值期权时返回为空
             ["SHFE.au2012C30000"]
@@ -2631,7 +2630,7 @@ class TqApi(TqBaseApi):
         Example2::
 
             from tqsdk import TqApi, TqAuth
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
             ls = api.query_atm_options("SHFE.au2012", quote.open, [3,2,1], "CALL")
             # 预计输出的为au2012，以开盘价来比对的认购的实值3档，实值2档，实值1档期权，如果没有符合要求的期权则对应栏返回为None，如果有则返回格式例如
             [None,None,"SHFE.au2012C30000"]
@@ -2639,7 +2638,7 @@ class TqApi(TqBaseApi):
         Example3::
 
             from tqsdk import TqApi, TqAuth
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
             ls = api.query_atm_options("SHFE.au2012", quote.open, [1,0,-1], "CALL")
             # 预计输出的为au2012，以开盘价来比对的认购的实值1档，平值期权，虚值1档，如果没有符合要求的期权则对应栏返回为None，如果有则返回格式例如
             ["SHFE.au2012C20000","SHFE.au2012C25000","SHFE.au2012C30000"]
@@ -2647,21 +2646,21 @@ class TqApi(TqBaseApi):
         Example4::
 
             from tqsdk import TqApi, TqAuth
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
             ls = api.query_atm_options("SHFE.au2012", quote.last_price, -1, "CALL")
             # 预计输出的为au2012，以现在最新价来比对的认购的虚值1档期权
 
         Example5::
 
             from tqsdk import TqApi, TqAuth
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
             ls = api.query_atm_options("SSE.000300", quote.last_price, -1, "CALL", exercise_year=2020, exercise_month=12)
             # 预计输出沪深300股指期权,2020年12月的虚值1档期权
 
         Example6::
 
             from tqsdk import TqApi, TqAuth
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
             ls = api.query_atm_options("SSE.510300", quote.last_price, -1, "CALL", exercise_year=2020, exercise_month=12)
             # 预计输出 上交所 沪深300股指ETF期权,2020年12月的虚值1档期权
 
@@ -2750,7 +2749,7 @@ class TqApi(TqBaseApi):
         Example1::
 
             from tqsdk import TqApi, TqAuth
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 
             ls = api.query_options("SSE.510050", option_class="CALL", expired=False)  # 所有未下市上交所上证50etf期权
             df = api.query_symbol_info(ls)
@@ -2760,7 +2759,7 @@ class TqApi(TqBaseApi):
         Example2::
 
             from tqsdk import TqApi, TqAuth
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 
             ls = api.query_options("SSE.510050", option_class="CALL", expired=False)
 
@@ -2828,7 +2827,7 @@ class TqApi(TqBaseApi):
         Example1::
 
             from tqsdk import TqApi, TqAuth
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
             quote = api.get_quote("SHFE.au2112")
             in_money_options, at_money_options, out_of_money_options = api.query_all_level_options("SHFE.au2112", quote.last_price, "CALL")
             print(in_money_options)  # 实值期权列表
@@ -2920,7 +2919,7 @@ class TqApi(TqBaseApi):
         Example1::
 
             from tqsdk import TqApi, TqAuth
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
             quote = api.get_quote("SSE.510300")
             in_money_options, at_money_options, out_of_money_options = api.query_all_level_finance_options("SSE.510300", quote.last_price, "CALL", nearbys = 1)
             print(in_money_options)  # 实值期权列表
@@ -2931,7 +2930,7 @@ class TqApi(TqBaseApi):
         Example2::
 
             from tqsdk import TqApi, TqAuth
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
             quote = api.get_quote("SSE.510050")
             in_money_options, at_money_options, out_of_money_options = api.query_all_level_finance_options("SSE.510050", quote.last_price, "CALL", nearbys=[0,1,2])
             print(in_money_options)  # 实值期权列表
@@ -2976,8 +2975,8 @@ class TqApi(TqBaseApi):
         query_vars = {"instrument_id": [underlying_symbol]}
         derivative_vars = {"class_": ["OPTION"]}
         if isinstance(self._backtest, TqBacktest):
-            query_vars['timestamp'] = int(self._get_current_datetime().timestamp() * 1e9)
-            derivative_vars['timestamp'] = int(self._get_current_datetime().timestamp() * 1e9)
+            query_vars['timestamp'] = _datetime_to_timestamp_nano(self._get_current_datetime())
+            derivative_vars['timestamp'] = _datetime_to_timestamp_nano(self._get_current_datetime())
         op = Operation(ins_schema.rootQuery)
         query = op.multi_symbol_info(**query_vars)
         query.__as__(basic).instrument_id()
@@ -3075,7 +3074,7 @@ class TqApi(TqBaseApi):
         Example::
 
             from tqsdk import TqApi, TqAuth
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
             quote = api.get_quote("SSE.510300")
             in_money_options, at_money_options, out_of_money_options = api.query_all_level_finance_options("SSE.510300", quote.last_price, "CALL", nearbys = 1)
             ls = in_money_options + at_money_options + out_of_money_options  # 期权列表
@@ -3097,6 +3096,16 @@ class TqApi(TqBaseApi):
                 raise TqTimeoutError(f"获取 {symbol} 的行情信息超时，请检查客户端及网络是否正常")
         return df
 
+    def _check_account_auth(self, acc):
+        auth = acc._account_auth
+        if auth["feature"] and not self._auth._has_feature(auth["feature"]):
+            return False
+        elif auth["account_id"] and not self._auth._has_account(auth["account_id"]):
+            if not auth["auto_add"]:
+                return False
+            self._auth._add_account(auth["account_id"])
+        return True
+
     def _setup_connection(self):
         """初始化"""
         tq_web_helper = TqWebHelper(self)
@@ -3105,7 +3114,7 @@ class TqApi(TqBaseApi):
 
         # TqWebHelper 初始化可能会修改 self._account、self._backtest，所以在这里才初始化 logger
         # 在此之前使用 self._logger 不会打印日志
-        if not self._logger.handlers and (self._debug or (self._account._has_tq_account and self._debug is not False)):
+        if not self._logger.handlers and (self._debug or (not self._account._all_sim_account and self._debug is not False)):
             _clear_logs()  # 先清空日志
             log_name = self._debug if isinstance(self._debug, str) else _get_log_name()
             if self._debug is not None or _get_disk_free() >= 3:
@@ -3119,25 +3128,17 @@ class TqApi(TqBaseApi):
                            py_version=platform.python_version(), py_arch=platform.architecture()[0],
                            cmd=sys.argv, mem_total=mem.total, mem_free=mem.free)
         if self._auth is None:
-            raise Exception("请输入 auth （信易账户）参数，信易账户是使用 tqsdk 的前提，如果没有请点击注册，注册地址：https://account.shinnytech.com/。")
+            raise Exception("请输入 auth （快期账户）参数，快期账户是使用 tqsdk 的前提，如果没有请点击注册，注册地址：https://account.shinnytech.com/。")
         else:
             self._auth.init(mode="bt" if isinstance(self._backtest, TqBacktest) else "real")
             self._auth.login()  # tqwebhelper 有可能会设置 self._auth
 
-        # 在信易账户登录之后，对于账户的基本信息校验及更新
+        # 在快期账户登录之后，对于账户的基本信息校验及更新
         for acc in self._account._account_list:
             if isinstance(acc, BaseOtg):
                 acc._update_otg_info(self)  # 获取交易地址；更新模拟账户 _account_id
-            # TqAccount 需要尝试自动绑定实盘账户
-            if isinstance(acc, TqAccount):
-                if not self._auth._has_account(acc._account_id):
-                    self._auth._add_account(acc._account_id)
-            elif isinstance(acc, TqKqStock):
-                if not self._auth._has_account(acc._account_id):
-                    raise Exception(f"您的账户不支持快期股票模拟 TqKqStock，需要购买专业版本后使用。升级网址：https://account.shinnytech.com")
-            elif isinstance(acc, TqSimStock):
-                if not self._auth._has_feature("sec"):
-                    raise Exception(f"您的账户不支持本地股票模拟 TqSimStock，需要购买专业版本后使用。升级网址：https://account.shinnytech.com")
+            if not self._check_account_auth(acc):
+                raise Exception(f"您的账户不支持 {type(acc)}，需要购买后才能使用。升级网址：https://www.shinnytech.com/tqsdk_professional/")
 
         # 等待复盘服务器启动
         if isinstance(self._backtest, TqReplay):
@@ -3238,7 +3239,7 @@ class TqApi(TqBaseApi):
             ws_md_send_chan, ws_md_recv_chan = ts_send_chan, ts_recv_chan
 
         # 启动账户实例并连接交易服务器
-        self._account._run(self, self._send_chan, self._recv_chan, ws_md_send_chan, ws_md_recv_chan)
+        self._account._setup_connection(self, self._send_chan, self._recv_chan, ws_md_send_chan, ws_md_recv_chan)
 
         # 与 web 配合, 在 tq_web_helper 内部中处理 web_gui 选项
         web_send_chan, web_recv_chan = TqChan(self, chan_name="send to web_helper"), TqChan(self, chan_name="recv from web_helper")

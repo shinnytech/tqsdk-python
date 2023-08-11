@@ -3,7 +3,7 @@ from tqsdk import TqApi, TqAuth
 '''
 获取标的对应看涨期权的期权和行权价对应列表
 '''
-api = TqApi(auth=TqAuth("信易账户", "账号密码"))
+api = TqApi(auth=TqAuth("快期账户", "账号密码"))
 
 # 获取沪深300股指期权的认购在市合约
 ls = api.query_options("SSE.000300", "CALL", expired=False)

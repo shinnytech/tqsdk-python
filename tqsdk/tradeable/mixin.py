@@ -34,7 +34,7 @@ class FutureMixin:
             from tqsdk import TqApi, TqAuth
 
             tqacc = TqAccount("N南华期货", "123456", "123456")
-            api = TqApi(account=tqacc, auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(account=tqacc, auth=TqAuth("快期账户", "账户密码"))
             account = tqacc.get_account()
             print(account.float_profit)
 
@@ -50,7 +50,7 @@ class FutureMixin:
             account = TqAccount("N南华期货", "123456", "123456")
             tqkq = TqKq()
             tqsim = TqSim()
-            api = TqApi(TqMultiAccount([account, tqkq, tqsim]), auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(TqMultiAccount([account, tqkq, tqsim]), auth=TqAuth("快期账户", "账户密码"))
             account1 = account.get_account()
             account2 = tqkq.get_account()
             account3 = tqsim.get_account()
@@ -83,7 +83,7 @@ class FutureMixin:
             from tqsdk import TqApi, TqAuth, TqAccount
 
             tqacc = TqAccount("N南华期货", "123456", "123456")
-            api = TqApi(account=tqacc, auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(account=tqacc, auth=TqAuth("快期账户", "账户密码"))
             position = tqacc.get_position("DCE.m2109")
             print(position.float_profit_long + position.float_profit_short)
             while api.wait_update():
@@ -102,7 +102,7 @@ class FutureMixin:
             account = TqAccount("N南华期货", "123456", "123456")
             tqkq = TqKq()
             tqsim = TqSim()
-            api = TqApi(TqMultiAccount([account, tqkq, tqsim]), auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(TqMultiAccount([account, tqkq, tqsim]), auth=TqAuth("快期账户", "账户密码"))
             position1 = account.get_position("DCE.m2101")
             position2 = tqkq.get_position("DCE.m2101")
             position3 = tqsim.get_position("DCE.m2101")
@@ -139,7 +139,7 @@ class FutureMixin:
             from tqsdk import TqApi, TqAuth
 
             tqacc = TqAccount("N南华期货", "123456", "123456")
-            api = TqApi(account=tqacc, auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(account=tqacc, auth=TqAuth("快期账户", "账户密码"))
             orders = tqacc.get_order()
             while True:
                 api.wait_update()
@@ -159,7 +159,7 @@ class FutureMixin:
             account = TqAccount("N南华期货", "123456", "123456")
             tqkq = TqKq()
             tqsim = TqSim()
-            api = TqApi(TqMultiAccount([account, tqkq, tqsim]), auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(TqMultiAccount([account, tqkq, tqsim]), auth=TqAuth("快期账户", "账户密码"))
             orders1 = account.get_order()
             orders2 = tqkq.get_order()
             orders3 = tqsim.get_order()
@@ -201,7 +201,7 @@ class FutureMixin:
             account = TqAccount("N南华期货", "123456", "123456")
             tqkq = TqKq()
             tqsim = TqSim()
-            api = TqApi(TqMultiAccount([account, tqkq, tqsim]), auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(TqMultiAccount([account, tqkq, tqsim]), auth=TqAuth("快期账户", "账户密码"))
             trades1 = account.get_trade()
             trades2 = tqkq.get_trade()
             trades3 = tqsim.get_trade()
@@ -233,7 +233,7 @@ class StockMixin:
             from tqsdk import TqApi, TqAuth
 
             tqacc = TqAccount("N南华期货", "123456", "123456")
-            api = TqApi(account=tqacc, auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(account=tqacc, auth=TqAuth("快期账户", "账户密码"))
             account = tqacc.get_account()
             print(account.float_profit)
 
@@ -249,7 +249,7 @@ class StockMixin:
             account = TqAccount("N南华期货", "123456", "123456")
             tqkq = TqKq()
             tqsim = TqSim()
-            api = TqApi(TqMultiAccount([account, tqkq, tqsim]), auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(TqMultiAccount([account, tqkq, tqsim]), auth=TqAuth("快期账户", "账户密码"))
             account1 = account.get_account()
             account2 = tqkq.get_account()
             account3 = tqsim.get_account()
@@ -279,7 +279,7 @@ class StockMixin:
 
             from tqsdk import TqApi, TqAuth, TqKqStock
             tqkqstock = TqKqStock()
-            api = TqApi(account=tqkqstock, auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(account=tqkqstock, auth=TqAuth("快期账户", "账户密码"))
             position = tqkqstock.get_position('SSE.10003624')
             print(f"建仓日期 {position.create_date}, 持仓数量 {position.volume}")
             api.close()
@@ -310,7 +310,7 @@ class StockMixin:
 
             from tqsdk import TqApi, TqAuth, TqKqStock
             tqkqstock = TqKqStock()
-            api = TqApi(account=tqkqstock, auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(account=tqkqstock, auth=TqAuth("快期账户", "账户密码"))
             order = tqkqstock.get_order('委托单Id')
             print(f"委托股数 {order.volume_orign}, 剩余股数 {order.volume_left}")
             api.close()
@@ -340,7 +340,7 @@ class StockMixin:
 
             from tqsdk import TqApi, TqAuth, TqKqStock
             tqkqstock = TqKqStock()
-            api = TqApi(account=tqkqstock, auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(account=tqkqstock, auth=TqAuth("快期账户", "账户密码"))
             trades = tqkqstock.get_trade('委托单Id')
             [print(trade.trade_id, f"成交股数 {trade.volume}, 成交价格 {trade.price}") for trade in trades]
             api.close()

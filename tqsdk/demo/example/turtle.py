@@ -19,7 +19,7 @@ class Turtle:
                  donchian_channel_stop_profit=10,
                  atr_day_length=20, max_risk_ratio=0.5):
         self.account = account  # 交易账号
-        self.auth = auth  # 信易账户
+        self.auth = auth  # 快期账户
         self.symbol = symbol  # 合约代码
         self.donchian_channel_open_position = donchian_channel_open_position  # 唐奇安通道的天数周期(开仓)
         self.donchian_channel_stop_profit = donchian_channel_stop_profit  # 唐奇安通道的天数周期(止盈)

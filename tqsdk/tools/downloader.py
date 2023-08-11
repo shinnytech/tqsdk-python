@@ -73,7 +73,7 @@ class DataDownloader:
             from tqsdk import TqApi, TqAuth, TqSim
             from tqsdk.tools import DataDownloader
 
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
             download_tasks = {}
             # 下载从 2018-01-01 到 2018-09-01 的 SR901 日线数据
             download_tasks["SR_daily"] = DataDownloader(api, symbol_list="CZCE.SR901", dur_sec=24*60*60,
@@ -97,7 +97,7 @@ class DataDownloader:
         """
         self._api = api
         if not self._api._auth._has_feature("tq_dl"):
-            raise Exception("您的账户不支持下载历史数据功能，需要购买专业版本后使用。升级网址：https://account.shinnytech.com")
+            raise Exception("您的账户不支持下载历史数据功能，需要购买后才能使用。升级网址：https://www.shinnytech.com/tqsdk_professional/")
         if isinstance(start_dt, datetime):
             self._start_dt_nano = _datetime_to_timestamp_nano(start_dt)
         else:
@@ -163,7 +163,7 @@ class DataDownloader:
             from contextlib import closing
             from tqsdk.tools import DataDownloader
 
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
             # 下载从 2018-06-01 到 2018-09-01 的 SR901 日线数据
             download_task = DataDownloader(api, symbol_list="CZCE.SR901", dur_sec=24*60*60,
                                 start_dt=date(2018, 6, 1), end_dt=date(2018, 9, 1), csv_file_name="klines.csv")

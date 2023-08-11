@@ -35,16 +35,16 @@ class TqWebHelper(object):
         if args["_action"] == "run":
             # 运行模式下，账户参数冲突需要抛错，提示用户
             if args["_broker_id"] == "TQ_KQ":
-                if type(self._api._account) is TqAccount:
-                    raise Exception("策略代码与插件设置中的账户参数冲突。可尝试删去代码中的账户参数 TqAccount，以插件设置的账户参数运行。")
+                if not isinstance(self._api._account, TqKq) and not isinstance(self._api._account, TqSim):
+                    raise Exception("策略代码与插件设置中的账户参数冲突。可尝试删去代码中的账户参数，以插件设置的账户参数运行。")
                 self._api._account = TqKq()
             elif args["_broker_id"] and args["_account_id"] and args["_password"]:
-                if isinstance(self._api._account, TqKq):
-                    raise Exception("策略代码与插件设置中的账户参数冲突。可尝试删去代码中的账户参数 TqKq，以插件设置的账户参数运行。")
-                if isinstance(self._api._account, TqAccount) and \
-                        (self._api._account._account_id != args["_account_id"] or self._api._account._broker_id !=
-                         args["_broker_id"]):
-                    raise Exception("策略代码与插件设置中的账户参数冲突。可尝试删去代码中的账户参数 TqAccount，以插件设置的账户参数运行。")
+                if isinstance(self._api._account, TqSim):
+                    pass
+                elif isinstance(self._api._account, TqAccount) and self._api._account._account_id == args["_account_id"] and self._api._account._broker_id == args["_broker_id"]:
+                    pass
+                else:
+                    raise Exception("策略代码与插件设置中的账户参数冲突。可尝试删去代码中的账户参数，以插件设置的账户参数运行。")
                 self._api._account = TqAccount(args["_broker_id"], args["_account_id"], args["_password"])
             else:
                 self._api._account = TqSim(args["_init_balance"])
@@ -90,6 +90,7 @@ class TqWebHelper(object):
             file_name = os.path.basename(file_path)
             # 初始化数据截面
             accounts_info = {
+                #@todo: 避免针对账户类型的特殊处理, 统一按照通知的形式更新连接状态, 同时解决回测模式下没有行情连接状态的问题
                 acc._account_key: {"td_url_status": True if isinstance(acc, BaseSim) else '-'}
                 for acc in self._api._account._account_list
             }

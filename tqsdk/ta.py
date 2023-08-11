@@ -33,7 +33,7 @@ def ATR(df, n):
         from tqsdk import TqApi, TqAuth, TqSim
         from tqsdk.ta import ATR
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         atr = ATR(klines, 14)
         print(atr.tr)  # 真实波幅
@@ -72,7 +72,7 @@ def BIAS(df, n):
         from tqsdk import TqApi, TqAuth, TqSim
         from tqsdk.ta import BIAS
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         bias = BIAS(klines, 6)
         print(list(bias["bias"]))  # 乖离率
@@ -105,7 +105,7 @@ def BOLL(df, n, p):
         from tqsdk import TqApi, TqAuth, TqSim
         from tqsdk.ta import BOLL
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         boll=BOLL(klines, 26, 2)
         print(list(boll["mid"]))
@@ -146,7 +146,7 @@ def DMI(df, n, m):
         from tqsdk import TqApi, TqAuth, TqSim
         from tqsdk.ta import DMI
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         dmi=DMI(klines, 14, 6)
         print(list(dmi["atr"]))
@@ -200,7 +200,7 @@ def KDJ(df, n, m1, m2):
         from tqsdk import TqApi, TqAuth, TqSim
         from tqsdk.ta import KDJ
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         kdj = KDJ(klines, 9, 3, 3)
         print(list(kdj["k"]))
@@ -246,7 +246,7 @@ def MACD(df, short, long, m):
         from tqsdk import TqApi, TqAuth, TqSim
         from tqsdk.ta import MACD
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         macd = MACD(klines, 12, 26, 9)
         print(list(macd["diff"]))
@@ -330,7 +330,7 @@ def SAR(df, n, step, max):
         from tqsdk import TqApi, TqAuth, TqSim
         from tqsdk.ta import SAR
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         sar=SAR(klines, 4, 0.02, 0.2)
         print(list(sar["sar"]))
@@ -365,7 +365,7 @@ def WR(df, n):
         from tqsdk import TqApi, TqAuth, TqSim
         from tqsdk.ta import WR
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         wr = WR(klines, 14)
         print(list(wr["wr"]))
@@ -397,7 +397,7 @@ def RSI(df, n):
         from tqsdk import TqApi, TqAuth, TqSim
         from tqsdk.ta import RSI
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         rsi = RSI(klines, 7)
         print(list(rsi["rsi"]))
@@ -428,7 +428,7 @@ def ASI(df):
         from tqsdk import TqApi, TqAuth, TqSim
         from tqsdk.ta import ASI
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         asi = ASI(klines)
         print(list(asi["asi"]))
@@ -468,7 +468,7 @@ def VR(df, n):
         from tqsdk import TqApi, TqAuth, TqSim
         from tqsdk.ta import VR
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         vr = VR(klines, 26)
         print(list(vr["vr"]))
@@ -502,7 +502,7 @@ def ARBR(df, n):
         from tqsdk import TqApi, TqAuth, TqSim
         from tqsdk.ta import ARBR
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         arbr = ARBR(klines, 26)
         print(list(arbr["ar"]))
@@ -544,7 +544,7 @@ def DMA(df, short, long, m):
         from tqsdk import TqApi, TqAuth, TqSim
         from tqsdk.ta import DMA
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         dma = DMA(klines, 10, 50, 10)
         print(list(dma["ddd"]))
@@ -581,7 +581,7 @@ def EXPMA(df, p1, p2):
         from tqsdk import TqApi, TqAuth, TqSim
         from tqsdk.ta import EXPMA
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         expma = EXPMA(klines, 5, 10)
         print(list(expma["ma1"]))
@@ -618,7 +618,7 @@ def CR(df, n, m):
         from tqsdk import TqApi, TqAuth, TqSim
         from tqsdk.ta import CR
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         cr = CR(klines, 26, 5)
         print(list(cr["cr"]))
@@ -655,7 +655,7 @@ def CCI(df, n):
         from tqsdk import TqApi, TqAuth, TqSim
         from tqsdk.ta import CCI
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         cci = CCI(klines, 14)
         print(list(cci["cci"]))
@@ -691,7 +691,7 @@ def OBV(df):
         from tqsdk import TqApi, TqAuth, TqSim
         from tqsdk.ta import OBV
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         obv = OBV(klines)
         print(list(obv["obv"]))
@@ -724,7 +724,7 @@ def CDP(df, n):
         from tqsdk import TqApi, TqAuth, TqSim
         from tqsdk.ta import CDP
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         cdp = CDP(klines, 3)
         print(list(cdp["ah"]))
@@ -767,7 +767,7 @@ def HCL(df, n):
         from tqsdk import TqApi, TqAuth, TqSim
         from tqsdk.ta import HCL
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         hcl = HCL(klines, 10)
         print(list(hcl["mah"]))
@@ -807,7 +807,7 @@ def ENV(df, n, k):
         from tqsdk import TqApi, TqAuth, TqSim
         from tqsdk.ta import ENV
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         env = ENV(klines, 14, 6)
         print(list(env["upper"]))
@@ -842,7 +842,7 @@ def MIKE(df, n):
         from tqsdk import TqApi, TqAuth, TqSim
         from tqsdk.ta import MIKE
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         mike = MIKE(klines, 12)
         print(list(mike["wr"]))
@@ -892,7 +892,7 @@ def PUBU(df, m):
         from tqsdk import TqApi, TqAuth, TqSim
         from tqsdk.ta import PUBU
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         pubu = PUBU(klines, 4)
         print(list(pubu["pb"]))
@@ -930,7 +930,7 @@ def BBI(df, n1, n2, n3, n4):
         from tqsdk import TqApi, TqAuth, TqSim
         from tqsdk.ta import BBI
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         bbi = BBI(klines, 3, 6, 12, 24)
         print(list(bbi["bbi"]))
@@ -963,7 +963,7 @@ def DKX(df, m):
         from tqsdk import TqApi, TqAuth, TqSim
         from tqsdk.ta import DKX
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         dkx = DKX(klines, 10)
         print(list(dkx["b"]))
@@ -1007,7 +1007,7 @@ def BBIBOLL(df, n, m):
         from tqsdk import TqApi, TqAuth, TqSim
         from tqsdk.ta import BBIBOLL
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         bbiboll=BBIBOLL(klines,10,3)
         print(list(bbiboll["bbiboll"]))
@@ -1049,7 +1049,7 @@ def ADTM(df, n, m):
         from tqsdk import TqApi, TqAuth, TqSim
         from tqsdk.ta import ADTM
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         adtm = ADTM(klines, 23, 8)
         print(list(adtm["adtm"]))
@@ -1090,7 +1090,7 @@ def B3612(df):
         from tqsdk import TqApi, TqAuth, TqSim
         from tqsdk.ta import B3612
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         b3612=B3612(klines)
         print(list(b3612["b36"]))
@@ -1129,7 +1129,7 @@ def DBCD(df, n, m, t):
         from tqsdk import TqApi, TqAuth, TqSim
         from tqsdk.ta import DBCD
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         dbcd=DBCD(klines, 5, 16, 76)
         print(list(dbcd["dbcd"]))
@@ -1172,7 +1172,7 @@ def DDI(df, n, n1, m, m1):
         from tqsdk import TqApi, TqAuth, TqSim
         from tqsdk.ta import DDI
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         ddi = DDI(klines, 13, 30, 10, 5)
         print(list(ddi["ddi"]))
@@ -1220,7 +1220,7 @@ def KD(df, n, m1, m2):
         from tqsdk import TqApi, TqAuth, TqSim
         from tqsdk.ta import KD
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         kd = KD(klines, 9, 3, 3)
         print(list(kd["k"]))
@@ -1260,7 +1260,7 @@ def LWR(df, n, m):
         from tqsdk import TqApi, TqAuth, TqSim
         from tqsdk.ta import LWR
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         lwr = LWR(klines, 9, 3)
         print(list(lwr["lwr"]))
@@ -1296,7 +1296,7 @@ def MASS(df, n1, n2):
         from tqsdk import TqApi, TqAuth, TqSim
         from tqsdk.ta import MASS
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         mass = MASS(klines, 9, 25)
         print(list(mass["mass"]))
@@ -1329,7 +1329,7 @@ def MFI(df, n):
         from tqsdk import TqApi, TqAuth, TqSim
         from tqsdk.ta import MFI
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         mfi = MFI(klines, 14)
         print(list(mfi["mfi"]))
@@ -1363,7 +1363,7 @@ def MI(df, n):
         from tqsdk import TqApi, TqAuth, TqSim
         from tqsdk.ta import MI
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         mi = MI(klines, 12)
         print(list(mi["a"]))
@@ -1402,7 +1402,7 @@ def MICD(df, n, n1, n2):
         from tqsdk import TqApi, TqAuth, TqSim
         from tqsdk.ta import MICD
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         micd = MICD(klines, 3, 10, 20)
         print(list(micd["dif"]))
@@ -1441,7 +1441,7 @@ def MTM(df, n, n1):
         from tqsdk import TqApi, TqAuth, TqSim
         from tqsdk.ta import MTM
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         mtm = MTM(klines, 6, 6)
         print(list(mtm["mtm"]))
@@ -1478,7 +1478,7 @@ def PRICEOSC(df, long, short):
         from tqsdk import TqApi, TqAuth, TqSim
         from tqsdk.ta import PRICEOSC
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         priceosc = PRICEOSC(klines, 26, 12)
         print(list(priceosc["priceosc"]))
@@ -1513,7 +1513,7 @@ def PSY(df, n, m):
         from tqsdk import TqApi, TqSim
         from tqsdk.ta import PSY
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         psy = PSY(klines, 12, 6)
         print(list(psy["psy"]))
@@ -1546,7 +1546,7 @@ def QHLSR(df):
         from tqsdk import TqApi, TqSim
         from tqsdk.ta import QHLSR
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         ndf = QHLSR(klines)
         print(list(ndf["qhl5"]))
@@ -1590,7 +1590,7 @@ def RC(df, n):
         from tqsdk import TqApi, TqSim
         from tqsdk.ta import RC
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         rc = RC(klines, 50)
         print(list(rc["arc"]))
@@ -1626,7 +1626,7 @@ def RCCD(df, n, n1, n2):
         from tqsdk import TqApi, TqSim
         from tqsdk.ta import RCCD
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         rccd = RCCD(klines, 10, 21, 28)
         print(list(rccd["dif"]))
@@ -1665,7 +1665,7 @@ def ROC(df, n, m):
         from tqsdk import TqApi, TqAuth
         from tqsdk.ta import ROC
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         roc = ROC(klines, 24, 20)
         print(list(roc["roc"]))
@@ -1706,7 +1706,7 @@ def SLOWKD(df, n, m1, m2, m3):
         from tqsdk import TqApi, TqAuth
         from tqsdk.ta import SLOWKD
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         slowkd = SLOWKD(klines, 9, 3, 3, 3)
         print(list(slowkd["k"]))
@@ -1744,7 +1744,7 @@ def SRDM(df, n):
         from tqsdk import TqApi, TqAuth
         from tqsdk.ta import SRDM
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         srdm = SRDM(klines, 30)
         print(list(srdm["srdm"]))
@@ -1787,7 +1787,7 @@ def SRMI(df, n):
         from tqsdk import TqApi, TqAuth
         from tqsdk.ta import SRMI
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         srmi = SRMI(klines, 9)
         print(list(srmi["a"]))
@@ -1829,7 +1829,7 @@ def ZDZB(df, n1, n2, n3):
         from tqsdk import TqApi, TqAuth
         from tqsdk.ta import ZDZB
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         zdzb = ZDZB(klines, 50, 5, 20)
         print(list(zdzb["b"]))
@@ -1864,7 +1864,7 @@ def DPO(df):
         from tqsdk import TqApi, TqAuth
         from tqsdk.ta import DPO
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         dpo = DPO(klines)
         print(list(dpo["dpo"]))
@@ -1894,7 +1894,7 @@ def LON(df):
         from tqsdk import TqApi, TqAuth
         from tqsdk.ta import LON
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         lon = LON(klines)
         print(list(lon["lon"]))
@@ -1938,7 +1938,7 @@ def SHORT(df):
         from tqsdk import TqApi, TqAuth
         from tqsdk.ta import SHORT
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         short = SHORT(klines)
         print(list(short["short"]))
@@ -1984,7 +1984,7 @@ def MV(df, n, m):
         from tqsdk import TqApi, TqAuth
         from tqsdk.ta import MV
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         mv = MV(klines, 10, 20)
         print(list(mv["mv1"]))
@@ -2021,7 +2021,7 @@ def WAD(df, n, m):
         from tqsdk import TqApi, TqAuth
         from tqsdk.ta import WAD
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         wad = WAD(klines, 10, 30)
         print(list(wad["a"]))
@@ -2062,7 +2062,7 @@ def AD(df):
         from tqsdk import TqApi, TqAuth
         from tqsdk.ta import AD
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         ad = AD(klines)
         print(list(ad["ad"]))
@@ -2093,7 +2093,7 @@ def CCL(df):
         from tqsdk import TqApi, TqAuth
         from tqsdk.ta import CCL
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         ccl = CCL(klines)
         print(list(ccl["ccl"]))
@@ -2127,7 +2127,7 @@ def CJL(df):
         from tqsdk import TqApi, TqAuth
         from tqsdk.ta import CJL
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         ndf = CJL(klines)
         print(list(ndf["vol"]))
@@ -2160,7 +2160,7 @@ def OPI(df):
         from tqsdk import TqApi, TqAuth
         from tqsdk.ta import OPI
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         opi = OPI(klines)
         print(list(opi["opi"]))
@@ -2190,7 +2190,7 @@ def PVT(df):
         from tqsdk import TqApi, TqAuth
         from tqsdk.ta import PVT
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         pvt = PVT(klines)
         print(list(pvt["pvt"]))
@@ -2224,7 +2224,7 @@ def VOSC(df, short, long):
         from tqsdk import TqApi, TqAuth
         from tqsdk.ta import VOSC
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         vosc = VOSC(klines, 12, 26)
         print(list(vosc["vosc"]))
@@ -2256,7 +2256,7 @@ def VROC(df, n):
         from tqsdk import TqApi, TqAuth
         from tqsdk.ta import VROC
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         vroc = VROC(klines, 12)
         print(list(vroc["vroc"]))
@@ -2288,7 +2288,7 @@ def VRSI(df, n):
         from tqsdk import TqApi, TqAuth
         from tqsdk.ta import VRSI
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         vrsi = VRSI(klines, 6)
         print(list(vrsi["vrsi"]))
@@ -2320,7 +2320,7 @@ def WVAD(df):
         from tqsdk import TqApi, TqAuth
         from tqsdk.ta import WVAD
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         wvad = WVAD(klines)
         print(list(wvad["wvad"]))
@@ -2352,7 +2352,7 @@ def MA(df, n):
         from tqsdk import TqApi, TqAuth
         from tqsdk.ta import MA
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         ma = MA(klines, 30)
         print(list(ma["ma"]))
@@ -2385,7 +2385,7 @@ def SMA(df, n, m):
         from tqsdk import TqApi, TqAuth
         from tqsdk.ta import SMA
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         sma = SMA(klines, 5, 2)
         print(list(sma["sma"]))
@@ -2416,7 +2416,7 @@ def EMA(df, n):
         from tqsdk import TqApi, TqAuth
         from tqsdk.ta import EMA
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         ema = EMA(klines, 10)
         print(list(ema["ema"]))
@@ -2447,7 +2447,7 @@ def EMA2(df, n):
         from tqsdk import TqApi, TqAuth
         from tqsdk.ta import EMA2
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         ema2 = EMA2(klines, 10)
         print(list(ema2["ema2"]))
@@ -2478,7 +2478,7 @@ def TRMA(df, n):
         from tqsdk import TqApi, TqAuth
         from tqsdk.ta import TRMA
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         klines = api.get_kline_serial("CFFEX.IF1903", 24 * 60 * 60)
         trma = TRMA(klines, 10)
         print(list(trma["trma"]))
@@ -2517,7 +2517,7 @@ def BS_VALUE(df, quote, r=0.025, v=None):
         from tqsdk import TqApi, TqAuth
         from tqsdk.ta import BS_VALUE
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         quote = api.get_quote("SHFE.cu2006C43000")
         klines = api.get_kline_serial("SHFE.cu2006", 24 * 60 * 60, 30)
         bs_serise = BS_VALUE(klines, quote, 0.025)
@@ -2534,7 +2534,7 @@ def BS_VALUE(df, quote, r=0.025, v=None):
         from tqsdk.ta import BS_VALUE
         from tqsdk.tafunc import get_his_volatility
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         ks = api.get_kline_serial("SHFE.cu2006", 24 * 60 * 60, 30)
         v = get_his_volatility(ks, api.get_quote("SHFE.cu2006"))
         print("历史波动率:", v)
@@ -2592,7 +2592,7 @@ def OPTION_GREEKS(df, quote, r=0.025, v=None):
         from tqsdk import TqApi, TqAuth
         from tqsdk.ta import OPTION_GREEKS
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         quote = api.get_quote("SHFE.cu2006C44000")
         klines = api.get_kline_serial(["SHFE.cu2006C44000", "SHFE.cu2006"], 24 * 60 * 60, 30)
         greeks = OPTION_GREEKS(klines, quote, 0.025)
@@ -2648,7 +2648,7 @@ def OPTION_VALUE(df, quote):
         from tqsdk import TqApi, TqAuth
         from tqsdk.ta import OPTION_VALUE
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         quote = api.get_quote("SHFE.cu2006C43000")
         klines = api.get_kline_serial(["SHFE.cu2006C43000", "SHFE.cu2006"], 24 * 60 * 60, 30)
         values = OPTION_VALUE(klines, quote)
@@ -2695,7 +2695,7 @@ def OPTION_IMPV(df, quote, r=0.025):
         from tqsdk import TqApi, TqAuth
         from tqsdk.ta import OPTION_IMPV
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         quote = api.get_quote("SHFE.cu2006C50000")
         klines = api.get_kline_serial(["SHFE.cu2006C50000", "SHFE.cu2006"], 24 * 60 * 60, 20)
         impv = OPTION_IMPV(klines, quote, 0.025)
@@ -2734,7 +2734,7 @@ def VOLATILITY_CURVE(df: pd.DataFrame, quotes: dict, underlying: str, r=0.025):
         from tqsdk import TqApi, TqAuth
         from tqsdk.ta import VOLATILITY_CURVE
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
         underlying = "DCE.m2101"
         options = api.query_options(underlying_symbol=underlying, option_class="PUT", expired=False)
         # 批量获取合约的行情信息, 存储结构必须为 dict, key 为合约, value 为行情数据
