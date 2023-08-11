@@ -42,7 +42,7 @@ def get_prediction_data(klines, n):
 
 
 predictions = []  # 用于记录每次的预测结果(在每个交易日收盘时用收盘数据预测下一交易日的涨跌,并记录在此列表里)
-api = TqApi(backtest=TqBacktest(start_dt=datetime.date(2018, 7, 2), end_dt=datetime.date(2018, 9, 26)), auth=TqAuth("信易账户", "账户密码"))
+api = TqApi(backtest=TqBacktest(start_dt=datetime.date(2018, 7, 2), end_dt=datetime.date(2018, 9, 26)), auth=TqAuth("快期账户", "账户密码"))
 quote = api.get_quote(symbol)
 klines = api.get_kline_serial(symbol, duration_seconds=24 * 60 * 60)  # 日线
 target_pos = TargetPosTask(api, symbol)

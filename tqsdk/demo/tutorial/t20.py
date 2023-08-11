@@ -5,7 +5,7 @@ __author__ = 'chengzhi'
 from tqsdk import TqApi, TqAuth
 
 # 可以指定debug选项将调试信息写入指定的文件中
-api = TqApi(debug="debug.log", auth=TqAuth("信易账户", "账户密码"))
+api = TqApi(debug="debug.log", auth=TqAuth("快期账户", "账户密码"))
 quote = api.get_quote("CZCE.FG209")
 print(quote.datetime, quote.last_price, quote.ask_price1, quote.ask_price2)
 

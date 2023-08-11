@@ -18,7 +18,7 @@ TqSdk 是一个由[信易科技](https://www.shinnytech.com)发起并贡献主�
 ``` {.sourceCode .python}
 from tqsdk import TqApi, TqAuth, TqAccount, TargetPosTask
 
-api = TqApi(TqAccount("H海通期货", "4003242", "123456"), auth=TqAuth("信易账户", "账户密码"))      # 创建 TqApi 实例, 指定交易账户
+api = TqApi(TqAccount("H海通期货", "4003242", "123456"), auth=TqAuth("快期账户", "账户密码"))      # 创建 TqApi 实例, 指定交易账户
 q_1910 = api.get_quote("SHFE.rb1910")                         # 订阅近月合约行情
 t_1910 = TargetPosTask(api, "SHFE.rb1910")                    # 创建近月合约调仓工具
 q_2001 = api.get_quote("SHFE.rb2001")                         # 订阅远月合约行情

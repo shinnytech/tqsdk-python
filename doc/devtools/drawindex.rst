@@ -16,7 +16,7 @@ ATR的计算比较简单，首先我们要算出当前真实的波幅.这里不�
     from tqsdk import TqApi, TqAuth
     from tqsdk.ta import ATR
 
-    api = TqApi(TqAuth("信易账户", "账户密码"))
+    api = TqApi(TqAuth("快期账户", "账户密码"))
     klines = api.get_kline_serial("SHFE.au1912", 24 * 60 * 60)
     atr = ATR(klines, 14)
     print(atr.tr)  # 真实波幅

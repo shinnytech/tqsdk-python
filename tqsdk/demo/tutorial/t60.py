@@ -8,7 +8,7 @@ from tqsdk import TqApi, TqAuth
 如果当前价格大于10秒K线的MA15则开多仓 (使用 insert_order() 函数)
 如果小于则平仓
 '''
-api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 # 获得 m2207 10秒K线的引用
 klines = api.get_kline_serial("DCE.m2207", 10)
 

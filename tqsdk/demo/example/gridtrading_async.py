@@ -28,7 +28,7 @@ print("多头每格交易量:", grid_volume_long)
 print("多头每格的价位:", grid_prices_long)
 print("空头每格的价位:", grid_prices_short)
 
-api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 quote = api.get_quote(symbol)  # 行情数据
 target_pos = TargetPosTask(api, symbol)
 target_volume = 0  # 目标持仓手数

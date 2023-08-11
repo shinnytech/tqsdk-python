@@ -2,6 +2,13 @@
 
 版本变更
 =============================
+3.4.6 (2023/08/11)
+
+* 增加：支持同时使用多个快期模拟账户，:py:class:`~tqsdk.TqKq`、:py:class:`~tqsdk.TqKqStock` 加入多帐号支持
+* 修复：回测后 trade_log 中持仓信息增加 pos_long、pos_short、pos 字段
+* 优化：TqApi 初始化时账户相关参数的提示信息
+
+
 3.4.5 (2023/07/17)
 
 * 修复：:py:class:`~tqsdk.TargetPosTask` 及 :py:class:`~tqsdk.algorithm.twap` 支持红枣期货下单

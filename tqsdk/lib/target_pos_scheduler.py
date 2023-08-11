@@ -72,7 +72,7 @@ class TargetPosScheduler(object):
             from pandas import DataFrame
             from tqsdk import TqApi, TargetPosScheduler
 
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
             time_table = DataFrame([
                 [25, 10, "PASSIVE"],
                 [5, 10, "ACTIVE"],
@@ -161,7 +161,7 @@ class TargetPosScheduler(object):
             from pandas import DataFrame
             from tqsdk import TqApi, TargetPosScheduler
 
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
             time_table = DataFrame([
                 [25, 10, "PASSIVE"],
                 [5, 10, "ACTIVE"],

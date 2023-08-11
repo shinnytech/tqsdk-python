@@ -7,8 +7,12 @@ import base64
 from urllib.parse import urlparse
 from typing import Optional
 
+from shinny_structlog import ShinnyLoggerAdapter
+
 from tqsdk.tradeable.mixin import FutureMixin, StockMixin
 from tqsdk.tradeable.tradeable import Tradeable
+from tqsdk.channel import TqChan
+from tqsdk.connect import TqConnect, TdReconnectHandler
 
 
 class BaseOtg(Tradeable):
@@ -75,17 +79,34 @@ class BaseOtg(Tradeable):
                 # http://example.org/foo/bar -> http://example.org/smcfg/smuser/smpasswd/foo/bar
                 self._td_url = url_info._replace(scheme=sm_type, path=f"/{sm_config}/{url_account}/{url_password}{url_info.path}").geturl()
 
-    async def _run(self, api, api_send_chan, api_recv_chan, md_send_chan, md_recv_chan, td_send_chan, td_recv_chan):
+    def _connect_td(self, api, index: int) -> Optional[str]:
+        # 连接交易服务器
+        td_logger = ShinnyLoggerAdapter(api._logger.getChild("TqConnect"), url=self._td_url, broker_id=self._broker_id, account_id=self._account_id)
+        conn_id = f"td_{index}"
+        ws_td_send_chan = TqChan(api, chan_name=f"send to {conn_id}", logger=td_logger)
+        ws_td_recv_chan = TqChan(api, chan_name=f"recv from {conn_id}", logger=td_logger)
+        conn = TqConnect(td_logger, conn_id=conn_id)
+        api.create_task(conn._run(api, self._td_url, ws_td_send_chan, ws_td_recv_chan))
+        ws_td_send_chan._logger_bind(chan_from=f"td_reconn_{index}")
+        ws_td_recv_chan._logger_bind(chan_to=f"td_reconn_{index}")
+
+        td_handler_logger = ShinnyLoggerAdapter(api._logger.getChild("TdReconnect"), url=self._td_url, broker_id=self._broker_id, account_id=self._account_id)
+        td_reconnect = TdReconnectHandler(td_handler_logger)
+        self._td_send_chan = TqChan(api, chan_name=f"send to td_reconn_{index}", logger=td_handler_logger)
+        self._td_recv_chan = TqChan(api, chan_name=f"recv from td_reconn_{index}", logger=td_handler_logger)
+        api.create_task(td_reconnect._run(api, self._td_send_chan, self._td_recv_chan, ws_td_send_chan, ws_td_recv_chan))
+        self._td_send_chan._logger_bind(chan_from=f"account_{index}")
+        self._td_recv_chan._logger_bind(chan_to=f"account_{index}")
+        return conn_id
+
+    async def _run(self, api, api_send_chan, api_recv_chan, md_send_chan, md_recv_chan):
         self._api = api
         self._api_send_chan = api_send_chan
         self._api_recv_chan = api_recv_chan
         self._md_send_chan = md_send_chan
         self._md_recv_chan = md_recv_chan
-        self._td_send_chan = td_send_chan
-        self._td_recv_chan = td_recv_chan
         await self._send_login_pack()
-        await super(BaseOtg, self)._run(api, api_send_chan, api_recv_chan, md_send_chan, md_recv_chan, td_send_chan,
-                                            td_recv_chan)
+        await super(BaseOtg, self)._run(api, api_send_chan, api_recv_chan, md_send_chan, md_recv_chan, self._td_send_chan, self._td_recv_chan)
 
     async def _handle_recv_data(self, pack, chan):
         """

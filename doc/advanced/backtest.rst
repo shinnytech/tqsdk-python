@@ -18,7 +18,7 @@ TqSdk 并不提供专门的参数优化机制. 您可以按照自己的需求, �
   for SHORT in range(20, 40): # 短周期参数从20-40分别做回测
     acc = TqSim()             # 每次回测都创建一个新的模拟账户
     try:
-      api = TqApi(acc, backtest=TqBacktest(start_dt=date(2019, 5, 6), end_dt=date(2019, 5, 10)), auth=TqAuth("信易账户", "账户密码"))
+      api = TqApi(acc, backtest=TqBacktest(start_dt=date(2019, 5, 6), end_dt=date(2019, 5, 10)), auth=TqAuth("快期账户", "账户密码"))
       account = api.get_account()
       klines = api.get_kline_serial(SYMBOL, duration_seconds=60, data_length=LONG + 2)
       target_pos = TargetPosTask(api, SYMBOL)
@@ -51,7 +51,7 @@ TqSdk 并不提供专门的参数优化机制. 您可以按照自己的需求, �
     SYMBOL = "SHFE.cu1907"
     acc = TqSim()
     try:
-      api = TqApi(acc, backtest=TqBacktest(start_dt=date(2019, 5, 6), end_dt=date(2019, 5, 10)), auth=TqAuth("信易账户", "账户密码"))
+      api = TqApi(acc, backtest=TqBacktest(start_dt=date(2019, 5, 6), end_dt=date(2019, 5, 10)), auth=TqAuth("快期账户", "账户密码"))
       data_length = LONG + 2
       klines = api.get_kline_serial(SYMBOL, duration_seconds=60, data_length=data_length)
       target_pos = TargetPosTask(api, SYMBOL)

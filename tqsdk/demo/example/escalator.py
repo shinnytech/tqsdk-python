@@ -16,7 +16,7 @@ SYMBOL = "SHFE.rb2012"
 # 设置均线长短周期
 MA_SLOW, MA_FAST = 8, 40
 
-api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 klines = api.get_kline_serial(SYMBOL, 60 * 60 * 24)
 quote = api.get_quote(SYMBOL)
 position = api.get_position(SYMBOL)

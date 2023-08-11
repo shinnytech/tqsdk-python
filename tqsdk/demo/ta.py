@@ -6,7 +6,7 @@ import datetime
 from tqsdk import TqApi, TqAuth
 from tqsdk.ta import *
 
-api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 # 获得 cu1909 10秒K线的引用
 klines = api.get_kline_serial("SHFE.cu1910", 10, data_length=3000)
 

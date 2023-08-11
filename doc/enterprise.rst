@@ -29,7 +29,7 @@ TqSdk2 提供了资管平台的对接支持，支持用户连接到指定资管�
   from tqsdk2 import TqApi, TqAuth, TqJees
 
   acc = TqJees(td_url="tcp://129.211.138.170:10001", broker_id="JeesDemo", app_id="shinny_tqsdk_01", auth_code= "0000000000000000", user_name="杰宜斯模拟账户", password="杰宜斯模拟账户密码")
-  api = TqApi(acc,auth= TqAuth("信易账户","账户密码"))
+  api = TqApi(acc,auth= TqAuth("快期账户","账户密码"))
 
 其中杰宜斯的 **模拟账户** 和 **模拟账户密码** 需要自行和杰宜斯联系获取，其他参数在杰宜斯模拟下为
 
@@ -57,7 +57,7 @@ TqSdk2 提供了资管平台的对接支持，支持用户连接到指定资管�
   from tqsdk2 import TqApi, TqAuth, TqRohon
 
   acc = TqRohon(td_url="tcp://129.211.138.170:10001", broker_id="RohonDemo", app_id="shinny_tqsdk_01", auth_code= "qZWmA7iTXaEO2w40", user_name="融航模拟账户", password="融航模拟账户密码")
-  api = TqApi(acc,auth= TqAuth("信易账户","账户密码"))
+  api = TqApi(acc,auth= TqAuth("快期账户","账户密码"))
 
 其中融航模拟的 **模拟账户** 和 **模拟账户密码** 需要自行和融航联系获取，其他参数在融航模拟下为
 

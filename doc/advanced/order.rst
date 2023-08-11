@@ -31,7 +31,7 @@ FIVELEVEL   FAK      最优五档即时成交剩余撤销指令
 
   from tqsdk import TqApi, TqAuth
 
-  api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+  api = TqApi(auth=TqAuth("快期账户", "账户密码"))
   # 当日有效限价单
   api.insert_order("SHFE.cu2009", "BUY", "OPEN", 3, limit_price=14200)
   # FAK 限价单

@@ -15,7 +15,7 @@ import time
 symbol = "SHFE.ni2012"  # 合约代码
 close_hour, close_minute = 14, 50  # 平仓时间
 
-api = TqApi(auth=TqAuth("信易账户", "账户密码"))  # 使用模拟帐号直连行情和交易服务器
+api = TqApi(auth=TqAuth("快期账户", "账户密码"))  # 使用模拟帐号直连行情和交易服务器
 quote = api.get_quote(symbol)  # 获取指定合约的盘口行情
 klines = api.get_kline_serial(symbol, 24 * 60 * 60)  # 获取日线
 position = api.get_position(symbol)  # 持仓信息

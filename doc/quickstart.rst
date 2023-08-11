@@ -38,13 +38,13 @@
 
 .. _quickstart_0:
 
-注册信易账户
+注册快期账户
 -------------------------------------------------
-在使用 TqSdk 之前，用户需要先注册自己的 **信易账户** ，传入信易账户是使用任何 TqSdk 程序的前提,点击  `注册信易账户 <https://account.shinnytech.com/>`_
+在使用 TqSdk 之前，用户需要先注册自己的 **快期账户** ，传入快期账户是使用任何 TqSdk 程序的前提,点击  `注册快期账户 <https://account.shinnytech.com/>`_
 
-信易账户可以使用注册时的手机号/用户名/邮箱号进行登录,详细介绍请点击 :ref:`shinny_account`
+快期账户可以使用注册时的手机号/用户名/邮箱号进行登录,详细介绍请点击 :ref:`shinny_account`
 
-在注册完信易账户后，让我们从一个简单的例子开始
+在注册完快期账户后，让我们从一个简单的例子开始
 
 .. _quickstart_1:
 
@@ -56,9 +56,9 @@
 
     from tqsdk import TqApi, TqAuth
 
-创建API实例，并填入自己的信易账户::
+创建API实例，并填入自己的快期账户::
 
-    api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+    api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 
 获得上期所 ni2206 合约的行情引用::
 
@@ -124,7 +124,7 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
         # 引入TqSdk模块
         from tqsdk import TqApi, TqAuth
         # 创建api实例，设置web_gui=True生成图形化界面
-        api = TqApi(web_gui=True, auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(web_gui=True, auth=TqAuth("快期账户", "账户密码"))
         # 订阅 ni2010 合约的10秒线
         klines = api.get_kline_serial("SHFE.ni2010", 10)
         while True:
@@ -236,7 +236,7 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 -------------------------------------------------
 自己的交易程序写好以后, 我们总是希望在实盘运行前, 能先进行一下模拟测试. 要进行模拟测试, 只需要在创建TqApi实例时, 传入一个backtest参数::
 
-    api = TqApi(backtest=TqBacktest(start_dt=date(2018, 5, 1), end_dt=date(2018, 10, 1)), auth=TqAuth("信易账户", "账户密码"))
+    api = TqApi(backtest=TqBacktest(start_dt=date(2018, 5, 1), end_dt=date(2018, 10, 1)), auth=TqAuth("快期账户", "账户密码"))
 
 这样, 程序运行时就会按照 TqBacktest 指定的时间范围进行模拟交易测试, 并输出测试结果.
 
@@ -249,17 +249,17 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 
 实盘交易
 -------------------------------------------------
-要让策略程序在实盘账号运行, 请在创建TqApi时传入一个 :py:class:`~tqsdk.TqAccount` , 填入 期货公司, 账号, 密码 和信易账户信息(使用前请先 import TqAccount)::
+要让策略程序在实盘账号运行, 请在创建TqApi时传入一个 :py:class:`~tqsdk.TqAccount` , 填入 期货公司, 账号, 密码 和快期账户信息(使用前请先 import TqAccount)::
 
   from tqsdk import TqApi, TqAuth, TqAccount
 
-  api = TqApi(TqAccount("H海通期货", "412432343", "123456"), auth=TqAuth("信易账户", "账户密码"))
+  api = TqApi(TqAccount("H海通期货", "412432343", "123456"), auth=TqAuth("快期账户", "账户密码"))
 
 更多关于实盘交易细节，请点击 :ref:`trade`
 
 目前支持的期货公司列表, 请点击查看: `TqSdk支持的期货公司列表 <https://www.shinnytech.com/blog/tq-support-broker/>`_
 
-注册信易账户，请点击 `登录用户管理中心 <https://www.shinnytech.com/register-intro/>`_
+注册快期账户，请点击 `登录用户管理中心 <https://www.shinnytech.com/register-intro/>`_
 
 .. _sim_trading:
 
@@ -269,19 +269,19 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 
 .. figure:: images/tq_register.png
 
-刚刚注册完成的信易账户的【手机号】/【邮箱地址】/【用户名】和【密码】可以作为 快期模拟 账号，通过 :py:class:`~tqsdk.TqKq` 对 auth 传入参数进行登录，这个 快期模拟 账户在快期APP、快期V3 pro 和天勤量化上是互通的
+刚刚注册完成的快期账户的【手机号】/【邮箱地址】/【用户名】和【密码】可以作为 快期模拟 账号，通过 :py:class:`~tqsdk.TqKq` 对 auth 传入参数进行登录，这个 快期模拟 账户在快期APP、快期V3 pro 和天勤量化上是互通的
 
 快期模拟的资金可以通过快期APP、快期专业版的模拟银行进行出入金::
 
   from tqsdk import TqApi, TqAuth, TqKq
 
-  api = TqApi(TqKq(), auth=TqAuth("信易账户", "账户密码"))
+  api = TqApi(TqKq(), auth=TqAuth("快期账户", "账户密码"))
 
 
 
 特别的，如果创建TqApi实例时没有提供任何 TqAcccount 账户或 TqKq 模块，则每次会自动创建一个临时模拟账号，当程序运行结束时，临时账号内的记录将全部丢失::
 
-  api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+  api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 
 
 

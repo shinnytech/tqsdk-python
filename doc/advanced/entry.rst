@@ -17,11 +17,11 @@ TqApi 独立运行模拟交易
 创建 TqApi 实例时传入 TqSim ::
 
     from tqsdk import TqApi, TqAuth, TqSim
-    api = TqApi(TqSim(), auth=TqAuth("信易账户", "账户密码"))
+    api = TqApi(TqSim(), auth=TqAuth("快期账户", "账户密码"))
 
 或者不填其他参数, 默认为使用TqSim::
 
-    api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+    api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 
 
 TqApi 独立运行实盘交易
@@ -29,15 +29,15 @@ TqApi 独立运行实盘交易
 创建 TqApi 实例时传入 TqAccount ::
 
     from tqsdk import TqApi, TqAuth, TqAccount
-    api = TqApi(TqAccount("H海通期货", "022631", "123456"), auth=TqAuth("信易账户", "账户密码"))
+    api = TqApi(TqAccount("H海通期货", "022631", "123456"), auth=TqAuth("快期账户", "账户密码"))
 
 特别的, 如果需要连接到期货公司的特定服务器, 可以在 TqAccount 中指定::
 
-    api = TqApi(TqAccount("H海通期货", "022631", "123456", front_broker="8888", front_url="tcp://134.232.123.33:41205"), auth=TqAuth("信易账户", "账户密码"))
+    api = TqApi(TqAccount("H海通期货", "022631", "123456", front_broker="8888", front_url="tcp://134.232.123.33:41205"), auth=TqAuth("快期账户", "账户密码"))
 
 如果要连接到自己架设的交易网关, 可以使用::
 
-    api = TqApi(TqAccount("H海通期货", "022631", "123456"), url="ws://202.33.21.34:7878/", auth=TqAuth("信易账户", "账户密码"))
+    api = TqApi(TqAccount("H海通期货", "022631", "123456"), url="ws://202.33.21.34:7878/", auth=TqAuth("快期账户", "账户密码"))
 
 
 TqApi 独立运行回测
@@ -45,7 +45,7 @@ TqApi 独立运行回测
 创建 TqApi 实例时传入 TqBacktest ::
 
     from tqsdk import TqApi, TqAuth, TqSim, TqBacktest
-    api = TqApi(TqSim(), backtest=TqBacktest(start_dt=date(2018, 5, 1), end_dt=date(2018, 10, 1)), auth=TqAuth("信易账户", "账户密码"))
+    api = TqApi(TqSim(), backtest=TqBacktest(start_dt=date(2018, 5, 1), end_dt=date(2018, 10, 1)), auth=TqAuth("快期账户", "账户密码"))
 
 
 由天勤拉起策略进程

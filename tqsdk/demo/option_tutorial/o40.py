@@ -5,7 +5,7 @@ __author__ = 'ringo'
 from tqsdk import TqApi, TqAuth
 from tqsdk.ta import OPTION_GREEKS
 
-api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 
 # 获取指定期权行情
 quote = api.get_quote("SHFE.cu2006C44000")

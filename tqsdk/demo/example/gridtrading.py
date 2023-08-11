@@ -15,7 +15,7 @@ SYMBOL = "DCE.jd2011"  # 合约代码
 START_PRICE = 4247  # 起始价位
 GRID_AMOUNT = 10  # 网格在多头、空头方向的格子(档位)数量
 
-api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 grid_region_long = [0.005] * GRID_AMOUNT  # 多头每格价格跌幅(网格密度)
 grid_region_short = [0.005] * GRID_AMOUNT  # 空头每格价格涨幅(网格密度)
 grid_volume_long = [i for i in range(GRID_AMOUNT + 1)]  # 多头每格持仓手数

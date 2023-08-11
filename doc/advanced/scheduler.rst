@@ -85,7 +85,7 @@ TargetPosScheduler 执行目标持仓任务列表
     from tqsdk import TqApi, TargetPosScheduler
     from tqsdk.algorithm import twap_table
 
-    api = TqApi(auth="信易账户,用户密码")
+    api = TqApi(auth="快期账户,用户密码")
     quote = api.get_quote("CZCE.MA109")
 
     # 设置 twap 任务参数，

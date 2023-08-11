@@ -29,7 +29,7 @@ def etf_margin_cal(symbol):
 
 
 # 创建api
-api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 
 # 深交所300etf期权
 symbol = "SZSE.90000833"

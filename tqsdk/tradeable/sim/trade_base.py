@@ -177,10 +177,18 @@ class SimTradeBase(object):
             del self._orders[symbol][order["order_id"]]
 
     def settle(self):
+        # 生成 trade_log 时, 持仓信息中没有 pos_long、pos_short、pos，此处加补丁计算出来
+        # 这几个计算值是在 data_extension 中计算的，只有在 api 里才能获取到，未来可以把 settle 的功能放在 api 中
+        positions = {}
+        for k, v in self._positions.items():
+            positions[k] = v.copy()
+            positions[k]["pos_long"] = v['pos_long_his'] + v['pos_long_today']
+            positions[k]["pos_short"] = v['pos_short_his'] + v['pos_short_today']
+            positions[k]["pos"] = positions[k]["pos_long"] - positions[k]["pos_short"]
         trade_log = {
             "trades": self._trades,
             "account": self._account.copy(),
-            "positions": {k: v.copy() for k, v in self._positions.items()}
+            "positions": positions
         }
         # 为下一交易日调整账户
         self._trades = []

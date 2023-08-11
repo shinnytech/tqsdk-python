@@ -18,19 +18,19 @@ class TqAuth(object):
 
     def __init__(self, user_name: str = "", password: str = ""):
         """
-        创建信易用户认证类
+        创建快期用户认证类
 
         Args:
-            user_name (str): [必填]信易账户，可以是 邮箱、用户名、手机号
+            user_name (str): [必填]快期账户，可以是 邮箱、用户名、手机号
 
-            password (str): [必填]信易账户密码
+            password (str): [必填]快期账户密码
 
 
         Example::
 
             # 使用实盘帐号直连行情和交易服务器
             from tqsdk import TqApi, TqAccount, TqAuth
-            api = TqApi(TqAccount("H海通期货", "022631", "123456"), auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(TqAccount("H海通期货", "022631", "123456"), auth=TqAuth("快期账户", "账户密码"))
 
         """
         self._user_name = user_name
@@ -155,7 +155,7 @@ class TqAuth(object):
             elif symbol in ["SSE.000016", "SSE.000300", "SSE.000905", "SSE.000852"] and self._has_feature("lmt_idx"):
                 continue
             else:
-                raise Exception(f"您的账户不支持查看 {symbol} 的行情数据，需要购买专业版本后使用。升级网址：https://account.shinnytech.com")
+                raise Exception(f"您的账户不支持查看 {symbol} 的行情数据，需要购买后才能使用。升级网址：https://www.shinnytech.com/tqsdk_professional/")
         return True
 
     def _has_td_grants(self, symbol):
@@ -164,4 +164,4 @@ class TqAuth(object):
             return True
         if symbol.split('.', 1)[0] in ["SHFE", "DCE", "CZCE", "INE", "CFFEX", "KQ", "GFEX"] and self._has_feature("futr"):
             return True
-        raise Exception(f"您的账户不支持交易 {symbol}，需要购买专业版本后使用。升级网址：https://account.shinnytech.com")
+        raise Exception(f"您的账户不支持交易 {symbol}，需要购买后才能使用。升级网址：https://www.shinnytech.com/tqsdk_professional/")

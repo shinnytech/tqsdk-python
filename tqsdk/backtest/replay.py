@@ -140,7 +140,7 @@ class TqReplay(object):
             from datetime import date
             from tqsdk import TqApi, TqAuth, TqReplay
             replay = TqReplay(date(2020, 9, 10))
-            api = TqApi(backtest=replay, auth=("信易账户,账户密码"))
+            api = TqApi(backtest=replay, auth=("快期账户,账户密码"))
             replay.set_replay_speed(3.0)
             quote = api.get_quote("SHFE.cu2012")
             while True:

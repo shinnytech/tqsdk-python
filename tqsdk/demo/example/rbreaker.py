@@ -33,7 +33,7 @@ def get_index_line(klines):
     return pivot, b_break, s_setup, s_enter, b_enter, b_setup, s_break
 
 
-api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 quote = api.get_quote(SYMBOL)
 klines = api.get_kline_serial(SYMBOL, 24 * 60 * 60)  # 86400: 使用日线
 position = api.get_position(SYMBOL)

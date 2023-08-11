@@ -76,9 +76,11 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
         **注意:**
             1. TargetPosTask 在 set_target_volume 时并不下单或撤单, 它的下单和撤单动作, 是在之后的每次 wait_update 时执行的. 因此, **需保证 set_target_volume 后还会继续调用wait_update()** 。
 
-            2. 请勿在使用 TargetPosTask 的同时使用 insert_order() 函数, 否则将导致 TargetPosTask 报错或错误下单。
+            2. TargetPosTask 在每次下单后会根据后续的行情计算下单的最新的价格，当该价格发生变化则首先撤回由该程序发出的在场的委托，然后根据最新的价格重新下单。
 
-            3. TargetPosTask 如果同时设置 min_volume（每笔最小下单手数），max_volume（每笔最大下单的手数）两个参数，表示采用 **大单拆分模式** 下单。
+            3. 请勿在使用 TargetPosTask 的同时使用 insert_order() 函数, 否则将导致 TargetPosTask 报错或错误下单。
+
+            4. TargetPosTask 如果同时设置 min_volume（每笔最小下单手数），max_volume（每笔最大下单的手数）两个参数，表示采用 **大单拆分模式** 下单。
 
                 在 **大单拆分模式** 下，每次下单的手数为随机生成的正整数，值介于 min_volume、max_volume 之间。
 
@@ -96,9 +98,9 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
 
             symbol (str): 负责调整的合约代码
 
-            price (str / Callable): [可选]下单方式, 默认为 "ACTIVE"。
+            price (str / Callable): [可选]下单方式, 默认为 "ACTIVE"
                 * "ACTIVE"：对价下单，在持仓调整过程中，若下单方向为买，对价为卖一价；若下单方向为卖，对价为买一价。
-                * "PASSIVE"：排队价下单，在持仓调整过程中，若下单方向为买，对价为买一价；若下单方向为卖，对价为卖一价。
+                * "PASSIVE"：排队价下单，在持仓调整过程中，若下单方向为买，对价为买一价；若下单方向为卖，对价为卖一价，该种方式可能会造成较多撤单.
                 * Callable[[str], Union[float, int]]: 函数参数为下单方向，函数返回值是下单价格。如果返回 nan，程序会抛错。
 
             offset_priority (str): [可选]开平仓顺序，昨=平昨仓，今=平今仓，开=开仓，逗号=等待之前操作完成
@@ -172,7 +174,7 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
             # 大单拆分模式用法示例
 
             from tqsdk import TqApi, TqAuth, TargetPosTask
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
             position = api.get_position('SHFE.rb2106')
 
             # 同时设置 min_volume、max_volume 两个参数，表示使用大单拆分模式
@@ -238,7 +240,7 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
             # 设置 rb1810 持仓为多头5手
             from tqsdk import TqApi, TqAuth, TargetPosTask
 
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
             target_pos = TargetPosTask(api, "SHFE.rb1810")
             target_pos.set_target_volume(5)
             while True:
@@ -252,7 +254,7 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
 
             account1 = TqAccount("H海通期货", "123456", "123456")
             account2 = TqAccount("H宏源期货", "654321", "123456")
-            api = TqApi(TqMultiAccount([account1, account2]), auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(TqMultiAccount([account1, account2]), auth=TqAuth("快期账户", "账户密码"))
             symbol1 = "DCE.m2105"
             symbol2 = "DCE.i2101"
             # 多账户模式下, 调仓工具需要指定账户实例
@@ -404,7 +406,7 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
             from datetime import datetime, time
             from tqsdk import TqApi, TargetPosTask
 
-            api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
             quote = api.get_quote("SHFE.rb2110")
             target_pos_passive = TargetPosTask(api, "SHFE.rb2110", price="PASSIVE")
 

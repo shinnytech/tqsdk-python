@@ -17,7 +17,7 @@ class BacktestFinished(Exception):
         sim = TqSim()
         api = TqApi(account=sim,
                     backtest=TqBacktest(start_dt=date(2018, 5, 1), end_dt=date(2018, 6, 1)),
-                    auth=TqAuth("信易账户", "账户密码"))
+                    auth=TqAuth("快期账户", "账户密码"))
 
         klines = api.get_kline_serial("DCE.m1901", 5 * 60, data_length=15)  # 获得 m1901 5分钟K线的引用
         target_pos = TargetPosTask(api, "DCE.m1901")
@@ -72,7 +72,7 @@ class TqTimeoutError(Exception):
 
         from tqsdk import TqApi, TqAuth, TqTimeoutError
 
-        api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 
         symbols = ["CZCE.RS808", "CZCE.RS809", "CZCE.RS908", "CZCE.RS909"]  # CZCE.RS808 没有任何成交数据，无法取到 kline
         klines = {}

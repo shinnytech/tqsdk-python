@@ -81,7 +81,7 @@ class TqWebSocketClientProtocol(websockets.WebSocketClientProtocol):
             for h_key, h_value in self.response_headers.items():
                 if h_key == 'x-shinny-auth-check' and h_value == 'Backtest Permission Denied':
                     raise TqBacktestPermissionError(
-                        "免费账户每日可以回测3次，今日暂无回测权限，需要购买专业版本后使用。升级网址：https://account.shinnytech.com") from None
+                        "免费账户每日可以回测3次，今日暂无回测权限，需要购买后才能使用。升级网址：https://www.shinnytech.com/tqsdk_professional/") from None
             raise
 
     async def read_message(self):

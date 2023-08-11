@@ -13,7 +13,7 @@ from tqsdk.ta import BOLL
 
 # 设置合约代码
 SYMBOL = "DCE.m2105"
-api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 quote = api.get_quote(SYMBOL)
 klines = api.get_kline_serial(SYMBOL, 60 * 60 * 24)
 position = api.get_position(SYMBOL)

@@ -10,7 +10,7 @@ from tqsdk.ta import MA
 注意: 画图示例中用到的数据不含有实际意义，请根据自己的实际策略情况进行修改
 '''
 
-api = TqApi(web_gui=True, auth=TqAuth("信易账户", "账户密码"))
+api = TqApi(web_gui=True, auth=TqAuth("快期账户", "账户密码"))
 klines = api.get_kline_serial("CFFEX.T2103", 10)
 klines2 = api.get_kline_serial("CFFEX.T2012", 10)
 

@@ -24,7 +24,7 @@ TqSdk 并不提供专门的服务器来推送消息，但是你可以通过其�
         print(content)
 
 
-    api = TqApi(auth=TqAuth("信易账户", "账户密码"))
+    api = TqApi(auth=TqAuth("快期账户", "账户密码"))
     quote = api.get_quote("SHFE.rb2109")
     target_pos = TargetPosTask(api, "SHFE.rb2110")
     send_msg("策略开始运行")
