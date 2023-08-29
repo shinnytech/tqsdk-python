@@ -2,6 +2,12 @@
 
 版本变更
 =============================
+3.4.7 (2023/08/29)
+
+* 修复：:py:class:`~tqsdk.TargetPosTask` 及 :py:class:`~tqsdk.algorithm.twap` 添加纯碱期货 2309 合约及 2310 合约暂不支持的提示
+* docs：完善 :py:class:`~tqsdk.TqKq` 快期模拟辅模拟账户使用说明
+
+
 3.4.6 (2023/08/11)
 
 * 增加：支持同时使用多个快期模拟账户，:py:class:`~tqsdk.TqKq`、:py:class:`~tqsdk.TqKqStock` 加入多帐号支持

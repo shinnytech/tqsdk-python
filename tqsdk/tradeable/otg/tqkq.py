@@ -2,7 +2,6 @@
 # -*- coding:utf-8 -*-
 __author__ = 'yanqiong'
 
-
 from typing import Optional
 
 from tqsdk.tradeable.otg.base_otg import BaseOtg
@@ -21,9 +20,9 @@ class TqKq(BaseOtg, FutureMixin):
         Args:
             td_url (str): [可选]指定交易服务器的地址, 默认使用快期账户对应的交易服务地址
 
-            number (int): [可选]模拟交易账号编号, 默认为主模拟账号, 可以通过指定 1~99 的数字来使用辅模拟帐号, 各个帐号的数据完全独立
+            number (int): [可选]模拟交易账号编号, 默认为主模拟账号, 可以通过指定 1~99 的数字来使用辅模拟帐号, 各个帐号的数据完全独立, 使用该功能需要购买专业版的权限, 且对应的辅账户可以在快期专业版上登录并进行观察
 
-        Example::
+        Example1::
 
             from tqsdk import TqApi, TqAuth, TqKq
 
@@ -44,6 +43,24 @@ class TqKq(BaseOtg, FutureMixin):
             for trade in order.trade_records.values():
                 print(trade)  # 打印委托单对应的成交信息
             api.close()
+
+        Example2::
+
+            from tqsdk import TqApi, TqAuth, TqKq, TqMultiAccount
+
+            # 创建快期模拟账户和辅模拟账户001
+            tq_kq = TqKq()
+            tq_kq001= TqKq(number=1)
+
+            # 使用多账户模块同时登录这两个模拟账户
+            api = TqApi(account=TqMultiAccount([tq_kq,tq_kq001]), auth=TqAuth("快期账户", "账户密码"))
+
+            print(tq_kq.get_account())  # 打印快期模拟账户信息
+
+            print(tq_kq001.get_account())  # 打印快期模拟001账户信息
+
+            api.close()
+
 
         """
         super().__init__("快期模拟", "", "", td_url=td_url)
