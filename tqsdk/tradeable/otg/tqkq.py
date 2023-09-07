@@ -63,7 +63,7 @@ class TqKq(BaseOtg, FutureMixin):
 
 
         """
-        super().__init__("快期模拟", "", "", td_url=td_url)
+        super().__init__("快期模拟", str(number) if number else "", "", td_url=td_url)
         self._account_no = number
 
     @property
@@ -133,7 +133,7 @@ class TqKqStock(BaseOtg, StockMixin):
             api.close()
 
         """
-        super().__init__("快期股票模拟", "", "", td_url=td_url)
+        super().__init__("快期股票模拟", str(number) if number else "", "", td_url=td_url)
         self._account_no = number
 
     @property

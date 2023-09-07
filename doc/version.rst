@@ -2,6 +2,11 @@
 
 版本变更
 =============================
+3.4.8 (2023/09/07)
+
+* 修复：修正多个 :py:class:`~tqsdk.TqKq` 快期模拟和辅模拟账户 account_key 重复的问题
+
+
 3.4.7 (2023/08/29)
 
 * 修复：:py:class:`~tqsdk.TargetPosTask` 及 :py:class:`~tqsdk.algorithm.twap` 添加纯碱期货 2309 合约及 2310 合约暂不支持的提示
