@@ -184,7 +184,7 @@ class SimTrade(SimTradeBase):
         if order["status"] == "ALIVE" and order["offset"].startswith('CLOSE'):
             if order["exchange_id"] in ["SHFE", "INE"]:
                 if order["offset"] == "CLOSETODAY":
-                    if order["direction"] == "BUY" and position["volume_short_today"] - position["volume_long_frozen_today"] < order["volume_orign"]:
+                    if order["direction"] == "BUY" and position["volume_short_today"] - position["volume_short_frozen_today"] < order["volume_orign"]:
                         order["last_msg"] = "平今仓手数不足"
                     elif order["direction"] == "SELL" and position["volume_long_today"] - position["volume_long_frozen_today"] < order["volume_orign"]:
                         order["last_msg"] = "平今仓手数不足"
