@@ -182,9 +182,12 @@ class SimTradeBase(object):
         positions = {}
         for k, v in self._positions.items():
             positions[k] = v.copy()
-            positions[k]["pos_long"] = v['pos_long_his'] + v['pos_long_today']
-            positions[k]["pos_short"] = v['pos_short_his'] + v['pos_short_today']
-            positions[k]["pos"] = positions[k]["pos_long"] - positions[k]["pos_short"]
+            if v.get('pos_long_his') is not None and v.get('pos_long_today') is not None:
+                positions[k]["pos_long"] = v['pos_long_his'] + v['pos_long_today']
+            if v.get('pos_short_his') is not None and v.get('pos_short_today') is not None:
+                positions[k]["pos_short"] = v['pos_short_his'] + v['pos_short_today']
+            if v.get('pos_long') is not None and v.get('pos_short') is not None:
+                positions[k]["pos"] = positions[k]["pos_long"] - positions[k]["pos_short"]
         trade_log = {
             "trades": self._trades,
             "account": self._account.copy(),
