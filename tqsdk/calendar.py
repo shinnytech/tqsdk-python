@@ -95,7 +95,7 @@ class TqContCalendar(object):
         temp_df = pd.DataFrame(data=TqContCalendar.continuous[cont], columns=['date', 'underlying'])
         temp_df['date'] = pd.Series(pd.to_datetime(temp_df['date'], format='%Y%m%d'))
         merge_result = pd.merge(temp_df, self.df, sort=True, how="outer", on="date")
-        merge_result.fillna(method="ffill", inplace=True)
+        merge_result.ffill(inplace=True)
         merge_result.fillna(value="", inplace=True)
         s = merge_result.loc[merge_result.date.ge(self.start_dt) & merge_result.date.le(self.end_dt), 'underlying']
         self.df[cont] = pd.Series(s.values)

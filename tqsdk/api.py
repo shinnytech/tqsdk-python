@@ -42,8 +42,10 @@ from pandas import RangeIndex, Index
 from pandas._libs.internals import BlockPlacement
 if tuple(map(int, pd.__version__.split("."))) < (1, 3, 0):
     from pandas.core.internals import FloatBlock
-else:
+elif tuple(map(int, pd.__version__.split("."))) < (2, 1, 0):
     from pandas.core.internals import NumericBlock as FloatBlock
+else:
+    from pandas.core.internals.blocks import NumpyBlock as FloatBlock
 
 from tqsdk.auth import TqAuth
 from tqsdk.baseApi import TqBaseApi
@@ -136,7 +138,7 @@ class TqApi(TqBaseApi):
                     + 仅有本地模拟账户 :py:class:`~tqsdk.TqSim`、:py:class:`~tqsdk.TqSimStock` 时，调试信息不输出。
 
                     + 当有其他类型账户时，即 :py:class:`~tqsdk.TqAccount`、:py:class:`~tqsdk.TqKq`、:py:class:`~tqsdk.TqKqStock`，\
-                    调试信息输出到指定文件夹 `~/.tqsdk/logs`（如果磁盘剩余空间不足 3G 则不会输出调试信息）。
+                    调试信息输出到指定文件夹 `~/.tqsdk/logs`（如果磁盘剩余空间不足 10G 则不会输出调试信息）。
 
                 * True: 调试信息会输出到指定文件夹 `~/.tqsdk/logs`。
 
@@ -3117,8 +3119,8 @@ class TqApi(TqBaseApi):
         if not self._logger.handlers and (self._debug or (not self._account._all_sim_account and self._debug is not False)):
             _clear_logs()  # 先清空日志
             log_name = self._debug if isinstance(self._debug, str) else _get_log_name()
-            if self._debug is not None or _get_disk_free() >= 3:
-                # self._debug is None 并且磁盘剩余空间小于 3G 则不写入日志
+            if self._debug is not None or _get_disk_free() >= 10:
+                # self._debug is None 并且磁盘剩余空间小于 10G 则不写入日志
                 fh = logging.FileHandler(filename=log_name)
                 fh.setFormatter(JSONFormatter())
                 fh.setLevel(logging.DEBUG)

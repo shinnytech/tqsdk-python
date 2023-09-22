@@ -2,6 +2,12 @@
 
 版本变更
 =============================
+3.4.10 (2023/09/22)
+
+* 修复：pandas 2.1.0 版本 fillna 、NumericBlock 会报 deprecated warning 的问题
+* 优化：磁盘空间剩余小于10G，默认不写入日志
+
+
 3.4.9 (2023/09/15)
 
 * 修复：回测时 :py:class:`~tqsdk.TqSim` 可能出现 volume_short_today 为负数的问题
