@@ -56,8 +56,8 @@ from tqsdk.connect import TqConnect, MdReconnectHandler, ReconnectTimer
 from tqsdk.calendar import _get_trading_calendar, TqContCalendar, _init_chinese_rest_days
 from tqsdk.data_extension import DataExtension
 from tqsdk.data_series import DataSeries
-from tqsdk.datetime import _get_trading_day_start_time, _get_trading_day_end_time, _get_trading_day_from_timestamp, \
-    _datetime_to_timestamp_nano
+from tqsdk.datetime import _get_trading_day_from_timestamp, _datetime_to_timestamp_nano, _timestamp_nano_to_datetime, \
+    _cst_now, _convert_user_input_to_nano
 from tqsdk.diff import _merge_diff, _get_obj, _is_key_exist, _register_update_chan
 from tqsdk.entity import Entity
 from tqsdk.exceptions import TqTimeoutError
@@ -305,7 +305,7 @@ class TqApi(TqBaseApi):
     def _print(self, msg: str = "", level: str = "INFO"):
         if self.disable_print:
             return
-        dt = "" if self._backtest else datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        dt = "" if self._backtest else _cst_now().strftime('%Y-%m-%d %H:%M:%S')
         level = level if isinstance(level, str) else logging.getLevelName(level)
         print(f"{(dt + ' - ') if dt else ''}{level:>8} - {msg}")
 
@@ -836,9 +836,15 @@ class TqApi(TqBaseApi):
             duration_seconds (int): K 线数据周期, 以秒为单位。例如: 1 分钟线为 60，1 小时线为 3600，日线为 86400。\
                 注意: 周期在日线以内时此参数可以任意填写, 在日线以上时只能是日线(86400)的整数倍
 
-            start_dt (date/datetime): 起始时间, 如果类型为 date 则指的是交易日, 如果为 datetime 则指的是具体时间点
+            start_dt (date/datetime): 起始时间
+                * date: 指的是交易日
 
-            end_dt (date/datetime): 结束时间, 如果类型为 date 则指的是交易日, 如果为 datetime 则指的是具体时间点
+                * datetime: 指的是具体时间点，如果没有指定时区信息，则默认为北京时间
+
+            end_dt (date/datetime): 结束时间
+                * date: 指的是交易日
+
+                * datetime: 指的是具体时间点，如果没有指定时区信息，则默认为北京时间
 
             adj_type (str/None): [可选]指定复权类型，默认为 None。adj_type 参数只对股票和基金类型合约有效。\
             "F" 表示前复权；"B" 表示后复权；None 表示不做处理。
@@ -896,9 +902,15 @@ class TqApi(TqBaseApi):
         Args:
             symbol (str): 指定合约代码。当前只支持单个合约。
 
-            start_dt (date/datetime): 起始时间, 如果类型为 date 则指的是交易日, 如果为 datetime 则指的是具体时间点
+            start_dt (date/datetime): 起始时间
+                * date: 指的是交易日
 
-            end_dt (date/datetime): 结束时间, 如果类型为 date 则指的是交易日, 如果为 datetime 则指的是具体时间点
+                * datetime: 指的是具体时间点，如果没有指定时区信息，则默认为北京时间
+
+            end_dt (date/datetime): 结束时间
+                * date: 指的是交易日
+
+                * datetime: 指的是具体时间点，如果没有指定时区信息，则默认为北京时间
 
             adj_type (str/None): [可选]指定复权类型，默认为 None。adj_type 参数只对股票和基金类型合约有效。\
             "F" 表示前复权；"B" 表示后复权；None 表示不做处理。
@@ -954,20 +966,7 @@ class TqApi(TqBaseApi):
         if len(symbol_list) != 1:
             raise Exception(f"{call_func} 数据获取方式暂不支持多合约请求")
         self._ensure_symbol(symbol_list)  # 检查合约代码是否存在
-        if isinstance(start_dt, datetime):
-            start_dt_nano = _datetime_to_timestamp_nano(start_dt)
-        elif isinstance(start_dt, date):
-            start_dt_nano = _get_trading_day_start_time(
-                _datetime_to_timestamp_nano(datetime(start_dt.year, start_dt.month, start_dt.day)))
-        else:
-            raise Exception(f"start_dt 参数类型 {type(start_dt)} 错误, 只支持 datetime / date 类型，请检查是否正确")
-        if isinstance(end_dt, datetime):
-            end_dt_nano = _datetime_to_timestamp_nano(end_dt)
-        elif isinstance(end_dt, date):
-            end_dt_nano = _get_trading_day_end_time(
-                _datetime_to_timestamp_nano(datetime(end_dt.year, end_dt.month, end_dt.day)))
-        else:
-            raise Exception(f"end_dt 参数类型 {type(end_dt)} 错误, 只支持 datetime / date 类型，请检查是否正确")
+        start_dt_nano, end_dt_nano = _convert_user_input_to_nano(start_dt, end_dt)
         if adj_type not in [None, "F", "B"]:
             raise Exception("adj_type 参数只支持 None (不复权) ｜ 'F' (前复权) ｜ 'B' (后复权) ")
         ds = DataSeries(self, symbol_list, dur_nano, start_dt_nano, end_dt_nano, adj_type)
@@ -981,17 +980,23 @@ class TqApi(TqBaseApi):
     # ----------------------------------------------------------------------
     def get_trading_calendar(self, start_dt: Union[date, datetime], end_dt: Union[date, datetime]) -> pd.DataFrame:
         """
-        获取一段时间内的交易日历信息，交易日历可以处理的范围为 2003-01-01 ～ 2022-12-31。
+        获取一段时间内的交易日历信息，交易日历可以处理的范围为 2003-01-01 ～ 2024-12-31。
 
         Args:
-            start_dt (date/datetime): 起始时间，如果类型为 date 则指的是该日期；如果为 datetime 则指的是该时间点所在日期
+            start_dt (date/datetime): 起始时间
+                * date: 指的是交易日
 
-            end_dt (date/datetime): 结束时间，如果类型为 date 则指的是该日期；如果为 datetime 则指的是该时间点所在日期
+                * datetime: 指的指的是该时间点所在年月日日期
+
+            end_dt (date/datetime): 结束时间
+                * date: 指的是交易日
+
+                * datetime: 指的指的是该时间点所在年月日日期
 
         Returns:
             pandas.DataFrame: 包含以下列:
 
-            *    date: (datetime64[ns]) 日期
+            *    date: (datetime64[ns]) 日期，为北京时间的日期
             * trading:           (bool) 是否是交易日
 
         Example::
@@ -1016,11 +1021,11 @@ class TqApi(TqBaseApi):
             api.close()
         """
         if isinstance(start_dt, datetime):
-            start_dt = date(year=start_dt.year, month=start_dt.month, day=start_dt.day)
+            start_dt = start_dt.date()
         elif not isinstance(start_dt, date):
             raise Exception(f"start_dt 参数类型 {type(start_dt)} 错误, 只支持 datetime / date 类型，请检查是否正确")
         if isinstance(end_dt, datetime):
-            end_dt = date(year=end_dt.year, month=end_dt.month, day=end_dt.day)
+            end_dt = end_dt.date()
         elif not isinstance(end_dt, date):
             raise Exception(f"end_dt 参数类型 {type(end_dt)} 错误, 只支持 datetime / date 类型，请检查是否正确")
         first_date, latest_date = _init_chinese_rest_days()
@@ -1078,9 +1083,9 @@ class TqApi(TqBaseApi):
             raise Exception(f"参数错误，n={n} 应该是大于等于 1 的整数")
         now_dt = self._get_current_datetime()
         trading_day = _get_trading_day_from_timestamp(_datetime_to_timestamp_nano(now_dt))
-        end_dt = datetime.fromtimestamp(trading_day / 1000000000)
-        cont_calendar = TqContCalendar(start_dt=end_dt - timedelta(days=n * 2 + 30), end_dt=end_dt, symbols=symbols,
-                                       headers=self._base_headers)
+        end_dt = _timestamp_nano_to_datetime(trading_day)
+        cont_calendar = TqContCalendar(start_dt=(end_dt - timedelta(days=n * 2 + 30)).date(), end_dt=end_dt.date(),
+                                       symbols=symbols, headers=self._base_headers)
         df = cont_calendar.df.loc[cont_calendar.df.date.le(end_dt), ['date'] + symbols]
         df = df.iloc[-n:]
         df.reset_index(inplace=True, drop=True)
@@ -2575,10 +2580,8 @@ class TqApi(TqBaseApi):
                     for edge in quote["derivatives"]["edges"]:
                         option = edge["node"]
                         if (option_class and option["call_or_put"] != option_class) \
-                                or (exe_year and datetime.fromtimestamp(
-                            option["last_exercise_datetime"] / 1e9).year != exe_year) \
-                                or (exe_month and datetime.fromtimestamp(
-                            option["last_exercise_datetime"] / 1e9).month != exe_month) \
+                                or (exe_year and _timestamp_nano_to_datetime(option["last_exercise_datetime"]).year != exe_year) \
+                                or (exe_month and _timestamp_nano_to_datetime(option["last_exercise_datetime"]).month != exe_month) \
                                 or (strike_price and option["strike_price"] != strike_price) \
                                 or (expired is not None and option["expired"] != expired) \
                                 or (has_A is True and option["english_name"].count('A') == 0) \
@@ -2740,8 +2743,8 @@ class TqApi(TqBaseApi):
             * pre_settlement: 昨结算
             * pre_open_interest: 昨持仓
             * pre_close: 昨收盘
-            * trading_time_day: 白盘交易时间段，list 类型
-            * trading_time_night: 夜盘交易时间段，list 类型
+            * trading_time_day: 白盘交易时间段，pandas.Series 类型
+            * trading_time_night: 夜盘交易时间段，pandas.Series 类型
 
         注意:
 
@@ -2999,7 +3002,7 @@ class TqApi(TqBaseApi):
         for quote in query_result.get("result", {}).get("multi_symbol_info", []):
             if quote.get("derivatives"):
                 for edge in quote["derivatives"]["edges"]:
-                    last_exercise_datetime = datetime.fromtimestamp(edge["node"]["last_exercise_datetime"] / 1e9)
+                    last_exercise_datetime = _timestamp_nano_to_datetime(edge["node"]["last_exercise_datetime"])
                     edge["node"]["exercise_year"] = last_exercise_datetime.year
                     edge["node"]["exercise_month"] = last_exercise_datetime.month
                     options.append(edge["node"])
@@ -3157,7 +3160,7 @@ class TqApi(TqBaseApi):
             try:
                 self._md_url = self._auth._get_md_url(self._stock, backtest=isinstance(self._backtest, TqBacktest))  # 如果用户未指定行情地址，则使用名称服务获取行情地址
             except Exception as e:
-                now = datetime.now()
+                now = _cst_now()
                 if now.hour == 19 and 0 <= now.minute <= 30:
                     raise Exception(f"{e}, 每日 19:00-19:30 为日常运维时间，请稍后再试")
                 else:
@@ -3178,8 +3181,8 @@ class TqApi(TqBaseApi):
         # 期权增加了 exercise_year、exercise_month 在旧版合约服务中没有，需要添加，使用下市日期代替最后行权日
         for quote in quotes.values():
             if quote["ins_class"] == "FUTURE_OPTION":
-                quote["exercise_year"] = datetime.fromtimestamp(quote["expire_datetime"]).year
-                quote["exercise_month"] = datetime.fromtimestamp(quote["expire_datetime"]).month
+                quote["exercise_year"] = _timestamp_nano_to_datetime(int(quote["expire_datetime"] * 1000000) * 1000).year
+                quote["exercise_month"] = _timestamp_nano_to_datetime(int(quote["expire_datetime"] * 1000000) * 1000).month
         ws_md_recv_chan.send_nowait({
             "aid": "rtn_data",
             "data": [{"quotes": quotes}]
@@ -3952,9 +3955,9 @@ class TqApi(TqBaseApi):
     def _get_current_datetime(self):
         if isinstance(self._backtest, TqBacktest):
             current_dt = self._data.get('_tqsdk_backtest', {}).get('current_dt', 0)
-            return datetime.fromtimestamp(current_dt / 1e9)
+            return _timestamp_nano_to_datetime(current_dt)
         else:
-            return datetime.now()
+            return _cst_now()
 
 
 print("在使用天勤量化之前，默认您已经知晓并同意以下免责条款，如果不同意请立即停止使用：https://www.shinnytech.com/blog/disclaimer/", file=sys.stderr)

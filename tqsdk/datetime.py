@@ -8,15 +8,59 @@ __author__ = 'limin'
 
 import datetime
 import time
+from typing import Union
+
+# 北京时间时区 CST (China Standard Time)
+_cst_tz = datetime.timezone(datetime.timedelta(hours=8))
+
+
+def _cst_now():
+    """返回当前北京时间 datetime.datetime 类型"""
+    return datetime.datetime.now(tz=_cst_tz)
+
+
+def _convert_to_cst_datetime(user_dt: Union[datetime.date, datetime.datetime]):
+    # 将用户输入的时间转换为东八区时间
+    if isinstance(user_dt, datetime.datetime):
+        if user_dt.tzinfo == _cst_tz:
+            return user_dt
+        return user_dt.replace(tzinfo=_cst_tz) if user_dt.tzinfo is None else user_dt.astimezone(tz=_cst_tz)
+    else:
+        return datetime.datetime(user_dt.year, user_dt.month, user_dt.day, tzinfo=_cst_tz)
+
+
+def _convert_user_input_to_nano(start_dt: Union[datetime.date, datetime.datetime],
+                                end_dt: Union[datetime.date, datetime.datetime]) -> (int, int):
+    # 将用户输入的时间转换为对应交易时间段的纳秒时间戳
+    if isinstance(start_dt, datetime.datetime):
+        start_nano = _datetime_to_timestamp_nano(_convert_to_cst_datetime(start_dt))
+    elif isinstance(start_dt, datetime.date):
+        start_nano = _get_trading_day_start_time(_datetime_to_timestamp_nano(_convert_to_cst_datetime(start_dt)))
+    else:
+        raise Exception(f"start_dt 参数类型 {type(start_dt)} 错误, 只支持 datetime / date 类型，请检查是否正确")
+    if isinstance(end_dt, datetime.datetime):
+        end_nano = _datetime_to_timestamp_nano(_convert_to_cst_datetime(end_dt))
+    elif isinstance(end_dt, datetime.date):
+        end_nano = _get_trading_day_end_time(_datetime_to_timestamp_nano(_convert_to_cst_datetime(end_dt)))
+    else:
+        raise Exception(f"end_dt 参数类型 {type(end_dt)} 错误, 只支持 datetime / date 类型，请检查是否正确")
+    return start_nano, end_nano
 
 
 def _datetime_to_timestamp_nano(dt: datetime.datetime) -> int:
+    # tqsdk 内部时间必须为东八区时间
+    if dt.tzinfo != _cst_tz:
+        dt = dt.replace(tzinfo=_cst_tz) if dt.tzinfo is None else dt.astimezone(tz=_cst_tz)
     # timestamp() 返回值精度为 microsecond，直接乘以 1e9 可能有精度问题
     return int(dt.timestamp() * 1000000) * 1000
 
 
+def _timestamp_nano_to_datetime(nano: int) -> datetime.datetime:
+    return datetime.datetime.fromtimestamp((nano // 1000) / 1000000, tz=_cst_tz)
+
+
 def _timestamp_nano_to_str(nano: int, fmt="%Y-%m-%d %H:%M:%S.%f") -> str:
-    return datetime.datetime.fromtimestamp(nano / 1e9).strftime(fmt)
+    return datetime.datetime.fromtimestamp((nano // 1000) / 1000000, tz=_cst_tz).strftime(fmt)
 
 
 def _str_to_timestamp_nano(current_datetime: str, fmt="%Y-%m-%d %H:%M:%S.%f") -> int:
@@ -104,5 +148,5 @@ def _get_expire_rest_days(expire_dt, current_dt):
     获取当前时间到下市时间之间的天数
     expire_dt, current_dt 都以 s 为单位
     """
-    delta = datetime.datetime.fromtimestamp(expire_dt).date() - datetime.datetime.fromtimestamp(current_dt).date()
+    delta = datetime.datetime.fromtimestamp(expire_dt, tz=_cst_tz).date() - datetime.datetime.fromtimestamp(current_dt, tz=_cst_tz).date()
     return delta.days

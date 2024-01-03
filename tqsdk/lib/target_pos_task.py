@@ -4,7 +4,6 @@ __author__ = 'chengzhi'
 
 import asyncio
 import time
-from datetime import datetime
 from asyncio import gather
 from inspect import isfunction
 from typing import Optional, Union, Callable

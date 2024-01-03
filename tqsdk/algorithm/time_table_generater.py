@@ -2,7 +2,7 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'mayanqiong'
 
-from datetime import datetime, time, timedelta
+from datetime import time, timedelta
 from typing import Optional, Union
 
 import numpy as np
@@ -12,7 +12,7 @@ from pandas import DataFrame
 from tqsdk.api import TqApi
 from tqsdk import utils
 from tqsdk.datetime import _get_trading_timestamp, _get_trade_timestamp, _get_trading_day_from_timestamp, \
-    _datetime_to_timestamp_nano
+    _datetime_to_timestamp_nano, _timestamp_nano_to_datetime
 from tqsdk.rangeset import _rangeset_slice, _rangeset_head
 from tqsdk.tradeable import TqAccount, TqKq, TqSim
 
@@ -214,8 +214,8 @@ def vwap_table(api: TqApi, symbol: str, target_pos: int, duration: float,
 
     # 获取 Kline
     klines = api.get_kline_serial(symbol, TIME_CELL, data_length=int(10 * 60 * 60 / TIME_CELL * HISTORY_DAY_LENGTH))
-    klines["time"] = klines.datetime.apply(lambda x: datetime.fromtimestamp(x // 1000000000).time())  # k线时间
-    klines["date"] = klines.datetime.apply(lambda x: datetime.fromtimestamp(_get_trading_day_from_timestamp(x) // 1000000000).date())  # k线交易日
+    klines["time"] = klines.datetime.apply(lambda x: _timestamp_nano_to_datetime(x).time())  # k线时间
+    klines["date"] = klines.datetime.apply(lambda x: _timestamp_nano_to_datetime(_get_trading_day_from_timestamp(x)).date())  # k线交易日
 
     quote = api.get_quote(symbol)
     # 当前交易日完整的交易时间段
@@ -226,7 +226,7 @@ def vwap_table(api: TqApi, symbol: str, target_pos: int, duration: float,
     if not trading_timestamp_nano_range[0][0] <= current_timestamp_nano < trading_timestamp_nano_range[-1][1]:
         raise Exception("当前时间不在指定的交易时间段内")
 
-    current_datetime = datetime.fromtimestamp(current_timestamp_nano//1000000000)
+    current_datetime = _timestamp_nano_to_datetime(current_timestamp_nano)
     # 下一分钟的开始时间
     next_datetime = current_datetime.replace(second=0) + timedelta(minutes=1)
     start_datetime_nano = _datetime_to_timestamp_nano(next_datetime)
@@ -234,8 +234,8 @@ def vwap_table(api: TqApi, symbol: str, target_pos: int, duration: float,
     if not (r and trading_timestamp_nano_range[0][0] <= r[-1][-1] < trading_timestamp_nano_range[-1][1]):
         raise Exception("指定时间段超出当前交易日")
 
-    start_datetime = datetime.fromtimestamp(start_datetime_nano // 1000000000)
-    end_datetime = datetime.fromtimestamp((r[-1][-1] - 1) // 1000000000)
+    start_datetime = _timestamp_nano_to_datetime(start_datetime_nano)
+    end_datetime = _timestamp_nano_to_datetime((r[-1][-1] - 1))
     time_slot_start = time(start_datetime.hour, start_datetime.minute)  # 计划交易时段起始时间点
     time_slot_end = time(end_datetime.hour, end_datetime.minute)  # 计划交易时段终点时间点
     if time_slot_end > time_slot_start:  # 判断是否类似 23:00:00 开始， 01:00:00 结束这样跨天的情况

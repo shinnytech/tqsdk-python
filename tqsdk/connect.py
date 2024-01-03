@@ -10,7 +10,6 @@ import time
 import warnings
 import base64
 from abc import abstractmethod
-from datetime import datetime
 from logging import Logger
 from queue import Queue
 from typing import Optional
@@ -20,6 +19,7 @@ import certifi
 import websockets
 from shinny_structlog import ShinnyLoggerAdapter
 
+from tqsdk.datetime import _cst_now
 from tqsdk.diff import _merge_diff, _get_obj
 from tqsdk.entity import Entity
 from tqsdk.exceptions import TqBacktestPermissionError
@@ -203,7 +203,7 @@ class TqConnect(object):
                 except (websockets.exceptions.ConnectionClosed, websockets.exceptions.InvalidStatusCode, websockets.exceptions.InvalidURI,
                         websockets.exceptions.InvalidState, websockets.exceptions.ProtocolError, OSError, EOFError,
                         TqBacktestPermissionError) as e:
-                    in_ops_time = datetime.now().hour == 19 and 0 <= datetime.now().minute <= 30
+                    in_ops_time = _cst_now().hour == 19 and 0 <= _cst_now().minute <= 30
                     # 发送网络连接断开的通知，code = 2019112911
                     notify_id = _generate_uuid()
                     notify = {

@@ -17,7 +17,8 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-from tqsdk.datetime import _get_period_timestamp, _str_to_timestamp_nano, _datetime_to_timestamp_nano
+from tqsdk.datetime import _get_period_timestamp, _str_to_timestamp_nano, _datetime_to_timestamp_nano, \
+    _timestamp_nano_to_datetime, _timestamp_nano_to_str
 
 
 def ref(series, n):
@@ -745,11 +746,8 @@ def time_to_str(input_time):
         print(time_to_str(datetime.datetime(2019, 10, 14, 14, 26, 1)))  # 将datetime.datetime时间转为%Y-%m-%d %H:%M:%S.%f 格式的str类型时间
     """
     # 转为秒级时间戳
-    ts = _to_ns_timestamp(input_time) / 1e9
-    # 转为 %Y-%m-%d %H:%M:%S.%f 格式的 str 类型时间
-    dt = datetime.datetime.fromtimestamp(ts)
-    dt = dt.strftime('%Y-%m-%d %H:%M:%S.%f')
-    return dt
+    ts = _to_ns_timestamp(input_time)
+    return _timestamp_nano_to_str(ts)
 
 
 def time_to_datetime(input_time):
@@ -776,10 +774,8 @@ def time_to_datetime(input_time):
         print(time_to_datetime("2019-10-14 14:26:01.000000"))  # 将%Y-%m-%d %H:%M:%S.%f 格式的str类型时间转为datetime.datetime时间
     """
     # 转为秒级时间戳
-    ts = _to_ns_timestamp(input_time) / 1e9
-    # 转为datetime.datetime类型
-    dt = datetime.datetime.fromtimestamp(ts)
-    return dt
+    ts = _to_ns_timestamp(input_time)
+    return _timestamp_nano_to_datetime(ts)
 
 
 def barlast(cond):
@@ -1408,14 +1404,12 @@ def get_dividend_df(stock_dividend_ratio, cash_dividend_ratio):
     """
     # 除权矩阵
     stock_dividend_df = pd.DataFrame({
-        "datetime": [_datetime_to_timestamp_nano(datetime.datetime.strptime(s.split(",")[0], "%Y%m%d")) for s in
-                     stock_dividend_ratio],
+        "datetime": [_str_to_timestamp_nano(s.split(",")[0], fmt="%Y%m%d") for s in stock_dividend_ratio],
         "stock_dividend": np.array([float(s.split(",")[1]) for s in stock_dividend_ratio])
     })
     # 除息矩阵
     cash_dividend_df = pd.DataFrame({
-        "datetime": [_datetime_to_timestamp_nano(datetime.datetime.strptime(s.split(",")[0], "%Y%m%d")) for s in
-                     cash_dividend_ratio],
+        "datetime": [_str_to_timestamp_nano(s.split(",")[0], fmt="%Y%m%d") for s in cash_dividend_ratio],
         "cash_dividend": [float(s.split(",")[1]) for s in cash_dividend_ratio]
     })
     # 除权除息矩阵

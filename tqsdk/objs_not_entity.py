@@ -3,7 +3,6 @@
 __author__ = 'mayanqiong'
 
 from collections import namedtuple
-from datetime import datetime
 from typing import Callable, Tuple
 
 import aiohttp
