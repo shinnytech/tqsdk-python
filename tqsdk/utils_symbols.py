@@ -2,8 +2,7 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'mayanqiong'
 
-from datetime import datetime
-
+from tqsdk.datetime import _timestamp_nano_to_datetime
 from tqsdk.objs import Quote
 
 
@@ -30,9 +29,9 @@ def _symbols_to_quotes(symbols, keys=set(Quote(None).keys())):
                                 quote[key] = underlying_quote[key]
                             if symbol["exchange_id"] == "CFFEX" and "last_exercise_datetime" in symbol:
                                 if key == "delivery_year":
-                                    quote[key] = datetime.fromtimestamp(symbol["last_exercise_datetime"] / 1e9).year
+                                    quote[key] = _timestamp_nano_to_datetime(symbol["last_exercise_datetime"]).year
                                 else:
-                                    quote[key] = datetime.fromtimestamp(symbol["last_exercise_datetime"] / 1e9).month
+                                    quote[key] = _timestamp_nano_to_datetime(symbol["last_exercise_datetime"]).month
     for k in quotes:
         if quotes[k].get("ins_class", "") == "COMBINE":
             # 为组合合约补充 volume_multiple
@@ -61,9 +60,9 @@ def _convert_symbol_to_quote(symbol, keys):
         elif key == "last_exercise_datetime" and symbol.get("last_exercise_datetime"):
             quote["last_exercise_datetime"] = symbol["last_exercise_datetime"] / 1e9
         elif key == "exercise_year" and symbol.get("last_exercise_datetime"):
-            quote["exercise_year"] = datetime.fromtimestamp(symbol["last_exercise_datetime"] / 1e9).year
+            quote["exercise_year"] = _timestamp_nano_to_datetime(symbol["last_exercise_datetime"]).year
         elif key == "exercise_month" and symbol.get("last_exercise_datetime"):
-            quote["exercise_month"] = datetime.fromtimestamp(symbol["last_exercise_datetime"] / 1e9).month
+            quote["exercise_month"] = _timestamp_nano_to_datetime(symbol["last_exercise_datetime"]).month
         elif key == "pre_settlement" and "settlement_price" in symbol:
             quote["pre_settlement"] = symbol["settlement_price"]
         elif key in symbol:

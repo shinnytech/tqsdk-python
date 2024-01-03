@@ -202,7 +202,7 @@ TqSdk回测框架使用一套复杂的规则来推进行情：
 规则3: quote按照以下规则更新::
 
   if 策略程序中使用了这个合约的tick序列:
-    每次tick序列推进时会更新quote的这些字段 datetime/ask&bid_price1/ask&bid_volume1/last_price/highest/lowest/average/volume/amount/open_interest/price_tick/price_decs/volume_multiple/max&min_limit&market_order_volume/underlying_symbol/strike_price
+    每次tick序列推进时会更新quote的这些字段 datetime/ask&bid_price1至ask&bid_price5/ask&bid_volume1至ask&bid_volume5/last_price/highest/lowest/average/volume/amount/open_interest/price_tick/price_decs/volume_multiple/max&min_limit&market_order_volume/underlying_symbol/strike_price
   elif 策略程序中使用了这个合约的K线序列:
     每次K线序列推进时会更新quote. 使用 k线生成的 quote 的盘口由收盘价分别加/减一个最小变动单位, 并且 highest/lowest/average/amount 始终为 nan, volume 始终为0.
     每次K线序列推进时会更新quote的这些字段 datetime/ask&bid_price1/ask&bid_volume1/last_price/open_interest/price_tick/price_decs/volume_multiple/max&min_limit&market_order_volume/underlying_symbol/strike_price

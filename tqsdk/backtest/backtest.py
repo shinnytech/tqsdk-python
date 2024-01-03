@@ -12,7 +12,7 @@ from typing import Union, Any, List, Dict
 from tqsdk.backtest.utils import TqBacktestContinuous, TqBacktestDividend
 from tqsdk.channel import TqChan
 from tqsdk.datetime import _get_trading_day_start_time, _get_trading_day_end_time, _get_trading_day_from_timestamp, \
-    _timestamp_nano_to_str, _datetime_to_timestamp_nano
+    _timestamp_nano_to_str, _convert_user_input_to_nano
 from tqsdk.diff import _merge_diff, _get_obj
 from tqsdk.entity import Entity
 from tqsdk.exceptions import BacktestFinished
@@ -64,27 +64,20 @@ class TqBacktest(object):
 
     def __init__(self, start_dt: Union[date, datetime], end_dt: Union[date, datetime]) -> None:
         """
-        创建天勤回测类
+        创建天勤回测类，起始时间和结束时间都应该是北京时间
 
         Args:
-            start_dt (date/datetime): 回测起始时间, 如果类型为 date 则指的是交易日, 如果为 datetime 则指的是具体时间点
+            start_dt (date/datetime): 回测起始时间
+                * date: 指的是交易日
 
-            end_dt (date/datetime): 回测结束时间, 如果类型为 date 则指的是交易日, 如果为 datetime 则指的是具体时间点
+                * datetime: 指的是具体时间点，如果没有指定时区信息，则默认为北京时间
+
+            end_dt (date/datetime): 回测结束时间
+                * date: 指的是交易日
+
+                * datetime: 指的是具体时间点，如果没有指定时区信息，则默认为北京时间
         """
-        if isinstance(start_dt, datetime):
-            self._start_dt = _datetime_to_timestamp_nano(start_dt)
-        elif isinstance(start_dt, date):
-            self._start_dt = _get_trading_day_start_time(
-                _datetime_to_timestamp_nano(datetime(start_dt.year, start_dt.month, start_dt.day)))
-        else:
-            raise Exception("回测起始时间(start_dt)类型 %s 错误, 请检查 start_dt 数据类型是否填写正确" % (type(start_dt)))
-        if isinstance(end_dt, datetime):
-            self._end_dt = _datetime_to_timestamp_nano(end_dt)
-        elif isinstance(end_dt, date):
-            self._end_dt = _get_trading_day_end_time(
-                _datetime_to_timestamp_nano(datetime(end_dt.year, end_dt.month, end_dt.day)))
-        else:
-            raise Exception("回测结束时间(end_dt)类型 %s 错误, 请检查 end_dt 数据类型是否填写正确" % (type(end_dt)))
+        self._start_dt, self._end_dt = _convert_user_input_to_nano(start_dt, end_dt)
         self._current_dt = self._start_dt
         # 记录当前的交易日 开始时间/结束时间
         self._trading_day = _get_trading_day_from_timestamp(self._current_dt)

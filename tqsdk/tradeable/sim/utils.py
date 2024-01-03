@@ -2,9 +2,7 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'mayanqiong'
 
-from datetime import datetime
-
-from tqsdk.datetime import _get_trading_day_from_timestamp, _get_trade_timestamp
+from tqsdk.datetime import _get_trading_day_from_timestamp, _get_trade_timestamp, _timestamp_nano_to_str
 
 TRADING_DAYS_OF_YEAR = 250
 
@@ -101,7 +99,7 @@ def _get_dividend_ratio(quote):
 def _get_dividend_ratio_by_dt(dividend_list: list, timestamp: int) -> float:
     # 从分红/送股列表中找到指定的数据返回
     # ['20181102,0.400000', '20200624,0.400000', '20210716,0.400000']  '20210716'
-    dt = datetime.fromtimestamp(timestamp / 1000000000).strftime('%Y%m%d')  # 转为 str 格式
+    dt = _timestamp_nano_to_str(timestamp, fmt='%Y%m%d')
     for item in dividend_list:
         if item[:8] == dt:
             return float(item[9:])

@@ -5,7 +5,6 @@ __author__ = 'mayanqiong'
 
 import math
 from abc import abstractmethod
-from datetime import datetime
 from typing import Callable
 
 from tqsdk.datetime import _is_in_trading_time, _str_to_timestamp_nano

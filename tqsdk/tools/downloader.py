@@ -13,10 +13,9 @@ import lzma
 import pandas
 
 from tqsdk.api import TqApi
-from tqsdk.channel import TqChan
-from tqsdk.datetime import _get_trading_day_start_time, _get_trading_day_end_time, _datetime_to_timestamp_nano
+from tqsdk.datetime import _cst_tz, _convert_user_input_to_nano
 from tqsdk.diff import _get_obj
-from tqsdk.tafunc import get_dividend_df, get_dividend_factor
+from tqsdk.tafunc import get_dividend_df
 from tqsdk.utils import _generate_uuid
 
 try:
@@ -55,9 +54,15 @@ class DataDownloader:
 
             dur_sec (int): 数据周期，以秒为单位。例如: 1分钟线为60,1小时线为3600,日线为86400,Tick数据为0
 
-            start_dt (date/datetime): 起始时间, 如果类型为 date 则指的是交易日, 如果为 datetime 则指的是具体时间点
+            start_dt (date/datetime): 起始时间
+                * date: 指的是交易日
 
-            end_dt (date/datetime): 结束时间, 如果类型为 date 则指的是交易日, 如果为 datetime 则指的是具体时间点
+                * datetime: 指的是具体时间点，如果没有指定时区信息，则默认为北京时间
+
+            end_dt (date/datetime): 结束时间
+                * date: 指的是交易日
+
+                * datetime: 指的是具体时间点，如果没有指定时区信息，则默认为北京时间
 
             csv_file_name (str/StreamWriter): [必填]输出方式:
                 * str : 输出 csv 的文件名
@@ -98,14 +103,7 @@ class DataDownloader:
         self._api = api
         if not self._api._auth._has_feature("tq_dl"):
             raise Exception("您的账户不支持下载历史数据功能，需要购买后才能使用。升级网址：https://www.shinnytech.com/tqsdk_professional/")
-        if isinstance(start_dt, datetime):
-            self._start_dt_nano = _datetime_to_timestamp_nano(start_dt)
-        else:
-            self._start_dt_nano = _get_trading_day_start_time(_datetime_to_timestamp_nano(datetime(start_dt.year, start_dt.month, start_dt.day)))
-        if isinstance(end_dt, datetime):
-            self._end_dt_nano = _datetime_to_timestamp_nano(end_dt)
-        else:
-            self._end_dt_nano = _get_trading_day_end_time(_datetime_to_timestamp_nano(datetime(end_dt.year, end_dt.month, end_dt.day)))
+        self._start_dt_nano, self._end_dt_nano = _convert_user_input_to_nano(start_dt, end_dt)
         self._current_dt_nano = self._start_dt_nano
         self._symbol_list = symbol_list if isinstance(symbol_list, list) else [symbol_list]
         # 下载合约超时时间（默认 30s），已下市的没有交易的合约，超时时间可以设置短一点（2s），用户不希望自己的程序因为没有下载到数据而中断
@@ -403,5 +401,6 @@ class DataDownloader:
 
     @staticmethod
     def _nano_to_str(nano):
-        dt = datetime.fromtimestamp(nano // 1000000000)
+        # 这里为了保留 nano 精度，没有用 datetime._timestamp_nano_to_str
+        dt = datetime.fromtimestamp(nano // 1000000000, tz=_cst_tz)
         return "%d-%02d-%02d %02d:%02d:%02d.%09d" % (dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second, int(nano) % 1000000000)

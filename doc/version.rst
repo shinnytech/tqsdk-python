@@ -2,6 +2,13 @@
 
 版本变更
 =============================
+3.4.11 (2024/01/03)
+
+* 优化：支持天勤在不同时区设置的操作系统上使用。tqsdk 内部时间表示全部使用北京时间。
+    对于以下接口，用户输入 datetime 类型参数时，如果未指定时区信息，tqsdk 会指定为北京时间；如果指定了时区信息，会转为北京时间，保证 Unix Timestamp 时间戳不变。
+    :py:meth:`~tqsdk.TqApi.get_kline_data_series`、:py:meth:`~tqsdk.TqApi.get_tick_data_series`、:py:class:`~tqsdk.tools.DataDownloader`、:py:class:`~tqsdk.TqBacktest`。
+
+
 3.4.10 (2023/09/22)
 
 * 修复：pandas 2.1.0 版本 fillna 、NumericBlock 会报 deprecated warning 的问题

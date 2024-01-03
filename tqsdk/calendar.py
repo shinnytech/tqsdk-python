@@ -6,11 +6,13 @@
 __author__ = 'mayanqiong'
 
 import os
-from datetime import date, datetime
+from datetime import date
 from typing import Union, List
 
 import pandas as pd
 import requests
+
+from tqsdk.datetime import _cst_tz, _timestamp_nano_to_datetime
 
 rest_days_df = None
 chinese_holidays_range = None
@@ -78,6 +80,7 @@ class TqContCalendar(object):
         self.df = _get_trading_calendar(start_dt=start_dt, end_dt=end_dt, headers=headers)
         self.df = self.df.loc[self.df.trading, ['date']]  # 只保留交易日
         self.df.reset_index(inplace=True, drop=True)
+        self.df['_cst_date'] = self.df.date.dt.tz_localize(_cst_tz)  # 增加一列，将 date 转换为东八区时间, tqsdk 内部使用
         if TqContCalendar.continuous is None:
             rsp = requests.get(os.getenv("TQ_CONT_TABLE_URL", "https://files.shinnytech.com/continuous_table.json"), headers=headers)  # 下载历史主连合约信息
             rsp.raise_for_status()
@@ -86,7 +89,7 @@ class TqContCalendar(object):
             if not all([s in TqContCalendar.continuous.keys() for s in symbols]):
                 raise Exception(f"参数错误，symbols={symbols} 中应该全部都是主连合约代码")
         symbols = TqContCalendar.continuous.keys() if symbols is None else symbols
-        self.start_dt, self.end_dt = self.df.iloc[0].date, self.df.iloc[-1].date
+        self.start_dt, self.end_dt = self.df.iloc[0]._cst_date, self.df.iloc[-1]._cst_date
         for s in symbols:
             self._ensure_cont_on_df(s)
 
@@ -94,13 +97,17 @@ class TqContCalendar(object):
         """将一个主连对应的标的填在 self.df 对应位置"""
         temp_df = pd.DataFrame(data=TqContCalendar.continuous[cont], columns=['date', 'underlying'])
         temp_df['date'] = pd.Series(pd.to_datetime(temp_df['date'], format='%Y%m%d'))
-        merge_result = pd.merge(temp_df, self.df, sort=True, how="outer", on="date")
+        temp_df['_cst_date'] = temp_df.date.dt.tz_localize(_cst_tz)  # 增加一列，将 date 转换为东八区时间
+        merge_result = pd.merge(temp_df, self.df, sort=True, how="outer", on="_cst_date")
         merge_result.ffill(inplace=True)
         merge_result.fillna(value="", inplace=True)
-        s = merge_result.loc[merge_result.date.ge(self.start_dt) & merge_result.date.le(self.end_dt), 'underlying']
+        s = merge_result.loc[merge_result._cst_date.ge(self.start_dt) & merge_result._cst_date.le(self.end_dt), 'underlying']
         self.df[cont] = pd.Series(s.values)
 
-    def _get_cont_underlying_on_date(self, dt: datetime):
+    def _get_cont_underlying_on_date(self, trading_day: int):
         """返回某一交易日的全部主连"""
-        df = self.df.loc[self.df.date.ge(dt), :]
+        # trading_day 为北京时间的某一天的 00:00:00 的时间戳
+        # 所以不能直接和 date 列比较，考虑到时区问题，增加 _cst_date 列，先转换为东八区时间，再比较
+        dt = _timestamp_nano_to_datetime(trading_day)
+        df = self.df.loc[self.df._cst_date.ge(dt), :]
         return df.iloc[0:1]

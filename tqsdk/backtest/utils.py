@@ -8,6 +8,7 @@ from datetime import datetime
 import requests
 
 from tqsdk.calendar import TqContCalendar
+from tqsdk.datetime import _timestamp_nano_to_datetime, _timestamp_nano_to_str
 
 
 class TqBacktestContinuous(object):
@@ -18,12 +19,12 @@ class TqBacktestContinuous(object):
         start_dt 开始的交易日
         end_dt 结束的交易日
         """
-        self._cont_calendar = TqContCalendar(start_dt=datetime.fromtimestamp(start_dt / 1e9),
-                                             end_dt=datetime.fromtimestamp(end_dt / 1e9),
+        self._cont_calendar = TqContCalendar(start_dt=_timestamp_nano_to_datetime(start_dt).date(),
+                                             end_dt=_timestamp_nano_to_datetime(end_dt).date(),
                                              headers=headers)
 
-    def _get_history_cont_quotes(self, trading_day):
-        df = self._cont_calendar._get_cont_underlying_on_date(dt=datetime.fromtimestamp(trading_day / 1e9))
+    def _get_history_cont_quotes(self, trading_day: int):
+        df = self._cont_calendar._get_cont_underlying_on_date(trading_day=trading_day)
         quotes = {k: {"underlying_symbol": df.iloc[0][k]} for k in df.columns if k.startswith("KQ.m")}
         return quotes
 
@@ -39,12 +40,12 @@ class TqBacktestDividend(object):
         self._headers = headers
         self._start_dt = start_dt
         self._end_dt = end_dt
-        self._start_date = datetime.fromtimestamp(self._start_dt / 1000000000).strftime('%Y%m%d')
-        self._end_date = datetime.fromtimestamp(self._end_dt / 1000000000).strftime('%Y%m%d')
+        self._start_date = _timestamp_nano_to_str(self._start_dt, fmt='%Y%m%d')
+        self._end_date = _timestamp_nano_to_str(self._end_dt, fmt='%Y%m%d')
         self._stocks = {}  # 记录全部股票合约及从 stock-dividend 服务获取的原始数据
 
     def _get_dividend(self, quotes, trading_day):
-        dt = datetime.fromtimestamp(trading_day / 1000000000).strftime('%Y%m%d')
+        dt = _timestamp_nano_to_str(trading_day, fmt='%Y%m%d')
         self._request_stock_dividend(quotes)
         rsp_quotes = {}
         # self._stocks 中应该已经记录了 quotes 中全部股票合约
