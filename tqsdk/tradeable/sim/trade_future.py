@@ -388,13 +388,21 @@ class SimTrade(SimTradeBase):
 
     def _on_update_quotes(self, symbol, position, quote, underlying_quote):
         # 调整持仓保证金和盈亏
-        underlying_last_price = underlying_quote["last_price"] if underlying_quote else float('nan')
+        if underlying_quote is None:
+            underlying_last_price = float("nan")
+        else:
+            # 期权，underlying_last_price 用于计算期权保证金，必须不是 nan，这里依次选取以下价格中第一个不为 nan 的
+            # 标的合约最新价，前一次持仓中记录的不为 nan 的标的最新价，期权行权价
+            if math.isnan(underlying_quote["last_price"]):
+                underlying_last_price = quote["strike_price"] if math.isnan(position["underlying_last_price"]) \
+                    else position["underlying_last_price"]
+            else:
+                underlying_last_price = underlying_quote["last_price"]
         future_margin = _get_future_margin(quote)
         if position["volume_long"] > 0 or position["volume_short"] > 0:
             if position["last_price"] != quote["last_price"] \
                     or (math.isnan(future_margin) or future_margin != position["future_margin"]) \
-                    or (underlying_quote and (
-                    math.isnan(underlying_last_price) or underlying_last_price != position["underlying_last_price"])):
+                    or (underlying_quote and underlying_last_price != position["underlying_last_price"]):
                 self._adjust_position_account(symbol, quote, underlying_quote,
                                               pre_last_price=position["last_price"],
                                               last_price=quote["last_price"],

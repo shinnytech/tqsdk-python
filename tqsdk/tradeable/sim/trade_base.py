@@ -168,6 +168,12 @@ class SimTradeBase(object):
             if last_msg == "全部成交":
                 trade = self._generate_trade(order, quote, price)
                 self._trades.append(trade)
+                # 用 ticks 回测某些期权合约的时候，position['last_price'] 初始值可能是 nan，
+                # 当委托单成交时，由于 position['last_price'] 为 nan 会导致后续持仓市值、保证金等计算得到 nan
+                # 所以这里如果发现价格时 nan，就用当前成交价记为 position['last_price']
+                # 后续在 update_quotes 时，会更新 position['last_price']，因为 update_quotes 会跳过无效行情，所以这里不会再变为 nan
+                if math.isnan(position['last_price']):
+                    position['last_price'] = price
                 self._on_order_traded(order, trade, symbol, position, quote, underlying_quote)
             else:
                 self._on_order_failed(symbol, order)

@@ -2,6 +2,14 @@
 
 版本变更
 =============================
+3.5.0 (2024/01/18)
+
+* 新增：行情增加外盘主连合约，通过 ``api.query_quotes(exchange_id=['KQD'])`` 查询外盘合约
+* 新增：:py:meth:`~tqsdk.TqZq` 众期账户类型，支持连接众期服务器交易
+* 优化：:py:meth:`~tqsdk.TqApi.query_quotes` 函数 ins_class、exchange_id、product_id 参数支持 list
+* 修复：ticks 回测时，可能出现账户结算信息为 nan 的问题
+
+
 3.4.11 (2024/01/03)
 
 * 优化：支持天勤在不同时区设置的操作系统上使用。tqsdk 内部时间表示全部使用北京时间。
