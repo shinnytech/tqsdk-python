@@ -70,7 +70,7 @@ from tqsdk.risk_manager import TqRiskManager
 from tqsdk.risk_rule import TqRiskRule
 from tqsdk.ins_schema import ins_schema, basic, derivative, future, option
 from tqsdk.symbols import TqSymbols
-from tqsdk.tradeable import TqAccount, TqKq, TqKqStock, TqSim, TqSimStock, BaseSim, BaseOtg
+from tqsdk.tradeable import TqAccount, TqZq, TqKq, TqKqStock, TqSim, TqSimStock, BaseSim, BaseOtg
 from tqsdk.trading_status import TqTradingStatus
 from tqsdk.tqwebhelper import TqWebHelper
 from tqsdk.utils import _generate_uuid, _query_for_quote, BlockManagerUnconsolidated, _quotes_add_night, _bisect_value
@@ -99,7 +99,7 @@ class TqApi(TqBaseApi):
         创建天勤接口实例
 
         Args:
-            account (None/TqAccount/TqKq/TqKqStock/TqSim/TqSimStock/TqMultiAccount): [可选]交易账号:
+            account (None/TqAccount/TqKq/TqKqStock/TqSim/TqSimStock/TqZq/TqMultiAccount): [可选]交易账号:
                 * None: 账号将根据环境变量决定, 默认为 :py:class:`~tqsdk.TqSim`
 
                 * :py:class:`~tqsdk.TqAccount` : 使用实盘账号, 直连行情和交易服务器, 需提供期货公司/帐号/密码
@@ -111,6 +111,8 @@ class TqApi(TqBaseApi):
                 * :py:class:`~tqsdk.TqSim` : 使用 TqApi 自带的内部模拟账号
 
                 * :py:class:`~tqsdk.TqSimStock` : 使用 TqApi 自带的内部股票模拟账号
+
+                * :py:class:`~tqsdk.TqZq` : 使用众期账号
 
                 * :py:class:`~tqsdk.TqMultiAccount` : 多账户列表，列表中支持 :py:class:`~tqsdk.TqAccount`、:py:class:`~tqsdk.TqKq`、\
                   :py:class:`~tqsdk.TqKqStock`、:py:class:`~tqsdk.TqSim` 和 :py:class:`~tqsdk.TqSimStock` 中的 0 至 N 个或者组合
@@ -2317,13 +2319,13 @@ class TqApi(TqBaseApi):
                 raise TqTimeoutError(f"获取 {symbol}, {ranking_type} 持仓排名信息信息超时，请检查客户端及网络是否正常")
         return df
 
-    def query_quotes(self, ins_class: str = None, exchange_id: str = None, product_id: str = None, expired: bool = None,
-                     has_night: bool = None) -> SymbolList:
+    def query_quotes(self, ins_class: Union[str, List[str]] = None, exchange_id: Union[str, List[str]] = None,
+                     product_id: Union[str, List[str]] = None, expired: bool = None, has_night: bool = None) -> SymbolList:
         """
         根据相应的参数发送合约服务请求查询，并返回查询结果
 
         Args:
-            ins_class (str): [可选] 合约类型
+            ins_class (str / list of str): [可选] 合约类型
                 * FUTURE: 期货
                 * CONT: 主连
                 * COMBINE: 组合
@@ -2331,7 +2333,7 @@ class TqApi(TqBaseApi):
                 * OPTION: 期权
                 * STOCK: 股票
 
-            exchange_id (str): [可选] 交易所
+            exchange_id (str / list of str): [可选] 交易所
                 * CFFEX: 中金所
                 * SHFE: 上期所
                 * DCE: 大商所
@@ -2339,8 +2341,9 @@ class TqApi(TqBaseApi):
                 * INE: 能源交易所(原油)
                 * SSE: 上交所
                 * SZSE: 深交所
+                * KQD: 外盘主连
 
-            product_id (str): [可选] 品种（股票、期权不能通过 product_id 筛选查询）
+            product_id (str / list of str): [可选] 品种（股票、期权不能通过 product_id 筛选查询）
 
             expired (bool): [可选] 是否已下市
 
@@ -2363,6 +2366,9 @@ class TqApi(TqBaseApi):
 
             ls = api.query_quotes(ins_class="FUTURE", product_id="au")
             print(ls)  # au 品种的全部合约，包括已下市以及未下市合约
+
+            ls = api.query_quotes(ins_class=["FUTURE"], product_id=["au", "cu"], expired=False)
+            print(ls)  # au、cu 品种的全部未下市合约合约
 
             ls = api.query_quotes(ins_class="INDEX", product_id="au")
             print(ls)  # au 品种指数合约
@@ -2392,17 +2398,17 @@ class TqApi(TqBaseApi):
         if ins_class is not None:
             if ins_class == "":
                 raise Exception("ins_class 参数不能为空字符串。")
-            variables["class_"] = [ins_class]
+            variables["class_"] = [ins_class] if isinstance(ins_class, str) else ins_class
         if exchange_id is not None:
             if exchange_id == "":
                 raise Exception("exchange_id 参数不能为空字符串。")
             # 如果是主连和指数，请求全部，在客户端区分交易所
             if ins_class not in ["INDEX", "CONT"] or exchange_id not in ["CFFEX", "SHFE", "DCE", "CZCE", "INE"]:
-                variables["exchange_id"] = [exchange_id]
+                variables["exchange_id"] = [exchange_id] if isinstance(exchange_id, str) else exchange_id
         if product_id is not None:
             if product_id == "":
                 raise Exception("product_id 参数不能为空字符串。")
-            variables["product_id"] = [product_id]
+            variables["product_id"] = [product_id] if isinstance(product_id, str) else product_id
         if expired is not None:
             variables["expired"] = expired
         if has_night is not None:
