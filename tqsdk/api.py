@@ -1088,7 +1088,7 @@ class TqApi(TqBaseApi):
         end_dt = _timestamp_nano_to_datetime(trading_day)
         cont_calendar = TqContCalendar(start_dt=(end_dt - timedelta(days=n * 2 + 30)).date(), end_dt=end_dt.date(),
                                        symbols=symbols, headers=self._base_headers)
-        df = cont_calendar.df.loc[cont_calendar.df.date.le(end_dt), ['date'] + symbols]
+        df = cont_calendar.df.loc[cont_calendar.df._cst_date.le(end_dt), ['date'] + symbols]
         df = df.iloc[-n:]
         df.reset_index(inplace=True, drop=True)
         return df

@@ -2,9 +2,15 @@
 
 版本变更
 =============================
+3.5.1 (2024/01/24)
+
+* 修复：:py:meth:`~tqsdk.TqApi.query_his_cont_quotes` 接口在 3.4.11、3.5.0 版本上报错的问题
+* doc：增加外盘文档说明
+
+
 3.5.0 (2024/01/18)
 
-* 新增：行情增加外盘主连合约，通过 ``api.query_quotes(exchange_id=['KQD'])`` 查询外盘合约
+* 新增：行情增加外盘主连合约，通过 ``api.query_quotes(exchange_id=['KQD'])`` 查询外盘合约，外盘合约地址参考  :ref:`kqd_symbol`
 * 新增：:py:meth:`~tqsdk.TqZq` 众期账户类型，支持连接众期服务器交易
 * 优化：:py:meth:`~tqsdk.TqApi.query_quotes` 函数 ins_class、exchange_id、product_id 参数支持 list
 * 修复：ticks 回测时，可能出现账户结算信息为 nan 的问题
