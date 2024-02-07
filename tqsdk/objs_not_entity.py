@@ -6,6 +6,7 @@ from collections import namedtuple
 from typing import Callable, Tuple
 
 import aiohttp
+import numpy
 from pandas import DataFrame, Series
 from sgqlc.operation import Operation
 from tqsdk.backtest import TqBacktest
@@ -196,6 +197,18 @@ class TqDataFrame(DataFrame):
         return self.__dict__["_task"].__await__()
 
 
+def _get_col_dtype(col):
+    if col == "expired":
+        return bool
+    if col in [
+        "price_tick", "volume_multiple", "strike_price", "upper_limit", "lower_limit", "pre_settlement", "pre_close",
+        "pre_open_interest", "max_limit_order_volume", "max_market_order_volume", "expire_datetime", "expire_rest_days",
+        "delivery_year", "delivery_month", "last_exercise_datetime", "exercise_year", "exercise_month",
+    ]:
+        return float
+    return object
+
+
 class TqSymbolDataFrame(DataFrame):
 
     def __init__(self, api, symbol_list, backtest_timestamp, *args, **kwargs):
@@ -260,7 +273,7 @@ class TqSymbolDataFrame(DataFrame):
                     self._quotes_to_dataframe(quotes)
                     if self.__dict__["_backtest_timestamp"]:
                         # 回测时这些字段应该为 nan
-                        self.loc[:, ["upper_limit", "lower_limit", "pre_settlement", "pre_open_interest", "pre_close"]] = float('nan')
+                        self.loc[:, ["upper_limit", "lower_limit", "pre_settlement", "pre_open_interest", "pre_close"]] = numpy.nan
                         # 回测时清空请求，不缓存请求内容
                         self.__dict__["_api"]._send_pack({
                             "aid": "ins_query",
@@ -283,9 +296,15 @@ class TqSymbolDataFrame(DataFrame):
                                     for s in self.__dict__["_symbol_list"]]
             elif col == "trading_time_day" or col == "trading_time_night":
                 k = 'day' if col == "trading_time_day" else 'night'
-                self[col] = Series([self._get_trading_time(quotes, s, k) for s in self.__dict__["_symbol_list"]])
+                self[col] = Series(
+                    [self._get_trading_time(quotes, s, k) for s in self.__dict__["_symbol_list"]],
+                    dtype=_get_col_dtype(col)
+                )
             else:
-                self[col] = Series([quotes[s].get(col, default_quote[col]) for s in self.__dict__["_symbol_list"]])
+                self[col] = Series(
+                    [quotes[s].get(col, default_quote[col]) for s in self.__dict__["_symbol_list"]],
+                    dtype=_get_col_dtype(col)
+                )
 
     def __await__(self):
         return self.__dict__["_task"].__await__()

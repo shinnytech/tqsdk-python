@@ -2,6 +2,14 @@
 
 版本变更
 =============================
+3.5.2 (2024/02/07)
+
+* 新增：:py:class:`~tqsdk.objs.Quote` 增加以下属性
+    :py:meth:`~tqsdk.objs.Quote.open_max_market_order_volume`、:py:meth:`~tqsdk.objs.Quote.open_max_limit_order_volume`、
+    :py:meth:`~tqsdk.objs.Quote.open_min_market_order_volume`、:py:meth:`~tqsdk.objs.Quote.open_min_limit_order_volume`、
+    :py:meth:`~tqsdk.objs.Quote.categories`
+
+
 3.5.1 (2024/01/24)
 
 * 修复：:py:meth:`~tqsdk.TqApi.query_his_cont_quotes` 接口在 3.4.11、3.5.0 版本上报错的问题
