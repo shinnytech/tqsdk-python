@@ -14,6 +14,12 @@ ins_schema = sgqlc.types.Schema()
 ########################################################################
 Boolean = sgqlc.types.Boolean
 
+
+class Category(sgqlc.types.Enum):
+    __schema__ = ins_schema
+    __choices__ = ('AGRICULTURAL', 'CHEMICAL', 'COAL', 'EQUITY_INDEX', 'FERROUS', 'GRAIN', 'GREASE', 'LIGHT_INDUSTRY', 'NONFERROUS_METALS', 'OIL', 'PRECIOUS_METALS', 'SOFT_COMMODITY', 'TREASURY_BOND')
+
+
 class Class(sgqlc.types.Enum):
     __schema__ = ins_schema
     __choices__ = ('BOND', 'COMBINE', 'CONT', 'FUND', 'FUTURE', 'INDEX', 'OPTION', 'SPOT', 'STOCK')
@@ -39,11 +45,12 @@ String = sgqlc.types.String
 ########################################################################
 class basic(sgqlc.types.Interface):
     __schema__ = ins_schema
-    __field_names__ = ('price_tick', 'derivatives', 'trading_time', 'trading_day', 'instrument_name', 'english_name', 'price_decs', 'class_', 'instrument_id', 'exchange_id', 'derivative')
+    __field_names__ = ('trading_time', 'instrument_name', 'instrument_id', 'derivative', 'ins_id', 'derivatives', 'exchange_id', 'instrument_name_wh', 'trading_day', 'english_name', 'price_decs', 'class_', 'py_wh', 'price_tick')
     price_tick = sgqlc.types.Field(Float, graphql_name='price_tick')
     derivatives = sgqlc.types.Field('derivativeConnection', graphql_name='derivatives', args=sgqlc.types.ArgDict((
         ('class_', sgqlc.types.Arg(sgqlc.types.list_of(Class), graphql_name='class', default=None)),
         ('exchange_id', sgqlc.types.Arg(sgqlc.types.list_of(String), graphql_name='exchange_id', default=None)),
+        ('expired', sgqlc.types.Arg(Boolean, graphql_name='expired', default=None)),
         ('timestamp', sgqlc.types.Arg(Int64, graphql_name='timestamp', default=None)),
 ))
     )
@@ -55,12 +62,16 @@ class basic(sgqlc.types.Interface):
     class_ = sgqlc.types.Field(String, graphql_name='class')
     instrument_id = sgqlc.types.Field(String, graphql_name='instrument_id')
     exchange_id = sgqlc.types.Field(String, graphql_name='exchange_id')
+    ins_id = sgqlc.types.Field(String, graphql_name='ins_id')
+    instrument_name_wh = sgqlc.types.Field(String, graphql_name='instrument_name_wh')
+    py_wh = sgqlc.types.Field(String, graphql_name='py_wh')
+    price_tick = sgqlc.types.Field(Float, graphql_name='price_tick')
     derivative = sgqlc.types.Field('derivativeConnection', graphql_name='derivative', args=sgqlc.types.ArgDict((
         ('class_', sgqlc.types.Arg(Class, graphql_name='class', default=None)),
         ('exchange_id', sgqlc.types.Arg(String, graphql_name='exchange_id', default=None)),
+        ('expired', sgqlc.types.Arg(Boolean, graphql_name='expired', default=None)),
 ))
     )
-
 
 class derivative(sgqlc.types.Interface):
     __schema__ = ins_schema
@@ -94,6 +105,7 @@ class rootQuery(sgqlc.types.Type):
         ('expired', sgqlc.types.Arg(Boolean, graphql_name='expired', default=None)),
         ('has_night', sgqlc.types.Arg(Boolean, graphql_name='has_night', default=None)),
         ('has_derivatives', sgqlc.types.Arg(Boolean, graphql_name='has_derivatives', default=None)),
+        ('categories', sgqlc.types.Arg(sgqlc.types.list_of(Category), graphql_name='categories', default=None)),
 ))
     )
     symbol_info = sgqlc.types.Field(sgqlc.types.list_of('allClassUnion'), graphql_name='symbol_info', args=sgqlc.types.ArgDict((
@@ -110,7 +122,7 @@ class rootQuery(sgqlc.types.Type):
 
 class securities(sgqlc.types.Interface):
     __schema__ = ins_schema
-    __field_names__ = ('status', 'public_float_share_quantity', 'currency', 'face_value', 'first_trading_day', 'first_trading_datetime', 'buy_volume_unit', 'sell_volume_unit')
+    __field_names__ = ('currency', 'face_value', 'first_trading_day', 'first_trading_datetime', 'buy_volume_unit', 'sell_volume_unit', 'status', 'public_float_share_quantity')
     status = sgqlc.types.Field(String, graphql_name='status')
     public_float_share_quantity = sgqlc.types.Field(Int64, graphql_name='public_float_share_quantity')
     currency = sgqlc.types.Field(String, graphql_name='currency')
@@ -123,12 +135,19 @@ class securities(sgqlc.types.Interface):
 
 class tradeable(sgqlc.types.Interface):
     __schema__ = ins_schema
-    __field_names__ = ('quote_multiple', 'pre_close', 'upper_limit', 'lower_limit', 'volume_multiple')
+    __field_names__ = ('volume_multiple', 'quote_multiple', 'pre_close', 'upper_limit', 'lower_limit')
     quote_multiple = sgqlc.types.Field(Float, graphql_name='quote_multiple')
     pre_close = sgqlc.types.Field(Float, graphql_name='pre_close')
     upper_limit = sgqlc.types.Field(Float, graphql_name='upper_limit')
     lower_limit = sgqlc.types.Field(Float, graphql_name='lower_limit')
     volume_multiple = sgqlc.types.Field(Float, graphql_name='volume_multiple')
+
+
+class categoryInfo(sgqlc.types.Type):
+    __schema__ = ins_schema
+    __field_names__ = ('id', 'name')
+    id = sgqlc.types.Field(String, graphql_name='id')
+    name = sgqlc.types.Field(String, graphql_name='name')
 
 
 class tradingTime(sgqlc.types.Type):
@@ -147,13 +166,23 @@ class bond(sgqlc.types.Type, basic, tradeable, securities):
 
 class combine(sgqlc.types.Type, basic):
     __schema__ = ins_schema
-    __field_names__ = ('expire_datetime', 'expired', 'leg1', 'leg2', 'max_limit_order_volume', 'max_market_order_volume', 'product_id')
+    __field_names__ = ('close_max_limit_order_volume', 'close_max_market_order_volume', 'close_min_limit_order_volume', 'close_min_market_order_volume', 'expire_datetime', 'expired', 'leg1', 'leg2', 'max_limit_order_volume', 'max_market_order_volume', 'min_limit_order_volume', 'min_market_order_volume', 'open_max_limit_order_volume', 'open_max_market_order_volume', 'open_min_limit_order_volume', 'open_min_market_order_volume', 'product_id')
+    close_max_limit_order_volume = sgqlc.types.Field(Int, graphql_name='close_max_limit_order_volume')
+    close_max_market_order_volume = sgqlc.types.Field(Int, graphql_name='close_max_market_order_volume')
+    close_min_limit_order_volume = sgqlc.types.Field(Int, graphql_name='close_min_limit_order_volume')
+    close_min_market_order_volume = sgqlc.types.Field(Int, graphql_name='close_min_market_order_volume')
     expire_datetime = sgqlc.types.Field(Int64, graphql_name='expire_datetime')
     expired = sgqlc.types.Field(Boolean, graphql_name='expired')
     leg1 = sgqlc.types.Field('allClassUnion', graphql_name='leg1')
     leg2 = sgqlc.types.Field('allClassUnion', graphql_name='leg2')
     max_limit_order_volume = sgqlc.types.Field(Int, graphql_name='max_limit_order_volume')
     max_market_order_volume = sgqlc.types.Field(Int, graphql_name='max_market_order_volume')
+    min_limit_order_volume = sgqlc.types.Field(Int, graphql_name='min_limit_order_volume')
+    min_market_order_volume = sgqlc.types.Field(Int, graphql_name='min_market_order_volume')
+    open_max_limit_order_volume = sgqlc.types.Field(Int, graphql_name='open_max_limit_order_volume')
+    open_max_market_order_volume = sgqlc.types.Field(Int, graphql_name='open_max_market_order_volume')
+    open_min_limit_order_volume = sgqlc.types.Field(Int, graphql_name='open_min_limit_order_volume')
+    open_min_market_order_volume = sgqlc.types.Field(Int, graphql_name='open_min_market_order_volume')
     product_id = sgqlc.types.Field(String, graphql_name='product_id')
 
 
@@ -170,7 +199,12 @@ class fund(sgqlc.types.Type, basic, tradeable, securities):
 
 class future(sgqlc.types.Type, basic, tradeable):
     __schema__ = ins_schema
-    __field_names__ = ('commission', 'delivery_month', 'delivery_year', 'expire_datetime', 'expired', 'margin', 'max_limit_order_volume', 'max_market_order_volume', 'mmsa', 'pre_open_interest', 'product_id', 'product_short_name', 'settlement_price')
+    __field_names__ = ('categories', 'close_max_limit_order_volume', 'close_max_market_order_volume', 'close_min_limit_order_volume', 'close_min_market_order_volume', 'commission', 'delivery_month', 'delivery_year', 'expire_datetime', 'expired', 'margin', 'max_limit_order_volume', 'max_market_order_volume', 'min_limit_order_volume', 'min_market_order_volume', 'mmsa', 'open_max_limit_order_volume', 'open_max_market_order_volume', 'open_min_limit_order_volume', 'open_min_market_order_volume', 'pre_open_interest', 'product_id', 'product_short_name', 'product_short_name_wh', 'settlement_price')
+    categories = sgqlc.types.Field(sgqlc.types.list_of(categoryInfo), graphql_name='categories')
+    close_max_limit_order_volume = sgqlc.types.Field(Int, graphql_name='close_max_limit_order_volume')
+    close_max_market_order_volume = sgqlc.types.Field(Int, graphql_name='close_max_market_order_volume')
+    close_min_limit_order_volume = sgqlc.types.Field(Int, graphql_name='close_min_limit_order_volume')
+    close_min_market_order_volume = sgqlc.types.Field(Int, graphql_name='close_min_market_order_volume')
     commission = sgqlc.types.Field(Float, graphql_name='commission')
     delivery_month = sgqlc.types.Field(Int, graphql_name='delivery_month')
     delivery_year = sgqlc.types.Field(Int, graphql_name='delivery_year')
@@ -179,10 +213,17 @@ class future(sgqlc.types.Type, basic, tradeable):
     margin = sgqlc.types.Field(Float, graphql_name='margin')
     max_limit_order_volume = sgqlc.types.Field(Int, graphql_name='max_limit_order_volume')
     max_market_order_volume = sgqlc.types.Field(Int, graphql_name='max_market_order_volume')
+    min_limit_order_volume = sgqlc.types.Field(Int, graphql_name='min_limit_order_volume')
+    min_market_order_volume = sgqlc.types.Field(Int, graphql_name='min_market_order_volume')
     mmsa = sgqlc.types.Field(Boolean, graphql_name='mmsa')
+    open_max_limit_order_volume = sgqlc.types.Field(Int, graphql_name='open_max_limit_order_volume')
+    open_max_market_order_volume = sgqlc.types.Field(Int, graphql_name='open_max_market_order_volume')
+    open_min_limit_order_volume = sgqlc.types.Field(Int, graphql_name='open_min_limit_order_volume')
+    open_min_market_order_volume = sgqlc.types.Field(Int, graphql_name='open_min_market_order_volume')
     pre_open_interest = sgqlc.types.Field(Int64, graphql_name='pre_open_interest')
     product_id = sgqlc.types.Field(String, graphql_name='product_id')
     product_short_name = sgqlc.types.Field(String, graphql_name='product_short_name')
+    product_short_name_wh = sgqlc.types.Field(String, graphql_name='product_short_name_wh')
     settlement_price = sgqlc.types.Field(Float, graphql_name='settlement_price')
 
 
@@ -194,8 +235,12 @@ class index(sgqlc.types.Type, basic):
 
 class option(sgqlc.types.Type, basic, tradeable, derivative):
     __schema__ = ins_schema
-    __field_names__ = ('call_or_put', 'exercise_type', 'expire_datetime', 'expired', 'last_exercise_datetime', 'last_exercise_day', 'max_limit_order_volume', 'max_market_order_volume', 'pre_open_interest', 'product_short_name', 'settlement_price', 'strike_price')
+    __field_names__ = ('call_or_put', 'close_max_limit_order_volume', 'close_max_market_order_volume', 'close_min_limit_order_volume', 'close_min_market_order_volume', 'exercise_type', 'expire_datetime', 'expired', 'last_exercise_datetime', 'last_exercise_day', 'max_limit_order_volume', 'max_market_order_volume', 'min_limit_order_volume', 'min_market_order_volume', 'open_max_limit_order_volume', 'open_max_market_order_volume', 'open_min_limit_order_volume', 'open_min_market_order_volume', 'pre_open_interest', 'product_short_name', 'settlement_price', 'strike_price')
     call_or_put = sgqlc.types.Field(String, graphql_name='call_or_put')
+    close_max_limit_order_volume = sgqlc.types.Field(Int, graphql_name='close_max_limit_order_volume')
+    close_max_market_order_volume = sgqlc.types.Field(Int, graphql_name='close_max_market_order_volume')
+    close_min_limit_order_volume = sgqlc.types.Field(Int, graphql_name='close_min_limit_order_volume')
+    close_min_market_order_volume = sgqlc.types.Field(Int, graphql_name='close_min_market_order_volume')
     exercise_type = sgqlc.types.Field(String, graphql_name='exercise_type')
     expire_datetime = sgqlc.types.Field(Int64, graphql_name='expire_datetime')
     expired = sgqlc.types.Field(Boolean, graphql_name='expired')
@@ -203,6 +248,12 @@ class option(sgqlc.types.Type, basic, tradeable, derivative):
     last_exercise_day = sgqlc.types.Field(Int64, graphql_name='last_exercise_day')
     max_limit_order_volume = sgqlc.types.Field(Int, graphql_name='max_limit_order_volume')
     max_market_order_volume = sgqlc.types.Field(Int, graphql_name='max_market_order_volume')
+    min_limit_order_volume = sgqlc.types.Field(Int, graphql_name='min_limit_order_volume')
+    min_market_order_volume = sgqlc.types.Field(Int, graphql_name='min_market_order_volume')
+    open_max_limit_order_volume = sgqlc.types.Field(Int, graphql_name='open_max_limit_order_volume')
+    open_max_market_order_volume = sgqlc.types.Field(Int, graphql_name='open_max_market_order_volume')
+    open_min_limit_order_volume = sgqlc.types.Field(Int, graphql_name='open_min_limit_order_volume')
+    open_min_market_order_volume = sgqlc.types.Field(Int, graphql_name='open_min_market_order_volume')
     pre_open_interest = sgqlc.types.Field(Int64, graphql_name='pre_open_interest')
     product_short_name = sgqlc.types.Field(String, graphql_name='product_short_name')
     settlement_price = sgqlc.types.Field(Float, graphql_name='settlement_price')
@@ -294,9 +345,16 @@ future_frag.expire_datetime()
 future_frag.settlement_price()
 future_frag.max_market_order_volume()
 future_frag.max_limit_order_volume()
+future_frag.min_market_order_volume()
+future_frag.min_limit_order_volume()
+future_frag.open_max_market_order_volume()
+future_frag.open_max_limit_order_volume()
+future_frag.open_min_market_order_volume()
+future_frag.open_min_limit_order_volume()
 future_frag.margin()
 future_frag.commission()
 future_frag.mmsa()
+future_frag.categories()
 
 option_frag = Fragment(option, 'option')
 option_frag.pre_open_interest()
@@ -307,6 +365,12 @@ option_frag.last_exercise_datetime()
 option_frag.settlement_price()
 option_frag.max_market_order_volume()
 option_frag.max_limit_order_volume()
+option_frag.min_market_order_volume()
+option_frag.min_limit_order_volume()
+option_frag.open_max_market_order_volume()
+option_frag.open_max_limit_order_volume()
+option_frag.open_min_market_order_volume()
+option_frag.open_min_limit_order_volume()
 option_frag.strike_price()
 option_frag.call_or_put()
 option_frag.exercise_type()
@@ -317,6 +381,12 @@ combine_frag.product_id()
 combine_frag.expire_datetime()
 combine_frag.max_market_order_volume()
 combine_frag.max_limit_order_volume()
+combine_frag.min_market_order_volume()
+combine_frag.min_limit_order_volume()
+combine_frag.open_max_market_order_volume()
+combine_frag.open_max_limit_order_volume()
+combine_frag.open_min_market_order_volume()
+combine_frag.open_min_limit_order_volume()
 combine_frag.leg1().__as__(basic).instrument_id()
 combine_frag.leg2().__as__(basic).instrument_id()
 

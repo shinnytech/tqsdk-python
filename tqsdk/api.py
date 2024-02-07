@@ -3341,7 +3341,12 @@ class TqApi(TqBaseApi):
         values = serial["array"].T
         block = FloatBlock(values=values, ndim=2, placement=BlockPlacement(slice(0, len(columns))))
         bm = BlockManagerUnconsolidated(blocks=[block], axes=[columns, index])
-        serial["df"] = TqDataFrame(self, bm, copy=False)
+        # DeprecationWarning:
+        # Passing a BlockManagerUnconsolidated to TqDataFrame is deprecated and will raise in a future version.
+        # Use an empty dataframe instead.
+        temp_df = pd.DataFrame()
+        temp_df._mgr = bm
+        serial["df"] = TqDataFrame(self, temp_df, copy=False)
         serial["df"]["symbol"] = root_list[0]["_path"][1]
         for i in range(1, len(root_list)):
             serial["df"]["symbol" + str(i)] = root_list[i]["_path"][1]

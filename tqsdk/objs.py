@@ -5,6 +5,7 @@ __author__ = 'chengzhi'
 import copy
 import json
 import warnings
+from typing import List
 
 from tqsdk.diff import _get_obj
 from tqsdk.entity import Entity
@@ -128,6 +129,14 @@ class Quote(Entity):
         self.min_limit_order_volume: int = 0
         #: 最小市价单手数
         self.min_market_order_volume: int = 0
+        #: 最大市价开仓手数
+        self.open_max_market_order_volume: int = 0
+        #: 最大限价开仓手数
+        self.open_max_limit_order_volume: int = 0
+        #: 最小市价开仓手数
+        self.open_min_market_order_volume: int = 0
+        #: 最小限价开仓手数
+        self.open_min_limit_order_volume: int = 0
         #: 标的合约
         self.underlying_symbol: str = ""
         #: 行权价
@@ -172,6 +181,8 @@ class Quote(Entity):
         self.cash_dividend_ratio: list = []
         #: 距离到期日的剩余天数（自然日天数），正数表示距离到期日的剩余天数，0表示到期日当天，负数表示距离到期日已经过去的天数
         self.expire_rest_days: int = float('nan')
+        #: 板块信息
+        self.categories: List[CategoryInfo] = []
 
     def _instance_entity(self, path):
         super(Quote, self)._instance_entity(path)
@@ -192,6 +203,16 @@ class Quote(Entity):
     def __await__(self):
         assert self._task
         return self._task.__await__()
+
+
+class CategoryInfo(Entity):
+    """CategoryInfo 是一个板块信息对象"""
+
+    def __init__(self):
+        #: 板块代码
+        self.id: str = ""
+        #: 板块名称
+        self.name: str = ""
 
 
 class TradingTime(Entity):

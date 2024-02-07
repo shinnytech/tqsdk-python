@@ -47,10 +47,7 @@ def _get_trading_calendar(start_dt: date, end_dt: date, headers=None):
     _init_chinese_rest_days(headers=headers)
     df = pd.DataFrame()
     df['date'] = pd.Series(pd.date_range(start=start_dt, end=end_dt, freq="D"))
-    df['trading'] = df['date'].dt.dayofweek.lt(5)
-    result = pd.merge(rest_days_df, df, sort=True, how="right", on="date")
-    result.fillna(True, inplace=True)
-    df['trading'] = result['trading'] & result['trading_restdays']
+    df['trading'] = df['date'].dt.dayofweek.lt(5) & ~df['date'].isin(rest_days_df['date'])
     return df
 
 
