@@ -117,20 +117,6 @@ class Twap(object):
           print(target_twap.average_trade_price)
           api.close()
         """
-        if symbol.startswith("CZCE.ZC"):
-            raise Exception("动力煤期货不支持创建 targetpostask、twap、vwap 任务，交易所规定该品种最小开仓手数为大于等于 4 手，这些函数还未支持该规则!")
-        if symbol.startswith("CZCE.WH"):
-            raise Exception("强麦期货不支持创建 targetpostask、twap、vwap 任务，交易所规定该品种最小开仓手数为大于等于 10 手，这些函数还未支持该规则!")
-        if symbol.startswith("CZCE.PM"):
-            raise Exception("普麦期货不支持创建 targetpostask、twap、vwap 任务，交易所规定该品种最小开仓手数为大于等于 10 手，这些函数还未支持该规则!")
-        if symbol.startswith("CZCE.RI"):
-            raise Exception("早籼稻期货不支持创建 targetpostask、twap、vwap 任务，交易所规定该品种最小开仓手数为大于等于 10 手，这些函数还未支持该规则!")
-        if symbol.startswith("CZCE.JR"):
-            raise Exception("粳稻期货不支持创建 targetpostask、twap、vwap 任务，交易所规定该品种最小开仓手数为大于等于 10 手，这些函数还未支持该规则!")
-        if symbol.startswith("CZCE.LR"):
-            raise Exception("晚籼稻期货不支持创建 targetpostask、twap、vwap 任务，交易所规定该品种最小开仓手数为大于等于 10 手，这些函数还未支持该规则!")
-        if symbol == "CZCE.SA309" or symbol == "CZCE.SA310":
-            raise Exception("纯碱期货 2309 合约及 2310 合约不支持创建 targetpostask、twap、vwap 任务，交易所规定该品种最小开仓手数为大于等于 4 手，这些函数还未支持该规则!")
         self._api = api
         self._account = api._account._check_valid(account)
         if self._account is None:
@@ -167,6 +153,12 @@ class Twap(object):
 
     async def _run(self, volume_list, interval_list):
         self._quote = await self._api.get_quote(self._symbol)
+        # 判断最小下单手数是否大于1
+        if self._quote.open_min_market_order_volume > 1 or self._quote.open_min_limit_order_volume > 1:
+            raise Exception(
+                f"交易所规定 {self._symbol} 的最小市价开仓手数 ({self._quote.open_min_market_order_volume})"
+                f" 或最小限价开仓手数 ({self._quote.open_min_limit_order_volume}) 大于 1，targetpostask、twap、vwap 这些函数还未支持该规则!"
+            )
         # 计算得到时间序列，每个时间段快要结束的时间点，此时应该从被动价格切换为主动价格
         deadline_timestamp_list, strict_deadline_timestamp_list = self._get_deadline_timestamp(interval_list)
         for i in range(len(volume_list)):

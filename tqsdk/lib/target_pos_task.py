@@ -198,20 +198,6 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
             # 2021-03-15 11:29:48 -     INFO - 时间: 2021-03-15 11:29:47.533515, 合约: SHFE.rb2106, 开平: OPEN, 方向: BUY, 手数: 3, 价格: 4687.000,手续费: 14.12
 
         """
-        if symbol.startswith("CZCE.ZC"):
-            raise Exception("动力煤期货不支持创建 targetpostask、twap、vwap 任务，交易所规定该品种最小开仓手数为大于等于 4 手，这些函数还未支持该规则!")
-        if symbol.startswith("CZCE.WH"):
-            raise Exception("强麦期货不支持创建 targetpostask、twap、vwap 任务，交易所规定该品种最小开仓手数为大于等于 10 手，这些函数还未支持该规则!")
-        if symbol.startswith("CZCE.PM"):
-            raise Exception("普麦期货不支持创建 targetpostask、twap、vwap 任务，交易所规定该品种最小开仓手数为大于等于 10 手，这些函数还未支持该规则!")
-        if symbol.startswith("CZCE.RI"):
-            raise Exception("早籼稻期货不支持创建 targetpostask、twap、vwap 任务，交易所规定该品种最小开仓手数为大于等于 10 手，这些函数还未支持该规则!")
-        if symbol.startswith("CZCE.JR"):
-            raise Exception("粳稻期货不支持创建 targetpostask、twap、vwap 任务，交易所规定该品种最小开仓手数为大于等于 10 手，这些函数还未支持该规则!")
-        if symbol.startswith("CZCE.LR"):
-            raise Exception("晚籼稻期货不支持创建 targetpostask、twap、vwap 任务，交易所规定该品种最小开仓手数为大于等于 10 手，这些函数还未支持该规则!")
-        if symbol == "CZCE.SA309" or symbol == "CZCE.SA310":
-            raise Exception("纯碱期货 2309 合约及 2310 合约不支持创建 targetpostask、twap、vwap 任务，交易所规定该品种最小开仓手数为大于等于 4 手，这些函数还未支持该规则!")
         super(TargetPosTask, self).__init__()
         self._api = api
         self._account = api._account._check_valid(account)
@@ -345,6 +331,12 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
         all_tasks = []
         try:
             self._quote = await self._api.get_quote(self._symbol)
+            # 判断最小下单手数是否大于1
+            if self._quote.open_min_market_order_volume > 1 or self._quote.open_min_limit_order_volume > 1:
+                raise Exception(
+                    f"交易所规定 {self._symbol} 最小市价开仓手数 ({self._quote.open_min_market_order_volume})"
+                    f" 或最小限价开仓手数 ({self._quote.open_min_limit_order_volume}) 大于 1，targetpostask、twap、vwap 这些函数还未支持该规则!"
+                )
             async for target_pos in self._pos_chan:
                 # lib 中对于时间判断的方案:
                 #   如果当前时间（模拟交易所时间）不在交易时间段内，则：等待直到行情更新

@@ -607,9 +607,11 @@ class TqBacktest(object):
                                             }
                                         }
                                     }
+                            is_min_dur = dur == self._quotes[symbol]["min_duration"]
                             yield timestamp, diff, self._get_quotes_from_kline(self._data["quotes"][symbol_list[0]],
                                                                                timestamp,
-                                                                               item)  # K线结束时生成quote数据
+                                                                               item,
+                                                                               is_min_dur)  # K线结束时生成quote数据
                         current_id += 1
             finally:
                 # 释放chart资源
@@ -696,15 +698,16 @@ class TqBacktest(object):
         ]
 
     @staticmethod
-    def _get_quotes_from_kline(info, timestamp, kline):
+    def _get_quotes_from_kline(info, timestamp, kline, is_min_dur):
         """
         分为三个包发给下游：
         1. 根据 diff 协议，对于用户收到的最终结果没有影响
         2. TqSim 撮合交易会按顺序处理收到的包，分别比较 high、low、close 三个价格对应的买卖价
         3. TqSim 撮合交易只用到了买卖价，所以最新价只产生一次 close，而不会发送三次
+        4. 最高最低仅用于 TqSim 撮合交易，由最小周期生成
         """
-        return [
-            {
+        if is_min_dur:
+            return [{
                 "datetime": _timestamp_nano_to_str(timestamp),
                 "ask_price1": kline["high"] + info["price_tick"],
                 "ask_volume1": 1,
@@ -717,13 +720,25 @@ class TqBacktest(object):
                 "volume": 0,
                 "amount": float("nan"),
                 "open_interest": kline["close_oi"],
-            },
-            {
+            }, {
                 "ask_price1": kline["low"] + info["price_tick"],
                 "bid_price1": kline["low"] - info["price_tick"],
-            },
-            {
+            }, {
                 "ask_price1": kline["close"] + info["price_tick"],
                 "bid_price1": kline["close"] - info["price_tick"],
-            }
-        ]
+            }]
+        else:
+            return [{
+                "datetime": _timestamp_nano_to_str(timestamp),
+                "ask_price1": kline["close"] + info["price_tick"],
+                "ask_volume1": 1,
+                "bid_price1": kline["close"] - info["price_tick"],
+                "bid_volume1": 1,
+                "last_price": kline["close"],
+                "highest": float("nan"),
+                "lowest": float("nan"),
+                "average": float("nan"),
+                "volume": 0,
+                "amount": float("nan"),
+                "open_interest": kline["close_oi"],
+            }]
