@@ -137,9 +137,10 @@ class TargetPosScheduler(object):
                             break
                 elif target_pos_task:  # 最后一项，如果有 target_pos_task 等待持仓调整完成，否则直接退出
                     position = self._account.get_position(self._symbol)
-                    async for _ in self._api.register_update_notify(position):
-                        if position.pos == row['target_pos']:
-                            break
+                    if position.pos != row['target_pos']:
+                        async for _ in self._api.register_update_notify(position):
+                            if position.pos == row['target_pos']:
+                                break
                 _index = _index + 1
         finally:
             if target_pos_task:
