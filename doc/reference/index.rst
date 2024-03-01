@@ -10,6 +10,7 @@ TqSdk 模块参考
     tqsdk.auth.rst
     tqsdk.account.rst
     tqsdk.tqkq.rst
+    tqsdk.tqzq.rst
     tqsdk.sim.rst
     tqsdk.multiaccount.rst
     tqsdk.objs.rst

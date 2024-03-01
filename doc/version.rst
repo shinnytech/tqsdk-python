@@ -2,6 +2,12 @@
 
 版本变更
 =============================
+3.5.4 (2024/03/01)
+
+* 修复：回测时，订阅多合约 K 线时，成交可能不符合预期的问题
+* docs：补充 :py:class:`~tqsdk.TqZq` 文档
+
+
 3.5.3 (2024/02/23)
 
 * 修复：使用 :py:class:`~tqsdk.TargetPosScheduler`，并且最后一项调仓目标为 0 时，可能出现任务无法结束的问题
@@ -25,7 +31,7 @@
 3.5.0 (2024/01/18)
 
 * 新增：行情增加外盘主连合约，通过 ``api.query_quotes(exchange_id=['KQD'])`` 查询外盘合约，外盘合约地址参考  :ref:`kqd_symbol`
-* 新增：:py:meth:`~tqsdk.TqZq` 众期账户类型，支持连接众期服务器交易
+* 新增：:py:class:`~tqsdk.TqZq` 众期账户类型，支持连接众期服务器交易
 * 优化：:py:meth:`~tqsdk.TqApi.query_quotes` 函数 ins_class、exchange_id、product_id 参数支持 list
 * 修复：ticks 回测时，可能出现账户结算信息为 nan 的问题
 

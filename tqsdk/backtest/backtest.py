@@ -127,6 +127,14 @@ class TqBacktest(object):
         }
         self._sended_to_api = {}  # 已经发给 api 的 rangeset  (symbol, dur)，只记录了 kline
         self._serials = {}  # 所有用户请求的 chart 序列，如果用户订阅行情，默认请求 1 分钟 Kline
+        # key 为 (ins, dur)
+        # value 为 dict，包含以下属性
+        #   timestamp: 当前 serial 最新的时间戳
+        #   diff: 当前 serial 生成的 diff,
+        #   kline_or_tick: 当前 serial 计算行情对应的 kline 或者 tick
+        #   when: 'TICK' 表示由 tick 产生的行情，'OPEN' | 'CLOSE' 是 kline 开盘或者收盘时的行情
+        #   chart_id_set: 记录当前 serial 对应的所有 chart_id
+
         # gc 是会循环 self._serials，来计算用户需要的数据，self._serials 不应该被删除，
         self._generators = {}  # 所有用户请求的 chart 序列相应的 generator 对象，创建时与 self._serials 一一对应，会在一个序列计算到最后一根 kline 时被删除
         self._had_any_generator = False  # 回测过程中是否有过 generator 对象
@@ -284,18 +292,7 @@ class TqBacktest(object):
     async def _send_diff(self):
         """发送数据到 api, 如果 self._diffs 不为空则发送 self._diffs, 不推进行情时间, 否则将时间推进一格, 并发送对应的行情"""
         if self._pending_peek:
-            if not self._diffs:
-                quotes = await self._generator_diffs(False)
-            else:
-                quotes = await self._generator_diffs(True)
-            for ins, diff in quotes.items():
-                self._quotes[ins]["sended_init_quote"] = True
-                for d in diff:
-                    self._diffs.append({
-                        "quotes": {
-                            ins: d
-                        }
-                    })
+            await self._generator_diffs(True if self._diffs else False)
             if self._diffs:
                 # 发送数据集中添加 backtest 字段，开始时间、结束时间、当前时间，表示当前行情推进是由 backtest 推进
                 self._diffs.append({"_tqsdk_backtest": self._get_backtest_time()})
@@ -335,18 +332,12 @@ class TqBacktest(object):
         keep_current 为 True 表示不会推进行情，为 False 表示需要推进行情
         即 self._diffs 为 None 并且 keep_current = True 会推进行情
         """
-        quotes = {}
+        quotes_helper = {}  # 记录生成行情信息的辅助信息, 用于计算最后返回 quote_diffs
         while self._generators:
             # self._generators 存储了 generator，self._serials 记录一些辅助的信息
             min_request_key = min(self._generators.keys(), key=lambda serial: self._serials[serial]["timestamp"])
             timestamp = self._serials[min_request_key]["timestamp"]  # 所有已订阅数据中的最小行情时间
-            quotes_diff = self._serials[min_request_key]["quotes"]
-            if timestamp < self._current_dt and self._quotes.get(min_request_key[0], {}).get("sended_init_quote"):
-                # 先订阅 A 合约，再订阅 A 合约日线，那么 A 合约的行情时间会回退: 2021-01-04 09:31:59.999999 -> 2021-01-01 18:00:00.000000
-                # 如果当前 timestamp 小于 _current_dt，那么这个 quote_diff 不需要发到下游
-                # 如果先订阅 A 合约（有夜盘），时间停留在夜盘开始时间， 再订阅 B 合约（没有夜盘），那么 B 合约的行情（前一天收盘时间）应该发下去，
-                # 否则 get_quote(B) 等到收到行情才返回，会直接把时间推进到第二天白盘。
-                quotes_diff = None
+            is_before_current_dt = timestamp < self._current_dt  # 生成这笔行情的时间是否小于当前回测时间
             # 推进时间，一次只会推进最多一个(补数据时有可能是0个)行情时间，并确保<=该行情时间的行情都被发出
             # 如果行情时间大于当前回测时间 则 判断是否diff中已有数据；否则表明此行情时间的数据未全部保存在diff中，则继续append
             if timestamp > self._current_dt:
@@ -363,9 +354,13 @@ class TqBacktest(object):
                         rs = self._sended_to_api.setdefault((symbol, int(dur)), [])
                         kid = int(kid)
                         self._sended_to_api[(symbol, int(dur))] = _rangeset_range_union(rs, (kid, kid + 1))
-            quote_info = self._quotes[min_request_key[0]]
-            if quotes_diff and (quote_info["min_duration"] != 0 or min_request_key[1] == 0):
-                quotes[min_request_key[0]] = quotes_diff
+            # 记录用于生成 quote 的信息
+            quotes_helper[min_request_key] = {
+                "timestamp": timestamp,
+                "kline_or_tick": self._serials[min_request_key]["kline_or_tick"],
+                "when": self._serials[min_request_key]["when"],
+                "is_before_current_dt": is_before_current_dt,
+            }
             await self._fetch_serial(min_request_key)
         if self._had_any_generator and not self._generators and not self._diffs:  # 当无可发送数据时则抛出BacktestFinished例外,包括未订阅任何行情 或 所有已订阅行情的最后一笔行情获取完成
             self._api._print("回测结束")
@@ -378,7 +373,42 @@ class TqBacktest(object):
             })
             await self._api._wait_until_idle()
             raise BacktestFinished(self._api) from None
-        return quotes
+        # 把 quote 对应的 diffs 添加到 self._diffs 中
+        self._generator_quotes_diffs(quotes_helper)  # 生成 quotes_diffs
+
+    def _generator_quotes_diffs(self, quotes_helper) -> dict:
+        """
+        _generator_diffs 之后批量生成 quotes_diffs，支持只有最小周期 Kline 生成 high low 对应行情
+        https://shinnytech.atlassian.net/wiki/spaces/~245981717/pages/1527349338/tqsdk+high+low
+        """
+        for key in quotes_helper.keys():
+            ins, dur = key
+            symbol = ins.split(",")[0]
+            if quotes_helper[key]["is_before_current_dt"] and self._quotes.get(symbol, {}).get("sended_init_quote"):
+                # 先订阅 A 合约，再订阅 A 合约日线，那么 A 合约的行情时间会回退: 2021-01-04 09:31:59.999999 -> 2021-01-01 18:00:00.000000
+                # 如果当前 timestamp 小于 _current_dt，那么这个 quote_diff 不需要发到下游
+                # 如果先订阅 A 合约（有夜盘），时间停留在夜盘开始时间， 再订阅 B 合约（没有夜盘），那么 B 合约的行情（前一天收盘时间）应该发下去，
+                # 否则 get_quote(B) 等到收到行情才返回，会直接把时间推进到第二天白盘。
+                continue
+            diffs = None
+            if self._quotes[symbol]['min_duration'] == 0 and dur == 0:
+                # tick 生成行情
+                tick = quotes_helper[key]["kline_or_tick"]
+                diffs = TqBacktest._get_quote_diffs_from_tick(symbol, tick)
+            if self._quotes[symbol]['min_duration'] != 0:
+                # kline 生成行情
+                when = quotes_helper[key]["when"]
+                timestamp = quotes_helper[key]["timestamp"]  # quote 行情时间
+                kline = quotes_helper[key]["kline_or_tick"]
+                quote_info = self._data["quotes"][symbol]
+                froms = ["open"] if when == "OPEN" else ["close"]
+                if when == "CLOSE" and self._quotes[symbol]['min_duration'] == dur:
+                    # kline 生成 quote 数据，只有该合约订阅的最小周期会生成 high low 对应的行情
+                    froms = ["high", "low", "close"]
+                diffs = TqBacktest._get_quote_diffs_from_kline(symbol, quote_info['price_tick'], timestamp, kline, froms)
+            if diffs:
+                self._quotes[symbol]["sended_init_quote"] = True
+                self._diffs.extend(diffs)
 
     def _get_backtest_time(self) -> dict:
         if self._is_first_send:
@@ -395,7 +425,8 @@ class TqBacktest(object):
 
     async def _ensure_serial(self, ins, dur, chart_id=None):
         if (ins, dur) not in self._serials:
-            quote = self._quotes.setdefault(ins, {  # 在此处设置 min_duration: 每次生成K线的时候会自动生成quote, 记录某一合约的最小duration
+            symbol = ins.split(',')[0]
+            quote = self._quotes.setdefault(symbol, {  # 在此处设置 min_duration: 每次生成K线的时候会自动生成quote, 记录某一合约的最小duration
                 "min_duration": dur
             })
             quote["min_duration"] = min(quote["min_duration"], dur)
@@ -418,23 +449,23 @@ class TqBacktest(object):
             while not query_pack.items() <= self._data.get("symbols", {}).get(pack["query_id"], {}).items():
                 await update_chan.recv()
 
-    async def _ensure_quote(self, ins):
+    async def _ensure_quote(self, symbol):
         # 在接新版合约服务器后，合约信息程序运行过程中查询得到的，这里不再能保证合约一定存在，需要添加 quote 默认值
-        quote = _get_obj(self._data, ["quotes", ins], BtQuote(self._api))
+        quote = _get_obj(self._data, ["quotes", symbol], BtQuote(self._api))
         if math.isnan(quote.get("price_tick")):
-            query_pack = _query_for_quote(ins)
+            query_pack = _query_for_quote(symbol)
             await self._md_send_chan.send(query_pack)
             async with TqChan(self._api, last_only=True) as update_chan:
                 quote["_listener"].add(update_chan)
                 while math.isnan(quote.get("price_tick")):
                     await update_chan.recv()
-        if ins not in self._quotes or self._quotes[ins]["min_duration"] > 60000000000:
-            await self._ensure_serial(ins, 60000000000)
+        if symbol not in self._quotes or self._quotes[symbol]["min_duration"] > 60000000000:
+            await self._ensure_serial(symbol, 60000000000)
 
     async def _fetch_serial(self, key):
         s = self._serials[key]
         try:
-            s["timestamp"], s["diff"], s["quotes"] = await self._generators[key].__anext__()
+            s["timestamp"], s["diff"], s["kline_or_tick"], s["when"] = await self._generators[key].__anext__()
         except StopAsyncIteration:
             del self._generators[key]  # 删除一个行情时间超过结束时间的 generator
 
@@ -516,7 +547,7 @@ class TqBacktest(object):
                             }
                             if item["datetime"] > self._end_dt:  # 超过结束时间
                                 return
-                            yield item["datetime"], diff, self._get_quotes_from_tick(item)
+                            yield item["datetime"], diff, item, "TICK"
                         else:
                             timestamp = item["datetime"] if dur < 86400000000000 else _get_trading_day_start_time(
                                 item["datetime"])
@@ -575,10 +606,7 @@ class TqBacktest(object):
                                             }
                                         }
                                     }
-                            yield timestamp, diff, self._get_quotes_from_kline_open(
-                                self._data["quotes"][symbol_list[0]],
-                                timestamp,
-                                item)  # K线刚生成时的数据都为开盘价
+                            yield timestamp, diff, item, "OPEN"  # K线刚生成时的数据都为开盘价
                             timestamp = item["datetime"] + dur - 1000 \
                                 if dur < 86400000000000 else _get_trading_day_start_time(item["datetime"] + dur) - 1000
                             if timestamp > self._end_dt:  # 超过结束时间
@@ -607,11 +635,7 @@ class TqBacktest(object):
                                             }
                                         }
                                     }
-                            is_min_dur = dur == self._quotes[symbol]["min_duration"]
-                            yield timestamp, diff, self._get_quotes_from_kline(self._data["quotes"][symbol_list[0]],
-                                                                               timestamp,
-                                                                               item,
-                                                                               is_min_dur)  # K线结束时生成quote数据
+                            yield timestamp, diff, item, "CLOSE"  # K线结束时生成quote数据
                         current_id += 1
             finally:
                 # 释放chart资源
@@ -673,72 +697,57 @@ class TqBacktest(object):
         return {"klines": gc_klines_diff}
 
     @staticmethod
-    def _get_quotes_from_tick(tick):
+    def _get_quote_diffs_from_tick(symbol, tick):
         quote = {k: v for k, v in tick.items()}
         quote["datetime"] = _timestamp_nano_to_str(tick["datetime"])
-        return [quote]
+        return [{
+            "quotes": {
+                symbol: quote
+            }
+        }]
 
     @staticmethod
-    def _get_quotes_from_kline_open(info, timestamp, kline):
-        return [
-            {  # K线刚生成时的数据都为开盘价
-                "datetime": _timestamp_nano_to_str(timestamp),
-                "ask_price1": kline["open"] + info["price_tick"],
-                "ask_volume1": 1,
-                "bid_price1": kline["open"] - info["price_tick"],
-                "bid_volume1": 1,
-                "last_price": kline["open"],
-                "highest": float("nan"),
-                "lowest": float("nan"),
-                "average": float("nan"),
-                "volume": 0,
-                "amount": float("nan"),
-                "open_interest": kline["open_oi"],
-            },
-        ]
-
-    @staticmethod
-    def _get_quotes_from_kline(info, timestamp, kline, is_min_dur):
+    def _get_quote_diffs_from_kline(symbol, price_tick, timestamp, kline, froms: list):
         """
+        根据 kline 生成 quote
+        froms: 列表，每一项为以下 "open", "high", "low", "close" 之一，表示根据哪个价格生成 quote 盘口；
+            其中最后一项只能是 open 或 close，表示生成 quote 的最新价
+
         分为三个包发给下游：
         1. 根据 diff 协议，对于用户收到的最终结果没有影响
         2. TqSim 撮合交易会按顺序处理收到的包，分别比较 high、low、close 三个价格对应的买卖价
         3. TqSim 撮合交易只用到了买卖价，所以最新价只产生一次 close，而不会发送三次
         4. 最高最低仅用于 TqSim 撮合交易，由最小周期生成
         """
-        if is_min_dur:
-            return [{
-                "datetime": _timestamp_nano_to_str(timestamp),
-                "ask_price1": kline["high"] + info["price_tick"],
-                "ask_volume1": 1,
-                "bid_price1": kline["high"] - info["price_tick"],
-                "bid_volume1": 1,
-                "last_price": kline["close"],
-                "highest": float("nan"),
-                "lowest": float("nan"),
-                "average": float("nan"),
-                "volume": 0,
-                "amount": float("nan"),
-                "open_interest": kline["close_oi"],
-            }, {
-                "ask_price1": kline["low"] + info["price_tick"],
-                "bid_price1": kline["low"] - info["price_tick"],
-            }, {
-                "ask_price1": kline["close"] + info["price_tick"],
-                "bid_price1": kline["close"] - info["price_tick"],
-            }]
-        else:
-            return [{
-                "datetime": _timestamp_nano_to_str(timestamp),
-                "ask_price1": kline["close"] + info["price_tick"],
-                "ask_volume1": 1,
-                "bid_price1": kline["close"] - info["price_tick"],
-                "bid_volume1": 1,
-                "last_price": kline["close"],
-                "highest": float("nan"),
-                "lowest": float("nan"),
-                "average": float("nan"),
-                "volume": 0,
-                "amount": float("nan"),
-                "open_interest": kline["close_oi"],
-            }]
+        diffs = []
+        assert froms[-1] in ["open", "close"]
+        for index, key in enumerate(froms):
+            if index == 0:
+                diffs.append({
+                    "quotes": {
+                        symbol: {
+                            "datetime": _timestamp_nano_to_str(timestamp),
+                            "ask_price1": kline[key] + price_tick,
+                            "ask_volume1": 1,
+                            "bid_price1": kline[key] - price_tick,
+                            "bid_volume1": 1,
+                            "last_price": kline[froms[-1]],
+                            "highest": float("nan"),
+                            "lowest": float("nan"),
+                            "average": float("nan"),
+                            "volume": 0,
+                            "amount": float("nan"),
+                            "open_interest": kline[f'{froms[-1]}_oi'],
+                        }
+                    }
+                })
+            else:
+                diffs.append({
+                    "quotes": {
+                        symbol: {
+                            "ask_price1": kline[key] + price_tick,
+                            "bid_price1": kline[key] - price_tick,
+                        }
+                    }
+                })
+        return diffs
