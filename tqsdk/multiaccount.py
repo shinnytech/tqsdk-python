@@ -27,7 +27,7 @@ class TqMultiAccount(object):
 
     """
 
-    def __init__(self, accounts: Optional[List[Union[TqAccount, TqKq, TqKqStock, TqSim, TqSimStock, TqZq]]] = None):
+    def __init__(self, accounts: Optional[List[Union[TqAccount, TqKq, TqZq, TqKqStock, TqSim, TqSimStock, TqZq]]] = None):
         """
         创建 TqMultiAccount 实例
 

@@ -79,7 +79,7 @@ from tqsdk.tafunc import get_dividend_df, get_dividend_factor
 from .__version__ import __version__
 
 
-UnionTradeable = Union[TqAccount, TqKq, TqKqStock, TqSim, TqSimStock]
+UnionTradeable = Union[TqAccount, TqKq, TqZq, TqKqStock, TqSim, TqSimStock]
 
 
 class TqApi(TqBaseApi):
@@ -1339,7 +1339,7 @@ class TqApi(TqBaseApi):
         }
         if limit_price == "BEST" or limit_price == "FIVELEVEL":
             if exchange_id != "CFFEX":
-                raise Exception(f"{symbol} 不支持 {limit_price} 市价单，请修改 limit_price 参数。仅中金所支持 BESE / FIVELEVEL")
+                raise Exception(f"{symbol} 不支持 {limit_price} 市价单，请修改 limit_price 参数。仅中金所支持 BEST / FIVELEVEL")
             if exchange_id in ["CFFEX"] and advanced == "FOK":
                 raise Exception(f"{symbol} 不支持 advanced 为 \"FOK\"。中金所不支持在指定 BEST / FIVELEVEL 的情况下使用 FOK 。")
             msg["price_type"] = limit_price
