@@ -68,9 +68,12 @@ class DataSeries:
         self._adj_type = adj_type
         self._dividend_cache = {}  # 缓存合约对应的复权系数矩阵，每个合约只计算一次
         self.df = pd.DataFrame()
-        self.is_ready = False
         DataSeries._ensure_cache_dir()  # 确认缓存文件夹存在
-        self._api.create_task(self._run())
+        self._task = self._api.create_task(self._run())
+
+    @property
+    def is_ready(self):
+        return self._task.done()
 
     async def _run(self):
         symbol = self._symbol_list[0]  # todo: 目前只处理一个合约的情况
@@ -105,7 +108,6 @@ class DataSeries:
             target_rangeset_dt = _rangeset_intersection([(self._start_dt_nano, self._end_dt_nano)], rangeset_dt)
             assert len(target_rangeset_dt) <= 1  # 用户请求应该落在一个时间段内，或者用户请求的时间段内没有任何数据
             if len(target_rangeset_dt) == 0:  # 用户请求的时间段内没有任何数据
-                self.is_ready = True
                 return
 
             # 此时用户请求时间范围，转化为 target_rangeset_dt[0]
@@ -160,8 +162,6 @@ class DataSeries:
                         adj_cols = DataSeries._get_adj_cols(symbol, self._dur_nano)
                         ge = self.df["datetime"].ge(dt)
                         self.df.loc[ge, adj_cols] = self.df.loc[ge, adj_cols] / factor
-            # 结束状态
-            self.is_ready = True
 
     async def _download_data_series(self, rangeset):
         symbol = self._symbol_list[0]

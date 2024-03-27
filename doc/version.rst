@@ -2,6 +2,13 @@
 
 版本变更
 =============================
+3.5.5 (2024/03/27)
+
+* 修复：TqSim 在调用 set_margin 之后，使用 is_changing 判断某个对象是否更新，可能返回的结果不正确
+* 优化：多账户下使用 :py:meth:`~tqsdk.algorithm.time_table_generater.vwap_table`，
+    :py:meth:`~tqsdk.algorithm.time_table_generater.twap_table` 不需要用户多次指定账户
+
+
 3.5.4 (2024/03/01)
 
 * 修复：回测时，订阅多合约 K 线时，成交可能不符合预期的问题
