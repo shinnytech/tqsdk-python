@@ -13,6 +13,7 @@ from tqsdk.api import TqApi
 from tqsdk import utils
 from tqsdk.datetime import _get_trading_timestamp, _get_trade_timestamp, _get_trading_day_from_timestamp, \
     _datetime_to_timestamp_nano, _timestamp_nano_to_datetime
+from tqsdk.lib.time_table import TqTimeTable
 from tqsdk.rangeset import _rangeset_slice, _rangeset_head
 from tqsdk.tradeable import TqAccount, TqKq, TqSim
 
@@ -124,7 +125,7 @@ def twap_table(api: TqApi, symbol: str, target_pos: int, duration: int, min_volu
         interval_list = _gen_random_list(sum_val=duration, min_val=min_interval, max_val=max_interval,
                                          length=len(volume_list))
 
-    time_table = DataFrame(columns=['interval', 'volume', 'price'])
+    time_table = TqTimeTable(account=account)
     for index, volume in enumerate(volume_list):
         assert interval_list[index] >= 3
         active_interval = 2
@@ -253,7 +254,7 @@ def vwap_table(api: TqApi, symbol: str, target_pos: int, duration: float,
     predicted_percent = volume_percent.groupby(level=1).mean()  # 将历史上相同时间单元的成交量占比使用算数平均计算出预测值
 
     # 计算每个时间单元的成交量预测值
-    time_table = DataFrame(columns=['interval', 'volume', 'price'])
+    time_table = TqTimeTable(account=account)
     volume_left = target_volume  # 剩余手数
     percent_left = 1  # 剩余百分比
     for index, value in predicted_percent.items():

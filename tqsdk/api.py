@@ -972,11 +972,12 @@ class TqApi(TqBaseApi):
         if adj_type not in [None, "F", "B"]:
             raise Exception("adj_type 参数只支持 None (不复权) ｜ 'F' (前复权) ｜ 'B' (后复权) ")
         ds = DataSeries(self, symbol_list, dur_nano, start_dt_nano, end_dt_nano, adj_type)
-        while not self._loop.is_running() and not ds.is_ready:
-            deadline = time.time() + 30
-            if not self.wait_update(deadline=deadline):
-                raise TqTimeoutError(
-                    f"{call_func} 获取数据 ({symbol_list, duration_seconds, start_dt, end_dt}) 超时，请检查客户端及网络是否正常。")
+        if not self._loop.is_running():
+            while not ds._task.done():
+                deadline = time.time() + 30
+                if not self.wait_update(deadline=deadline, _task=ds._task):
+                    raise TqTimeoutError(
+                        f"{call_func} 获取数据 ({symbol_list, duration_seconds, start_dt, end_dt}) 超时，请检查客户端及网络是否正常。")
         return ds.df
 
     # ----------------------------------------------------------------------
@@ -1811,13 +1812,12 @@ class TqApi(TqBaseApi):
         rule = _get_obj(self._data, ["trade", self._account._get_account_key(account), "risk_management_rule", exchange_id], RiskManagementRule(self))
         if not self._loop.is_running():
             deadline = time.time() + 30
-            while not (rule_pack['enable'] == rule['enable']
-                       and rule_pack['self_trade'].items() <= rule['self_trade'].items()
-                       and rule_pack['frequent_cancellation'].items() <= rule['frequent_cancellation'].items()
-                       and rule_pack['trade_position_ratio'].items() <= rule['trade_position_ratio'].items()):
-                # @todo: merge diffs
-                if not self.wait_update(deadline=deadline):
-                    raise TqTimeoutError("设置风控规则超时请检查客户端及网络是否正常")
+            cond = lambda: (rule_pack['enable'] == rule['enable']
+                        and rule_pack['self_trade'].items() <= rule['self_trade'].items()
+                        and rule_pack['frequent_cancellation'].items() <= rule['frequent_cancellation'].items()
+                        and rule_pack['trade_position_ratio'].items() <= rule['trade_position_ratio'].items())
+            if not self._wait_update_until(cond=cond, deadline=deadline):
+                raise TqTimeoutError("设置风控规则超时请检查客户端及网络是否正常")
         return rule
 
     # ----------------------------------------------------------------------
@@ -1932,6 +1932,38 @@ class TqApi(TqBaseApi):
                             self._update_serial_single(serial)
                         else:  # 订阅多个合约
                             self._update_serial_multi(serial)
+
+    def _wait_update_until(self, cond: Callable[[], bool], deadline: Optional[float] = None) -> bool:
+        """
+        TqApi 内部使用，用于等待某个条件满足。持续调用 wait_update()，直到 cond() 返回 True。
+
+        Args:
+            cond (Callable[[], bool]): 条件函数
+            deadline (float): [可选]指定截止时间，自unix epoch(1970-01-01 00:00:00 GMT)以来的秒数(time.time())。默认没有超时(无限等待)
+
+        Returns:
+            bool: 当 cond() 为 True 时返回 True, 如果到截止时间 cond() 依然为 False 则返回 False
+
+        注：用于 tqsdk 内部，某些地方会用到 api.wait_update()，等待数据更新后再返回给用户，
+        * 简单调用 wait_update() 导致 api._sync_diffs 丢失变更
+        * 为了避免这种情况，内部调用 wait_update() 应该传入 _task 参数，这样 api._sync_diffs 不会丢失变更
+        """
+        if cond():
+            return True
+
+        async def _async_wait_task():
+            async with self.register_update_notify() as update_chan:
+                async for _ in update_chan:
+                    if cond():
+                        break
+
+        _task = self.create_task(_async_wait_task())
+
+        while not cond():
+            data_updated = self.wait_update(deadline=deadline, _task=_task)
+            if data_updated is False:
+                return False  # TimeoutError
+        return True
 
     # ----------------------------------------------------------------------
     def is_changing(self, obj: Any, key: Union[str, List[str], None] = None) -> bool:
@@ -2226,9 +2258,9 @@ class TqApi(TqBaseApi):
         })
         deadline = time.time() + 60
         if not self._loop.is_running():
-            while query_id not in symbols:
-                if not self.wait_update(deadline=deadline):
-                    raise TqTimeoutError("查询合约服务 %s 超时，请检查客户端及网络是否正常 %s" % (query, query_id))
+            if not self._wait_update_until(cond=lambda: query_id in symbols, deadline=deadline):
+                # 使用 _task 参数，确保不会丢掉 _sync_diffs 里的变更
+                raise TqTimeoutError("查询合约服务 %s 超时，请检查客户端及网络是否正常 %s" % (query, query_id))
             if isinstance(self._backtest, TqBacktest):
                 self._send_pack({
                     "aid": "ins_query",

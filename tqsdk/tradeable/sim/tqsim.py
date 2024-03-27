@@ -129,9 +129,14 @@ class TqSim(BaseSim, FutureMixin):
             #   当用户代码执行到 sim.set_margin()，立即向 quote_chan 中发送一个数据包，quote_task 就会到 ready 状态，此时调用 wait_update()，
             #   到所有 task 执行到 pending 状态时，sim 的 diffs 中有数据了，此时收到 api 发来 peek_message 不会转发给上游，用户会先收到 sim 本身的账户数据，
             #   在下一次 wait_update，sim 的 diffs 为空，才会收到行情数据
+            # 3. 20240322 增加，用户拿到的 _sync_diffs 不应该有丢失:
+            #   * api 中区分了 _diffs (每次调用 wait_update 都会更新) 和 _sync_diffs (仅在同步代码，或者说用户代码调用 wait_update 时更新)
+            #   * 用户在调用 set_margin 之后，如果立即调用 is_changing，会使用 _sync_diffs 判断变更
+            #       * 如果中间这一次调用 wait_update() api._sync_diffs 会丢失变更
+            #       * 如果中间这一次调用 wait_update(_task=task) api._sync_diffs 不会重置, 就不会丢失变更
             # 在回测时，以下代码应该只经历一次 wait_update
-            while margin != self.get_position(symbol).get("future_margin"):
-                self._api.wait_update()
+            cond = lambda: margin == self.get_position(symbol).get("future_margin")
+            self._api._wait_update_until(cond=cond)
         return margin
 
     def get_margin(self, symbol: str):

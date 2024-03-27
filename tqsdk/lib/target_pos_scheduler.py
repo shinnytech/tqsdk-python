@@ -11,6 +11,7 @@ from tqsdk.api import TqApi, TqAccount, TqSim, TqKq
 from tqsdk.channel import TqChan
 from tqsdk.datetime import _get_trade_timestamp
 from tqsdk.lib.target_pos_task import TargetPosTask
+from tqsdk.lib.time_table import TqTimeTable
 from tqsdk.lib.utils import _check_time_table, _get_deadline_from_interval
 from tqsdk.objs import Trade
 
@@ -93,6 +94,8 @@ class TargetPosScheduler(object):
             api.close()
         """
         self._api = api
+        if isinstance(time_table, TqTimeTable):
+            account = time_table.__dict__["_account"]
         self._account = api._account._check_valid(account)
 
         # 这些参数直接传给 TargetPosTask，由 TargetPosTask 来检查其合法性
