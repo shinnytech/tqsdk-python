@@ -10,7 +10,8 @@ import jwt
 import requests
 from shinny_structlog import ShinnyLoggerAdapter
 
-import tqsdk
+from tqsdk.constants import FUTURE_EXCHANGES, SPOT_EXCHANGES, KQ_EXCHANGES, KQD_EXCHANGES, STOCK_EXCHANGES
+from tqsdk.__version__ import __version__
 
 
 class TqAuth(object):
@@ -49,7 +50,7 @@ class TqAuth(object):
     @property
     def _base_headers(self):
         return {
-            "User-Agent": "tqsdk-python %s" % tqsdk.__version__,
+            "User-Agent": "tqsdk-python %s" % __version__,
             "Accept": "application/json",
             "Authorization": "Bearer %s" % self._access_token
         }
@@ -148,9 +149,9 @@ class TqAuth(object):
     def _has_md_grants(self, symbol):
         symbol_list = symbol if isinstance(symbol, list) else [symbol]
         for symbol in symbol_list:
-            if symbol.split('.', 1)[0] in ["SHFE", "DCE", "CZCE", "INE", "CFFEX", "KQ", "KQD", "SSWE", "GFEX"] and self._has_feature("futr"):
+            if symbol.split('.', 1)[0] in (FUTURE_EXCHANGES + SPOT_EXCHANGES + KQ_EXCHANGES + KQD_EXCHANGES) and self._has_feature("futr"):
                 continue
-            elif symbol.split('.', 1)[0] in ["CSI", "SSE", "SZSE"] and self._has_feature("sec"):
+            elif symbol.split('.', 1)[0] in (["CSI"] + STOCK_EXCHANGES) and self._has_feature("sec"):
                 continue
             elif symbol in ["SSE.000016", "SSE.000300", "SSE.000905", "SSE.000852"] and self._has_feature("lmt_idx"):
                 continue
@@ -160,8 +161,8 @@ class TqAuth(object):
 
     def _has_td_grants(self, symbol):
         # 对于 opt / cmb / adv 权限的检查由 OTG 做
-        if symbol.split('.', 1)[0] in ["SSE", "SZSE"] and self._has_feature("sec"):
+        if symbol.split('.', 1)[0] in STOCK_EXCHANGES and self._has_feature("sec"):
             return True
-        if symbol.split('.', 1)[0] in ["SHFE", "DCE", "CZCE", "INE", "CFFEX", "KQ", "GFEX"] and self._has_feature("futr"):
+        if symbol.split('.', 1)[0] in (FUTURE_EXCHANGES + KQ_EXCHANGES) and self._has_feature("futr"):
             return True
         raise Exception(f"您的账户不支持交易 {symbol}，需要购买后才能使用。升级网址：https://www.shinnytech.com/tqsdk_professional/")

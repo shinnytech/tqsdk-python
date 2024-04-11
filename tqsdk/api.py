@@ -54,6 +54,7 @@ from tqsdk.backtest import TqBacktest, TqReplay
 from tqsdk.channel import TqChan
 from tqsdk.connect import TqConnect, MdReconnectHandler, ReconnectTimer
 from tqsdk.calendar import _get_trading_calendar, TqContCalendar, _init_chinese_rest_days
+from tqsdk.constants import FUTURE_EXCHANGES
 from tqsdk.data_extension import DataExtension
 from tqsdk.data_series import DataSeries
 from tqsdk.datetime import _get_trading_day_from_timestamp, _datetime_to_timestamp_nano, _timestamp_nano_to_datetime, \
@@ -2371,6 +2372,7 @@ class TqApi(TqBaseApi):
                 * DCE: 大商所
                 * CZCE: 郑商所
                 * INE: 能源交易所(原油)
+                * GFEX: 广州期货交易所
                 * SSE: 上交所
                 * SZSE: 深交所
                 * KQD: 外盘主连
@@ -2435,7 +2437,7 @@ class TqApi(TqBaseApi):
             if exchange_id == "":
                 raise Exception("exchange_id 参数不能为空字符串。")
             # 如果是主连和指数，请求全部，在客户端区分交易所
-            if ins_class not in ["INDEX", "CONT"] or exchange_id not in ["CFFEX", "SHFE", "DCE", "CZCE", "INE"]:
+            if ins_class not in ["INDEX", "CONT"] or exchange_id not in FUTURE_EXCHANGES:
                 variables["exchange_id"] = [exchange_id] if isinstance(exchange_id, str) else exchange_id
         if product_id is not None:
             if product_id == "":
@@ -2454,7 +2456,7 @@ class TqApi(TqBaseApi):
         def filter(query_result):
             result = []
             for quote in query_result.get("result", {}).get("multi_symbol_info", []):
-                if ins_class in ["INDEX", "CONT"] and exchange_id in ["CFFEX", "SHFE", "DCE", "CZCE", "INE"]:
+                if ins_class in ["INDEX", "CONT"] and exchange_id in FUTURE_EXCHANGES:
                     if exchange_id in quote["instrument_id"]:
                         result.append(quote["instrument_id"])
                 else:
@@ -2483,6 +2485,7 @@ class TqApi(TqBaseApi):
                 * DCE: 大商所
                 * CZCE: 郑商所
                 * INE: 能源交易所(原油)
+                * GFEX: 广州期货交易所
 
             product_id (str): [可选] 品种
 
