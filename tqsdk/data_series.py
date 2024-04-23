@@ -102,7 +102,7 @@ class DataSeries:
                 DataSeries._assert_rangeset_asce_sorted(rangeset_id)
                 DataSeries._assert_rangeset_asce_sorted(rangeset_dt)
 
-            assert len(rangeset_id) == len(rangeset_dt) > 0
+            assert len(rangeset_id) == len(rangeset_dt)  # rangeset_id 和 rangeset_dt 的长度应该相等, 且一一对应，有可能长度都为 0 ，即没有下载任何数据
 
             # 查找用户请求时间段与已有数据时间段的交集
             target_rangeset_dt = _rangeset_intersection([(self._start_dt_nano, self._end_dt_nano)], rangeset_dt)
