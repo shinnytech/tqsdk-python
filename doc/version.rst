@@ -2,6 +2,11 @@
 
 版本变更
 =============================
+3.5.7 (2024/04/23)
+
+* 修复：:py:meth:`~tqsdk.TqApi.get_kline_data_series`、:py:meth:`~tqsdk.TqApi.get_tick_data_series` 接口在指定时间段没有数据时报错
+
+
 3.5.6 (2024/04/11)
 
 * 修复：:py:meth:`~tqsdk.TqApi.query_quotes` 函数无法查询广州期货交易所 GFEX 的主连合约和主力合约
