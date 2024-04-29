@@ -42,7 +42,7 @@ class DataDownloader:
     """
 
     def __init__(self, api: TqApi, symbol_list: Union[str, List[str]], dur_sec: int, start_dt: Union[date, datetime],
-                 end_dt: Union[date, datetime], csv_file_name: Union[str, asyncio.StreamWriter],
+                 end_dt: Union[date, datetime], csv_file_name: Union[str, asyncio.StreamWriter], write_mode: str = "w",
                  adj_type: Union[str, None] = None) -> None:
         """
         创建历史数据下载器实例
@@ -68,6 +68,8 @@ class DataDownloader:
                 * str : 输出 csv 的文件名
 
                 * StreamWriter: 直接将内容输出到 StreamWriter
+
+            write_mode (str): 写入模式，默认值为 "w"。"w" 表示覆盖写入，会写入标题行，再写入数据；"a" 表示追加写入，不写标题行，直接写入数据。
 
             adj_type (str/None): 复权计算方式，默认值为 None。"F" 为前复权；"B" 为后复权；None 表示不复权。只对股票、基金合约有效。
 
@@ -118,6 +120,9 @@ class DataDownloader:
             self._csv_file_name = csv_file_name
         else:
             raise Exception("csv_file_name 参数只支持 str ｜ StreamWriter 类型")
+        if write_mode not in ["w", "a"]:
+            raise Exception("write_mode 参数只支持 'w' ｜ 'a'")
+        self._write_mode = write_mode
         self._csv_header = self._get_headers()
         # 缓存合约对应的复权系数矩阵，每个合约只计算一次
         # 含义为截止 datetime 之前(不包含) 应使用 factor 复权
@@ -205,10 +210,10 @@ class DataDownloader:
                         async for _ in update_chan:
                             if not (chart_info.items() <= _get_obj(chart, ["state"]).items()):
                                 continue  # 当前请求还没收齐回应, 不应继续处理
+                            if chart.get("ready", False) is False:
+                                continue  # 合约的数据是否收到
                             left_id = chart.get("left_id", -1)
-                            right_id = chart.get("right_id", -1)
-                            if (left_id == -1 and right_id == -1) or self._api._data.get("mdhis_more_data", True) or serial.get("last_id", -1) == -1:
-                                continue  # 定位信息还没收到, 或数据序列还没收到, 合约的数据是否收到
+                            assert left_id != -1  # 需要下载除权除息日的前一天行情，即这一天一定是有行情的，left_id 一定不是 -1
                             last_item = serial["data"].get(str(left_id), {})
                             # 复权时间点的昨收盘
                             df.loc[i, 'pre_close'] = last_item['close'] if last_item.get('close') else float('nan')
@@ -256,9 +261,10 @@ class DataDownloader:
             if isinstance(self._csv_file_name, asyncio.StreamWriter):
                 writer = StreamWriter(self._csv_file_name)
             else:
-                writer = open(self._csv_file_name, 'w', newline='')
+                writer = open(self._csv_file_name, self._write_mode, newline='')
             csv_writer = csv.writer(writer, dialect='excel')
-            csv_writer.writerow(self._csv_header)
+            if self._write_mode == "w":
+                csv_writer.writerow(self._csv_header)
             async for item in gen:
                 for quote in self._quote_list:
                     symbol = quote.instrument_id
@@ -291,11 +297,6 @@ class DataDownloader:
             # https://docs.python.org/3/reference/expressions.html#agen.aclose
             await gen.aclose()
 
-    async def _timeout_handle(self, timeout, chart):
-        await asyncio.sleep(timeout)
-        if chart.get("left_id", -1) == -1 and chart.get("right_id", -1) == -1:
-            self._task.cancel()
-
     async def _download_data(self):
         """下载数据, 多合约横向按时间对齐"""
         chart_info = {
@@ -310,8 +311,6 @@ class DataDownloader:
         # 还没有发送过任何请求, 先请求定位左端点
         await self._api._send_chan.send(chart_info)
         chart = _get_obj(self._api._data, ["charts", chart_info["chart_id"]])
-        # 增加一个 task，在 30s 后检查 chart 是否返回了左右 id 范围，如果没有就 cancel self._task，防止程序一直卡在那里
-        timeout_task = self._api.create_task(self._timeout_handle(self._timeout_seconds, chart))
         current_id = None  # 当前数据指针
         data_cols = self._get_data_cols()
         serials = []
@@ -325,14 +324,12 @@ class DataDownloader:
                     if not (chart_info.items() <= _get_obj(chart, ["state"]).items()):
                         # 当前请求还没收齐回应, 不应继续处理
                         continue
+                    if chart.get("ready", False) is False:
+                        continue  # 数据序列还没收到，包含主合约和所有副合约
+                    if serials[0].get("last_id", -1) == -1:
+                        return  # 没有数据，直接退出
                     left_id = chart.get("left_id", -1)
                     right_id = chart.get("right_id", -1)
-                    if (left_id == -1 and right_id == -1) or chart.get("more_data", True):
-                        # 定位信息还没收到, 或数据序列还没收到
-                        continue
-                    # 检查合约的数据是否收到
-                    if any([serial.get("last_id", -1) == -1 for serial in serials]):
-                        continue
                     if current_id is None:
                         current_id = max(left_id, 0)
                     while current_id <= right_id:
@@ -366,8 +363,6 @@ class DataDownloader:
                 "duration": self._dur_nano,
                 "view_width": 2000,
             })
-            timeout_task.cancel()
-            await asyncio.gather(timeout_task, return_exceptions=True)
 
     def _get_headers(self):
         data_cols = self._get_data_cols()

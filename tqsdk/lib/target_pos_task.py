@@ -214,6 +214,33 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
         self._time_update_task = self._api.create_task(self._update_time_from_md())  # 监听行情更新并记录当时本地时间的task
         self._local_time_record = time.time() - 0.005  # 更新最新行情时间时的本地时间
         self._local_time_record_update_chan = TqChan(self._api, last_only=True)  # 监听 self._local_time_record 更新
+        self._wait_task_finished = self._api._loop.create_future()
+        self._task.add_done_callback(lambda _: self._api.create_task(self._exit_task()))
+
+    async def _exit_task(self):
+        """
+        执行 task.cancel() 时, 删除掉该 symbol 对应的 TargetPosTask 实例，以释放占有的资源。
+
+        当用户代码为：
+        t = TargetPosTask(api, 'SHFE.rb2106', min_volume=2, max_volume=10)
+        t.cancel()
+        await asyncio.gather(t._task, return_exceptions=True)
+
+        以上代码执行后，t._task 中的 finally 部分没有被执行过，因为 t._task 本身从来没有被执行过。
+
+        所以这里用 add_done_callback 的方式，处理 __init__ 方法中创建的资源。
+        self._task、self._pos_chan、self._time_update_task 都是在 __init__ 方法里创建的资源，所以在这里释放资源，
+        self._task 中的 finally 部分只处理在 self._task 函数里创建的资源。
+        """
+        # self._account 类型为 TqSim/TqKq/TqAccount，都包括 _account_key 变量
+        TargetPosTaskSingleton._instances.pop(self._account._account_key + "#" + self._symbol, None)
+        await self._pos_chan.close()
+        self._time_update_task.cancel()
+        await asyncio.gather(self._time_update_task, return_exceptions=True)
+        self._wait_task_finished.set_result(True)
+
+    def __await__(self):
+        return self._wait_task_finished.__await__()
 
     def set_target_volume(self, volume: int) -> None:
         """
@@ -379,12 +406,7 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
                     all_tasks.append(order_task)
                     delta_volume -= order_volume if order_dir == "BUY" else -order_volume
         finally:
-            # 执行 task.cancel() 时, 删除掉该 symbol 对应的 TargetPosTask 实例
-            # self._account 类型为 TqSim/TqKq/TqAccount，都包括 _account_key 变量
-            TargetPosTaskSingleton._instances.pop(self._account._account_key + "#" + self._symbol, None)
-            await self._pos_chan.close()
-            self._time_update_task.cancel()
-            await asyncio.gather(*([t._task for t in all_tasks] + [self._time_update_task]), return_exceptions=True)
+            await asyncio.gather(*[t._task for t in all_tasks], return_exceptions=True)
 
     def cancel(self):
         """
@@ -423,6 +445,46 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
 
             api.close()
 
+
+        Example2::
+
+            # 在异步代码中使用
+            from datetime import datetime, time
+            from tqsdk import TqApi, TargetPosTask
+
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
+            quote = api.get_quote("SHFE.rb2110")
+
+            async def demo(SYMBOL):
+                quote = await api.get_quote(SYMBOL)
+                target_pos_passive = TargetPosTask(api, SYMBOL, price="PASSIVE")
+                async with api.register_update_notify() as update_chan:
+                    async for _ in update_chan:
+                        if datetime.strptime(quote.datetime, "%Y-%m-%d %H:%M:%S.%f").time() < time(14, 50):
+                            # ... 策略代码 ...
+                        else:
+                            target_pos_passive.cancel()  # 取消 TargetPosTask 实例
+                            await target_pos_passive  # 等待 target_pos_passive 处理 cancel 结束
+                            break
+
+                target_pos_active = TargetPosTask(api, "SHFE.rb2110", price="ACTIVE")
+                target_pos_active.set_target_volume(0)  # 平所有仓位
+                pos = await api.get_position(SYMBOL)
+                async with api.register_update_notify() as update_chan:
+                    async for _ in update_chan:
+                        if pos.pos == 0:
+                            target_pos_active.cancel()  # 取消 TargetPosTask 实例
+                            await target_pos_active  # 等待 target_pos_active 处理 cancel 结束
+                            break
+
+
+            symbol_list = ["SHFE.rb2107", "DCE.m2109"]  # 设置合约代码
+            for symbol in symbol_list:
+                api.create_task(demo("SHFE.rb2107"))  # 为每个合约创建异步任务
+
+            while True:
+                api.wait_update()
+
         """
         self._task.cancel()
 
@@ -433,7 +495,10 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
         Returns:
             bool: 当前 TargetPosTask 实例是否已经结束
         """
-        return self._task.done()
+        if self._wait_task_finished.done():
+            assert self._task.done() is True
+            return self._wait_task_finished.result()
+        return False
 
 
 class InsertOrderUntilAllTradedTask(object):

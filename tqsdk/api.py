@@ -2823,7 +2823,12 @@ class TqApi(TqBaseApi):
         """
         if self._stock is False:
             raise Exception("期货行情系统(_stock = False)不支持当前接口调用")
-        symbol_list = [symbol] if isinstance(symbol, str) else symbol
+        if isinstance(symbol, str):
+            symbol_list = [symbol]
+        else:
+            if len(symbol) == 0:
+                raise Exception("symbol 参数不能为空列表。")
+            symbol_list = symbol
         if any([s == "" for s in symbol_list]):
             raise Exception(f"symbol 参数 {symbol} 中不能有空字符串。")
         backtest_timestamp = _datetime_to_timestamp_nano(self._get_current_datetime()) if isinstance(self._backtest,

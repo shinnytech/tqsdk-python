@@ -2,6 +2,16 @@
 
 版本变更
 =============================
+3.5.8 (2024/04/29)
+
+* 增加：:py:class:`~tqsdk.tools.DataDownloader` 增加 write_mode 参数，作为写入模式参数，并且在模式为 'a' 时，不写入标题行
+* 修复：用户在使用 :py:class:`~tqsdk.TargetPosScheduler` 时可能出现重复创建 :py:class:`~tqsdk.TargetPosTask` 实例的问题
+* 优化：:py:class:`~tqsdk.tools.DataDownloader` 在下载没有任何成交数据的合约时能够及时退出，避免等待超时或报错
+* 优化：重构 :py:class:`~tqsdk.TargetPosTask` 退出时释放资源部分，优化异步代码中 :py:class:`~tqsdk.TargetPosTask` 的使用方法
+* 优化：回测时，如果订阅没有任何成交数据的合约，构造的空数据给下游，避免程序一直等待
+* 优化：对发送给合约服务器的数据进行检查，避免发送不合法的数据，提前报错通知用户
+
+
 3.5.7 (2024/04/23)
 
 * 修复：:py:meth:`~tqsdk.TqApi.get_kline_data_series`、:py:meth:`~tqsdk.TqApi.get_tick_data_series` 接口在指定时间段没有数据时报错
