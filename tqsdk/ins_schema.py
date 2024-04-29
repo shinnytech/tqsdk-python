@@ -6,6 +6,22 @@ __author__ = 'yanqiong'
 import sgqlc.types
 from sgqlc.operation import Fragment
 
+
+########################################################################
+# Monkey patching 检查请求的参数是否合法，与 api.query_graphql 函数的校验规则保持一致
+########################################################################
+_origin__to_graphql_input__ = sgqlc.types.Arg.__to_graphql_input__
+
+
+def _tqsdk__to_graphql_input__(self, value, *args, **kwargs):
+    if value == "" or isinstance(value, list) and (any([s == "" for s in value]) or len(value) == 0):
+        raise Exception(f"variables 中变量值不支持空字符串、空列表或者列表中包括空字符串。")
+    return _origin__to_graphql_input__(self, value, *args, **kwargs)
+
+
+sgqlc.types.Arg.__to_graphql_input__ = _tqsdk__to_graphql_input__
+
+
 ins_schema = sgqlc.types.Schema()
 
 

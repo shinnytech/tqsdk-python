@@ -350,7 +350,7 @@ class TqBacktest(object):
             # klines 请求，需要记录已经发送 api 的数据
             for symbol in diff.get("klines", {}):
                 for dur in diff["klines"][symbol]:
-                    for kid in diff["klines"][symbol][dur]["data"]:
+                    for kid in diff["klines"][symbol][dur].get('data', {}):
                         rs = self._sended_to_api.setdefault((symbol, int(dur)), [])
                         kid = int(kid)
                         self._sended_to_api[(symbol, int(dur))] = _rangeset_range_union(rs, (kid, kid + 1))
@@ -390,22 +390,24 @@ class TqBacktest(object):
                 # 如果先订阅 A 合约（有夜盘），时间停留在夜盘开始时间， 再订阅 B 合约（没有夜盘），那么 B 合约的行情（前一天收盘时间）应该发下去，
                 # 否则 get_quote(B) 等到收到行情才返回，会直接把时间推进到第二天白盘。
                 continue
+            item = quotes_helper[key]["kline_or_tick"]
+            if item is None:
+                # item 如果是 None 的话，没有可以生成行情的信息的数据，那么不生成 quote_diff
+                continue
             diffs = None
             if self._quotes[symbol]['min_duration'] == 0 and dur == 0:
                 # tick 生成行情
-                tick = quotes_helper[key]["kline_or_tick"]
-                diffs = TqBacktest._get_quote_diffs_from_tick(symbol, tick)
+                diffs = TqBacktest._get_quote_diffs_from_tick(symbol, item)
             if self._quotes[symbol]['min_duration'] != 0:
                 # kline 生成行情
                 when = quotes_helper[key]["when"]
                 timestamp = quotes_helper[key]["timestamp"]  # quote 行情时间
-                kline = quotes_helper[key]["kline_or_tick"]
                 quote_info = self._data["quotes"][symbol]
                 froms = ["open"] if when == "OPEN" else ["close"]
                 if when == "CLOSE" and self._quotes[symbol]['min_duration'] == dur:
                     # kline 生成 quote 数据，只有该合约订阅的最小周期会生成 high low 对应的行情
                     froms = ["high", "low", "close"]
-                diffs = TqBacktest._get_quote_diffs_from_kline(symbol, quote_info['price_tick'], timestamp, kline, froms)
+                diffs = TqBacktest._get_quote_diffs_from_kline(symbol, quote_info['price_tick'], timestamp, item, froms)
             if diffs:
                 self._quotes[symbol]["sended_init_quote"] = True
                 self._diffs.extend(diffs)
@@ -505,18 +507,31 @@ class TqBacktest(object):
                     if not (chart_info.items() <= _get_obj(chart, ["state"]).items()):
                         # 当前请求还没收齐回应, 不应继续处理
                         continue
-                    left_id = chart.get("left_id", -1)
-                    right_id = chart.get("right_id", -1)
-                    if (left_id == -1 and right_id == -1) or chart.get("more_data", True):
-                        continue  # 定位信息还没收到, 数据没有完全收到
+                    if not chart.get("ready", False):
+                        continue  # chart 数据还没准备好
                     last_id = serials[0].get("last_id", -1)
                     if last_id == -1:
-                        continue  # 数据序列还没收到
+                        # 所有合约的 tick 数据一定有，开盘一定会收到一笔 tick
+                        # kline 是由有价格的 tick 生成的，所以 kline 可能没有数据的
+                        assert dur > 0
+                        diff = {
+                            "klines": {
+                                symbol_list[0]: {
+                                    str(dur): {
+                                        "last_id": -1
+                                    }
+                                }
+                            }
+                        }
+                        yield self._current_dt, diff, None, "OPEN"
+                        return
                     if self._data.get("mdhis_more_data", True):
                         self._data["_listener"].add(update_chan)
                         continue
                     else:
                         self._data["_listener"].discard(update_chan)
+                    left_id = chart.get("left_id", -1)
+                    right_id = chart.get("right_id", -1)
                     if current_id is None:
                         current_id = max(left_id, 0)
                     # 发送下一段 chart 8964 根 kline
