@@ -13,8 +13,7 @@ from filelock import FileLock
 from tqsdk.channel import TqChan
 from tqsdk.diff import _get_obj
 from tqsdk.rangeset import _rangeset_difference, _rangeset_intersection
-from tqsdk.tafunc import get_dividend_df
-from tqsdk.utils import _generate_uuid
+from tqsdk.utils import _generate_uuid, _get_dividend_factor
 
 CACHE_DIR = os.path.join(os.path.expanduser('~'), ".tqsdk/data_series_1")
 
@@ -144,7 +143,8 @@ class DataSeries:
             # 复权, 如果存在 STOCK / FUND 并且 adj_type is not None, 这里需要提前准备下载时间段内的复权因子
             quote = self._api.get_quote(symbol)
             if self._adj_type and quote.ins_class in ["STOCK", "FUND"]:
-                factor_df = await self._update_dividend_factor(symbol)  # 复权需要根据日线计算除权因子，todo: 如果本地下载过日线，不需要再从服务器获取日线数据
+                factor_df = await _get_dividend_factor(self._api, quote, self._start_dt_nano, self._end_dt_nano,
+                                                       chart_id_prefix="PYSDK_data_factor")  # 复权需要根据日线计算除权因子，todo: 如果本地下载过日线，不需要再从服务器获取日线数据
                 if self._adj_type == "F":
                     # 倒序循环 factor_df, 对于小于当前 factor_df[datetime] 的行 乘以 factor_df[factor]
                     for i in range(factor_df.shape[0] - 1, -1, -1):
@@ -212,13 +212,12 @@ class DataSeries:
                 async for _ in update_chan:
                     if not (chart_info.items() <= _get_obj(chart, ["state"]).items()):
                         continue  # 当前请求还没收齐回应, 不应继续处理
+                    if chart.get("ready", False) is False:
+                        continue  # 数据还没全部收到
+                    if serial.get("last_id", -1) == -1:
+                        return  # 合约没有任何数据
                     left_id = chart.get("left_id", -1)
                     right_id = chart.get("right_id", -1)
-                    if (left_id == -1 and right_id == -1) or self._api._data.get("mdhis_more_data", True):
-                        continue  # 定位信息还没收到, 或数据序列还没收到
-                    # 检查合约的数据是否收到
-                    if serial.get("last_id", -1) == -1:
-                        continue
                     if current_id is None:
                         current_id = max(left_id, 0)
                     while current_id <= right_id:
@@ -244,51 +243,6 @@ class DataSeries:
                 "duration": self._dur_nano,
                 "view_width": 2000,
             })
-
-    async def _update_dividend_factor(self, symbol):
-        quote = self._api.get_quote(symbol)
-        df = get_dividend_df(quote.stock_dividend_ratio, quote.cash_dividend_ratio)
-        between = df["datetime"].between(self._start_dt_nano, self._end_dt_nano)  # 只需要开始时间～结束时间之间的复权因子
-        df["pre_close"] = float('nan')
-        for i in df[between].index:
-            chart_info = {
-                "aid": "set_chart",
-                "chart_id": _generate_uuid("PYSDK_data_factor"),
-                "ins_list": symbol,
-                "duration": 86400 * 1000000000,
-                "view_width": 2,
-                "focus_datetime": int(df.iloc[i].datetime),
-                "focus_position": 1
-            }
-            await self._api._send_chan.send(chart_info)
-            chart = _get_obj(self._api._data, ["charts", chart_info["chart_id"]])
-            serial = _get_obj(self._api._data, ["klines", symbol, str(86400000000000)])
-            try:
-                async with self._api.register_update_notify() as update_chan:
-                    async for _ in update_chan:
-                        if not (chart_info.items() <= _get_obj(chart, ["state"]).items()):
-                            continue  # 当前请求还没收齐回应, 不应继续处理
-                        left_id = chart.get("left_id", -1)
-                        right_id = chart.get("right_id", -1)
-                        if (left_id == -1 and right_id == -1) or self._api._data.get("mdhis_more_data",
-                                                                                     True) or serial.get("last_id",
-                                                                                                         -1) == -1:
-                            continue  # 定位信息还没收到, 或数据序列还没收到, 合约的数据是否收到
-                        last_item = serial["data"].get(str(left_id), {})
-                        # 复权时间点的昨收盘
-                        df.loc[i, 'pre_close'] = last_item['close'] if last_item.get('close') else float('nan')
-                        break
-            finally:
-                await self._api._send_chan.send({
-                    "aid": "set_chart",
-                    "chart_id": chart_info["chart_id"],
-                    "ins_list": "",
-                    "duration": 86400000000000,
-                    "view_width": 2
-                })
-        df["factor"] = (df["pre_close"] - df["cash_dividend"]) / df["pre_close"] / (1 + df["stock_dividend"])
-        df["factor"].fillna(1, inplace=True)
-        return df
 
     def _merge_rangeset(self):
         symbol = self._symbol_list[0]

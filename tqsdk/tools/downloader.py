@@ -15,8 +15,7 @@ import pandas
 from tqsdk.api import TqApi
 from tqsdk.datetime import _cst_tz, _convert_user_input_to_nano
 from tqsdk.diff import _get_obj
-from tqsdk.tafunc import get_dividend_df
-from tqsdk.utils import _generate_uuid
+from tqsdk.utils import _generate_uuid, _get_dividend_factor
 
 try:
     file_path = os.path.split(os.path.abspath(__file__))[0]
@@ -188,46 +187,7 @@ class DataDownloader:
 
     async def _ensure_dividend_factor(self, quote, timestamp):
         if quote.instrument_id not in self._dividend_cache:
-            # 对每个除权除息矩阵增加 factor 序列，为当日的复权因子
-            df = get_dividend_df(quote.stock_dividend_ratio, quote.cash_dividend_ratio)
-            df = df[df["datetime"].between(timestamp, self._end_dt_nano, inclusive="right")]  # 只需要第一笔行情时间～结束时间之间的复权因子, 左开右闭
-            df["pre_close"] = float('nan')  # 初始化 pre_close 为 nan
-            for i in range(len(df)):
-                chart_info = {
-                    "aid": "set_chart",
-                    "chart_id": _generate_uuid("PYSDK_downloader"),
-                    "ins_list": quote.instrument_id,
-                    "duration": 86400 * 1000000000,
-                    "view_width": 2,
-                    "focus_datetime": int(df["datetime"].iloc[i]),
-                    "focus_position": 1
-                }
-                await self._api._send_chan.send(chart_info)
-                chart = _get_obj(self._api._data, ["charts", chart_info["chart_id"]])
-                serial = _get_obj(self._api._data, ["klines", quote.instrument_id, str(86400000000000)])
-                try:
-                    async with self._api.register_update_notify() as update_chan:
-                        async for _ in update_chan:
-                            if not (chart_info.items() <= _get_obj(chart, ["state"]).items()):
-                                continue  # 当前请求还没收齐回应, 不应继续处理
-                            if chart.get("ready", False) is False:
-                                continue  # 合约的数据是否收到
-                            left_id = chart.get("left_id", -1)
-                            assert left_id != -1  # 需要下载除权除息日的前一天行情，即这一天一定是有行情的，left_id 一定不是 -1
-                            last_item = serial["data"].get(str(left_id), {})
-                            # 复权时间点的昨收盘
-                            df.loc[i, 'pre_close'] = last_item['close'] if last_item.get('close') else float('nan')
-                            break
-                finally:
-                    await self._api._send_chan.send({
-                        "aid": "set_chart",
-                        "chart_id": chart_info["chart_id"],
-                        "ins_list": "",
-                        "duration": 86400000000000,
-                        "view_width": 2
-                    })
-            df["factor"] = (df["pre_close"] - df["cash_dividend"]) / df["pre_close"] / (1 + df["stock_dividend"])
-            df["factor"].fillna(1.0, inplace=True)
+            df = await _get_dividend_factor(self._api, quote, timestamp, self._end_dt_nano, chart_id_prefix="PYSDK_downloader")
             # 插入结束时间这条记录, 因为可能存在行情时间等于 _end_dt_nano 的行情，因此这里 +1
             df = df.append({"datetime": self._end_dt_nano+1, "factor": 1.0}, ignore_index=True)
             if self._adj_type == "F":

@@ -2,6 +2,12 @@
 
 版本变更
 =============================
+3.5.9 (2024/05/09)
+
+* 增加：:py:meth:`~tqsdk.TqApi.query_all_level_finance_options` 增加中金所股指期权标的
+* 优化：:py:meth:`~tqsdk.TqApi.get_kline_data_series`、:py:meth:`~tqsdk.TqApi.get_tick_data_series` 接口在请求没有任何成交数据的合约时能够及时退出，避免等待超时
+
+
 3.5.8 (2024/04/29)
 
 * 增加：:py:class:`~tqsdk.tools.DataDownloader` 增加 write_mode 参数，作为写入模式参数，并且在模式为 'a' 时，不写入标题行

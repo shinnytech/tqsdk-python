@@ -2928,7 +2928,9 @@ class TqApi(TqBaseApi):
 
         Args:
             underlying_symbol (str): [必填] 标的合约 （针对 ETF 期权和股指期权，只支持以下几个合约）
-                * "SSE.000300" 为中金所股指期权标的
+                * "SSE.000300" 为中金所沪深 300 股指期权(IO)标的
+                * "SSE.000852" 为中金所中证 1000 股指期权(MO)标的
+                * "SSE.000016" 为中金所上证 50 股指期权(HO)标的
                 * "SSE.510050" 为上交所华夏上证 50 ETF 期权标的
                 * "SSE.510300" 为上交所华泰柏瑞沪深 300 ETF 期权标的
                 * "SZSE.159919" 为深交所嘉实沪深 300 ETF 期权标的
@@ -2991,7 +2993,8 @@ class TqApi(TqBaseApi):
         """
         if self._stock is False:
             raise Exception("期货行情系统(_stock = False)不支持当前接口调用")
-        if underlying_symbol not in ["SSE.000300", "SSE.510050", "SSE.510300", "SZSE.159919", "SZSE.159915", "SZSE.159922", "SSE.510500"]:
+        if underlying_symbol not in ["SSE.000300", "SSE.510050", "SSE.510300", "SZSE.159919", "SZSE.159915", "SZSE.159922", "SSE.510500",
+                                     "SSE.000016", "SSE.000852"]:
             raise Exception("不支持的标的合约")
         if option_class not in ['CALL', 'PUT']:
             raise Exception("option_class 参数错误，option_class 必须是 'CALL' 或者 'PUT'")
