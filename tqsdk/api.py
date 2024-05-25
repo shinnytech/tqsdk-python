@@ -295,7 +295,7 @@ class TqApi(TqBaseApi):
             # 多账户时，所有账户需要初始化完成
             trade_more_data = True
             while self._data.get("mdhis_more_data", True) or trade_more_data:
-                if not self.wait_update(_deadline=deadline):  # 等待连接成功并收取截面数据
+                if not self.wait_update(deadline=_deadline):  # 等待连接成功并收取截面数据
                     raise TqTimeoutError("接收数据超时，请检查客户端及网络是否正常")
                 trade_more_data = self._account._get_trade_more_data(self._data)
         except:
