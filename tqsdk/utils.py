@@ -2,10 +2,12 @@
 # -*- coding:utf-8 -*-
 __author__ = 'yanqiong'
 
+import functools
 import os
 import random
 import secrets
 from bisect import bisect_right
+from typing import Callable
 
 from sgqlc.operation import Operation
 from pandas.core.internals import BlockManager
@@ -197,3 +199,25 @@ async def _get_dividend_factor(api, quote, start_dt_nano, end_dt_nano, chart_id_
     df["factor"].fillna(1.0, inplace=True)
     return df
 
+
+def deprecated_chart_id(*expect_args) -> Callable:
+    """
+    废弃 chart_id 参数后，希望支持用户不修改如下的代码
+
+    api.get_kline_serial(symbol, 3600, 1000, "xxx", "F")
+    api.get_tick_serial(symbol, 200, "xxx", "F")
+    """
+
+    def decorator(f):
+        @functools.wraps(f)
+        def wrapper(self, *args, **kwargs):
+            kwargs.pop("chart_id", None)
+            if len(args) == len(expect_args) + 1:
+                # 用户传入的 args 参数比 expect_args 多一个，说明用户主动在 position args 位置上传入了 chart_id 参数，需要去掉
+                # 如果长度一样或者比 expect_args 少，就按照用户传入原本的参数处理
+                # 倒数第二个是 chart_id 参数
+                args = args[:-2] + args[-1:]
+            return f(self, *args, **kwargs)
+        return wrapper
+
+    return decorator

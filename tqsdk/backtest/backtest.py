@@ -169,9 +169,10 @@ class TqBacktest(object):
                         self._diffs.append({
                             "charts": {
                                 pack["chart_id"]: {
-                                    # 两个id设置为0：保证api在回测中判断此值时不是-1，即直接通过对数据接收完全的验证
-                                    "left_id": 0,
-                                    "right_id": 0,
+                                    # 回测中 ready 置为 True，保证api在回测中直接通过对数据接收完全的验证
+                                    "left_id": -1,
+                                    "right_id": -1,
+                                    "ready": True,
                                     "more_data": False,  # 直接发送False给api，表明数据发送完全，使api中通过数据接收完全的验证
                                     "state": pack
                                 }

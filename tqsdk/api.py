@@ -74,7 +74,8 @@ from tqsdk.symbols import TqSymbols
 from tqsdk.tradeable import TqAccount, TqZq, TqKq, TqKqStock, TqSim, TqSimStock, BaseSim, BaseOtg
 from tqsdk.trading_status import TqTradingStatus
 from tqsdk.tqwebhelper import TqWebHelper
-from tqsdk.utils import _generate_uuid, _query_for_quote, BlockManagerUnconsolidated, _quotes_add_night, _bisect_value
+from tqsdk.utils import _generate_uuid, _query_for_quote, BlockManagerUnconsolidated, _quotes_add_night, _bisect_value, \
+    deprecated_chart_id
 from tqsdk.utils_symbols import _symbols_to_quotes
 from tqsdk.tafunc import get_dividend_df, get_dividend_factor
 from .__version__ import __version__
@@ -584,9 +585,10 @@ class TqApi(TqBaseApi):
                 if ts.trade_status != "":
                     return ts
 
+    @deprecated_chart_id("symbol", "duration_seconds", "data_length", "adj_type")
     # ----------------------------------------------------------------------
     def get_kline_serial(self, symbol: Union[str, List[str]], duration_seconds: int, data_length: int = 200,
-                         chart_id: Optional[str] = None, adj_type: Union[str, None] = None) -> pd.DataFrame:
+                         adj_type: Union[str, None] = None, **kwargs) -> pd.DataFrame:
         """
         获取k线序列数据
 
@@ -603,10 +605,10 @@ class TqApi(TqBaseApi):
             data_length (int): 需要获取的序列长度。默认200根, 返回的K线序列数据是从当前最新一根K线开始往回取data_length根。\
             每个序列最大支持请求 8000 个数据
 
-            chart_id (str): [可选]指定序列id, 默认由 api 自动生成
-
             adj_type (str/None): [可选]指定复权类型，默认为 None。adj_type 参数只对股票和基金类型合约有效。\
             "F" 表示前复权；"B" 表示后复权；None 表示不做处理。
+
+            chart_id (str): [Deprecated] 由 api 自动生成，此参数不再使用
 
             **注：关于传入合约代码列表 获取多合约K线的说明：**
 
@@ -699,18 +701,18 @@ class TqApi(TqBaseApi):
         if data_length > 8964:
             data_length = 8964
         dur_id = duration_seconds * 1000000000
-        request = (tuple(symbol), duration_seconds, data_length, adj_type, chart_id)  # request 中 symbols 为 tuple 序列
+        request = (tuple(symbol), duration_seconds, data_length, adj_type)  # request 中 symbols 为 tuple 序列
         serial = self._requests["klines"].get(request, None)
         pack = {
             "aid": "set_chart",
-            "chart_id": chart_id if chart_id is not None else _generate_uuid("PYSDK_realtime"),
+            "chart_id": _generate_uuid("PYSDK_realtime"),
             "ins_list": ",".join(symbol),
             "duration": dur_id,
             "view_width": data_length if len(symbol) == 1 else 8964,
             # 如果同时订阅了两个以上合约K线，初始化数据时默认获取 1w 根K线(初始化完成后修改指令为设定长度)
-        }
+        } if serial is None else {}
         # 将数据权转移给TqChan时其所有权也随之转移，因pack还需要被用到，所以传入副本
-        task = self.create_task(self._get_serial_async(symbol, chart_id, serial, pack.copy()), _caller_api=True)
+        task = self.create_task(self._get_serial_async(symbol, pack.copy()), _caller_api=True)
         if serial is None:
             serial = self._init_serial([_get_obj(self._data, ["klines", s, str(dur_id)]) for s in symbol],
                                        data_length, self._prototype["klines"]["*"]["*"]["data"]["@"], adj_type)
@@ -729,16 +731,17 @@ class TqApi(TqBaseApi):
                     raise TqTimeoutError("获取 %s (%d) 的K线超时，请检查客户端及网络是否正常" % (symbol, duration_seconds))
         return serial["df"]
 
-    async def _get_serial_async(self, symbol, chart_id, serial, pack):
+    async def _get_serial_async(self, symbol, pack):
         await self._ensure_symbol_async(symbol)
         self._auth._has_md_grants(symbol)
         # 判断用户是否指定了 chart_id（参数）, 如果指定了，则一定会发送新的请求。
-        if serial is None or chart_id is not None:
+        if pack:
             self._send_pack(pack)
 
     # ----------------------------------------------------------------------
-    def get_tick_serial(self, symbol: str, data_length: int = 200, chart_id: Optional[str] = None,
-                        adj_type: Union[str, None] = None) -> pd.DataFrame:
+    @deprecated_chart_id("symbol", "data_length", "adj_type")
+    def get_tick_serial(self, symbol: str, data_length: int = 200, adj_type: Union[str, None] = None,
+                        **kwargs) -> pd.DataFrame:
         """
         获取tick序列数据
 
@@ -749,10 +752,10 @@ class TqApi(TqBaseApi):
 
             data_length (int): 需要获取的序列长度。每个序列最大支持请求 8000 个数据
 
-            chart_id (str): [可选]指定序列id, 默认由 api 自动生成
-
             adj_type (str/None): [可选]指定复权类型，默认为 None。adj_type 参数只对股票和基金类型合约有效。\
             "F" 表示前复权；"B" 表示后复权；None 表示不做处理。
+
+            chart_id (str): [Deprecated] 由 api 自动生成，此参数不再使用
 
         Returns:
             pandas.DataFrame: 本函数总是返回一个 pandas.DataFrame 实例. 行数=data_length, 包含以下列:
@@ -798,17 +801,17 @@ class TqApi(TqBaseApi):
         adj_type = adj_type[0] if adj_type else adj_type
         if data_length > 8964:
             data_length = 8964
-        request = (symbol, data_length, adj_type, chart_id)
+        request = (symbol, data_length, adj_type)
         serial = self._requests["ticks"].get(request, None)
         pack = {
             "aid": "set_chart",
-            "chart_id": chart_id if chart_id is not None else _generate_uuid("PYSDK_realtime"),
+            "chart_id": _generate_uuid("PYSDK_realtime"),
             "ins_list": symbol,
             "duration": 0,
             "view_width": data_length,
-        }
+        } if serial is None else {}
         # pack 的副本数据和所有权转移给TqChan
-        task = self.create_task(self._get_serial_async(symbol, chart_id, serial, pack.copy()), _caller_api=True)
+        task = self.create_task(self._get_serial_async(symbol, pack.copy()), _caller_api=True)
         if serial is None:
             serial = self._init_serial([_get_obj(self._data, ["ticks", symbol])], data_length,
                                        self._prototype["ticks"]["*"]["data"]["@"], adj_type)
@@ -3425,11 +3428,11 @@ class TqApi(TqBaseApi):
                         ext[serial["width"] - shift:] = np.nan
             serial["update_row"] = max(serial["width"] - shift - 1, 0)
         else:
-            left_id = serial["chart"].get("left_id", -1)
-            right_id = serial["chart"].get("right_id", -1)
-            if (left_id != -1 or right_id != -1) and not serial["chart"].get("more_data", True) and serial["root"][
-                0].get("last_id", -1) != -1:
+            if serial["chart"].get("ready", False) is True:
                 serial["init"] = True
+        if serial["root"][0].get("last_id", -1) == -1:
+            # 该 kline 没有任何数据，直接退出
+            return
         symbol = serial["chart"]["ins_list"].split(",")[0]  # 合约列表
         quote = self._data.quotes.get(symbol, {})
         duration = serial["chart"]["duration"]  # 周期
@@ -3476,18 +3479,19 @@ class TqApi(TqBaseApi):
     def _update_serial_multi(self, serial):
         """处理订阅多个合约时K线的数据更新"""
         # 判断初始化数据是否接收完全, 否: 则返回
+        if serial["chart"].get("ready", False) is False:
+            return
+
         left_id = serial["chart"].get("left_id", -1)  # 主合约的left_id
         right_id = serial["chart"].get("right_id", -1)  # 主合约的right_id
-        if (left_id == -1 and right_id == -1) or serial["chart"].get("more_data", True):
-            return
-        for root in serial["root"]:
-            if root.get("last_id", -1) == -1:
-                return
-
         array = serial["array"]
         ins_list = serial["chart"]["ins_list"].split(",")  # 合约列表
 
         if not serial["init"]:  # 未初始化完成则进行初始化处理. init完成状态: 订阅K线后获取所有数据并填满df序列.
+            if serial["root"][0].get("last_id", -1) == -1:
+                serial["init"] = True
+                # 该 kline 没有任何数据，直接退出
+                return
             update_row = serial["width"] - 1  # 起始更新数据行,局部变量
             current_id = right_id  # 当前数据指针
             while current_id >= left_id and current_id >= 0 and update_row >= 0:  # 如果当前id >= left_id 且 数据尚未填满width长度
@@ -3527,12 +3531,14 @@ class TqApi(TqBaseApi):
                 "view_width": len(array) if len(array) >= 30 else 30,
             })
         else:  # 正常行情更新处理
+            if serial["root"][0].get("last_id", -1) == -1:
+                # 该 kline 没有任何数据，直接退出
+                return
             serial["update_row"] = serial["width"] - 1
             new_kline_range = None
             new_data_index = serial["width"] - 1  # 记录更新数据位置
             # 从 left_id 或 已有数据的最后一个 last_id 到服务器发回的最新数据的 last_id: 每次循环更新一行。max: 避免数据更新过多时产生大量多余循环判断
-            for i in range(max(serial["chart"].get("left_id", -1), int(array[-1, 1])),
-                           serial["root"][0].get("last_id", -1) + 1):
+            for i in range(max(left_id, int(array[-1, 1])), serial["root"][0].get("last_id", -1) + 1):
                 # 如果某条主K线和某条副K线之间的 binding 映射数据存在: 则对应副合约数据也存在; 遍历主合约与所有副合约的binding信息, 如果都存在, 则将此K线填入array保存.
                 master_item = serial["root"][0]["data"][str(i)]  # 主合约数据
                 # array更新的一行数据: 初始化填入主合约数据
