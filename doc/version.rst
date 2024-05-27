@@ -2,6 +2,13 @@
 
 版本变更
 =============================
+3.5.10 (2024/05/27)
+
+* 修复：某些情况下网络连接发生超时错误时，可能无法重连的问题
+* 优化：:py:meth:`~tqsdk.TqApi.get_kline_serial`、:py:meth:`~tqsdk.TqApi.get_tick_serial` 在请求没有任何成交数据的合约时能够及时退出，避免等待超时
+* 更新：:py:meth:`~tqsdk.TqApi.get_kline_serial`、:py:meth:`~tqsdk.TqApi.get_tick_serial` 接口去掉 ``chart_id`` 参数，避免用户错误用法导致服务器收到大量重复请求
+
+
 3.5.9 (2024/05/09)
 
 * 增加：:py:meth:`~tqsdk.TqApi.query_all_level_finance_options` 增加中金所股指期权标的
