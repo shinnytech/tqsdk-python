@@ -196,8 +196,7 @@ class TqConnect(object):
                             self._logger.debug("websocket connection info", current_time=time.time(),
                                                start_read_message=client.reader._start_read_message,
                                                read_size=client.reader._read_size)
-                            send_task.cancel()
-                            await send_task
+                            await self._api._cancel_task(send_task)
                 # 希望做到的效果是遇到网络问题可以断线重连, 但是可能抛出的例外太多了(TimeoutError,socket.gaierror等), 又没有文档或工具可以理出 try 代码中所有可能遇到的例外
                 # 而这里的 except 又需要处理所有子函数及子函数的子函数等等可能抛出的例外, 因此这里只能遇到问题之后再补, 并且无法避免 false positive 和 false negative
                 except (websockets.exceptions.ConnectionClosed, websockets.exceptions.InvalidStatusCode, websockets.exceptions.InvalidURI,
@@ -322,8 +321,7 @@ class TqReconnect(object):
                     else:
                         await api_recv_chan.send(pack)
         finally:
-            send_task.cancel()
-            await asyncio.gather(send_task, return_exceptions=True)
+            await self._api._cancel_task(send_task)
 
     async def _send_handler(self, api_send_chan, ws_send_chan):
         async for pack in api_send_chan:

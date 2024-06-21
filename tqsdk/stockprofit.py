@@ -47,7 +47,7 @@ class TqStockProfit():
                 else:
                     await self._md_send_chan.send(pack)
         finally:
-            md_task.cancel()
+            await self._api._cancel_task(md_task)
 
 
     async def _md_handler(self):

@@ -235,8 +235,7 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
         # self._account 类型为 TqSim/TqKq/TqAccount，都包括 _account_key 变量
         TargetPosTaskSingleton._instances.pop(self._account._account_key + "#" + self._symbol, None)
         await self._pos_chan.close()
-        self._time_update_task.cancel()
-        await asyncio.gather(self._time_update_task, return_exceptions=True)
+        await self._api._cancel_task(self._time_update_task)
         self._wait_task_finished.set_result(True)
 
     def __await__(self):

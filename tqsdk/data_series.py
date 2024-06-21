@@ -185,8 +185,7 @@ class DataSeries:
                     target_filename = os.path.join(CACHE_DIR, f"{symbol}.{self._dur_nano}.{start_id}.{end_id + 1}")
                     shutil.move(temp_filename, target_filename)
             finally:
-                task.cancel()
-                await task
+                await self._api._cancel_task(task)
 
     async def _download_data(self, start_dt, end_dt, data_chan):
         # 下载的数据应该是 [start_dt, end_dt）

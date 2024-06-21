@@ -193,8 +193,7 @@ class TqBacktest(object):
             # 关闭所有 generator
             for s in self._generators.values():
                 await s.aclose()
-            md_task.cancel()
-            await asyncio.gather(md_task, return_exceptions=True)
+            await self._api._cancel_task(md_task)
 
     async def _md_handler(self):
         async for pack in self._md_recv_chan:
@@ -476,7 +475,7 @@ class TqBacktest(object):
         """k线/tick 序列的 async generator, yield 出来的行情数据带有时间戳, 因此 _send_diff 可以据此归并"""
         # 先定位左端点, focus_datetime 是 lower_bound ,这里需要的是 upper_bound
         # 因此将 view_width 和 focus_position 设置成一样，这样 focus_datetime 所对应的 k线刚好位于屏幕外
-        # 使用两个长度为 8964 的 chart，去缓存/回收下游需要的数据
+        # 使用两个长度为 10000 的 chart，去缓存/回收下游需要的数据
         chart_id_a = _generate_uuid("PYSDK_backtest")
         chart_id_b = _generate_uuid("PYSDK_backtest")
         chart_info = {
@@ -484,9 +483,9 @@ class TqBacktest(object):
             "chart_id": chart_id_a,
             "ins_list": ins,
             "duration": dur,
-            "view_width": 8964,  # 设为8964原因：可满足用户所有的订阅长度，并在backtest中将所有的 相同合约及周期 的K线用同一个serial存储
+            "view_width": 10000,  # 设为 10000 原因：可满足用户所有的订阅长度，并在backtest中将所有的 相同合约及周期 的K线用同一个serial存储
             "focus_datetime": int(self._current_dt),
-            "focus_position": 8964,
+            "focus_position": 10000,
         }
         chart_a = _get_obj(self._data, ["charts", chart_id_a])
         chart_b = _get_obj(self._data, ["charts", chart_id_b])
@@ -535,7 +534,7 @@ class TqBacktest(object):
                     right_id = chart.get("right_id", -1)
                     if current_id is None:
                         current_id = max(left_id, 0)
-                    # 发送下一段 chart 8964 根 kline
+                    # 发送下一段 chart 10000 根 kline
                     chart_info["chart_id"] = chart_id_b if chart_info["chart_id"] == chart_id_a else chart_id_a
                     chart_info["left_kline_id"] = right_id
                     chart_info.pop("focus_datetime", None)
@@ -545,7 +544,7 @@ class TqBacktest(object):
                         if current_id > last_id:
                             # 当前 id 已超过 last_id
                             return
-                        # 将订阅的8964长度的窗口中的数据都遍历完后，退出循环，然后再次进入并处理下一窗口数据
+                        # 将订阅的10000长度的窗口中的数据都遍历完后，退出循环，然后再次进入并处理下一窗口数据
                         if current_id > right_id:
                             break
                         item = {k: v for k, v in serials[0]["data"].get(str(current_id), {}).items()}
@@ -556,7 +555,7 @@ class TqBacktest(object):
                                         "last_id": current_id,
                                         "data": {
                                             str(current_id): item,
-                                            str(current_id - 8964): None,
+                                            str(current_id - 10000): None,
                                         }
                                     }
                                 }

@@ -44,6 +44,33 @@ class TqBaseApi(object):
             task.add_done_callback(self._on_task_done)
         return task
 
+    async def _cancel_tasks(self, *tasks):
+        # 目前的 task 退出流程无法处理在 finally 中被 cancel 的情况,
+        # 例如: twap _run 中调用 _insert_order 并且刚好时间段结束执行到 finally 时整个 api 被 close 触发 CancelError
+        if len(tasks) == 0:
+            return
+        task = tasks[0]
+        other_tasks = tasks[1:]
+        try:
+            await self._cancel_task(task)
+        finally:
+            if tasks:
+                await self._cancel_tasks(*other_tasks)
+
+    async def _cancel_task(self, task):
+        exception = None
+        task.cancel()
+        # 如果 task 已经 done，可以调用 cancel 但是 cancelled 不会变成 True
+        while not task.done():
+            try:
+                await asyncio.shield(task)  # task 不会再被 cancel
+            except asyncio.CancelledError as ex:
+                if not task.cancelled():
+                    exception = ex
+        await asyncio.sleep(0)  # Give callbacks a chance to run
+        if exception:
+            raise exception from None
+
     def _call_soon(self, org_call_soon, callback, *args, **kargs):
         """ioloop.call_soon的补丁, 用来追踪是否有任务完成并等待执行"""
         self._event_rev += 1

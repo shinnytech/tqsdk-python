@@ -10,4 +10,5 @@
     option_base.rst
     algorithm.rst
     strategy.rst
+    jupyter.rst
 
