@@ -30,6 +30,7 @@ import time
 import warnings
 from datetime import datetime, date, timedelta
 from typing import Union, List, Any, Optional, Coroutine, Callable, Tuple, Dict
+from asyncio.events import _get_running_loop, _set_running_loop
 
 import numpy as np
 import psutil
@@ -348,17 +349,23 @@ class TqApi(TqBaseApi):
         """
         if self._loop.is_closed():
             return
-        if self._loop.is_running():
-            raise Exception("不能在协程中调用 close, 如需关闭 api 实例需在 wait_update 返回后再关闭")
-        elif asyncio._get_running_loop():
-            raise Exception(
-                "TqSdk 使用了 python3 的原生协程和异步通讯库 asyncio，您所使用的 IDE 不支持 asyncio, 请使用 pycharm 或其它支持 asyncio 的 IDE")
-        # 总会发送 serial_extra_array 数据，由 TqWebHelper 处理
-        for _, serial in self._serials.items():
-            self._process_serial_extra_array(serial)
-        super(TqApi, self)._close()
-        mem = psutil.virtual_memory()
-        self._logger.debug("process end", mem_total=mem.total, mem_free=mem.free)
+        other_loop = None
+        try:
+            if self._loop.is_running():
+                raise Exception("不能在协程中调用 close, 如需关闭 api 实例需在 wait_update 返回后再关闭")
+            else:
+                other_loop = _get_running_loop()
+                if other_loop:
+                    _set_running_loop(None)
+            # 总会发送 serial_extra_array 数据，由 TqWebHelper 处理
+            for _, serial in self._serials.items():
+                self._process_serial_extra_array(serial)
+            super(TqApi, self)._close()
+            mem = psutil.virtual_memory()
+            self._logger.debug("process end", mem_total=mem.total, mem_free=mem.free)
+        finally:
+            if other_loop:
+                _set_running_loop(other_loop)
 
     def __enter__(self):
         return self
@@ -603,7 +610,7 @@ class TqApi(TqBaseApi):
                 注意: 周期在日线以内时此参数可以任意填写, 在日线以上时只能是日线(86400)的整数倍, 最大为28天 (86400*28)。
 
             data_length (int): 需要获取的序列长度。默认200根, 返回的K线序列数据是从当前最新一根K线开始往回取data_length根。\
-            每个序列最大支持请求 8000 个数据
+            每个序列最大支持请求 10000 个数据
 
             adj_type (str/None): [可选]指定复权类型，默认为 None。adj_type 参数只对股票和基金类型合约有效。\
             "F" 表示前复权；"B" 表示后复权；None 表示不做处理。
@@ -619,7 +626,7 @@ class TqApi(TqBaseApi):
 
             3. 若设置了较大的序列长度参数，而所有可对齐的数据并没有这么多，则序列前面部分数据为NaN（这与获取单合约K线且数据不足序列长度时情况相似）。
 
-            4. 若主合约与副合约的交易时间在所有合约数据中最晚一根K线时间开始往回的 8000*周期 时间段内完全不重合，则无法生成多合约K线，程序会报出获取数据超时异常。
+            4. 若主合约与副合约的交易时间在所有合约数据中最晚一根K线时间开始往回的 10000*周期 时间段内完全不重合，则无法生成多合约K线，程序会报出获取数据超时异常。
 
             5. datetime、duration是所有合约公用的字段，则未单独为每个副合约增加一份副本，这两个字段使用原始字段名（即没有数字后缀）。
 
@@ -698,8 +705,8 @@ class TqApi(TqBaseApi):
         adj_type = adj_type[0] if adj_type else adj_type
         if adj_type and len(symbol) > 1:
             raise Exception("参数错误，多合约 K 线序列不支持复权。")
-        if data_length > 8964:
-            data_length = 8964
+        if data_length > 10000:
+            data_length = 10000
         dur_id = duration_seconds * 1000000000
         request = (tuple(symbol), duration_seconds, data_length, adj_type)  # request 中 symbols 为 tuple 序列
         serial = self._requests["klines"].get(request, None)
@@ -708,7 +715,7 @@ class TqApi(TqBaseApi):
             "chart_id": _generate_uuid("PYSDK_realtime"),
             "ins_list": ",".join(symbol),
             "duration": dur_id,
-            "view_width": data_length if len(symbol) == 1 else 8964,
+            "view_width": data_length if len(symbol) == 1 else 10000,
             # 如果同时订阅了两个以上合约K线，初始化数据时默认获取 1w 根K线(初始化完成后修改指令为设定长度)
         } if serial is None else {}
         # 将数据权转移给TqChan时其所有权也随之转移，因pack还需要被用到，所以传入副本
@@ -726,7 +733,7 @@ class TqApi(TqBaseApi):
             if not self.wait_update(deadline=deadline, _task=[task, serial["df"].__dict__["_task"]]):
                 if len(symbol) > 1:
                     raise TqTimeoutError("获取 %s (%d) 的K线超时，请检查客户端及网络是否正常，或任一副合约在主合约行情的最后 %d 秒内无可对齐的K线" % (
-                        symbol, duration_seconds, 8964 * duration_seconds))
+                        symbol, duration_seconds, 10000 * duration_seconds))
                 else:
                     raise TqTimeoutError("获取 %s (%d) 的K线超时，请检查客户端及网络是否正常" % (symbol, duration_seconds))
         return serial["df"]
@@ -750,7 +757,7 @@ class TqApi(TqBaseApi):
         Args:
             symbol (str): 指定合约代码.
 
-            data_length (int): 需要获取的序列长度。每个序列最大支持请求 8000 个数据
+            data_length (int): 需要获取的序列长度。每个序列最大支持请求 10000 个数据
 
             adj_type (str/None): [可选]指定复权类型，默认为 None。adj_type 参数只对股票和基金类型合约有效。\
             "F" 表示前复权；"B" 表示后复权；None 表示不做处理。
@@ -799,8 +806,8 @@ class TqApi(TqBaseApi):
         if adj_type not in [None, "F", "B", "FORWARD", "BACK"]:
             raise Exception("adj_type 参数只支持 None (不复权) ｜ 'F' (前复权) ｜ 'B' (后复权)")
         adj_type = adj_type[0] if adj_type else adj_type
-        if data_length > 8964:
-            data_length = 8964
+        if data_length > 10000:
+            data_length = 10000
         request = (symbol, data_length, adj_type)
         serial = self._requests["ticks"].get(request, None)
         pack = {
@@ -1050,7 +1057,7 @@ class TqApi(TqBaseApi):
                 * str: 一个合约代码
                 * list of str: 合约代码列表 （一次提取多个合约的K线并根据相同的时间向第一个合约（主合约）对齐)
 
-            n：返回 n 个交易日交易日的对应品种的主力, 默认值为 200，最大为 8964
+            n：返回 n 个交易日交易日的对应品种的主力, 默认值为 200
 
         Returns：
             pandas.DataFrame: 包含 n 行数据，列数为指定主连合约代码个数加 1，有以下列:
@@ -1876,12 +1883,20 @@ class TqApi(TqBaseApi):
 
             可能输出 ""(空字符串), 表示还没有收到该合约的行情
         """
-        if self._loop.is_running():
-            raise Exception("不能在协程中调用 wait_update, 如需在协程中等待业务数据更新请使用 register_update_notify")
-        elif asyncio._get_running_loop():
-            raise Exception(
-                "TqSdk 使用了 python3 的原生协程和异步通讯库 asyncio，您所使用的 IDE 不支持 asyncio, 请使用 pycharm 或其它支持 asyncio 的 IDE")
-        self._wait_timeout = False
+        other_loop = None
+        try:
+            if self._loop.is_running():
+                raise Exception("不能在协程中调用 wait_update, 如需在协程中等待业务数据更新请使用 register_update_notify")
+            else:
+                other_loop = _get_running_loop()
+                if other_loop:
+                    _set_running_loop(None)
+            return self._wait_update(deadline=deadline, _task=_task)
+        finally:
+            if other_loop:
+                _set_running_loop(other_loop)
+
+    def _wait_update(self, deadline: Optional[float] = None, _task: Union[asyncio.Task, List[asyncio.Task], None] = None) -> bool:
         # 先尝试执行各个task,再请求下个业务数据，可能用户的同步代码会在 chan 中 send 数据，需要先 run_tasks
         self._run_until_idle(async_run=False)
 

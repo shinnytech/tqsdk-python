@@ -78,9 +78,8 @@ class BaseSim(Tradeable):
             await super(BaseSim, self)._run(api, api_send_chan, api_recv_chan, md_send_chan, md_recv_chan)
         finally:
             self._handle_stat_report()
-            for s in self._quote_tasks:
-                self._quote_tasks[s]["task"].cancel()
-            await asyncio.gather(*[self._quote_tasks[s]["task"] for s in self._quote_tasks], return_exceptions=True)
+            tasks = [self._quote_tasks[s]["task"] for s in self._quote_tasks]
+            await self._api._cancel_tasks(*tasks)
 
     async def _handle_recv_data(self, pack, chan):
         """
@@ -237,8 +236,7 @@ class BaseSim(Tradeable):
         finally:
             await quote_chan.close()
             await order_chan.close()
-            task.cancel()
-            await asyncio.gather(task, return_exceptions=True)
+            await self._api._cancel_task(task)
 
     async def _forward_chan_handler(self, chan_from, chan_to):
         async for pack in chan_from:

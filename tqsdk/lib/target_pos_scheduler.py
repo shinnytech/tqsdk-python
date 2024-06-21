@@ -135,8 +135,7 @@ class TargetPosScheduler(object):
                     async for _ in self._api.register_update_notify(quote):
                         if _get_trade_timestamp(quote.datetime, float('nan')) > row['deadline']:
                             if target_pos_task:
-                                target_pos_task.cancel()
-                                await asyncio.gather(target_pos_task, return_exceptions=True)
+                                await self._api._cancel_task(target_pos_task._task)
                             break
                 elif target_pos_task:  # 最后一项，如果有 target_pos_task 等待持仓调整完成，否则直接退出
                     position = self._account.get_position(self._symbol)
@@ -147,8 +146,7 @@ class TargetPosScheduler(object):
                 _index = _index + 1
         finally:
             if target_pos_task:
-                target_pos_task.cancel()
-                await asyncio.gather(target_pos_task, return_exceptions=True)
+                await self._api._cancel_task(target_pos_task._task)
             await self._trade_objs_chan.close()
             await self._trade_recv_task
 

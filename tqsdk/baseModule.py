@@ -44,8 +44,7 @@ class TqModule(object):
                     await self._handle_req_data(pack)
                     await self._send_diff(api_recv_chan)
         finally:
-            [task.cancel() for task in up_handle_tasks]
-            await asyncio.gather(*up_handle_tasks, return_exceptions=True)
+            await self._api._cancel_tasks(*up_handle_tasks)
 
     async def _up_handler(self, api_send_chan, recv_chan, chan_index):
         async for pack in recv_chan:

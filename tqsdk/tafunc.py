@@ -820,7 +820,27 @@ def barlast(cond):
     return pd.Series(r)
 
 
-def _get_t_series(series: pd.Series, dur: int, expire_datetime: int):
+def _duration_ensure_unit_to_s(dur: Union[int, pd.Series]) -> int:
+    """
+    判断输入duration这一时间的单位。如果单位是纳秒，则转换为秒。
+
+    Args:
+        dur: Union[int, pd.Series]: 数据周期
+             可能是一个可以直接判断的int，也可能是Dataframe中的某一列
+
+    Returns:
+        int: 以秒为单位的数据周期
+    """
+    if isinstance(dur, pd.Series):
+        # 进行类型转换，确保运算过程不报错
+        dur = dur[0]
+    if dur % (10 ** 9) == 0:
+        dur //= (10 ** 9)
+    return dur
+
+
+def _get_t_series(series: pd.Series, dur: Union[int, pd.Series], expire_datetime: int):
+    dur = _duration_ensure_unit_to_s(dur)
     t = pd.Series(pd.to_timedelta(expire_datetime - (series / 1e9 + dur), unit='s'))
     return (t.dt.days * 86400 + t.dt.seconds) / (360 * 86400)
 
@@ -921,7 +941,7 @@ def _get_volatility(series: pd.Series, dur: Union[pd.Series, int] = 86400, tradi
     if series_u.size < 2:  # 自由度小于2无法计算，返回一个默认值
         return float("nan")
     seconds_per_day = 24 * 60 * 60
-    dur = dur[0] if isinstance(dur, pd.Series) else dur
+    dur = _duration_ensure_unit_to_s(dur)
     if dur < 24 * 60 * 60 and trading_time:
         periods = _get_period_timestamp(0, trading_time.get("day", []) + trading_time.get("night", []))
         seconds_per_day = sum([p[1] - p[0] for p in periods]) / 1e9
@@ -1531,4 +1551,3 @@ def _cum_counts(s: Series):
     output: [0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 2, 0, 1, 0, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 0, 0]
     """
     return s * (s.groupby((s != s.shift()).cumsum()).cumcount() + 1)
-

@@ -82,8 +82,7 @@ class TqWebHelper(object):
                     if pack['aid'] not in ['set_chart_data', 'set_report_data']:
                         await web_send_chan.send(pack)
             finally:
-                _data_handler_without_web_task.cancel()
-                await asyncio.gather(_data_handler_without_web_task, return_exceptions=True)
+                await self._api._cancel_task(_data_handler_without_web_task)
         else:
             self._web_dir = os.path.join(os.path.dirname(__file__), 'web')
             file_path = os.path.abspath(sys.argv[0])
@@ -159,9 +158,7 @@ class TqWebHelper(object):
                         # 发送的转发给上游
                         await web_send_chan.send(pack)
             finally:
-                _data_task.cancel()
-                _httpserver_task.cancel()
-                await asyncio.gather(_data_task, _httpserver_task, return_exceptions=True)
+                await self._api._cancel_tasks(*[_data_task, _httpserver_task])
 
     async def _data_handler_without_web(self, api_recv_chan, web_recv_chan):
         # 没有 web_gui, 接受全部数据转发给下游 api_recv_chan

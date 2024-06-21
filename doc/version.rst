@@ -2,6 +2,14 @@
 
 版本变更
 =============================
+3.6.0 (2024/06/21)
+
+* 增加：支持在 Jupyter 中使用 Tqsdk，详情参考 :ref:`jupyter`
+* 修复：tafunc 中部分计算函数对 :py:meth:`~tqsdk.TqApi.get_kline_data_series`、:py:meth:`~tqsdk.TqApi.get_tick_data_series` 返回的 duration 列单位处理错误的问题
+* 优化：tqsdk 内部 task 的取消机制，避免了部分 task 无法正常取消的问题
+* docs: 修正文档，支持的 python 版本为 3.7, 3.8, 3.9, 3.10, 3.11, 3.12
+
+
 3.5.10 (2024/05/27)
 
 * 修复：某些情况下网络连接发生超时错误时，可能无法重连的问题

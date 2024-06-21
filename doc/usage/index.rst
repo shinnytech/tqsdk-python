@@ -16,3 +16,4 @@
     targetpostask.rst
     backtest.rst
     web_gui.rst
+    jupyter.rst

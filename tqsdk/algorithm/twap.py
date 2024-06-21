@@ -218,8 +218,7 @@ class Twap(object):
                         if exit_immediately and volume_left == 0:
                             break
         finally:
-            self._order_task._task.cancel()
-            await asyncio.gather(self._order_task._task, return_exceptions=True)
+            await self._api._cancel_task(self._order_task._task)
             while not trade_chan.empty():
                 v = await trade_chan.recv()
                 volume_left = volume_left - (v if self._direction == "BUY" else -v)
@@ -240,8 +239,7 @@ class Twap(object):
                     break
         finally:
             await trade_chan.close()
-            self._order_task._task.cancel()
-            await asyncio.gather(self._order_task._task, return_exceptions=True)
+            await self._api._cancel_task(self._order_task._task)
 
     def _get_volume_list(self):
         if self._volume < self._max_volume_each_order:

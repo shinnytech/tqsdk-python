@@ -60,8 +60,7 @@ class TqSymbols(object):
                     data.append({"quotes": updated_quotes})
                 await self._sim_recv_chan.send(pack)
         finally:
-            sim_task.cancel()
-            await asyncio.gather(sim_task, return_exceptions=True)
+            await self._api._cancel_task(sim_task)
 
     async def _sim_handler(self):
         # 下游发来的数据包，直接转发到上游

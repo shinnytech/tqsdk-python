@@ -80,8 +80,7 @@ class TqReplay(object):
                 await asyncio.sleep(30)
         finally:
             await self._send_chan.close()
-            _senddata_task.cancel()
-            await asyncio.gather(_senddata_task, return_exceptions=True)
+            await self._api._cancel_task(_senddata_task)
 
     def _prepare_session(self):
         create_session_url = "http://replay.api.shinnytech.com/t/rmd/replay/create_session"
