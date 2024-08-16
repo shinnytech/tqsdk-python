@@ -126,13 +126,13 @@ class SymbolList(list):
         if query_result is None:
             await _query_graphql_async(self._api, self._query_id, self._query)
             query_result = symbols.get(self._query_id)
+            if isinstance(self._api._backtest, TqBacktest):  # 回测时，清空缓存的请求
+                self._api._send_pack({
+                    "aid": "ins_query",
+                    "query_id": self._query_id,
+                    "query": ""
+                })
         self += self._filter(query_result)
-        if isinstance(self._api._backtest, TqBacktest):  # 回测时，清空缓存的请求
-            self._api._send_pack({
-                "aid": "ins_query",
-                "query_id": self._query_id,
-                "query": ""
-            })
         return self
 
     def __await__(self):
@@ -164,16 +164,16 @@ class SymbolLevelList(namedtuple('SymbolLevel', ['in_money_options', 'at_money_o
         if query_result is None:
             await _query_graphql_async(self._api, self._query_id, self._query)
             query_result = symbols.get(self._query_id)
+            if isinstance(self._api._backtest, TqBacktest):  # 回测时，清空缓存的请求
+                self._api._send_pack({
+                    "aid": "ins_query",
+                    "query_id": self._query_id,
+                    "query": ""
+                })
         l0, l1, l2 = self._filter(query_result)
         self[0].extend(l0)
         self[1].extend(l1)
         self[2].extend(l2)
-        if isinstance(self._api._backtest, TqBacktest):  # 回测时，清空缓存的请求
-            self._api._send_pack({
-                "aid": "ins_query",
-                "query_id": self._query_id,
-                "query": ""
-            })
         return self
 
     def __await__(self):

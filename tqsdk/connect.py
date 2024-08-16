@@ -25,6 +25,7 @@ from tqsdk.entity import Entity
 from tqsdk.exceptions import TqBacktestPermissionError
 from tqsdk.utils import _generate_uuid
 from tqsdk.sm import SMContext, NullContext
+from tqsdk.zq_otg import ZqOtgContext
 
 """
 优化代码结构，修改为
@@ -127,12 +128,15 @@ class TqConnect(object):
             sm_info = url_info.path.split("/", 4)
             cm = SMContext(self._logger, self._api, url_info.scheme, sm_info[1], base64.urlsafe_b64decode(sm_info[2]).decode("utf-8"), base64.urlsafe_b64decode(sm_info[3]).decode("utf-8"))
             url_info = url_info._replace(scheme="ws", path="/".join(sm_info[:1]+sm_info[4:]))
+        elif url_info.scheme.startswith("zqotg"):
+            url_info = url_info._replace(scheme="ws")
+            cm = ZqOtgContext()
 
         count = 0
         async with cm:
             while True:
                 try:
-                    if isinstance(cm, SMContext):
+                    if isinstance(cm, (SMContext, ZqOtgContext)):
                         addr = await cm.get_addr()
                         url = url_info._replace(netloc=addr).geturl()
                     if not self._first_connect:
