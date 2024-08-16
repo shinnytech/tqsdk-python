@@ -8,7 +8,7 @@ Jupyter 示例
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :caption: 目录:
 
    notebooks/demo
-
+   notebooks/factor

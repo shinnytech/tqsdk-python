@@ -23,6 +23,7 @@ TianQin Python Sdk User Guide
     dev/index.rst
     profession.rst
     enterprise.rst
+    tqsdk_llm.rst
     qa.rst
     version.rst
 

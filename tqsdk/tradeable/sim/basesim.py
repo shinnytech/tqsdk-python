@@ -5,6 +5,7 @@ __author__ = 'mayanqiong'
 
 import asyncio
 import time
+import os
 from abc import abstractmethod
 from typing import Type, Union
 
@@ -285,7 +286,10 @@ class BaseSim(Tradeable):
                     # 导致前面处理 order 时的 _current_datetime 还是旧的行情时间
                     self._current_datetime = quote_diff["datetime"]  # 最新行情时间
                     # 更新最新行情时间时的本地时间，回测时不使用时间差
-                    self._local_time_record = (time.time() - 0.005) if not self._tqsdk_backtest else float("nan")
+                    # 在进行测试sim账号时(test_multi_account.py)也不使用时间差，因为会遇到和回测一样的问题:
+                    #   在sim收到行情后记录_local_time_record，然后下发行情到api进行merge_diff(),api需要处理完k线和quote才能结束wait_update(),
+                    #   若处理时间过长，此时下单则在判断下单时间时与测试用例中的预期时间相差较大，导致测试用例无法通过。
+                    self._local_time_record = float("nan") if self._tqsdk_backtest or "TQSDK_RUN_TEST" in os.environ else (time.time() - 0.005)
                 if self._current_datetime > self._trading_day_end:  # 结算
                     self._settle()
                     # 若当前行情时间大于交易日的结束时间(切换交易日)，则根据此行情时间更新交易日及交易日结束时间
