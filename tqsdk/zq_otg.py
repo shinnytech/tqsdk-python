@@ -6,6 +6,7 @@ import asyncio
 import json
 import os
 import tempfile
+import signal
 import sys
 import subprocess
 import contextlib
@@ -62,7 +63,7 @@ class ZqOtgContext(object):
     async def __aexit__(self, exc_type, exc, tb):
         if self._zq_otg_proc is not None:
             with contextlib.suppress(ProcessLookupError):
-                self._zq_otg_proc.terminate()
+                self._zq_otg_proc.send_signal(signal.CTRL_BREAK_EVENT if sys.platform.startswith("win") else signal.SIGTERM)
             if sys.platform.startswith("win"):
                 self._zq_otg_proc.wait()
             else:
