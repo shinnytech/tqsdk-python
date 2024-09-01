@@ -31,7 +31,7 @@ class TqCtp(BaseOtg, FutureMixin):
         Example1::
 
             from tqsdk import TqApi, TqCtp
-            account = TqCtp(account_id="CTP 账户", password="CTP 密码", front_broker="CTP 柜台代码", "front_url"="CTP 柜台地址", app_id="CTP AppID", auth_code="CTP AuthCode")
+            account = TqCtp(account_id="CTP 账户", password="CTP 密码", front_broker="CTP 柜台代码", front_url="CTP 柜台地址", app_id="CTP AppID", auth_code="CTP AuthCode")
             api = TqApi(account, auth=TqAuth("快期账户", "账户密码"))
 
         """

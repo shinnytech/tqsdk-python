@@ -11,7 +11,7 @@ import sys
 import subprocess
 import contextlib
 from pathlib import Path
-from asyncio.subprocess import DEVNULL
+from asyncio.subprocess import DEVNULL, PIPE
 
 from tqsdk_zq_otg import get_zq_otg_path
 
@@ -46,9 +46,9 @@ class ZqOtgContext(object):
             self._zq_otg_proc.poll()
         if self._zq_otg_proc is None or self._zq_otg_proc.returncode is not None:
             if sys.platform.startswith("win"):
-                self._zq_otg_proc = subprocess.Popen([self._zq_otg_exe, f"--config={parameters}", "--mode=cmd"], stdin=DEVNULL, stdout=DEVNULL, stderr=DEVNULL, env=self._zq_otg_env)
+                self._zq_otg_proc = subprocess.Popen([self._zq_otg_exe, f"--config={parameters}", "--mode=cmd"], stdin=PIPE, stdout=DEVNULL, stderr=DEVNULL, env=self._zq_otg_env)
             else:
-                self._zq_otg_proc = await asyncio.create_subprocess_exec(self._zq_otg_exe, f"--config={parameters}", "--mode=cmd", stdin=DEVNULL, stdout=DEVNULL, stderr=DEVNULL, env=self._zq_otg_env)
+                self._zq_otg_proc = await asyncio.create_subprocess_exec(self._zq_otg_exe, f"--config={parameters}", "--mode=cmd", stdin=PIPE, stdout=DEVNULL, stderr=DEVNULL, env=self._zq_otg_env)
 
             for i in range(30):
                 if port_file.exists():
@@ -62,8 +62,7 @@ class ZqOtgContext(object):
 
     async def __aexit__(self, exc_type, exc, tb):
         if self._zq_otg_proc is not None:
-            with contextlib.suppress(ProcessLookupError):
-                self._zq_otg_proc.send_signal(signal.CTRL_BREAK_EVENT if sys.platform.startswith("win") else signal.SIGTERM)
+            self._zq_otg_proc.stdin.close()
             if sys.platform.startswith("win"):
                 self._zq_otg_proc.wait()
             else:
