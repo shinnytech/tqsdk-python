@@ -2,6 +2,12 @@
 
 版本变更
 =============================
+3.7.1 (2024/08/29)
+
+* 修复：在 Windows 系统上使用 :py:class:`~tqsdk.TqCtp` 账户导致多 TqApi 实例无法运行的问题
+* 修复：:py:class:`~tqsdk.TqCtp` 文档 demo 代码拼写错误
+
+
 3.7.0 (2024/08/22)
 
 * 新增：:py:class:`~tqsdk.TqCtp` 账户类型，支持直连 CTP 柜台
