@@ -72,7 +72,7 @@ from tqsdk.risk_manager import TqRiskManager
 from tqsdk.risk_rule import TqRiskRule
 from tqsdk.ins_schema import ins_schema, basic, derivative, future, option
 from tqsdk.symbols import TqSymbols
-from tqsdk.tradeable import TqAccount, TqZq, TqKq, TqKqStock, TqSim, TqSimStock, BaseSim, BaseOtg, TqCtp
+from tqsdk.tradeable import TqAccount, TqZq, TqKq, TqKqStock, TqSim, TqSimStock, BaseSim, BaseOtg, TqCtp, TqRohon
 from tqsdk.trading_status import TqTradingStatus
 from tqsdk.tqwebhelper import TqWebHelper
 from tqsdk.utils import _generate_uuid, _query_for_quote, BlockManagerUnconsolidated, _quotes_add_night, _bisect_value, \
@@ -82,7 +82,7 @@ from tqsdk.tafunc import get_dividend_df, get_dividend_factor
 from .__version__ import __version__
 
 
-UnionTradeable = Union[TqAccount, TqKq, TqZq, TqKqStock, TqSim, TqSimStock, TqCtp]
+UnionTradeable = Union[TqAccount, TqKq, TqZq, TqKqStock, TqSim, TqSimStock, TqCtp, TqRohon]
 
 
 class TqApi(TqBaseApi):
@@ -119,8 +119,10 @@ class TqApi(TqBaseApi):
 
                 * :py:class:`~tqsdk.TqCtp` : 使用直连 CTP 账号
 
+                * :py:class:`~tqsdk.TqRohon` : 使用融航资管账号
+
                 * :py:class:`~tqsdk.TqMultiAccount` : 多账户列表，列表中支持 :py:class:`~tqsdk.TqAccount`、:py:class:`~tqsdk.TqKq`、:py:class:`~tqsdk.TqKqStock`、\
-                  :py:class:`~tqsdk.TqSim`、:py:class:`~tqsdk.TqSimStock`、:py:class:`~tqsdk.TqZq` 和 :py:class:`~tqsdk.TqCtp` 中的 0 至 N 个或者组合
+                  :py:class:`~tqsdk.TqSim`、:py:class:`~tqsdk.TqSimStock`、:py:class:`~tqsdk.TqZq`、:py:class:`~tqsdk.TqRohon` 和 :py:class:`~tqsdk.TqCtp` 中的 0 至 N 个或者组合
 
             auth (TqAuth/str): [必填]用户快期账户:
                 * :py:class:`~tqsdk.TqAuth` : 添加快期账户类，例如：TqAuth("tianqin@qq.com", "123456")
