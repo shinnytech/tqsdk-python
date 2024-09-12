@@ -2,6 +2,12 @@
 
 版本变更
 =============================
+3.7.2 (2024/09/12)
+
+* 新增：:py:class:`~tqsdk.TqRohon` 账户类型，支持融航资管柜台
+* BREAKING：从安装依赖中移除 tqsdk_zq_otg 模块，用户使用多柜台需要手动安装依赖包：``pip install -U tqsdk_zq_otg``
+
+
 3.7.1 (2024/08/29)
 
 * 修复：在 Windows 系统上使用 :py:class:`~tqsdk.TqCtp` 账户导致多 TqApi 实例无法运行的问题

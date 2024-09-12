@@ -130,7 +130,7 @@ class TqConnect(object):
             url_info = url_info._replace(scheme="ws", path="/".join(sm_info[:1]+sm_info[4:]))
         elif url_info.scheme.startswith("zqotg"):
             url_info = url_info._replace(scheme="ws")
-            cm = ZqOtgContext()
+            cm = ZqOtgContext(self._api)
 
         count = 0
         async with cm:
