@@ -22,7 +22,7 @@
 * 根据具体需求或策略提供天勤实现的示例
 * 天勤或 Python 报错的可能解决方案
 
-点击即刻尝试  `使用智能机器人！ <https://udify.app/chat/im02prcHNEOVbPAx/>`_
+点击即刻尝试  `使用天勤 AI 助手！ <https://udify.app/chat/im02prcHNEOVbPAx/>`_
 
 下图是具体的使用示例 demo
 

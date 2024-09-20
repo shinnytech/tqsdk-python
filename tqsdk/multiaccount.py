@@ -8,7 +8,7 @@ from typing import List, Union, Optional
 from shinny_structlog import ShinnyLoggerAdapter
 
 from tqsdk.channel import TqChan
-from tqsdk.tradeable import TqAccount, TqKq, TqKqStock, TqSim, TqSimStock, BaseSim, TqZq, TqCtp, TqRohon
+from tqsdk.tradeable import TqAccount, TqKq, TqKqStock, TqSim, TqSimStock, BaseSim, TqZq, TqCtp, TqRohon, TqJees, TqYida
 from tqsdk.tradeable.mixin import StockMixin
 
 
@@ -27,12 +27,12 @@ class TqMultiAccount(object):
 
     """
 
-    def __init__(self, accounts: Optional[List[Union[TqAccount, TqKq, TqZq, TqKqStock, TqSim, TqSimStock, TqZq, TqCtp, TqRohon]]] = None):
+    def __init__(self, accounts: Optional[List[Union[TqAccount, TqKq, TqZq, TqKqStock, TqSim, TqSimStock, TqZq, TqCtp, TqRohon, TqJees, TqYida]]] = None):
         """
         创建 TqMultiAccount 实例
 
         Args:
-            accounts (List[Union[TqAccount, TqKq, TqKqStock, TqSim, TqSimStock, TqZq, TqCtp, TqRohon]]): [可选] 多账户列表, 若未指定任何账户, 则为 [TqSim()]
+            accounts (List[Union[TqAccount, TqKq, TqKqStock, TqSim, TqSimStock, TqZq, TqCtp, TqRohon, TqJees, TqYida]]): [可选] 多账户列表, 若未指定任何账户, 则为 [TqSim()]
 
         Example1::
 
