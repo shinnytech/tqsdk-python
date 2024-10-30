@@ -12,6 +12,7 @@ from shinny_structlog import ShinnyLoggerAdapter
 
 from tqsdk.constants import FUTURE_EXCHANGES, SPOT_EXCHANGES, KQ_EXCHANGES, KQD_EXCHANGES, STOCK_EXCHANGES
 from tqsdk.__version__ import __version__
+from tqsdk.datetime import _cst_tz, datetime
 
 
 class TqAuth(object):
@@ -45,6 +46,9 @@ class TqAuth(object):
             "features": [],
             "accounts": []
         }
+        self._expire_datetime = None
+        self._expire_days_left = None
+        self._product_type = None
         self._logger = ShinnyLoggerAdapter(logging.getLogger("TqApi.TqAuth"), headers=self._base_headers, grants=self._grants)
 
     @property
@@ -54,6 +58,46 @@ class TqAuth(object):
             "Accept": "application/json",
             "Authorization": "Bearer %s" % self._access_token
         }
+
+    @property
+    def expire_datetime(self):
+        """
+        返回快期账户授权到期时间
+
+        Returns:
+            datetime.datetime : datetime 模块中的 datetime 类型时间
+                * 返回授权到期时间，如果查询失败则抛出异常。
+                * 时区是东八区。
+
+            注意:
+            1. 对于免费用户，将返回到期时间："2099-12-31 23:59:59+08:00"，代表权限永不到期。
+
+            2. 当用户升级版本或者续费后，将在下一次使用时获取最新到期时间。
+
+
+        Example::
+
+            from tqsdk import TqApi, TqAuth
+
+            auth = TqAuth("快期账户", "账户密码")
+            api = TqApi(auth=auth)
+            print(auth.expire_datetime)  # 快期账户授权到期时间
+            api.close()
+
+        """
+        if self._expire_datetime is None or self._expire_days_left is None or self._product_type is None:
+            url = f"{self._auth_url}/auth/realms/shinnytech/rest/get-grant/tq"
+            self._logger.debug("get auth expire datetime", url=url, method="GET")
+            response = requests.get(url=url, headers=self._base_headers, timeout=30)
+            self._logger.debug("get auth expire datetime result", url=response.url, status_code=response.status_code, headers=response.headers, reason=response.reason, text=response.text)
+            try:
+                content = json.loads(response.content)
+                self._expire_datetime = datetime.datetime.fromtimestamp(content["exp"], tz=_cst_tz)
+                self._expire_days_left = content["daysleft"]
+                self._product_type = content["account_type"]
+            except Exception:
+                raise Exception("查询快期账户授权到期日期失败") from None
+        return self._expire_datetime
 
     def init(self, mode="real"):
         self._mode = mode
@@ -156,7 +200,7 @@ class TqAuth(object):
             elif symbol in ["SSE.000016", "SSE.000300", "SSE.000905", "SSE.000852"] and self._has_feature("lmt_idx"):
                 continue
             else:
-                raise Exception(f"您的账户不支持查看 {symbol} 的行情数据，需要购买后才能使用。升级网址：https://www.shinnytech.com/tqsdk_professional/")
+                raise Exception(f"您的账户不支持查看 {symbol} 的行情数据，需要购买后才能使用。升级网址：https://www.shinnytech.com/tqsdk-buy/")
         return True
 
     def _has_td_grants(self, symbol):
@@ -165,4 +209,4 @@ class TqAuth(object):
             return True
         if symbol.split('.', 1)[0] in (FUTURE_EXCHANGES + KQ_EXCHANGES) and self._has_feature("futr"):
             return True
-        raise Exception(f"您的账户不支持交易 {symbol}，需要购买后才能使用。升级网址：https://www.shinnytech.com/tqsdk_professional/")
+        raise Exception(f"您的账户不支持交易 {symbol}，需要购买后才能使用。升级网址：https://www.shinnytech.com/tqsdk-buy/")

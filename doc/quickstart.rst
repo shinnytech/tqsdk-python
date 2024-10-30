@@ -253,25 +253,23 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 
   from tqsdk import TqApi, TqAuth, TqAccount
 
-  api = TqApi(TqAccount("H海通期货", "412432343", "123456"), auth=TqAuth("快期账户", "账户密码"))
+# 如果要更换为徽商期货，只需要改为 H徽商期货
+  api = TqApi(TqAccount("H宏源期货", "412432343", "123456"), auth=TqAuth("快期账户", "账户密码"))
 
 更多关于实盘交易细节，请点击 :ref:`trade`
 
-目前支持的期货公司列表, 请点击查看: `TqSdk支持的期货公司列表 <https://www.shinnytech.com/blog/tq-support-broker/>`_
+其中实盘交易是属于 TqSdk 的专业版功能，用户需要购买 TqSdk 专业版才可以进行实盘交易， `点击申请试用或者购买 <https://account.shinnytech.com/>`_
 
-注册快期账户，请点击 `登录用户管理中心 <https://www.shinnytech.com/register-intro/>`_
+于此同时，TqSdk 支持在部分的期货公司开户来进行免费的实盘交易，详细期货公司介绍请点击查看 `TqSdk支持的期货公司列表 <https://www.shinnytech.com/blog/tq-support-broker/>`_
+
 
 .. _sim_trading:
 
 模拟交易和论坛
 -------------------------------------------------
-如果您需要使用能保存账户资金及持仓信息的模拟交易功能, 请点击 `注册信易账号 <https://www.shinnytech.com/register-intro/>`_ ，填写完对应信息之后，并验证成功即可进入 `用户论坛 <https://forum.shinnytech.com/>`_ .
+如果您需要使用能保存账户资金及持仓信息的模拟交易功能,通过 :py:class:`~tqsdk.TqKq` 对 auth 传入参数进行登录，可以得到一个长期有效的快期模拟账户，快期模拟账户在快期APP、快期专业版、快期v2、快期v3 和天勤量化上是互通的
 
-.. figure:: images/tq_register.png
-
-刚刚注册完成的快期账户的【手机号】/【邮箱地址】/【用户名】和【密码】可以作为 快期模拟 账号，通过 :py:class:`~tqsdk.TqKq` 对 auth 传入参数进行登录，这个 快期模拟 账户在快期APP、快期V3 pro 和天勤量化上是互通的
-
-快期模拟的资金可以通过快期APP、快期专业版的模拟银行进行出入金::
+快期模拟的资金可以通过快期APP、快期专业版的模拟银行进行出入金，也可以通过快期专业版对该账户进行重置::
 
   from tqsdk import TqApi, TqAuth, TqKq
 
@@ -283,6 +281,21 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 
   api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 
+
+
+TqSdk AI 助手
+-------------------------------------------------
+TqSdk 基于先进的大语言模型和常见天勤问题资料库，提供了新一代的 AI 助手
+
+解释函数，编写demo策略，分析代码报错原因，它都有不错的表现 `点击使用 <https://udify.app/chat/im02prcHNEOVbPAx/>`_
+
+.. figure:: images/llm_pic1.png
+.. figure:: images/llm_pic2.png
+.. figure:: images/llm_pic3.png
+.. figure:: images/llm_pic4.png
+.. figure:: images/llm_pic5.png
+.. figure:: images/llm_pic6.png
+.. figure:: images/llm_pic7.png
 
 
 TqSdk 学习视频

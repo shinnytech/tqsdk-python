@@ -35,7 +35,7 @@ class TqRuleOpenCountsLimit(TqRiskRule):
     """
     风控规则类 - 交易日内开仓次数限制。
 
-    此功能为 TqSdk 专业版提供，如需使用此功能，可以点击 `天勤量化专业版 <https://www.shinnytech.com/tqsdk_professional/>`_ 申请试用或购买
+    此功能为 TqSdk 专业版提供，如需使用此功能，可以点击 `天勤量化专业版 <https://www.shinnytech.com/tqsdk-buy/>`_ 申请试用或购买
     """
 
     def __init__(self, api, open_counts_limit, symbol, account=None):
@@ -110,7 +110,7 @@ class TqRuleOpenVolumesLimit(TqRiskRule):
     """
     风控规则类 - 交易日内开仓手数限制
 
-    此功能为 TqSdk 专业版提供，如需使用此功能，可以点击 `天勤量化专业版 <https://www.shinnytech.com/tqsdk_professional/>`_ 申请试用或购买
+    此功能为 TqSdk 专业版提供，如需使用此功能，可以点击 `天勤量化专业版 <https://www.shinnytech.com/tqsdk-buy/>`_ 申请试用或购买
     """
 
     def __init__(self, api, open_volumes_limit, symbol, account=None):
@@ -207,7 +207,7 @@ class TqRuleAccOpenVolumesLimit(TqRiskRule):
 
     限制合约开仓手数之和。
 
-    此功能为 TqSdk 专业版提供，如需使用此功能，可以点击 `天勤量化专业版 <https://www.shinnytech.com/tqsdk_professional/>`_ 申请试用或购买
+    此功能为 TqSdk 专业版提供，如需使用此功能，可以点击 `天勤量化专业版 <https://www.shinnytech.com/tqsdk-buy/>`_ 申请试用或购买
 
     """
 

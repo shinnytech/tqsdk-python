@@ -103,7 +103,7 @@ class TqKqStock(BaseOtg, StockMixin):
         """
         创建快期股票模拟账户实例
 
-        快期股票模拟为专业版功能，可以点击 `天勤量化专业版 <https://www.shinnytech.com/tqsdk_professional/>`_ 申请试用或购买
+        快期股票模拟为专业版功能，可以点击 `天勤量化专业版 <https://www.shinnytech.com/tqsdk-buy/>`_ 申请试用或购买
 
         Args:
             td_url (str): [可选]指定交易服务器的地址, 默认使用快期账户对应的交易服务地址

@@ -67,7 +67,7 @@ from tqsdk.log import _clear_logs, _get_log_name, _get_disk_free
 from tqsdk.objs import Quote, TradingStatus, Kline, Tick, Account, Position, Order, Trade, QuotesEntity, RiskManagementRule, RiskManagementData
 from tqsdk.objs import SecurityAccount, SecurityOrder, SecurityTrade, SecurityPosition
 from tqsdk.objs_not_entity import QuoteList, TqDataFrame, TqSymbolDataFrame, SymbolList, SymbolLevelList, \
-    TqSymbolRankingDataFrame, TqOptionGreeksDataFrame
+    TqSymbolRankingDataFrame, TqOptionGreeksDataFrame, TqMdSettlementDataFrame
 from tqsdk.risk_manager import TqRiskManager
 from tqsdk.risk_rule import TqRiskRule
 from tqsdk.ins_schema import ins_schema, basic, derivative, future, option
@@ -159,6 +159,13 @@ class TqApi(TqBaseApi):
                 * False: 不输出调试信息。
 
                 * str: 指定一个日志文件名, 调试信息输出到指定文件。
+            
+            disable_print(bool): [可选] 是否隐藏提示信息，默认值为 False
+                * False [默认]: 打印提示信息。
+
+                * True: 隐藏提示信息。
+                
+                    + 提示信息会输出到标准输出流，即 sys.stdout，标准输出流默认指向控制台。
 
             loop(asyncio.AbstractEventLoop): [可选] 使用指定的 IOLoop, 默认创建一个新的.
 
@@ -547,7 +554,7 @@ class TqApi(TqBaseApi):
         """
         获取指定合约的交易状态. 此接口为 TqSdk 专业版提供，便于实现开盘抢单功能。
 
-        如果想使用此功能，可以点击 `天勤量化专业版 <https://www.shinnytech.com/tqsdk_professional/>`_ 申请试用或购买
+        如果想使用此功能，可以点击 `天勤量化专业版 <https://www.shinnytech.com/tqsdk-buy/>`_ 申请试用或购买
 
         Args:
             symbol (str): 合约代码
@@ -575,7 +582,7 @@ class TqApi(TqBaseApi):
         if symbol == "":
             raise Exception(f"get_trading_status 中合约代码不能为空字符串")
         if not self._auth._has_feature('tq_trading_status'):
-            raise Exception(f"您的账户不支持查看交易状态信息，需要购买后才能使用。升级网址：https://www.shinnytech.com/tqsdk_professional/")
+            raise Exception(f"您的账户不支持查看交易状态信息，需要购买后才能使用。升级网址：https://www.shinnytech.com/tqsdk-buy/")
         if self._backtest:
             raise Exception('回测/复盘不支持查看交易状态信息')
         ts = _get_obj(self._data, ['trading_status', symbol], self._prototype["trading_status"]["#"])
@@ -850,7 +857,7 @@ class TqApi(TqBaseApi):
         """
         获取指定时间段内的 K 线序列，TqSdk 会缓存已经下载过的合约，提升代码执行效率、节约请求流量。
 
-        本接口仅限专业版用户使用，如需购买专业版或者申请试用，请访问 https://www.shinnytech.com/tqsdk_professional/。
+        本接口仅限专业版用户使用，如需购买专业版或者申请试用，请访问 https://www.shinnytech.com/tqsdk-buy/。
 
         该函数返回的对象不会更新，不建议在循环内调用该方法。
 
@@ -919,7 +926,7 @@ class TqApi(TqBaseApi):
         """
         获取指定时间段内的 tick 序列，TqSdk 会缓存已经下载过的合约，提升代码执行效率、节约请求流量。
 
-        本接口仅限专业版用户使用，如需购买专业版或者申请试用，请访问 https://www.shinnytech.com/tqsdk_professional/。
+        本接口仅限专业版用户使用，如需购买专业版或者申请试用，请访问 https://www.shinnytech.com/tqsdk-buy/。
 
         该函数返回的对象不会更新，不建议在循环内调用该方法。
 
@@ -982,7 +989,7 @@ class TqApi(TqBaseApi):
             raise Exception(f"不支持在协程中调用 {call_func} 接口")
         if not self._auth._has_feature("tq_dl"):
             raise Exception(
-                f"{call_func} 数据获取方式仅限专业版用户使用，如需购买专业版或者申请试用，请访问 https://www.shinnytech.com/tqsdk_professional/")
+                f"{call_func} 数据获取方式仅限专业版用户使用，如需购买专业版或者申请试用，请访问 https://www.shinnytech.com/tqsdk-buy/")
         if self._backtest:
             raise Exception(f"不支持在回测/复盘中调用 {call_func} 接口")
         dur_nano = duration_seconds * 1000000000
@@ -1121,14 +1128,14 @@ class TqApi(TqBaseApi):
         """
         添加一项风控规则实例，此接口为 TqSdk 专业版提供。
 
-        如需使用此功能，可以点击 `天勤量化专业版 <https://www.shinnytech.com/tqsdk_professional/>`_ 申请试用或购买
+        如需使用此功能，可以点击 `天勤量化专业版 <https://www.shinnytech.com/tqsdk-buy/>`_ 申请试用或购买
 
         Args:
             rule (TqRiskRule): 风控规则实例，必须是 TqRiskRule 的子类型
 
         """
         if not self._auth._has_feature("tq_lc_rk"):
-            raise Exception("本地风控功能仅限专业版用户使用，如需购买专业版或者申请试用，请访问 https://www.shinnytech.com/tqsdk_professional/")
+            raise Exception("本地风控功能仅限专业版用户使用，如需购买专业版或者申请试用，请访问 https://www.shinnytech.com/tqsdk-buy/")
         if not isinstance(rule, TqRiskRule):
             raise Exception("传入参数对象必须是 TqRiskRule 的类型")
         self._risk_manager.append(rule)
@@ -1137,7 +1144,7 @@ class TqApi(TqBaseApi):
         """
         删除一项风控规则实例，此接口为 TqSdk 专业版提供。
 
-        如需使用此功能，可以点击 `天勤量化专业版 <https://www.shinnytech.com/tqsdk_professional/>`_ 申请试用或购买
+        如需使用此功能，可以点击 `天勤量化专业版 <https://www.shinnytech.com/tqsdk-buy/>`_ 申请试用或购买
 
         Args:
             rule (TqRiskRule): 风控规则实例，必须是 TqRiskRule 的子类型
@@ -2299,13 +2306,86 @@ class TqApi(TqBaseApi):
                     "variables": {}
                 })
         return _get_obj(self._data, ["symbols", query_id])
+    
+    def query_symbol_settlement(self, symbol: Union[str, List[str]], days: int = 1, start_dt: date = None)\
+            -> TqMdSettlementDataFrame:
+        """
+        查询交易所合约每日结算价
+
+        本接口仅限专业版用户使用，如需购买专业版或者申请试用，请访问 https://www.shinnytech.com/tqsdk_professional/。
+
+        该函数返回的对象不会更新，不建议在循环内调用该方法。
+
+        Args:
+
+            symbol (str / list of str): [必填] 合约代码
+
+            days (int): [可选] 交易日数，默认为 1
+
+            start_dt (date): [可选] 开始日期，默认为 None
+
+        Returns:
+            pandas.DataFrame: 本函数返回 pandas.DataFrame 实例。行数为 days * 合约数，每行是一条合约结算价信息。包含以下列:
+
+            * datetime (查询日期)
+            * symbol (交易所内合约代码)
+            * settlement (结算价)
+
+            注意:
+            1. 每日结算价产生时间: 每天的 18:30 ~ 19:00：
+                * 如果想查询交易日 20241011 的结算价，需要在 20241011 的 19:00 之后查询，否则无法获取 20241011 的数据
+            
+            2. 如果没有指定 start_dt 参数，则返回当前日期前，已经产生的 days 个交易日的结算价数据：
+                * 此处的 days 指的是交易日数，会自动跳过节假日、周末等非交易日
+                * 假设当前日期是 20241011，days=7：
+                    * 在 19:00 前查询，返回 20240925 20240926 20240927 20240930 20241008 20241009 20241010 的结算价信息
+                    * 在 19:00 后查询，返回 20240926 20240927 20240930 20241008 20241009 20241010 20241011 的结算价信息
+
+            3. 如果指定了 start_dt 参数，则返回从 start_dt 日期起，已经产生的 days 个交易日的结算价数据：
+                * 假设开始日期为 20241008，当前日期是 20241011：
+                    * 假设 days=3，返回 20241008 20241009 20241010 三天的结算价信息
+                    * 假设 days=4，如果在 19:00 之前查询，返回 20241008 20241009 20241010 三天的结算价信息
+                    * 假设 days=4，如果在 19:00 之后查询，返回 20241008 20241009 20241010 20241011 四天的结算价信息
+            
+            4. 数据支持范围：
+                * 期货数据：
+                    * 中金所、上期所、上能所、大商所、郑商所：20200102 起
+                    * 广期所：20221226 起
+                * 期权数据：
+                    * 中金所、上期所、大商所、郑商所：20200102 起
+                    * 上能所：20210621 起
+                    * 广期所：20221226 起
+
+
+        Example::
+
+            from tqsdk import TqApi, TqAuth
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
+
+            df = api.query_symbol_settlement("INE.nr2408", days=3)
+            print(df.to_string())  # 最近 3 天结算价信息
+            api.close()
+
+        """
+        if not (isinstance(symbol, (str, list))):
+            raise Exception(f"symbol 参数类型 {type(symbol)} 错误。")
+        if not (start_dt is None or isinstance(start_dt, date)):
+            raise Exception(f"start_dt 参数类型 {type(start_dt)} 错误。")
+        if not isinstance(days, int) or days < 1:
+            raise Exception(f"days 参数 {days} 错误。")
+        df = TqMdSettlementDataFrame(self, symbol=symbol, days=days, start_dt=start_dt)
+        deadline = time.time() + 30
+        while not self._loop.is_running() and not df.__dict__["_task"].done():
+            if not self.wait_update(deadline=deadline, _task=df.__dict__["_task"]):
+                raise TqTimeoutError("获取每日结算价信息超时，请检查客户端及网络是否正常")
+        return df
 
     def query_symbol_ranking(self, symbol: str, ranking_type: str, days: int = 1, start_dt: date = None, broker: str = None)\
             -> TqSymbolRankingDataFrame:
         """
         查询合约成交排名/持仓排名
 
-        本接口仅限专业版用户使用，如需购买专业版或者申请试用，请访问 https://www.shinnytech.com/tqsdk_professional/。
+        本接口仅限专业版用户使用，如需购买专业版或者申请试用，请访问 https://www.shinnytech.com/tqsdk-buy/。
 
         该函数返回的对象不会更新，不建议在循环内调用该方法。
 
@@ -3215,13 +3295,24 @@ class TqApi(TqBaseApi):
         else:
             self._auth.init(mode="bt" if isinstance(self._backtest, TqBacktest) else "real")
             self._auth.login()  # tqwebhelper 有可能会设置 self._auth
+            
+            # tqsdk 内部捕获异常如果需要打印日志，则需要自定义异常
+            # 对于第三方代码产生的异常需要逐个捕获，可以参考 connect.py TqConnect._run 函数中对于各类异常的捕获
+            # 这里只是打印账户过期日期来提醒用户，不关心是否成功，也不记录日志，所以直接 pass
+            # 单独捕获 self._auth.expire_datetime 是为了语义清晰，表明异常的来源
+            try:
+                self._auth.expire_datetime
+            except Exception:
+                pass
+            if self._auth._expire_days_left is not None and self._auth._product_type is not None and self._auth._expire_days_left < 30:
+                self._print(f"TqSdk {self._auth._product_type} 版剩余 {self._auth._expire_days_left} 天到期，如需续费或升级请访问 https://account.shinnytech.com/ 或联系相关工作人员。")
 
         # 在快期账户登录之后，对于账户的基本信息校验及更新
         for acc in self._account._account_list:
             if isinstance(acc, BaseOtg):
                 acc._update_otg_info(self)  # 获取交易地址；更新模拟账户 _account_id
             if not self._check_account_auth(acc):
-                raise Exception(f"您的账户不支持 {type(acc)}，需要购买后才能使用。升级网址：https://www.shinnytech.com/tqsdk_professional/")
+                raise Exception(f"您的账户不支持 {type(acc)}，需要购买后才能使用。升级网址：https://www.shinnytech.com/tqsdk-buy/")
 
         # 等待复盘服务器启动
         if isinstance(self._backtest, TqReplay):
@@ -4048,8 +4139,8 @@ class TqApi(TqBaseApi):
 
 print("在使用天勤量化之前，默认您已经知晓并同意以下免责条款，如果不同意请立即停止使用：https://www.shinnytech.com/blog/disclaimer/", file=sys.stderr)
 
-if platform.python_version().startswith('3.6'):
-    warnings.warn("TqSdk 计划在 20220601 之后放弃支持 Python 3.6 版本，请尽快升级 Python 版本。", FutureWarning, stacklevel=1)
+if platform.python_version().startswith('3.7.'):
+    warnings.warn("TqSdk 计划在 20250601 之后放弃支持 Python 3.7 版本，请尽快升级 Python 版本。", FutureWarning, stacklevel=1)
 
 
 try:

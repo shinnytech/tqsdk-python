@@ -39,7 +39,7 @@
 
 .. figure:: ../images/user_web_management.png
 
-如需一个快期账户支持更多的实盘账户，请联系工作人员进行批量购买 `天勤量化专业版 <https://www.shinnytech.com/tqsdk_professional/>`_
+如需一个快期账户支持更多的实盘账户，请联系工作人员进行批量购买 `天勤量化专业版 <https://www.shinnytech.com/tqsdk-buy/>`_
 
 
 

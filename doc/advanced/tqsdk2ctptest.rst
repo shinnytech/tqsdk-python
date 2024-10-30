@@ -22,5 +22,5 @@ TqSdk 没有直接提供查询保证金的接口，但是你可以通过使用 T
         # 正常和tqsdk一样执行策略
 
 
-TqSdk2 的直连功能需要企业版权限，有关企业版的具体费用和功能，请参考 `天勤官方网站 <https://www.shinnytech.com/tqsdk_professional/>`_
+TqSdk2 的直连功能需要企业版权限，有关企业版的具体费用和功能，请参考 `天勤官方网站 <https://www.shinnytech.com/tqsdk-buy/>`_
 如果想了解更多关于 TqSdk2 的直连功能TqCtp，请参考 `tqsdk2官方文档 <https://doc.shinnytech.com/tqsdk2/latest/reference/tqsdk2.ctp.html?highlight=tqctp#tqsdk2.TqCtp/>`_

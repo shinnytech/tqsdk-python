@@ -62,6 +62,9 @@ class QuoteList(list):
         self._api._send_pack(query_pack)
         async with self._api.register_update_notify(self) as update_chan:
             async for _ in update_chan:
+                # 这里用 price_tick 判断是否已经收到了合约信息，是为了兼容 2020年9月份之前上市的合约
+                # 合约服务没有提供这些合约，tqsdk 是通过预先加载本地缓存文件的方式提供这些合约的信息
+                # 理想的判断标准是 basktest 模块中的 _ensure_query 函数
                 if all([q.price_tick > 0 for q in self]):
                     return
 
@@ -305,6 +308,94 @@ class TqSymbolDataFrame(DataFrame):
                     [quotes[s].get(col, default_quote[col]) for s in self.__dict__["_symbol_list"]],
                     dtype=_get_col_dtype(col)
                 )
+
+    def __await__(self):
+        return self.__dict__["_task"].__await__()
+
+
+class TqMdSettlementDataFrame(DataFrame):
+
+    def __init__(self, api, symbol, days, start_dt):
+        self.__dict__["_api"] = api
+        params = {'days': days, 'symbols': symbol if isinstance(symbol, str) else ",".join(symbol)}
+        if start_dt is not None:
+            params['start_date'] = start_dt.strftime("%Y%m%d")
+        else:
+            params['days'] += 1
+        self.__dict__["_params"] = params
+        self.__dict__["_days"] = days
+        self.__dict__["_symbol"] = symbol
+        self.__dict__["_columns"] = [
+            "datetime",
+            "symbol",
+            "settlement"
+        ]
+        super(TqMdSettlementDataFrame, self).__init__(data=[], columns=self.__dict__["_columns"])
+        self.__dict__["_task"] = api.create_task(self.async_update(), _caller_api=True)
+
+    async def _get_settlement_data(self, settlement_id):
+        # 下载结算价数据，并将数据发回到 api.recv_chan
+        async with aiohttp.ClientSession(headers=self.__dict__["_api"]._base_headers) as session:
+            url = "https://md-settlement-system-fc-api.shinnytech.com/mss"
+            async with session.get(url, params=self.__dict__["_params"]) as response:
+                response.raise_for_status()
+                content = await response.json()
+                await self.__dict__["_api"]._ws_md_recv_chan.send({
+                    "aid": "rtn_data",
+                    "data": [{
+                        "_settlement": {
+                            settlement_id: content
+                        },
+                        "_settlement_finished": {
+                            settlement_id: True
+                        }
+                    }]
+                })
+
+    async def async_update(self):
+        await self.__dict__["_api"]._ensure_symbol_async(self.__dict__["_symbol"])
+        settlement_id = _generate_uuid("PYSDK_settlement")
+        self.__dict__["_api"].create_task(self._get_settlement_data(settlement_id), _caller_api=True)  # 错误会抛给 api 处理
+        settlement_finished = _get_obj(self.__dict__["_api"]._data, ["_settlement_finished"])
+        async with self.__dict__["_api"].register_update_notify(settlement_finished) as update_chan:
+            async for _ in update_chan:
+                if not settlement_finished.get(settlement_id, False):
+                    continue
+                content = self.__dict__["_api"]._data.get("_settlement", {}).get(settlement_id, {})
+                data = self._content_to_list(content)
+                for i, d in enumerate(data):
+                    self.loc[i] = d
+                self.sort_values(by=['datetime', 'symbol'], inplace=True, ignore_index=True)
+                # 读完数据，清空数据
+                await self.__dict__["_api"]._ws_md_recv_chan.send({
+                    "aid": "rtn_data",
+                    "data": [{
+                        "_settlement": {
+                            settlement_id: None
+                        },
+                        "_settlement_finished": {
+                            settlement_id: None
+                        }
+                    }]
+                })
+                return self
+
+
+    def _content_to_list(self, content):
+        sorted_content = sorted(
+            content.items(),
+            key=lambda item: item[0],
+            reverse=True
+        )
+        # 取最近的 N 天数据
+        days = self.__dict__["_days"]
+        recent_content = sorted_content[:days]
+        return [
+            {"datetime": dt, "symbol": symbol, "settlement": settlement}
+            for dt, symbols in recent_content
+            for symbol, settlement in symbols.items()
+            if settlement is not None 
+        ]
 
     def __await__(self):
         return self.__dict__["_task"].__await__()

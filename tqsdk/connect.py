@@ -82,7 +82,7 @@ class TqWebSocketClientProtocol(websockets.WebSocketClientProtocol):
             for h_key, h_value in self.response_headers.items():
                 if h_key == 'x-shinny-auth-check' and h_value == 'Backtest Permission Denied':
                     raise TqBacktestPermissionError(
-                        "免费账户每日可以回测3次，今日暂无回测权限，需要购买后才能使用。升级网址：https://www.shinnytech.com/tqsdk_professional/") from None
+                        "免费账户每日可以回测3次，今日暂无回测权限，需要购买后才能使用。升级网址：https://www.shinnytech.com/tqsdk-buy/") from None
             raise
 
     async def read_message(self):
@@ -112,6 +112,7 @@ class TqConnect(object):
         """启动websocket客户端"""
         self._api = api
         # 调整代码位置，方便 monkey patch
+        self._query_max_length = 50000  # ins_query 最大长度
         self._ins_list_max_length = 100000  # subscribe_quote 最大长度
         self._subscribed_per_seconds = 100  # 每秒 subscribe_quote 请求次数限制
         self._subscribed_queue = Queue(self._subscribed_per_seconds)
@@ -255,6 +256,9 @@ class TqConnect(object):
                         if time.time() - first_time < 1:
                             warnings.warn(f"1s 内订阅请求次数超过 {self._subscribed_per_seconds} 次，订阅多合约时推荐使用 api.get_quote_list 方法。", stacklevel=3)
                     self._subscribed_queue.put(time.time())
+                if pack.get("aid") == "ins_query":
+                    if len(pack.get("query", "")) > self._query_max_length:
+                        warnings.warn(f"订阅合约信息字段总长度大于 {self._query_max_length}，可能会引起服务器限制。", stacklevel=3)
                 msg = json.dumps(pack)
                 await client.send(msg)
                 self._logger.debug("websocket send data", pack=msg)

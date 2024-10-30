@@ -4,7 +4,7 @@
 <p align="center">
     <img src ="https://img.shields.io/pypi/v/tqsdk?color=blueviolet">
     <img src ="https://img.shields.io/badge/platform-windows|linux|macos-green.svg"/>
-    <img src ="https://img.shields.io/badge/python-3.6+-blue.svg" />
+    <img src ="https://img.shields.io/badge/python-3.7+-blue.svg" />
     <img src ="https://img.shields.io/pypi/dm/tqsdk?color=yellowgreen">
     <img src ="https://img.shields.io/github/license/shinnytech/tqsdk-python.svg?color=orange"/>
 </p>
@@ -67,7 +67,7 @@ TqSdk 提供的功能可以支持从简单到复杂的各类策略程序.
 
 Installation
 -------------------------------------------------
-TqSdk 仅支持 Python 3.6 及更高版本. 要安装 TqSdk, 可使用 pip:
+TqSdk 仅支持 Python 3.7 及更高版本. 要安装 TqSdk, 可使用 pip:
 
 ``` {.sourceCode .bash}
 $ pip install tqsdk
@@ -78,11 +78,11 @@ Documentation
 -------------------------------------------------
 在线阅读HTML版本文档: https://doc.shinnytech.com/tqsdk/latest
 
-在线问答社区: https://www.shinnytech.com/qa
-
 知乎账户【天勤量化】：https://www.zhihu.com/org/tian-qin-liang-hua/activities
 
-用户交流QQ群: **619870862** (目前只允许给我们点过STAR的同学加入, 加群时请提供github用户名)
+天勤AI助手：https://udify.app/chat/im02prcHNEOVbPAx  解释函数，编写demo策略，分析报错原因，它都可以做到！
+
+用户交流QQ群: **611806823** (目前只允许给我们点过STAR的同学加入, 加群时请提供github用户名)
 
 	
 Gui
