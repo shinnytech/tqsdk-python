@@ -183,6 +183,8 @@ class Quote(Entity):
         self.expire_rest_days: int = float('nan')
         #: 板块信息
         self.categories: List[CategoryInfo] = []
+        #: 持仓限额
+        self.position_limit: int = 0
 
     def _instance_entity(self, path):
         super(Quote, self)._instance_entity(path)

@@ -2,6 +2,13 @@
 
 版本变更
 =============================
+3.7.4 (2024/10/28)
+
+* 新增：:py:class:`~tqsdk.objs.Quote` 增加属性 :py:meth:`~tqsdk.objs.Quote.position_limit`
+* 增加: TqApi 增加 :py:meth:`~tqsdk.TqApi.query_symbol_settlement` 接口，支持查询合约每日结算价
+* 增加: TqAuth 增加 :py:meth:`~tqsdk.TqAuth.expire_datetime` 接口，支持查询快期账户授权到期时间
+* 自该版本起仅支持 Python >=3.7
+
 3.7.3 (2024/09/20)
 
 * 新增：:py:class:`~tqsdk.TqJees` 账户类型，支持杰宜斯资管柜台
@@ -739,7 +746,7 @@
 
 2.0.2 (2020/09/18)
 
-* 2020/10/01 以后，免费版用户不再支持回测，下载数据等功能，`点击了解专业版和免费版区别 <https://www.shinnytech.com/tqsdk_professional/>`_
+* 2020/10/01 以后，免费版用户不再支持回测，下载数据等功能，`点击了解专业版和免费版区别 <https://www.shinnytech.com/tqsdk-buy/>`_
 * 修改中证 500 的合约名称为 SSE.000905
 * 修改 TqAccount 检查参数类型并提示用户
 

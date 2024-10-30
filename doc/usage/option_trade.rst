@@ -4,7 +4,7 @@
 ====================================================
 TqSdk 中期权交易(商品期权、金融期权和 ETF 期权)和交易所官方组合交易，均是 TqSdk 专业版中的功能
 
-用户如果想在 TqSdk 中进行上述操作，可以点击 `天勤量化专业版 <https://www.shinnytech.com/tqsdk_professional/>`_ 申请使用或购买
+用户如果想在 TqSdk 中进行上述操作，可以点击 `天勤量化专业版 <https://www.shinnytech.com/tqsdk-buy/>`_ 申请使用或购买
 
 TqSdk 中期权合和交易所官方组合的约代码格式参考如下::
 

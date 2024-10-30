@@ -1468,7 +1468,7 @@ def get_dividend_factor(dividend_df, last_item, item):
 def _tq_pstdev(data: Series, mu: float):
     """
     计算标准差
-    标准库提供的方法 statistics.pstdev 在 py3.6,py3.7 版本下参数 mean 不能设定为指定值，所以这里另外计算。
+    标准库提供的方法 statistics.pstdev 在 py3.7 版本下参数 mean 不能设定为指定值，所以这里另外计算。
     """
     n = data.shape[0]
     assert n >= 1

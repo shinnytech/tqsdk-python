@@ -8,7 +8,7 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 TqSdk可以在windows/linux或macosx环境下运行. 无论您选择使用windows或linux系统, 请确保
 
-* 已经装有 Python 3.6+
+* 已经装有 Python 3.7+
 * 安装 :ref:`TqSdk <tqsdk_install>`
 
 创建一个目录, 放置你所有的策略文件. 

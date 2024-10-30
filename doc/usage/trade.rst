@@ -23,7 +23,7 @@
 
 .. figure:: ../images/user_web_management.png
 
-如果需要让您的快期账户支持更多的实盘账户，可以购买或申请试用我们的 `天勤量化专业版 <https://www.shinnytech.com/tqsdk_professional/>`_
+如果需要让您的快期账户支持更多的实盘账户，可以购买或申请试用我们的 `天勤量化专业版 <https://www.shinnytech.com/tqsdk-buy/>`_
 
 设定实盘交易账户
 ----------------------------------------------------

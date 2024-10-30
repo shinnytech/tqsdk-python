@@ -33,7 +33,7 @@ class DataDownloader:
     """
     数据下载工具是 TqSdk 专业版中的功能，能让用户下载目前 TqSdk 提供的全部期货、期权和股票类的历史数据，下载数据支持 tick 级别精度和任意 kline 周期
 
-    如果想使用数据下载工具，可以点击 `天勤量化专业版 <https://www.shinnytech.com/tqsdk_professional/>`_ 申请使用或购买
+    如果想使用数据下载工具，可以点击 `天勤量化专业版 <https://www.shinnytech.com/tqsdk-buy/>`_ 申请使用或购买
 
     历史数据下载器, 输出到csv文件
 
@@ -103,7 +103,7 @@ class DataDownloader:
         """
         self._api = api
         if not self._api._auth._has_feature("tq_dl"):
-            raise Exception("您的账户不支持下载历史数据功能，需要购买后才能使用。升级网址：https://www.shinnytech.com/tqsdk_professional/")
+            raise Exception("您的账户不支持下载历史数据功能，需要购买后才能使用。升级网址：https://www.shinnytech.com/tqsdk-buy/")
         self._start_dt_nano, self._end_dt_nano = _convert_user_input_to_nano(start_dt, end_dt)
         self._current_dt_nano = self._start_dt_nano
         self._symbol_list = symbol_list if isinstance(symbol_list, list) else [symbol_list]
