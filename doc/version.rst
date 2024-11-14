@@ -2,11 +2,22 @@
 
 版本变更
 =============================
+3.7.6 (2024/11/14)
+
+* 修复: 增加依赖库 packaging
+
+
+3.7.5 (2024/11/13)
+
+* 修复: 兼容 websockets 14.0 版本
+* docs: :py:class:`~tqsdk.TqCtp`、:py:class:`~tqsdk.TqJees`、:py:class:`~tqsdk.TqRohon`、:py:class:`~tqsdk.TqYida` 补充文档 front_url 示例
+
+
 3.7.4 (2024/10/28)
 
-* 新增：:py:class:`~tqsdk.objs.Quote` 增加属性 :py:meth:`~tqsdk.objs.Quote.position_limit`
-* 增加: TqApi 增加 :py:meth:`~tqsdk.TqApi.query_symbol_settlement` 接口，支持查询合约每日结算价
-* 增加: TqAuth 增加 :py:meth:`~tqsdk.TqAuth.expire_datetime` 接口，支持查询快期账户授权到期时间
+* 新增: :py:class:`~tqsdk.objs.Quote` 增加 :py:class:`~tqsdk.objs.Quote.position_limit` 属性，返回合约持仓限额
+* 增加: :py:class:`~tqsdk.TqApi` 增加 :py:meth:`~tqsdk.TqApi.query_symbol_settlement` 接口，支持查询合约每日结算价
+* 增加: :py:class:`~tqsdk.TqAuth` 增加 :py:class:`~tqsdk.TqAuth.expire_datetime` 属性，返回快期账户授权到期时间
 * 自该版本起仅支持 Python >=3.7
 
 3.7.3 (2024/09/20)

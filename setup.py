@@ -8,7 +8,7 @@ with open("README.md", mode="r", encoding='utf-8') as fh:
 
 setuptools.setup(
     name='tqsdk',
-    version="3.7.4",
+    version="3.7.6",
     description='TianQin SDK',
     author='TianQin',
     author_email='tianqincn@gmail.com',
@@ -18,7 +18,8 @@ setuptools.setup(
     packages=setuptools.find_packages(exclude=["tqsdk.test", "tqsdk.test.*"]),
     python_requires='>=3.7',
     install_requires=["websockets>=8.1", "requests", "numpy", "pandas>=1.1.0", "scipy", "simplejson", "aiohttp",
-                      "certifi", "pyjwt", "psutil>=5.9.6", "shinny_structlog", "sgqlc", "filelock", "tqsdk_ctpse", "tqsdk_sm"],
+                      "certifi", "pyjwt", "psutil>=5.9.6", "shinny_structlog", "sgqlc", "filelock", "tqsdk_ctpse", "tqsdk_sm",
+                      "packaging"],
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: Apache Software License",

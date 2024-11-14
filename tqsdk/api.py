@@ -2312,8 +2312,6 @@ class TqApi(TqBaseApi):
         """
         查询交易所合约每日结算价
 
-        本接口仅限专业版用户使用，如需购买专业版或者申请试用，请访问 https://www.shinnytech.com/tqsdk_professional/。
-
         该函数返回的对象不会更新，不建议在循环内调用该方法。
 
         Args:
@@ -2384,8 +2382,6 @@ class TqApi(TqBaseApi):
             -> TqSymbolRankingDataFrame:
         """
         查询合约成交排名/持仓排名
-
-        本接口仅限专业版用户使用，如需购买专业版或者申请试用，请访问 https://www.shinnytech.com/tqsdk-buy/。
 
         该函数返回的对象不会更新，不建议在循环内调用该方法。
 
