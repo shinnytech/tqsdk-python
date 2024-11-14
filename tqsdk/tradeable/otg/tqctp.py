@@ -22,7 +22,7 @@ class TqCtp(BaseOtg, FutureMixin):
 
             front_broker (str): CTP 柜台代码
 
-            front_url (str): CTP 柜台地址
+            front_url (str): CTP 柜台地址，格式为 tcp://ip:port，如 tcp://129.211.138.170:10001
 
             app_id (str): CTP AppID
 

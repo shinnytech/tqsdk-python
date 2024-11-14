@@ -17,6 +17,8 @@ from urllib.parse import urlparse
 
 import certifi
 import websockets
+import websockets.exceptions
+from packaging import version
 from shinny_structlog import ShinnyLoggerAdapter
 
 from tqsdk.datetime import _cst_now
@@ -42,6 +44,9 @@ TqReconnectHandler
 """
 
 
+websocket_version_ge_14 = version.parse(websockets.__version__) >= version.parse("14.0")
+
+
 class ReconnectTimer(object):
 
     def __init__(self):
@@ -54,42 +59,17 @@ class ReconnectTimer(object):
             self.timer = time.time() + random.uniform(seconds, seconds * 2)
 
 
-class TqStreamReader(asyncio.StreamReader):
-
-    def __init__(self, *args, **kwargs):
-        super(TqStreamReader, self).__init__(*args, **kwargs)
-        self._start_read_message = None
-        self._read_size = 0
-
-    async def readexactly(self, n):
-        data = await super(TqStreamReader, self).readexactly(n)
-        if not self._start_read_message:
-            self._start_read_message = time.time()
-        self._read_size += n
-        return data
-
-
-class TqWebSocketClientProtocol(websockets.WebSocketClientProtocol):
-
-    def __init__(self, *args, **kwargs):
-        super(TqWebSocketClientProtocol, self).__init__(*args, **kwargs)
-        self.reader = TqStreamReader(limit=self.read_limit // 2, loop=self.loop)
-
-    async def handshake(self, *args, **kwargs) -> None:
-        try:
-            await super(TqWebSocketClientProtocol, self).handshake(*args, **kwargs)
-        except websockets.exceptions.InvalidStatusCode as e:
-            for h_key, h_value in self.response_headers.items():
-                if h_key == 'x-shinny-auth-check' and h_value == 'Backtest Permission Denied':
-                    raise TqBacktestPermissionError(
-                        "免费账户每日可以回测3次，今日暂无回测权限，需要购买后才能使用。升级网址：https://www.shinnytech.com/tqsdk-buy/") from None
-            raise
-
-    async def read_message(self):
-        message = await super().read_message()
-        self.reader._start_read_message = None
-        self.reader._read_size = 0
-        return message
+if websocket_version_ge_14:
+    # https://websockets.readthedocs.io/en/stable/reference/exceptions.html#module-websockets.exceptions
+    websocket_expect_exc = (
+        websockets.exceptions.ConnectionClosedError, websockets.exceptions.InvalidHandshake, websockets.exceptions.InvalidURI,
+        websockets.exceptions.InvalidState, websockets.exceptions.ProtocolError
+    )
+else:
+    websocket_expect_exc = (
+        websockets.exceptions.ConnectionClosed, websockets.exceptions.InvalidStatusCode, websockets.exceptions.InvalidURI,
+        websockets.exceptions.InvalidState, websockets.exceptions.ProtocolError
+    )
 
 
 class TqConnect(object):
@@ -117,8 +97,14 @@ class TqConnect(object):
         self._subscribed_per_seconds = 100  # 每秒 subscribe_quote 请求次数限制
         self._subscribed_queue = Queue(self._subscribed_per_seconds)
 
-        self._keywords["extra_headers"] = self._api._base_headers
-        self._keywords["create_protocol"] = TqWebSocketClientProtocol
+        # websockets 14.0版本升级后用法有变化
+        if websocket_version_ge_14:
+            # https://websockets.readthedocs.io/en/stable/howto/upgrade.html#arguments-of-connect
+            self._keywords["additional_headers"] = self._api._base_headers
+            self._keywords["user_agent_header"] = None   # self._api._base_headers 里面已经包含了 "User-Agent"
+            self._keywords["process_exception"] = lambda exc: exc
+        else:
+            self._keywords["extra_headers"] = self._api._base_headers
         url_info = urlparse(url)
         cm = NullContext()
         if url_info.scheme == "wss":
@@ -198,16 +184,10 @@ class TqConnect(object):
                                 self._logger.debug("websocket received data", pack=msg)
                                 await recv_chan.send(pack)
                         finally:
-                            self._logger.debug("websocket connection info", current_time=time.time(),
-                                               start_read_message=client.reader._start_read_message,
-                                               read_size=client.reader._read_size)
                             await self._api._cancel_task(send_task)
                 # 希望做到的效果是遇到网络问题可以断线重连, 但是可能抛出的例外太多了(TimeoutError,socket.gaierror等), 又没有文档或工具可以理出 try 代码中所有可能遇到的例外
                 # 而这里的 except 又需要处理所有子函数及子函数的子函数等等可能抛出的例外, 因此这里只能遇到问题之后再补, 并且无法避免 false positive 和 false negative
-                except (websockets.exceptions.ConnectionClosed, websockets.exceptions.InvalidStatusCode, websockets.exceptions.InvalidURI,
-                        websockets.exceptions.InvalidState, websockets.exceptions.ProtocolError, asyncio.TimeoutError,
-                        OSError, EOFError,
-                        TqBacktestPermissionError) as e:
+                except websocket_expect_exc + (asyncio.TimeoutError, OSError, EOFError, TqBacktestPermissionError) as e:
                     in_ops_time = _cst_now().hour == 19 and 0 <= _cst_now().minute <= 30
                     # 发送网络连接断开的通知，code = 2019112911
                     notify_id = _generate_uuid()

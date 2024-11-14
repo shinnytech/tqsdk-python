@@ -22,7 +22,7 @@ class TqJees(BaseOtg, FutureMixin):
 
             front_broker (str): 杰宜斯柜台代码
 
-            front_url (str): 杰宜斯柜台地址
+            front_url (str): 杰宜斯柜台地址，格式为 tcp://ip:port，如 tcp://129.211.138.170:10001
 
             app_id (str): 杰宜斯 AppID
 
