@@ -4,38 +4,10 @@ __author__ = 'chengzhi'
 
 import copy
 import json
-import warnings
 from typing import List
 
 from tqsdk.diff import _get_obj
 from tqsdk.entity import Entity
-from tqsdk.utils import _query_for_init, _generate_uuid
-
-
-class QuotesEntity(Entity):
-
-    def __init__(self, api):
-        self._api = api
-        self._not_send_init_query = True
-
-    def __iter__(self):
-        message = """
-            不推荐使用 api._data['quotes'] 获取全部合约，该使用方法会在 20201101 之后的版本中放弃维护。
-            需要注意：
-            * 在同步代码中，初次使用 api._data['quotes'] 获取全部合约会产生一个耗时很长的查询。
-            * 在协程中，api._data['quotes'] 这种用法不支持使用。
-            请尽快修改使用新的接口，参考链接 http://doc.shinnytech.com/tqsdk/reference/tqsdk.api.html#tqsdk.api.TqApi.query_quotes
-        """
-        warnings.warn(message, DeprecationWarning, stacklevel=3)
-        self._api._logger.warning("deprecation", content="Deprecation Warning in api._data['quotes']")
-
-        # 兼容旧版 tqsdk 所做的修改，来支持用户使用 for k,v in api._data.quotes.items() 类似的用法
-        # 从 api._init_() 最后 3 行移到这里
-        if self._not_send_init_query and self._api._stock:
-            self._not_send_init_query = False
-            q = _query_for_init()
-            self._api.query_graphql(q, {}, _generate_uuid("PYSDK_quote"))
-        return super().__iter__()
 
 
 class Quote(Entity):
@@ -143,7 +115,7 @@ class Quote(Entity):
         self.strike_price: float = float("nan")
         #: 合约类型
         self.ins_class: str = ""
-        #: 交易所内的合约代码
+        #: 合约代码，包含了交易所代码
         self.instrument_id: str = ""
         #: 合约中文名
         self.instrument_name: str = ""

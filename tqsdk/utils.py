@@ -7,9 +7,10 @@ import os
 import random
 import secrets
 from bisect import bisect_right
-from typing import Callable
+from typing import Callable, List, Dict
 
 from sgqlc.operation import Operation
+from sgqlc.types import Arg, String, Variable, list_of
 from pandas.core.internals import BlockManager
 
 from tqsdk.diff import _get_obj
@@ -35,33 +36,39 @@ def _generate_uuid(prefix=''):
     return f"{prefix + '_' if prefix else ''}{RD.getrandbits(128):032x}"
 
 
-def _query_for_quote(symbol):
+def _query_for_quote(symbol, single_symbol_set) -> List[Dict]:
     """
-    返回请求某个合约的合约信息的 query_pack
+    返回请求某个或多个合约的合约信息的 query_packs
     调用次函数应该全部都是sdk的代码主动请求合约信息
     用户请求合约信息一定是 PYSDK_api 开头的请求，因为用户请求的合约信息在回测时带有 timestamp 参数，是不应该调用此函数的
+    即：以 PYSDK_quote_ 开头的 query_id 都是 sdk 主动请求合约信息
+    对于在 single_symbol_set 合约表中的待查询合约逐个查询, 即每个查询请求只查询一个合约
+    对于不在 single_symbol_set 的合约表中的待查询合约批量查询一次
     """
+    results = []
     symbol_list = symbol if isinstance(symbol, list) else [symbol]
-    op = Operation(ins_schema.rootQuery)
-    query = op.multi_symbol_info(instrument_id=symbol_list)
-    _add_all_frags(query)
-    return {
-        "aid": "ins_query",
-        "query_id": _generate_uuid(prefix='PYSDK_quote_'),
-        "query": op.__to_graphql__()
-    }
-
-
-def _query_for_init():
-    """
-    返回某些类型合约的 query
-    todo: 为了兼容旧版提供给用户的 api._data["quote"].items() 类似用法，应该限制交易所 ["SHFE", "DCE", "CZCE", "INE", "CFFEX", "KQ"]
-    """
-    op = Operation(ins_schema.rootQuery)
-    query = op.multi_symbol_info(class_=["FUTURE", "INDEX", "OPTION", "COMBINE", "CONT"],
-                                 exchange_id=["SHFE", "DCE", "CZCE", "INE", "CFFEX", "KQ", "GFEX"])
-    _add_all_frags(query)
-    return op.__to_graphql__()
+    batch_set = set(symbol_list) - single_symbol_set
+    single_set = set(symbol_list) - batch_set
+    if batch_set:
+        op = Operation(ins_schema.rootQuery)
+        query = op.multi_symbol_info(instrument_id=list(batch_set))
+        _add_all_frags(query)
+        results.append({
+            "aid": "ins_query",
+            "query_id": _generate_uuid(prefix='PYSDK_quote_'),
+            "query": op.__to_graphql__()
+        })
+    for s in single_set:
+        op = Operation(ins_schema.rootQuery, variables={'instrument_id': Arg(list_of(String), graphql_name='$instrument_id')})
+        query = op.multi_symbol_info(instrument_id=Variable('instrument_id', graphql_name='instrument_id'))
+        _add_all_frags(query)
+        results.append({
+            "aid": "ins_query",
+            "query_id": _generate_uuid(prefix='PYSDK_quote_'),
+            "query": op.__to_graphql__(),
+            "variables": {"instrument_id": [s]}
+        })
+    return results
 
 
 night_trading_table = {

@@ -15,7 +15,7 @@ from tqsdk.datetime import _get_expire_rest_days, _str_to_timestamp_nano
 from tqsdk.ins_schema import ins_schema, _add_all_frags
 from tqsdk.objs import Quote
 from tqsdk.diff import _get_obj
-from tqsdk.utils import _query_for_quote, _generate_uuid
+from tqsdk.utils import _generate_uuid
 from tqsdk.tafunc import _get_t_series, get_impv, _get_d1, get_delta, get_theta, get_gamma, get_vega, get_rho
 
 """
@@ -54,22 +54,8 @@ class QuoteList(list):
             if not hasattr(quote, '_task'):
                 quote._task = api.create_task(ensure_quote_with_underlying(api, quote), _caller_api=True)
 
-    async def _ensure_symbols(self):
-        if all([q.price_tick > 0 for q in self]):
-            return
-        query_symbols = [q._path[-1] for q in self if not q.price_tick > 0]
-        query_pack = _query_for_quote(query_symbols)
-        self._api._send_pack(query_pack)
-        async with self._api.register_update_notify(self) as update_chan:
-            async for _ in update_chan:
-                # 这里用 price_tick 判断是否已经收到了合约信息，是为了兼容 2020年9月份之前上市的合约
-                # 合约服务没有提供这些合约，tqsdk 是通过预先加载本地缓存文件的方式提供这些合约的信息
-                # 理想的判断标准是 basktest 模块中的 _ensure_query 函数
-                if all([q.price_tick > 0 for q in self]):
-                    return
-
     async def _ensure_quotes(self):
-        await self._ensure_symbols()
+        await self._api._ensure_symbol_async([q._path[-1] for q in self])
         self._api._auth._has_md_grants([q._path[-1] for q in self])  # 权限检查
         # 发送的请求会请求到所有字段，如果是期权也会请求标的的合约信息
         underlying_symbols = set([q.underlying_symbol for q in self if q.underlying_symbol])

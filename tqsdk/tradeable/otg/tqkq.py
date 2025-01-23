@@ -15,7 +15,7 @@ class TqKq(BaseOtg, FutureMixin):
         """
         创建快期模拟账户实例
 
-        快期模拟的账户和交易信息可以在快期专业版查看，可以点击 `快期专业版 <https://www.shinnytech.com/qpro/>`_ 进行下载
+        快期模拟的账户和交易信息可以在快期专业版, 快期v2, 快期v3, 快期APP查看
 
         Args:
             td_url (str): [可选]指定交易服务器的地址, 默认使用快期账户对应的交易服务地址
