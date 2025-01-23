@@ -72,5 +72,3 @@
 
 
 
-:py:class:`~tqsdk.InsertOrderUntilAllTradedTask` 是追价下单task, 该task会在行情变化后自动撤单重下，直到全部成交.
-

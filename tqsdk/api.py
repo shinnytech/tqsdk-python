@@ -64,7 +64,7 @@ from tqsdk.diff import _merge_diff, _get_obj, _is_key_exist, _register_update_ch
 from tqsdk.entity import Entity
 from tqsdk.exceptions import TqTimeoutError
 from tqsdk.log import _clear_logs, _get_log_name, _get_disk_free
-from tqsdk.objs import Quote, TradingStatus, Kline, Tick, Account, Position, Order, Trade, QuotesEntity, RiskManagementRule, RiskManagementData
+from tqsdk.objs import Quote, TradingStatus, Kline, Tick, Account, Position, Order, Trade, RiskManagementRule, RiskManagementData
 from tqsdk.objs import SecurityAccount, SecurityOrder, SecurityTrade, SecurityPosition
 from tqsdk.objs_not_entity import QuoteList, TqDataFrame, TqSymbolDataFrame, SymbolList, SymbolLevelList, \
     TqSymbolRankingDataFrame, TqOptionGreeksDataFrame, TqMdSettlementDataFrame
@@ -276,8 +276,6 @@ class TqApi(TqBaseApi):
         self._klines_update_range = {}
         self._data = Entity()  # 数据存储
         self._data._instance_entity([])
-        self._data["quotes"] = QuotesEntity(self)
-        self._data["quotes"]._instance_entity(["quotes"])
         self._diffs = []  # 自上次wait_update返回后收到更新数据的数组 (异步代码)
         self._sync_diffs = []  # 自上次wait_update返回后收到更新数据的数组 (同步代码)
         self._pending_diffs = []  # 从网络上收到的待处理的 diffs, 只在 wait_update 函数执行过程中才可能为非空
@@ -287,6 +285,7 @@ class TqApi(TqBaseApi):
         self._dividend_cache = {}  # 缓存合约对应的复权系数矩阵，每个合约只计算一次
         self._send_chan, self._recv_chan = TqChan(self), TqChan(self)  # 消息收发队列
         self._ws_md_recv_chan = None  # 记录 ws_md_recv_chan 引用
+        self._pre20_ins_info = {}  # 20年9月份之前的合约信息
 
         # slave模式的api不需要完整初始化流程
         self._is_slave = isinstance(account, TqApi)
@@ -542,19 +541,20 @@ class TqApi(TqBaseApi):
         if self._stock is False:
             raise Exception("代码 %s 不存在, 请检查合约代码是否填写正确" % symbol_list)
         else:
-            query_pack = _query_for_quote(symbol_list)
-            self._send_pack(query_pack)
+            for query in _query_for_quote(symbol_list, self._pre20_ins_info.keys()):
+                self._send_pack(query)
             async with self.register_update_notify() as update_chan:
                 async for _ in update_chan:
+                    # 这里用 price_tick 判断是否已经收到了合约信息，是为了兼容 2020年9月份之前上市的合约
+                    # 合约服务没有提供这些合约，tqsdk 是通过预先加载本地缓存文件的方式提供这些合约的信息
+                    # 理想的判断标准是 basktest 模块中的 _ensure_query 函数
                     if all([self._data.get("quotes", {}).get(symbol, {}).get('price_tick', float('nan')) > 0 for symbol in symbol_list]):
                         break
 
     # ----------------------------------------------------------------------
     def get_trading_status(self, symbol: str) -> TradingStatus:
         """
-        获取指定合约的交易状态. 此接口为 TqSdk 专业版提供，便于实现开盘抢单功能。
-
-        如果想使用此功能，可以点击 `天勤量化专业版 <https://www.shinnytech.com/tqsdk-buy/>`_ 申请试用或购买
+        获取指定合约的交易状态，便于实现开盘抢单功能。
 
         Args:
             symbol (str): 合约代码
@@ -1012,7 +1012,7 @@ class TqApi(TqBaseApi):
     # ----------------------------------------------------------------------
     def get_trading_calendar(self, start_dt: Union[date, datetime], end_dt: Union[date, datetime]) -> pd.DataFrame:
         """
-        获取一段时间内的交易日历信息，交易日历可以处理的范围为 2003-01-01 ～ 2024-12-31。
+        获取一段时间内的交易日历信息，每年的交易日历将在交易所新一年的节假日安排后更新
 
         Args:
             start_dt (date/datetime): 起始时间
@@ -1068,7 +1068,7 @@ class TqApi(TqBaseApi):
     # ----------------------------------------------------------------------
     def query_his_cont_quotes(self, symbol: Union[str, List[str]], n: int = 200) -> pd.DataFrame:
         """
-        获取指定的主连合约最近 n 天的标的，可以处理的范围为 2003-01-01 ～ 2022-12-31。
+        获取指定的主连合约最近 n 天的标的。
 
         Args:
             symbol (str/list of str): 指定主连合约代码或主连合约代码列表.
@@ -1126,9 +1126,7 @@ class TqApi(TqBaseApi):
     # ----------------------------------------------------------------------
     def add_risk_rule(self, rule: TqRiskRule) -> None:
         """
-        添加一项风控规则实例，此接口为 TqSdk 专业版提供。
-
-        如需使用此功能，可以点击 `天勤量化专业版 <https://www.shinnytech.com/tqsdk-buy/>`_ 申请试用或购买
+        添加一项风控规则实例。
 
         Args:
             rule (TqRiskRule): 风控规则实例，必须是 TqRiskRule 的子类型
@@ -1142,9 +1140,7 @@ class TqApi(TqBaseApi):
 
     def delete_risk_rule(self, rule: TqRiskRule) -> None:
         """
-        删除一项风控规则实例，此接口为 TqSdk 专业版提供。
-
-        如需使用此功能，可以点击 `天勤量化专业版 <https://www.shinnytech.com/tqsdk-buy/>`_ 申请试用或购买
+        删除一项风控规则实例。
 
         Args:
             rule (TqRiskRule): 风控规则实例，必须是 TqRiskRule 的子类型
@@ -1884,7 +1880,7 @@ class TqApi(TqBaseApi):
             * 如果没有收到数据包，则挂起等待.
 
         Args:
-            deadline (float): [可选]指定截止时间，自unix epoch(1970-01-01 00:00:00 GMT)以来的秒数(time.time())。默认没有超时(无限等待)
+            deadline (float): [可选]指定截止时间，自unix epoch(1970-01-01 00:00:00 GMT)以来的秒数(time.time())。默认没有超时(无限等待), 当 wait_update 有数据更新或者任务执行时会返回为 True，否则会陷入阻塞，使用 deadline 参数会让 wait_update 函数在当前时间大于 deadline 参数后返回 False ，避免长时间阻塞。非简单用法，如果设置的 deadline 过小，而计算任务过多，可能会导致处理任务堆积，引发潜在问题。
 
         Returns:
             bool: 如果收到业务数据更新则返回 True, 如果到截止时间依然没有收到业务数据更新则返回 False
@@ -3348,10 +3344,13 @@ class TqApi(TqBaseApi):
             if quote["ins_class"] == "FUTURE_OPTION":
                 quote["exercise_year"] = _timestamp_nano_to_datetime(int(quote["expire_datetime"] * 1000000) * 1000).year
                 quote["exercise_month"] = _timestamp_nano_to_datetime(int(quote["expire_datetime"] * 1000000) * 1000).month
-        ws_md_recv_chan.send_nowait({
-            "aid": "rtn_data",
-            "data": [{"quotes": quotes}]
-        })  # 获取合约信息
+        if self._stock is False:
+            ws_md_recv_chan.send_nowait({
+                "aid": "rtn_data",
+                "data": [{"quotes": quotes}]
+            })  # 获取合约信息
+        else:
+            self._pre20_ins_info = quotes
 
         self._ws_md_recv_chan = ws_md_recv_chan  # 记录 ws_md_recv_chan 引用
 

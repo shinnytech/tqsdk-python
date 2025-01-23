@@ -160,6 +160,7 @@ class TqBacktest(object):
                     self._diffs.append({
                         "ins_list": pack["ins_list"]
                     })
+                    await self._ensure_symbols(pack["ins_list"].split(","))
                     for ins in pack["ins_list"].split(","):
                         await self._ensure_quote(ins)
                     await self._send_diff()  # 处理上一次未处理的 peek_message
@@ -451,16 +452,21 @@ class TqBacktest(object):
             while not query_pack.items() <= self._data.get("symbols", {}).get(pack["query_id"], {}).items():
                 await update_chan.recv()
 
-    async def _ensure_quote(self, symbol):
+    async def _ensure_symbols(self, symbols):
         # 在接新版合约服务器后，合约信息程序运行过程中查询得到的，这里不再能保证合约一定存在，需要添加 quote 默认值
-        quote = _get_obj(self._data, ["quotes", symbol], BtQuote(self._api))
-        if math.isnan(quote.get("price_tick")):
-            query_pack = _query_for_quote(symbol)
+        quotes = [_get_obj(self._data, ["quotes", symbol], BtQuote(self._api)) for symbol in symbols]
+        quotes = [q for q in quotes if math.isnan(q.get("price_tick"))]
+        if not quotes:
+            return
+        for query_pack in _query_for_quote([q._path[-1] for q in quotes], self._api._pre20_ins_info.keys()):
             await self._md_send_chan.send(query_pack)
-            async with TqChan(self._api, last_only=True) as update_chan:
-                quote["_listener"].add(update_chan)
-                while math.isnan(quote.get("price_tick")):
-                    await update_chan.recv()
+        async with TqChan(self._api, last_only=True) as update_chan:
+            for q in quotes:
+                q["_listener"].add(update_chan)
+            while any([math.isnan(q.get("price_tick")) for q in quotes]):
+                await update_chan.recv()
+
+    async def _ensure_quote(self, symbol):
         if symbol not in self._quotes or self._quotes[symbol]["min_duration"] > 60000000000:
             await self._ensure_serial(symbol, 60000000000)
 

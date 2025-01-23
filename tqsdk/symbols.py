@@ -38,7 +38,11 @@ class TqSymbols(object):
                         for query_id, query_result in d.get("symbols", {}).items():
                             if query_result:
                                 if query_result.get("error", None):
-                                    raise Exception(f"查询合约服务报错 {query_result['error']}")
+                                    try:
+                                        for ins in query_result['variables']['instrument_id']:
+                                            updated_quotes[ins] = self._api._pre20_ins_info[ins]
+                                    except KeyError:
+                                        raise Exception(f"查询合约服务报错 {query_result['error']}") from None
                                 elif query_id.startswith("PYSDK_quote"):
                                     quotes = self._api._symbols_to_quotes(query_result, self._quotes_all_keys)
                                     for quote in quotes.values():

@@ -116,8 +116,8 @@ class TradeExtension():
         unknown_symbols = self._need_wait_symbol_info - self._query_symbols
         if len(unknown_symbols) > 0:
             self._query_symbols = self._query_symbols.union(unknown_symbols)  # 所有发送过ins_query的合约
-            query_pack = _query_for_quote(list(unknown_symbols))
-            await self._md_send_chan.send(query_pack)
+            for query_pack in _query_for_quote(list(unknown_symbols), self._api._pre20_ins_info.keys()):
+                await self._md_send_chan.send(query_pack)
 
     def _generate_pend_diff(self):
         """"

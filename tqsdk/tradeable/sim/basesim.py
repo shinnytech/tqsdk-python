@@ -171,7 +171,8 @@ class BaseSim(Tradeable):
         if quote.get("price_tick") == quote.get("price_tick"):
             return quote.copy()
         if quote.get("price_tick") != quote.get("price_tick"):
-            await self._md_send_chan.send(_query_for_quote(symbol))
+            for query_pack in _query_for_quote(symbol, self._api._pre20_ins_info.keys()):
+                await self._md_send_chan.send(query_pack)
         async for _ in quote_chan:
             quote_chan.task_done()
             if quote.get("price_tick") == quote.get("price_tick"):
@@ -185,7 +186,8 @@ class BaseSim(Tradeable):
             return quote.copy()
         if quote.get("price_tick") != quote.get("price_tick"):
             # 对于没有合约信息的 quote，发送查询合约信息的请求
-            await self._md_send_chan.send(_query_for_quote(symbol))
+            for query_pack in _query_for_quote(symbol, self._api._pre20_ins_info.keys()):
+                await self._md_send_chan.send(query_pack)
         async for _ in quote_chan:
             quote_chan.task_done()
             if quote.get("datetime", "") and quote.get("price_tick") == quote.get("price_tick"):
