@@ -185,41 +185,15 @@ class TqApi(TqBaseApi):
 
         Example2::
 
-            # 使用快期模拟帐号连接行情服务器
-            from tqsdk import TqApi, TqAuth, TqKq
-            api = TqApi(TqKq(), auth=TqAuth("快期账户", "账户密码"))  # 根据填写的快期账户参数连接指定的快期模拟账户
+            # 使用simnow帐号连接行情和交易服务器
+            from tqsdk import TqApi, TqAuth, TqAccount
+            api = TqApi(TqAccount("simnow", "simnow用户名", "simnow密码"), auth=TqAuth("快期账户", "账户密码"))
 
         Example3::
 
-            # 使用模拟帐号直连行情服务器
-            from tqsdk import TqApi, TqAuth, TqSim
-            api = TqApi(TqSim(), auth=TqAuth("快期账户", "账户密码"))  # 不填写参数则默认为 TqSim() 模拟账号
-
-        Example4::
-
-            # 进行策略回测
-            from datetime import date
-            from tqsdk import TqApi, TqAuth, TqBacktest
-            api = TqApi(backtest=TqBacktest(start_dt=date(2018, 5, 1), end_dt=date(2018, 10, 1)), auth=TqAuth("快期账户", "账户密码"))
-
-        Example5::
-
-            # 进行策略复盘
-            from datetime import date
-            from tqsdk import TqApi, TqAuth, TqReplay
-            api = TqApi(backtest=TqReplay(replay_dt=date(2019, 12, 16)), auth=TqAuth("快期账户", "账户密码"))
-
-        Example6::
-
-            # 开启 web_gui 功能，使用默认参数True
-            from tqsdk import TqApi, TqAuth
-            api = TqApi(web_gui=True, auth=TqAuth("快期账户", "账户密码"))
-
-        Example7::
-
-            # 开启 web_gui 功能，使用本机IP端口固定网址生成
-            from tqsdk import TqApi, TqAuth
-            api = TqApi(web_gui=":9876", auth=TqAuth("快期账户", "账户密码"))  # 等价于 api = TqApi(web_gui="0.0.0.0:9876", auth=TqAuth("快期账户", "账户密码"))
+            # 使用快期模拟帐号连接行情服务器
+            from tqsdk import TqApi, TqAuth, TqKq
+            api = TqApi(TqKq(), auth=TqAuth("快期账户", "账户密码"))  # 根据填写的快期账户参数连接指定的快期模拟账户
 
         """
 
@@ -2387,7 +2361,7 @@ class TqApi(TqBaseApi):
 
             ranking_type (str)：[必填] 表示返回结果以哪一项为排名基准，VOLUME 成交量排名，LONG 多头持仓排名, SHORT 空头持仓排名
 
-            days (int): [必填] 返回结果中包含的天数，默认为 1
+            days (int): [可选] 返回结果中包含的天数，默认为 1
 
             start_dt (date): [可选] 查询时间段开始日期，默认为 None
                 * 如果开始日期为 date 类型，则返回从开始日期之后 days 个交易日的有效数据

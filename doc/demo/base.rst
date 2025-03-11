@@ -51,6 +51,96 @@ t41 - 开仓/平仓
   :language: python
 
 
+.. _tutorial-t50:
+
+t50 - 查询交易所合约每日结算价
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. literalinclude:: ../../tqsdk/demo/tutorial/t50.py
+  :language: python
+
+
+.. _tutorial-t51:
+
+t51 - 查询合约成交排名/持仓排名
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. literalinclude:: ../../tqsdk/demo/tutorial/t51.py
+  :language: python
+
+
+.. _tutorial-t52:
+
+t52 - 根据合约类型、交易所、品种等条件查询合约
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. literalinclude:: ../../tqsdk/demo/tutorial/t52.py
+  :language: python
+
+
+.. _tutorial-t53:
+
+t53 - 查询主连合约对应的标的合约列表
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. literalinclude:: ../../tqsdk/demo/tutorial/t53.py
+  :language: python
+
+
+.. _tutorial-t54:
+
+t54 - 查询合约信息
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. literalinclude:: ../../tqsdk/demo/tutorial/t54.py
+  :language: python
+
+
+.. _tutorial-t55:
+
+t55 - 查询期权合约
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. literalinclude:: ../../tqsdk/demo/tutorial/t55.py
+  :language: python
+
+
+.. _tutorial-t56:
+
+t56 - 根据条件查询期权
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. literalinclude:: ../../tqsdk/demo/tutorial/t56.py
+  :language: python
+
+
+.. _tutorial-t57:
+
+t57 - 根据条件查询全部的实值、平值、虚值期权
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. literalinclude:: ../../tqsdk/demo/tutorial/t57.py
+  :language: python
+
+
+.. _tutorial-t58:
+
+t58 - 针对ETF期权和股指期权查询全部的实值、平值、虚值期权
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. literalinclude:: ../../tqsdk/demo/tutorial/t58.py
+  :language: python
+
+
+.. _tutorial-t59:
+
+t59 - 查询指定期权的希腊指标
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. literalinclude:: ../../tqsdk/demo/tutorial/t59.py
+  :language: python
+
+
 .. _tutorial-t60:
 
 t60 - 单均线策略
