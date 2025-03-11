@@ -281,7 +281,7 @@ TqSdk AI 助手
 -------------------------------------------------
 TqSdk 基于先进的大语言模型和常见天勤问题资料库，提供了新一代的 AI 助手
 
-解释函数，编写demo策略，分析代码报错原因，它都有不错的表现 `点击使用 <https://udify.app/chat/im02prcHNEOVbPAx/>`_
+解释函数，编写demo策略，分析代码报错原因，它都有不错的表现 `点击使用 <https://www.shinnytech.com/tianqin/>`_
 
 .. figure:: images/llm_pic1.png
 .. figure:: images/llm_pic2.png
