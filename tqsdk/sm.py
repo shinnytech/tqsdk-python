@@ -12,6 +12,7 @@ import subprocess
 from pathlib import Path
 from asyncio.subprocess import PIPE
 
+from tqsdk.exceptions import TqContextManagerError
 from tqsdk_sm import get_sm_path
 
 
@@ -108,8 +109,8 @@ class SMContext(object):
         self._sm_cfg = {**json.loads(decrypt_out), **self._sm_cfg}
         return self
 
-    async def get_addr(self):
-        """无法启动时返回空字符串"""
+    async def get_url(self, url_info):
+        """无法启动时抛出 TqContextManagerError 例外"""
         if sys.platform.startswith("win"):
             # subprocess.Popen 需要调用 poll 才会更新 returncode
             self._sm_proc.poll()
@@ -130,7 +131,9 @@ class SMContext(object):
                 self._sm_proc.stdin.write(json.dumps(self._sm_init).encode("utf-8"))
                 self._sm_proc.stdin.write(json.dumps(self._sm_cfg).encode("utf-8"))
                 self._sm_addr = (await self._sm_proc.stdout.readline()).decode("utf-8").strip()
-        return self._sm_addr
+        if not self._sm_addr:
+            raise TqContextManagerError("获取国密服务地址失败")
+        return url_info._replace(scheme="ws", netloc=self._sm_addr).geturl()
 
     async def __aexit__(self, exc_type, exc, tb):
         try:

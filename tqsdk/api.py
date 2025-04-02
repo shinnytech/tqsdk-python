@@ -10,10 +10,7 @@
 * 提供本地的模拟交易账户，同时完成撮合成交
 * 支持回测功能
 
-
 * PYTHON SDK使用文档: https://doc.shinnytech.com/pysdk/latest/
-* 天勤vscode插件使用文档: https://doc.shinnytech.com/pysdk/latest/devtools/vscode.html
-* 天勤用户论坛: https://www.shinnytech.com/qa/
 """
 __author__ = 'chengzhi'
 
