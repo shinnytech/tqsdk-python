@@ -11,6 +11,8 @@ import subprocess
 from pathlib import Path
 from asyncio.subprocess import DEVNULL, PIPE
 
+from tqsdk.exceptions import TqContextManagerError
+
 
 class ZqOtgContext(object):
     def __init__(self, api):
@@ -34,8 +36,8 @@ class ZqOtgContext(object):
         self._zq_otg_data_path = Path(self._zq_otg_data_dir.name)
         return self
 
-    async def get_addr(self):
-        """无法启动时返回空字符串"""
+    async def get_url(self, url_info):
+        """无法启动时抛出 TqContextManagerError 例外"""
         # port_file 是创建在 log_file_path 下的
         port_file = self._zq_otg_data_path / "port.json"
 
@@ -60,10 +62,9 @@ class ZqOtgContext(object):
                     with open(port_file, 'r') as file:
                         port = json.load(file)["port"]
                         if port != 0:
-                            return f"127.0.0.1:{port}"
+                            return url_info._replace(scheme="ws", netloc=f"127.0.0.1:{port}").geturl()
                 await asyncio.sleep(1)
-
-        return ""
+        raise TqContextManagerError("获取交易服务地址失败")
 
     async def __aexit__(self, exc_type, exc, tb):
         if self._zq_otg_proc is not None:

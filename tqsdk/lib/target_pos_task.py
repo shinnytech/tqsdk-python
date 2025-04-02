@@ -479,7 +479,7 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
 
             symbol_list = ["SHFE.rb2107", "DCE.m2109"]  # 设置合约代码
             for symbol in symbol_list:
-                api.create_task(demo("SHFE.rb2107"))  # 为每个合约创建异步任务
+                api.create_task(demo(symbol))  # 为每个合约创建异步任务
 
             while True:
                 api.wait_update()

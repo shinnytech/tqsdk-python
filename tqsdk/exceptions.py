@@ -115,3 +115,14 @@ class TqRiskRuleError(Exception):
     def __init__(self, message):
         super().__init__(message)
         self.message = message
+
+
+class TqContextManagerError(Exception):
+    """
+    连接管理器报错
+    """
+
+    def __init__(self, message):
+        super().__init__(message)
+        self.message = message
+
