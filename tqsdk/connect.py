@@ -11,7 +11,6 @@ import warnings
 import base64
 from abc import abstractmethod
 from logging import Logger
-from queue import Queue
 from typing import Optional
 from urllib.parse import urlparse
 
@@ -24,10 +23,11 @@ from shinny_structlog import ShinnyLoggerAdapter
 from tqsdk.datetime import _cst_now
 from tqsdk.diff import _merge_diff, _get_obj
 from tqsdk.entity import Entity
-from tqsdk.exceptions import TqBacktestPermissionError
+from tqsdk.exceptions import TqBacktestPermissionError, TqContextManagerError
 from tqsdk.utils import _generate_uuid
 from tqsdk.sm import SMContext, NullContext
 from tqsdk.zq_otg import ZqOtgContext
+from tqsdk.zq import ZqContext
 
 """
 优化代码结构，修改为
@@ -94,8 +94,8 @@ class TqConnect(object):
         # 调整代码位置，方便 monkey patch
         self._query_max_length = 50000  # ins_query 最大长度
         self._ins_list_max_length = 100000  # subscribe_quote 最大长度
-        self._subscribed_per_seconds = 100  # 每秒 subscribe_quote 请求次数限制
-        self._subscribed_queue = Queue(self._subscribed_per_seconds)
+        self._subscribed_ins_list_throttle = 100  # 超过该阈值的订阅请求将进行流控检查
+        self._subscribed_counts = 0
 
         # websockets 14.0版本升级后用法有变化
         if websocket_version_ge_14:
@@ -114,18 +114,18 @@ class TqConnect(object):
         elif url_info.scheme.startswith("sm"):
             sm_info = url_info.path.split("/", 4)
             cm = SMContext(self._logger, self._api, url_info.scheme, sm_info[1], base64.urlsafe_b64decode(sm_info[2]).decode("utf-8"), base64.urlsafe_b64decode(sm_info[3]).decode("utf-8"))
-            url_info = url_info._replace(scheme="ws", path="/".join(sm_info[:1]+sm_info[4:]))
+            url_info = url_info._replace(path="/".join(sm_info[:1]+sm_info[4:]))
         elif url_info.scheme.startswith("zqotg"):
-            url_info = url_info._replace(scheme="ws")
             cm = ZqOtgContext(self._api)
+        elif url_info.scheme.startswith("zq"):
+            cm = ZqContext(self._api)
 
         count = 0
         async with cm:
             while True:
                 try:
-                    if isinstance(cm, (SMContext, ZqOtgContext)):
-                        addr = await cm.get_addr()
-                        url = url_info._replace(netloc=addr).geturl()
+                    if isinstance(cm, (SMContext, ZqOtgContext, ZqContext)):
+                        url = await cm.get_url(url_info)
                     if not self._first_connect:
                         notify_id = _generate_uuid()
                         notify = {
@@ -187,7 +187,7 @@ class TqConnect(object):
                             await self._api._cancel_task(send_task)
                 # 希望做到的效果是遇到网络问题可以断线重连, 但是可能抛出的例外太多了(TimeoutError,socket.gaierror等), 又没有文档或工具可以理出 try 代码中所有可能遇到的例外
                 # 而这里的 except 又需要处理所有子函数及子函数的子函数等等可能抛出的例外, 因此这里只能遇到问题之后再补, 并且无法避免 false positive 和 false negative
-                except websocket_expect_exc + (asyncio.TimeoutError, OSError, EOFError, TqBacktestPermissionError) as e:
+                except websocket_expect_exc + (asyncio.TimeoutError, OSError, EOFError, TqBacktestPermissionError, TqContextManagerError) as e:
                     in_ops_time = _cst_now().hour == 19 and 0 <= _cst_now().minute <= 30
                     # 发送网络连接断开的通知，code = 2019112911
                     notify_id = _generate_uuid()
@@ -231,11 +231,10 @@ class TqConnect(object):
                 if pack.get("aid") == "subscribe_quote":
                     if len(pack.get("ins_list", "")) > self._ins_list_max_length:
                         warnings.warn(f"订阅合约字符串总长度大于 {self._ins_list_max_length}，可能会引起服务器限制。", stacklevel=3)
-                    if self._subscribed_queue.full():
-                        first_time = self._subscribed_queue.get()
-                        if time.time() - first_time < 1:
-                            warnings.warn(f"1s 内订阅请求次数超过 {self._subscribed_per_seconds} 次，订阅多合约时推荐使用 api.get_quote_list 方法。", stacklevel=3)
-                    self._subscribed_queue.put(time.time())
+                    ins_list_counts = len(pack.get("ins_list", "").split(","))
+                    self._subscribed_counts += 1
+                    if ins_list_counts > self._subscribed_ins_list_throttle and ins_list_counts / self._subscribed_counts < 2:
+                        warnings.warn("订阅多合约时推荐使用 api.get_quote_list 方法批量订阅。", stacklevel=3)
                 if pack.get("aid") == "ins_query":
                     if len(pack.get("query", "")) > self._query_max_length:
                         warnings.warn(f"订阅合约信息字段总长度大于 {self._query_max_length}，可能会引起服务器限制。", stacklevel=3)

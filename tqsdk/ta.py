@@ -170,8 +170,8 @@ def DMI(df, n, m):
     ld = pre_low - df["low"]
     admp = tqsdk.tafunc.ma(pd.Series(np.where((hd > 0) & (hd > ld), hd, 0)), n)
     admm = tqsdk.tafunc.ma(pd.Series(np.where((ld > 0) & (ld > hd), ld, 0)), n)
-    new_df["pdi"] = pd.Series(np.where(new_df["atr"] > 0, admp / new_df["atr"] * 100, np.NaN)).ffill()
-    new_df["mdi"] = pd.Series(np.where(new_df["atr"] > 0, admm / new_df["atr"] * 100, np.NaN)).ffill()
+    new_df["pdi"] = pd.Series(np.where(new_df["atr"] > 0, admp / new_df["atr"] * 100, np.nan)).ffill()
+    new_df["mdi"] = pd.Series(np.where(new_df["atr"] > 0, admm / new_df["atr"] * 100, np.nan)).ffill()
     ad = pd.Series(np.absolute(new_df["mdi"] - new_df["pdi"]) / (new_df["mdi"] + new_df["pdi"]) * 100)
     new_df["adx"] = tqsdk.tafunc.ma(ad, m)
     new_df["adxr"] = (new_df["adx"] + new_df["adx"].shift(m)) / 2
@@ -271,7 +271,7 @@ def MACD(df, short, long, m):
 def _sar(open, high, low, close, range_high, range_low, n, step, maximum):
     n = max(np.sum(np.isnan(range_high)), np.sum(np.isnan(range_low))) + 2
     sar = np.empty_like(close)
-    sar[:n] = np.NAN
+    sar[:n] = np.nan
     af = 0
     ep = 0
     trend = 1 if (close[n] - open[n]) > 0 else -1

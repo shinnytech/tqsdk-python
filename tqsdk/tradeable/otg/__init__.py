@@ -10,3 +10,4 @@ from tqsdk.tradeable.otg.tqctp import TqCtp
 from tqsdk.tradeable.otg.tqrohon import TqRohon
 from tqsdk.tradeable.otg.tqjees import TqJees
 from tqsdk.tradeable.otg.tqyida import TqYida
+from tqsdk.tradeable.otg.tqtradingunit import TqTradingUnit
