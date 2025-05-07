@@ -17,4 +17,3 @@
     unanttended.rst
     targetpostask2.rst
     scheduler.rst
-    tq_trading_unit.rst

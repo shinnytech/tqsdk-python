@@ -3245,7 +3245,7 @@ class TqApi(TqBaseApi):
             log_name = self._debug if isinstance(self._debug, str) else _get_log_name()
             if self._debug is not None or _get_disk_free() >= 10:
                 # self._debug is None 并且磁盘剩余空间小于 10G 则不写入日志
-                fh = logging.FileHandler(filename=log_name)
+                fh = logging.FileHandler(filename=log_name, encoding="utf-8")
                 fh.setFormatter(JSONFormatter())
                 fh.setLevel(logging.DEBUG)
                 self._logger.addHandler(fh)
