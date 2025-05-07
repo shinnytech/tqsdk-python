@@ -19,6 +19,7 @@ TianQin Python Sdk User Guide
     usage/index.rst
     demo/index.rst
     reference/index.rst
+    tq_trading_unit.rst
     advanced/index.rst
     dev/index.rst
     profession.rst

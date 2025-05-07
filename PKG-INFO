@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: tqsdk
-Version: 3.8.0
+Version: 3.8.1
 Summary: TianQin SDK
 Home-page: https://www.shinnytech.com/tqsdk
 Author: TianQin
@@ -25,90 +25,87 @@ License-File: LICENSE
     <img src ="https://img.shields.io/github/license/shinnytech/tqsdk-python.svg?color=orange"/>
 </p>
 
-TqSdk 天勤量化交易策略程序开发包
-====================================
-TqSdk 是一个由[信易科技](https://www.shinnytech.com)发起并贡献主要代码的开源 python 库. 
-依托[快期多年积累成熟的交易及行情服务器体系](https://www.shinnytech.com/diff), TqSdk 支持用户使用极少的代码量构建各种类型的量化交易策略程序, 
-并提供包含期货、期权、股票的 历史数据-实时数据-开发调试-策略回测-模拟交易-实盘交易-运行监控-风险管理 全套解决方案.
+# TqSdk 天勤量化交易策略程序开发包
 
-``` {.sourceCode .python}
+TqSdk 是一个由[信易科技](https://www.shinnytech.com)发起并贡献主要代码的开源 Python 库。
+TqSdk 支持用户使用极少的代码量构建各种类型的量化交易策略程序，
+并提供包含期货、期权、股票的 历史数据-实时数据-开发调试-策略回测-模拟交易-实盘交易-运行监控-风险管理 全套解决方案。
+
+## 快速开始
+
+``` python
 from tqsdk import TqApi, TqAuth, TqAccount, TargetPosTask
 
 api = TqApi(TqAccount("H海通期货", "4003242", "123456"), auth=TqAuth("快期账户", "账户密码"))      # 创建 TqApi 实例, 指定交易账户
-q_1910 = api.get_quote("SHFE.rb1910")                         # 订阅近月合约行情
-t_1910 = TargetPosTask(api, "SHFE.rb1910")                    # 创建近月合约调仓工具
-q_2001 = api.get_quote("SHFE.rb2001")                         # 订阅远月合约行情
-t_2001 = TargetPosTask(api, "SHFE.rb2001")                    # 创建远月合约调仓工具
+q_2309 = api.get_quote("SHFE.rb2309")                         # 订阅近月合约行情
+t_2309 = TargetPosTask(api, "SHFE.rb2309")                    # 创建近月合约调仓工具
+q_2401 = api.get_quote("SHFE.rb2401")                         # 订阅远月合约行情
+t_2401 = TargetPosTask(api, "SHFE.rb2401")                    # 创建远月合约调仓工具
 
 while True:
   api.wait_update()                                           # 等待数据更新
-  spread = q_1910["last_price"] - q_2001["last_price"]        # 计算近月合约-远月合约价差
+  spread = q_2309["last_price"] - q_2401["last_price"]        # 计算近月合约-远月合约价差
   print("当前价差:", spread)
   if spread > 250:
     print("价差过高: 空近月，多远月")                            
-    t_1910.set_target_volume(-1)                              # 要求把1910合约调整为空头1手
-    t_2001.set_target_volume(1)                               # 要求把2001合约调整为多头1手
+    t_2309.set_target_volume(-1)                              # 要求把2309合约调整为空头1手
+    t_2401.set_target_volume(1)                               # 要求把2401合约调整为多头1手
   elif spread < 200:
-    print("价差回复: 清空持仓")                               # 要求把 1910 和 2001合约都调整为不持仓
-    t_1910.set_target_volume(0)
-    t_2001.set_target_volume(0)
+    print("价差回复: 清空持仓")                               # 要求把 2309 和 2401合约都调整为不持仓
+    t_2309.set_target_volume(0)
+    t_2401.set_target_volume(0)
 ```
 
-要快速了解如何使用TqSdk, 可以访问我们的 [十分钟快速入门指南](https://doc.shinnytech.com/tqsdk/latest/quickstart.html).
+要快速了解如何使用TqSdk，请访问我们的 [十分钟快速入门指南](https://doc.shinnytech.com/tqsdk/latest/quickstart.html)。
 
+## 系统架构
 
-Architecture
----------------
 <img alt="系统架构图" src="https://raw.githubusercontent.com/shinnytech/tqsdk-python/master/doc/arch.svg?sanitize=true">
 
-* [行情网关 (Open Md Gateway)](https://github.com/shinnytech/open-md-gateway) 负责提供实时行情和历史数据
-* [交易中继网关 (Open Trade Gateway)](https://github.com/shinnytech/open-trade-gateway) 负责连接到期货公司交易系统
-* 这两个网关统一以 [Diff协议](https://doc.shinnytech.com/diff/latest) 对下方提供服务
-* TqSdk按照Diff协议连接到行情网关和交易中继网关, 实现行情和交易功能
+* 行情网关负责提供实时行情和历史数据
+* 交易中继网关负责连接到期货公司交易系统
+* 这两个网关统一以Diff协议对下方提供服务
+* TqSdk按照Diff协议连接到行情网关和交易中继网关，实现行情和交易功能
 
+## 主要功能特点
 
-Features
----------------
-TqSdk 提供的功能可以支持从简单到复杂的各类策略程序.
+TqSdk提供的功能可以支持从简单到复杂的各类策略程序：
 
-* **公司级数据运维**，提供当前所有可交易合约从上市开始的 **全部Tick数据和K线数据**
-* 支持市场上90%的期货公司 **实盘交易**
-* 支持 **模拟交易**
-* 支持 **Tick级和K线级回测**, 支持 **复杂策略回测**
-* 提供近百个 **技术指标函数及源码**
-* 用户无须建立和维护数据库, 行情和交易数据全在 **内存数据库** , 无访问延迟
-* 优化支持 **pandas** 和 **numpy** 库
-* 无强制框架结构, 支持任意复杂度的策略, 在一个交易策略程序中使用多个品种的K线/实时行情并交易多个品种
-* 配合开发者支持工具，能够进行**交易信号打点**，支持**自定义指标画图**
+* **公司级数据运维**，提供当前所有可交易合约从上市开始的**全部Tick数据和K线数据**
+* **多账户支持**，支持使用多个实盘账户、模拟账户同时交易
+* **支持市场上90%的期货公司实盘交易**
+* **支持股票、期权、期货交易** 
+* **支持CTP直连交易**，以及众期、融航、杰宜斯等资管柜台，易达、ctpmini 等高速柜台
+* **支持模拟交易**
+* **支持Tick级和K线级回测**，支持复杂策略回测
+* **提供近百个技术指标函数及源码**
+* **用户无须建立和维护数据库**，行情和交易数据全在内存数据库，无访问延迟
+* **优化支持pandas和numpy库**，方便数据分析
+* **灵活的策略编写方式**，无强制框架结构，支持任意复杂度的策略，在一个交易策略程序中使用多个品种的K线/实时行情并交易多个品种
 
-Installation
--------------------------------------------------
-TqSdk 仅支持 Python 3.7 及更高版本. 要安装 TqSdk, 可使用 pip:
+* **配合天勤AI助手**，提供函数解释、策略编写指导、错误分析等支持
 
-``` {.sourceCode .bash}
-$ pip install tqsdk
+## 安装方法
+
+TqSdk 仅支持 Python 3.7 及更高版本。要安装 TqSdk，可使用 pip：
+
+```bash
+pip install tqsdk
 ```
 
+## 文档与社区支持
 
-Documentation
--------------------------------------------------
 在线阅读HTML版本文档: https://doc.shinnytech.com/tqsdk/latest
 
 知乎账户【天勤量化】：https://www.zhihu.com/org/tian-qin-liang-hua/activities
 
-天勤AI助手：https://udify.app/chat/im02prcHNEOVbPAx  解释函数，编写demo策略，分析报错原因，它都可以做到！
+天勤AI助手：https://www.shinnytech.com/products/tqsdk - 解释函数，编写demo策略，分析报错原因，它都可以做到！
 
 用户交流QQ群: **611806823** (目前只允许给我们点过STAR的同学加入, 加群时请提供github用户名)
 
-	
-Gui
--------------------------------------------------
-TqSdk本身自带的web_gui功能，简单一行参数即可支持调用图形化界面，详情参考[web_gui](https://doc.shinnytech.com/pysdk/latest/usage/web_gui.html) 
-<img alt="TqSdk web_gui" src="https://raw.githubusercontent.com/shinnytech/tqsdk-python/master/doc/images/web_gui_backtest.png">
+## 关于我们
 
-About us
--------------------------------------------------
-[信易科技](https://www.shinnytech.com) 是专业的期货软件供应商和交易所授权行情服务商. 旗下的快期系列产品已为市场服务超过10年. TqSdk 是[公司开源计划](https://www.shinnytech.com/diff)的一部分. 
+[信易科技](https://www.shinnytech.com) 是专业的期货软件供应商和交易所授权行情服务商。旗下的快期系列产品已为市场服务超过10年。TqSdk 是公司开源计划的一部分。
 
 
 
