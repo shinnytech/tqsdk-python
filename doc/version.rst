@@ -2,6 +2,20 @@
 
 版本变更
 =============================
+3.8.3 (2025/06/16)
+
+* 新增: 多策略历史结算查询，详情参考 :ref:`tq_trading_unit`
+* 修复: :py:meth:`~tqsdk.TqApi.query_his_cont_quotes` 接口获取主力合约不一致的问题
+* 修复: pandas==2.3.0 时，初始化 :py:class:`~tqsdk.TqApi` 报错
+* docs: 优化文档
+
+
+3.8.2 (2025/05/23)
+
+* 修复：:py:meth:`~tqsdk.TqApi.query_all_level_finance_options` 对中金所股指期权标的检查
+* docs: 修正部分文档
+
+
 3.8.1 (2025/05/06)
 
 * docs: 完善 tqsdk 多策略文档
@@ -77,7 +91,7 @@
 3.6.1 (2024/08/16)
 
 * 优化：仅在发送过订阅请求后，才会发送退订请求
-* docs：添加天勤量化智能机器人介绍文档，详情参考 :ref:`tqsdk_llm`
+* docs：添加天勤量化智能机器人介绍文档
 
 
 3.6.0 (2024/06/21)
@@ -365,7 +379,7 @@
 * 修复：回测时取主连合约，如果用 ``quote.underlying_quote`` 直接读取标的合约，在标的合约变更时，可能未重新订阅行情的问题
 * 优化：取消网络连接关闭时屏幕输出，改为存入日志文件
 * docs：完善 :py:meth:`~tqsdk.TqApi.get_account`、:py:meth:`~tqsdk.TqApi.get_position`、:py:meth:`~tqsdk.TqApi.get_order`、
-  :py:meth:`~tqsdk.TqApi.get_trade` 函数返回值类型文档说明，完善专业版 :ref:`profession_tqkqstock` 文档，完善 :ref:`tqrohon` 融航接入文档
+  :py:meth:`~tqsdk.TqApi.get_trade` 函数返回值类型文档说明，完善专业版 :ref:`profession_tqkqstock` 文档，完善 :ref:`tqsdk.tqrohon` 融航接入文档
 
 
 3.0.0 (2021/11/12)
@@ -916,7 +930,7 @@
 
 1.4.0 (2019/12/25)
 
-* 在 TqSdk 中直接支持复盘功能(详见: :ref:`replay` )
+* 在 TqSdk 中直接支持复盘功能
 * 增加回测报告内容(胜率、每手盈亏额比例)
 * 从当前版本开始，不再支持天勤终端合约代码图形显示
 * 修复 web_gui 功能中的部分已知问题

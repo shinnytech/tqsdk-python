@@ -287,6 +287,7 @@ class TqWebHelper(object):
         except Exception as e:
             await conn_chan.close()
             self._conn_diff_chans.remove(conn_chan)
+        return ws
 
     async def link_httpserver(self):
         try:

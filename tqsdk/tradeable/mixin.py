@@ -31,7 +31,7 @@ class FutureMixin:
         Example1::
 
             # 获取当前浮动盈亏
-            from tqsdk import TqApi, TqAuth
+            from tqsdk import TqApi, TqAuth, TqAccount
 
             tqacc = TqAccount("N南华期货", "123456", "123456")
             api = TqApi(account=tqacc, auth=TqAuth("快期账户", "账户密码"))
@@ -136,7 +136,7 @@ class FutureMixin:
         Example1::
 
             # 获取当前总挂单手数
-            from tqsdk import TqApi, TqAuth
+            from tqsdk import TqApi, TqAuth, TqAccount
 
             tqacc = TqAccount("N南华期货", "123456", "123456")
             api = TqApi(account=tqacc, auth=TqAuth("快期账户", "账户密码"))
@@ -196,7 +196,7 @@ class FutureMixin:
         Example::
 
             # 多账户模式下, 分别获取各账户的成交记录
-            from tqsdk import TqApi, TqAuth, TqMultiAccount
+            from tqsdk import TqApi, TqAuth, TqMultiAccount, TqAccount
 
             account = TqAccount("N南华期货", "123456", "123456")
             tqkq = TqKq()
@@ -230,7 +230,7 @@ class StockMixin:
         Example1::
 
             # 获取当前浮动盈亏
-            from tqsdk import TqApi, TqAuth
+            from tqsdk import TqApi, TqAuth, TqAccount
 
             tqacc = TqAccount("N南华期货", "123456", "123456")
             api = TqApi(account=tqacc, auth=TqAuth("快期账户", "账户密码"))

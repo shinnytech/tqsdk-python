@@ -21,10 +21,10 @@ TianQin Python Sdk User Guide
     reference/index.rst
     tq_trading_unit.rst
     advanced/index.rst
+    tqsdk_cursor.rst
     dev/index.rst
     profession.rst
     enterprise.rst
-    tqsdk_llm.rst
     qa.rst
     version.rst
 

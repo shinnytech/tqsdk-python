@@ -361,7 +361,7 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
             if self._quote.open_min_market_order_volume > 1 or self._quote.open_min_limit_order_volume > 1:
                 raise Exception(
                     f"交易所规定 {self._symbol} 最小市价开仓手数 ({self._quote.open_min_market_order_volume})"
-                    f" 或最小限价开仓手数 ({self._quote.open_min_limit_order_volume}) 大于 1，targetpostask、twap、vwap 这些函数还未支持该规则!"
+                    f" 或最小限价开仓手数 ({self._quote.open_min_limit_order_volume}) 大于 1，targetpostask、twap、vwap 这些函数还未支持该规则!比如A合约最小开仓手数限制为3手，当要下单5手时是可以直接被下单的，但是如果部分成交了4手，剩余的1手在撤销后是无法重新下单的，因此无法对这些合约使用targetpostask"
                 )
             async for target_pos in self._pos_chan:
                 # lib 中对于时间判断的方案:
