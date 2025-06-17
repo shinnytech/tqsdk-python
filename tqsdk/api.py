@@ -28,6 +28,7 @@ import warnings
 from datetime import datetime, date, timedelta
 from typing import Union, List, Any, Optional, Coroutine, Callable, Tuple, Dict
 from asyncio.events import _get_running_loop, _set_running_loop
+from packaging import version
 
 import numpy as np
 import psutil
@@ -38,9 +39,10 @@ import pandas as pd
 import requests
 from pandas import RangeIndex, Index
 from pandas._libs.internals import BlockPlacement
-if tuple(map(int, pd.__version__.split("."))) < (1, 3, 0):
+pd_version = version.parse(pd.__version__)
+if pd_version < version.parse("1.3.0"):
     from pandas.core.internals import FloatBlock
-elif tuple(map(int, pd.__version__.split("."))) < (2, 1, 0):
+elif pd_version < version.parse("2.1.0"):
     from pandas.core.internals import NumericBlock as FloatBlock
 else:
     from pandas.core.internals.blocks import NumpyBlock as FloatBlock
@@ -867,6 +869,8 @@ class TqApi(TqBaseApi):
         Example::
 
             # 获取 SHFE.cu1805 合约 20180101-06:00:00 ~ 20180601-16:00:00 的 1 分钟线
+            from datetime import datetime
+
             from tqsdk import TqApi, TqAuth
             from tqsdk.ta import MA, MACD
 
@@ -937,6 +941,8 @@ class TqApi(TqBaseApi):
         Example::
 
             # 获取 SHFE.cu1805 合约 20180201-06:00:00 ~ 20180301-16:00:00 的 tick 数据
+            from datetime import datetime
+            
             from tqsdk import TqApi, TqAuth
 
             api = TqApi(auth=TqAuth("快期账户", "账户密码"))
@@ -1046,7 +1052,7 @@ class TqApi(TqBaseApi):
                 * str: 一个合约代码
                 * list of str: 合约代码列表 （一次提取多个合约的K线并根据相同的时间向第一个合约（主合约）对齐)
 
-            n：返回 n 个交易日交易日的对应品种的主力, 默认值为 200
+            n：返回 n 个交易日对应品种的主力, 默认值为 200
 
         Returns：
             pandas.DataFrame: 包含 n 行数据，列数为指定主连合约代码个数加 1，有以下列:
@@ -1439,7 +1445,7 @@ class TqApi(TqBaseApi):
         Example2::
 
             # 多账户条件下, 股票账户依据期货账户下单结果进行操作
-            from tqsdk import TqApi, TqAuth, TqMultiAccount
+            from tqsdk import TqApi, TqAuth, TqMultiAccount, TqAccount
 
             future_account = TqAccount("N南华期货", "123456", "123456")
             stock_account = TqAccount("N南华期货_股票", "88888888", "123456")
@@ -1505,7 +1511,7 @@ class TqApi(TqBaseApi):
         Example2::
 
             # 多账户模式下, 分别获取各账户浮动盈亏
-            from tqsdk import TqApi, TqAuth, TqMultiAccount
+            from tqsdk import TqApi, TqAuth, TqMultiAccount, TqAccount
 
             account1 = TqAccount("N南华期货", "123456", "123456")
             account2 = TqAccount("H宏源期货", "111111", "123456")
@@ -1566,7 +1572,7 @@ class TqApi(TqBaseApi):
         Example2::
 
             # 多账户模式下, 分别获取各账户浮动盈亏
-            from tqsdk import TqApi, TqAuth, TqMultiAccount
+            from tqsdk import TqApi, TqAuth, TqMultiAccount, TqAccount
 
             account1 = TqAccount("N南华期货", "123456", "123456")
             account2 = TqAccount("N宏源期货", "123456", "123456")
@@ -1635,7 +1641,7 @@ class TqApi(TqBaseApi):
         Example2::
 
             # 多账户模式下, 分别获取各账户浮动盈亏
-            from tqsdk import TqApi, TqAuth, TqMultiAccount
+            from tqsdk import TqApi, TqAuth, TqMultiAccount, TqAccount
 
             account1 = TqAccount("N南华期货", "123456", "123456")
             account2 = TqAccount("N宏源期货", "123456", "123456")
@@ -1680,7 +1686,7 @@ class TqApi(TqBaseApi):
         Example::
 
             # 多账户模式下, 分别获取各账户浮动盈亏
-            from tqsdk import TqApi, TqAuth, TqMultiAccount
+            from tqsdk import TqApi, TqAuth, TqMultiAccount, TqAccount
 
             account1 = TqAccount("N南华期货", "123456", "123456")
             account2 = TqAccount("N宏源期货", "123456", "123456")
@@ -1975,6 +1981,7 @@ class TqApi(TqBaseApi):
         判定obj最近是否有更新
 
         当业务数据更新导致 wait_update 返回后可以使用该函数判断 **本次业务数据更新是否包含特定obj或其中某个字段** 。
+        如果 wait_update 设置了 deadline 参数，那么判断业务数据是否更新需要根据 wait_update 函数的返回值来确定。
 
         关于判断K线更新的说明：
         当生成新K线时，其所有字段都算作有更新，若此时执行 api.is_changing(klines.iloc[-1]) 则一定返回True。
@@ -3071,7 +3078,7 @@ class TqApi(TqBaseApi):
         if option_class not in ['CALL', 'PUT']:
             raise Exception("option_class 参数错误，option_class 必须是 'CALL' 或者 'PUT'")
         nearbys = nearbys if isinstance(nearbys, list) else [nearbys]
-        if underlying_symbol == "SSE.000300":  # 股指期权
+        if underlying_symbol in ["SSE.000300", "SSE.000852", "SSE.000016"]:  # 股指期权
             if any([i not in [0, 1, 2, 3, 4, 5] for i in nearbys]):
                 raise Exception(f"股指期权标的为：{underlying_symbol}，exercise_date 参数应该是在 [0, 1, 2, 3, 4, 5] 之间。")
         else:  # ETF期权
@@ -4112,8 +4119,9 @@ if platform.python_version().startswith('3.7.'):
 try:
     res = requests.get("https://shinny-tqsdk.oss-cn-shanghai.aliyuncs.com/tqsdk_metadata.json", timeout=10)
     tq_metadata = res.json()
-    v_tuple = lambda s: tuple(map(int, (s.split("."))))
-    if tq_metadata.get('tqsdk_changelog') and v_tuple(__version__) < v_tuple(tq_metadata.get('tqsdk_version', '0.0.0')):
+    current_version = version.parse(__version__)
+    change_version = version.parse(tq_metadata.get('tqsdk_version', '0.0.0'))
+    if tq_metadata.get('tqsdk_changelog') and current_version < change_version:
         print(tq_metadata['tqsdk_changelog'], file=sys.stderr)
     if tq_metadata.get('tqsdk_notify'):
         print(tq_metadata['tqsdk_notify'], file=sys.stderr)

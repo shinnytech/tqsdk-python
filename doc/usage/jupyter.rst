@@ -25,8 +25,8 @@ pip install jupyter
 
 更多 Jupyter Notebook 安装文档请参考
 
-`Jupyter Notebook 安装文档 <https://jupyter.org/install/>`_ ::
-`Jupyter Notebook 文档 <https://jupyter-notebook.readthedocs.io/en/latest//>`_ ::
+- `Jupyter Notebook 安装文档 <https://jupyter.org/install/>`_
+- `Jupyter Notebook 文档 <https://jupyter-notebook.readthedocs.io/en/latest/>`_
 
 
 安装 TqSdk

@@ -98,7 +98,10 @@ class TqContCalendar(object):
         merge_result = pd.merge(temp_df, self.df, sort=True, how="outer", on="_cst_date")
         merge_result.ffill(inplace=True)
         merge_result.fillna(value="", inplace=True)
-        s = merge_result.loc[merge_result._cst_date.ge(self.start_dt) & merge_result._cst_date.le(self.end_dt), 'underlying']
+        # 由于主连表没有承诺主力合约在交易日更新，所以在主连表中非交易日可能也会有主力合约，比如 DCE.v1401
+        # 所以 merge_result 中可能会有 _cst_date 在交易日之外的日期，导致和 self.df 行数对不齐
+        # 所以 merge_result 只保留 self.df 中的交易日
+        s = merge_result.loc[merge_result['_cst_date'].isin(set(self.df['_cst_date'])), 'underlying']
         self.df[cont] = pd.Series(s.values)
 
     def _get_cont_underlying_on_date(self, trading_day: int):

@@ -66,7 +66,7 @@ TqSdk 并不提供专门的参数优化机制. 您可以按照自己的需求, �
             target_pos.set_target_volume(3)
     except BacktestFinished:
       api.close()
-      print("SHORT=", SHORT, "最终权益=", acc.account.balance)  # 每次回测结束时, 输出使用的参数和最终权益
+      print("SHORT=", SHORT, "最终权益=", acc.get_account().balance)  # 每次回测结束时, 输出使用的参数和最终权益
 
 
   if __name__ == '__main__':
