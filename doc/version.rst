@@ -2,6 +2,20 @@
 
 版本变更
 =============================
+3.8.5 (2025/08/07)
+
+* 修复: websockets 10.0 版本引发的连接失败问题
+* docs: 优化文档
+
+
+3.8.4 (2025/07/18)
+
+* 新增: :py:class:`~tqsdk.TqApi.get_trading_status` 支持订阅期权交易状态
+* 修复: :py:class:`~tqsdk.tools.DataDownloader` 计算复权因子错误
+* 修复: 回测模式下，:py:meth:`~tqsdk.TqApi.get_kline_serial` 订阅多合约 K 线时可能出现的越界报错
+* docs: 优化文档
+
+
 3.8.3 (2025/06/16)
 
 * 新增: 多策略历史结算查询，详情参考 :ref:`tq_trading_unit`

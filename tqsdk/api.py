@@ -2022,12 +2022,11 @@ class TqApi(TqBaseApi):
         diffs = self._diffs if self._loop.is_running() else self._sync_diffs
         if not isinstance(key, list):
             key = [key] if key else []
-        if isinstance(obj, list):
-            for o in obj:
-                if self._is_obj_changing(o, diffs=diffs, key=key):
-                    return True
-        else:
-            return self._is_obj_changing(obj, diffs=diffs, key=key)
+        objs = obj if isinstance(obj, list) else [obj]
+        for o in objs:
+            if self._is_obj_changing(o, diffs=diffs, key=key):
+                return True
+        return False
 
     def _is_obj_changing(self, obj: Any, diffs: List[Dict[str, Any]], key: List[str]) -> bool:
         try:

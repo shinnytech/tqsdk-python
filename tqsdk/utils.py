@@ -167,6 +167,7 @@ async def _get_dividend_factor(api, quote, start_dt_nano, end_dt_nano, chart_id_
     # 对每个除权除息矩阵增加 factor 序列，为当日的复权因子
     df = get_dividend_df(quote.stock_dividend_ratio, quote.cash_dividend_ratio)
     df = df[df["datetime"].between(start_dt_nano, end_dt_nano, inclusive="right")]  # 只需要一段时间之间的复权因子, 左开右闭
+    df = df.reset_index(drop=True)  # 重置索引，确保索引为 0, 1, 2...
     df["pre_close"] = float('nan')  # 初始化 pre_close 为 nan
     for i in range(len(df)):
         chart_info = {
@@ -203,7 +204,7 @@ async def _get_dividend_factor(api, quote, start_dt_nano, end_dt_nano, chart_id_
                 "view_width": 2
             })
     df["factor"] = (df["pre_close"] - df["cash_dividend"]) / df["pre_close"] / (1 + df["stock_dividend"])
-    df["factor"].fillna(1.0, inplace=True)
+    df["factor"] = df["factor"].fillna(1.0)
     return df
 
 
@@ -228,3 +229,8 @@ def deprecated_chart_id(*expect_args) -> Callable:
         return wrapper
 
     return decorator
+
+
+async def _forward_chan_handler(chan_from, chan_to):
+    async for pack in chan_from:
+        await chan_to.send(pack)

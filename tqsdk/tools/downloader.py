@@ -189,7 +189,14 @@ class DataDownloader:
         if quote.instrument_id not in self._dividend_cache:
             df = await _get_dividend_factor(self._api, quote, timestamp, self._end_dt_nano, chart_id_prefix="PYSDK_downloader")
             # 插入结束时间这条记录, 因为可能存在行情时间等于 _end_dt_nano 的行情，因此这里 +1
-            df = df.append({"datetime": self._end_dt_nano+1, "factor": 1.0}, ignore_index=True)
+            new_row = pandas.DataFrame([{
+                "datetime": self._end_dt_nano+1, 
+                "stock_dividend": 0.0,
+                "cash_dividend": 0.0, 
+                "pre_close": float('nan'),
+                "factor": 1.0
+            }])
+            df = pandas.concat([df, new_row], ignore_index=True)
             if self._adj_type == "F":
                 df["factor"] = df["factor"].iloc[::-1].cumprod().iloc[::-1]
             elif self._adj_type == "B":
@@ -198,8 +205,9 @@ class DataDownloader:
                 df["factor"] = 1.0 / df["factor"].cumprod()
                 # 至此 df 每行的含义为从 datetime 开始应使用 factor 复权
                 # 该格式并不好用，需要改为截止 datetime 之前(不包含) 应使用 factor 复权
-                df["factor"] = df["factor"].shift(1)
-                df["factor"].iloc[0] = 1.0
+                shifted_factor = df["factor"].shift(1)
+                shifted_factor.iloc[0] = 1.0
+                df["factor"] = shifted_factor
             self._dividend_cache[quote.instrument_id] = {
                 "df": df,
                 "last_dt": 0,
