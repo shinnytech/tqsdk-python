@@ -11,7 +11,7 @@
     from tqsdk import TqApi, TqAuth
     api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 
-对于 TqSdk 免费版，每个快期账户支持最多绑定一个实盘账户，并且快期账户会在用户第一次使用实盘账户时自动进行绑定(自动绑定功能需要 TqSdk 版本> 1.8.3)::
+每个快期账户支持最多绑定3个实盘账户，并且快期账户会在用户第一次使用实盘账户时自动进行绑定(自动绑定功能需要 TqSdk 版本> 1.8.3)::
 
     from tqsdk import TqApi, TqAuth
     api = TqApi(auth=TqAuth("快期账户", "账户密码"))
@@ -23,7 +23,7 @@
 
 .. figure:: ../images/user_web_management.png
 
-如果需要让您的快期账户支持更多的实盘账户，可以购买或申请试用我们的 `天勤量化专业版 <https://www.shinnytech.com/tqsdk-buy/>`_
+如果需要让您的快期账户支持更多的实盘账户，可以在购买我们的 `天勤量化专业版 <https://www.shinnytech.com/tqsdk-buy/>`_ 后联系工作人员进行额外账户数的购买
 
 设定实盘交易账户
 ----------------------------------------------------

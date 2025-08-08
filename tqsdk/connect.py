@@ -133,7 +133,7 @@ class TqConnect(object):
                             "level": "WARNING",
                             "code": 2019112910,
                             "conn_id": self._conn_id,
-                            "content": f"开始与 {url} 的重新建立网络连接",
+                            "content": f"开始与 {url} 重新建立网络连接",
                             "url": url
                         }
                         self._logger.debug("websocket connection connecting")

@@ -15,14 +15,6 @@
   :language: python
 
 
-在两个线程中分别运行Gui和TqSdk
--------------------------------------------------
-参见示例程序 multi_thread.py.
-
-.. literalinclude:: ../../tqsdk/demo/gui/multi_thread.py
-  :language: python
-
-
 在TqSdk任务中驱动Gui消息循环
 -------------------------------------------------
 参见示例程序 loop_integrate.py.

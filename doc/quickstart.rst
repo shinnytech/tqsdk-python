@@ -277,21 +277,6 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 
 
 
-TqSdk AI 助手
--------------------------------------------------
-TqSdk 基于先进的大语言模型和常见天勤问题资料库，提供了新一代的 AI 助手
-
-解释函数，编写demo策略，分析代码报错原因，它都有不错的表现 `点击使用 <https://www.shinnytech.com/tianqin/>`_
-
-.. figure:: images/llm_pic1.png
-.. figure:: images/llm_pic2.png
-.. figure:: images/llm_pic3.png
-.. figure:: images/llm_pic4.png
-.. figure:: images/llm_pic5.png
-.. figure:: images/llm_pic6.png
-.. figure:: images/llm_pic7.png
-
-
 TqSdk 学习视频
 -------------------------------------------------
 TqSdk 提供简单易懂的十分钟上手视频 `供用户学习 <https://www.shinnytech.com/tqsdkquickstart/>`_

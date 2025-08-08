@@ -599,6 +599,7 @@ class TqBacktest(object):
                             for chart_id in self._serials[(ins, dur)]["chart_id_set"]:
                                 diff["charts"] = {
                                     chart_id: {
+                                        "left_id": current_id - 10000 + 1,  # left_id 是当前窗口的左端点
                                         "right_id": current_id  # api 中处理多合约 kline 需要 right_id 信息
                                     }
                                 }
