@@ -3,12 +3,15 @@
 __time__ = '2020/8/5 22:45'
 __author__ = 'Hong Yan'
 
-from typing import List, Union, Optional
+from typing import List, Union, Optional, TYPE_CHECKING
 
 from shinny_structlog import ShinnyLoggerAdapter
 
+if TYPE_CHECKING:
+    from tqsdk.api import UnionTradeable
+
 from tqsdk.channel import TqChan
-from tqsdk.tradeable import TqAccount, TqKq, TqKqStock, TqSim, TqSimStock, BaseSim, TqZq, TqCtp, TqRohon, TqJees, TqYida, TqTradingUnit
+from tqsdk.tradeable import TqSim, BaseSim
 from tqsdk.tradeable.mixin import StockMixin
 
 
@@ -27,7 +30,7 @@ class TqMultiAccount(object):
 
     """
 
-    def __init__(self, accounts: Optional[List[Union[TqAccount, TqKq, TqZq, TqKqStock, TqSim, TqSimStock, TqZq, TqCtp, TqRohon, TqJees, TqYida, TqTradingUnit]]] = None):
+    def __init__(self, accounts: Optional[List['UnionTradeable']] = None):
         """
         创建 TqMultiAccount 实例
 
@@ -85,7 +88,7 @@ class TqMultiAccount(object):
         account_set = set([a._account_key for a in self._account_list])
         return len(account_set) != len(self._account_list)
 
-    def _check_valid(self, account: Union[str, TqAccount, TqKq, TqKqStock, TqSim, TqSimStock, None]):
+    def _check_valid(self, account: Union[str, 'UnionTradeable', None]):
         """
         查询委托、成交、资产、委托时, 需要指定账户实例
         account: 类型 str 表示 account_key，其他为账户类型或者 None

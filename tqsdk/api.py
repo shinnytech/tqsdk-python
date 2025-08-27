@@ -71,7 +71,7 @@ from tqsdk.risk_manager import TqRiskManager
 from tqsdk.risk_rule import TqRiskRule
 from tqsdk.ins_schema import ins_schema, basic, derivative, future, option
 from tqsdk.symbols import TqSymbols
-from tqsdk.tradeable import TqAccount, TqZq, TqKq, TqKqStock, TqSim, TqSimStock, BaseSim, BaseOtg, TqCtp, TqRohon, TqJees, TqYida
+from tqsdk.tradeable import TqAccount, TqZq, TqKq, TqKqStock, TqSim, TqSimStock, BaseSim, BaseOtg, TqCtp, TqRohon, TqJees, TqYida, TqTradingUnit
 from tqsdk.trading_status import TqTradingStatus
 from tqsdk.tqwebhelper import TqWebHelper
 from tqsdk.utils import _generate_uuid, _query_for_quote, BlockManagerUnconsolidated, _quotes_add_night, _bisect_value, \
@@ -81,7 +81,11 @@ from tqsdk.tafunc import get_dividend_df, get_dividend_factor
 from .__version__ import __version__
 
 
-UnionTradeable = Union[TqAccount, TqKq, TqZq, TqKqStock, TqSim, TqSimStock, TqCtp, TqRohon, TqJees, TqYida]
+# todo:
+# 在 python 文档中对 type alias 的定义有多种：TypeAliasType, TypeAlias 以及 simple assignment https://docs.python.org/3.13/library/typing.html#type-aliases
+# Union 类型支持嵌套 Union 类型，但是不支持嵌套 Union TypeAliasType 类型：https://docs.python.org/3.13/library/typing.html#typing.Union
+# 但是 Union 文档没有明说是否支持嵌套 Union simple assignment 类型，从实现上看，目前所有版本都支持（最新 3.13）
+UnionTradeable = Union[TqAccount, TqKq, TqZq, TqKqStock, TqSim, TqSimStock, TqCtp, TqRohon, TqJees, TqYida, TqTradingUnit]
 
 
 class TqApi(TqBaseApi):
@@ -124,9 +128,11 @@ class TqApi(TqBaseApi):
 
                 * :py:class:`~tqsdk.TqYida` : 使用易达账号
 
+                * :py:class:`~tqsdk.TqTradingUnit` : 使用交易单元账号
+
                 * :py:class:`~tqsdk.TqMultiAccount` : 多账户列表，列表中支持 :py:class:`~tqsdk.TqAccount`、:py:class:`~tqsdk.TqKq`、:py:class:`~tqsdk.TqKqStock`、\
                   :py:class:`~tqsdk.TqSim`、:py:class:`~tqsdk.TqSimStock`、:py:class:`~tqsdk.TqZq`、:py:class:`~tqsdk.TqRohon`、:py:class:`~tqsdk.TqJees`、\
-                  :py:class:`~tqsdk.TqYida` 和 :py:class:`~tqsdk.TqCtp` 中的 0 至 N 个或者组合
+                  :py:class:`~tqsdk.TqYida` 、:py:class:`~tqsdk.TqTradingUnit` 和 :py:class:`~tqsdk.TqCtp` 中的 0 至 N 个或者组合
 
             auth (TqAuth/str): [必填]用户快期账户:
                 * :py:class:`~tqsdk.TqAuth` : 添加快期账户类，例如：TqAuth("tianqin@qq.com", "123456")
@@ -1478,6 +1484,9 @@ class TqApi(TqBaseApi):
             "user_id": self._account._get_account_id(account),
             "order_id": order_id,
         }
+        # 风控检查
+        self._risk_manager._could_cancel_order(msg)
+        self._risk_manager._on_cancel_order(msg)
         self._send_pack(msg)
 
     # ----------------------------------------------------------------------

@@ -45,3 +45,16 @@ class TqRiskManager(list):
         # 需要更新风控对象内部统计值
         for r in self:
             r._on_insert_order(pack)
+
+    def _could_cancel_order(self, pack):
+        # 是否可以撤单
+        for r in self:
+            is_valid, err_msg = r._could_cancel_order(pack)
+            if not is_valid:
+                raise TqRiskRuleError(err_msg)
+        return True
+
+    def _on_cancel_order(self, pack):
+        # 需要更新风控对象内部统计值
+        for r in self:
+            r._on_cancel_order(pack)
