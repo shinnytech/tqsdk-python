@@ -229,8 +229,3 @@ def deprecated_chart_id(*expect_args) -> Callable:
         return wrapper
 
     return decorator
-
-
-async def _forward_chan_handler(chan_from, chan_to):
-    async for pack in chan_from:
-        await chan_to.send(pack)

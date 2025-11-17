@@ -483,7 +483,7 @@ class TqApi(TqBaseApi):
             if isinstance(self._backtest, TqBacktest):
                 if len(quote_list) > 100:
                     raise Exception("get_quote_list 请求合约长度超过限制。回测中最多支持长度为 100。")
-                deadline = time.time() + 25 + 3 * len(quote_list)  # 回测时的行情需要下载 klines，加长超时时间
+                deadline = time.time() + 25 + 60 * len(quote_list)  # 回测时的行情需要下载 klines，加长超时时间
             while not quote_list._task.done():
                 if not self.wait_update(deadline=deadline, _task=quote_list._task):
                     raise TqTimeoutError(f"获取 {symbols} 的行情信息超时，请检查客户端及网络是否正常")
@@ -725,7 +725,7 @@ class TqApi(TqBaseApi):
             self._requests["klines"][request] = serial
             self._serials[id(serial["df"])] = serial
         # 对于多合约Kline，超时的等待时间应该和需要下载的数据量成正比，根据合约数量判断下载的数据量
-        deadline = time.time() + 25 + 5 * len(symbol)
+        deadline = time.time() + 25 + 60 * len(symbol)
         while not self._loop.is_running() and not serial["init"]:
             if not self.wait_update(deadline=deadline, _task=[task, serial["df"].__dict__["_task"]]):
                 if len(symbol) > 1:
@@ -823,7 +823,7 @@ class TqApi(TqBaseApi):
             serial["chart"].update(pack)
             self._requests["ticks"][request] = serial
             self._serials[id(serial["df"])] = serial
-        deadline = time.time() + 30
+        deadline = time.time() + 30 + 128
         while not self._loop.is_running() and not serial["init"]:
             if not self.wait_update(deadline=deadline, _task=[task, serial["df"].__dict__["_task"]]):
                 raise TqTimeoutError("获取 %s 的Tick超时，请检查客户端及网络是否正常，且合约代码填写正确" % (symbol))

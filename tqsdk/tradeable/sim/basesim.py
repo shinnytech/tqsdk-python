@@ -18,7 +18,7 @@ from tqsdk.objs import Quote
 from tqsdk.tradeable.tradeable import Tradeable
 from tqsdk.tradeable.sim.trade_future import SimTrade
 from tqsdk.tradeable.sim.trade_stock import SimTradeStock
-from tqsdk.utils import _query_for_quote, _forward_chan_handler
+from tqsdk.utils import _query_for_quote
 
 
 class BaseSim(Tradeable):
@@ -220,7 +220,7 @@ class BaseSim(Tradeable):
             quote.update(self._data["quotes"][symbol])
             if underlying_quote:
                 underlying_quote.update(self._data["quotes"][underlying_symbol])
-            task = self._api.create_task(_forward_chan_handler(order_chan, quote_chan))
+            task = self._api.create_task(self._forward_chan_handler(order_chan, quote_chan))
             quotes = {symbol: quote}
             if underlying_quote:
                 quotes[underlying_symbol] = underlying_quote
@@ -240,6 +240,10 @@ class BaseSim(Tradeable):
             await quote_chan.close()
             await order_chan.close()
             await self._api._cancel_task(task)
+
+    async def _forward_chan_handler(self, chan_from, chan_to):
+        async for pack in chan_from:
+            await chan_to.send(pack)
 
     def _md_recv(self, pack):
         for d in pack["data"]:
