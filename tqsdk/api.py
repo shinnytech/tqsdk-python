@@ -96,7 +96,7 @@ class TqApi(TqBaseApi):
     """
 
     def __init__(self, account: Optional[Union[TqMultiAccount, UnionTradeable]] = None,
-                 auth: Union[TqAuth, str, None] = None,
+                 auth: Union[TqAuth, str, None] = None,deadline: Optional[float] = 60,
                  url: Optional[str] = None, backtest: Union[TqBacktest, TqReplay, None] = None,
                  web_gui: Union[bool, str] = False, debug: Union[bool, str, None] = None,
                  loop: Optional[asyncio.AbstractEventLoop] = None, disable_print: bool = False, _stock: bool = True,
@@ -286,12 +286,12 @@ class TqApi(TqBaseApi):
         self._setup_connection()  # 初始化通讯连接
 
         # 等待初始化完成
-        deadline = time.time() + 60
+        _deadline = time.time() + deadline
         try:
             # 多账户时，所有账户需要初始化完成
             trade_more_data = True
             while self._data.get("mdhis_more_data", True) or trade_more_data:
-                if not self.wait_update(deadline=deadline):  # 等待连接成功并收取截面数据
+                if not self.wait_update(deadline=_deadline):  # 等待连接成功并收取截面数据
                     raise TqTimeoutError("接收数据超时，请检查客户端及网络是否正常")
                 trade_more_data = self._account._get_trade_more_data(self._data)
         except:
