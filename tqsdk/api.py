@@ -14,6 +14,7 @@
 """
 __author__ = 'chengzhi'
 
+import aiohttp
 import asyncio
 import copy
 import logging
@@ -201,6 +202,8 @@ class TqApi(TqBaseApi):
             api = TqApi(TqKq(), auth=TqAuth("快期账户", "账户密码"))  # 根据填写的快期账户参数连接指定的快期模拟账户
 
         """
+        # 保证在初始化 TqApi 时打印版本变更与广播信息，并且一个进程内只会打印一次
+        from tqsdk import changelog_notification
 
         # 初始化 logger
         self._logger = logging.getLogger("TqApi")
@@ -265,6 +268,7 @@ class TqApi(TqBaseApi):
         self._send_chan, self._recv_chan = TqChan(self), TqChan(self)  # 消息收发队列
         self._ws_md_recv_chan = None  # 记录 ws_md_recv_chan 引用
         self._pre20_ins_info = {}  # 20年9月份之前的合约信息
+        self._http_session_internal = None  # 记录 http 会话
 
         # slave模式的api不需要完整初始化流程
         self._is_slave = isinstance(account, TqApi)
@@ -312,6 +316,12 @@ class TqApi(TqBaseApi):
     def _base_headers(self):
         return self._auth._base_headers
 
+    @property
+    def _http_session(self):
+        if self._http_session_internal is None or self._http_session_internal.closed:
+            self._http_session_internal = aiohttp.ClientSession(headers=self._base_headers)
+        return self._http_session_internal
+
     # ----------------------------------------------------------------------
     def copy(self) -> 'TqApi':
         """
@@ -354,7 +364,10 @@ class TqApi(TqBaseApi):
             # 总会发送 serial_extra_array 数据，由 TqWebHelper 处理
             for _, serial in self._serials.items():
                 self._process_serial_extra_array(serial)
-            super(TqApi, self)._close()
+            super(TqApi, self)._close_tasks()
+            if self._http_session_internal:
+                self._loop.run_until_complete(self._http_session_internal.close())
+            super(TqApi, self)._close_loop()
             mem = psutil.virtual_memory()
             self._logger.debug("process end", mem_total=mem.total, mem_free=mem.free)
         finally:
@@ -2090,6 +2103,8 @@ class TqApi(TqBaseApi):
                     elif int(m.group(2)) < len(paths):
                         m_k = int(m.group(2))
                         k_dict.setdefault(m_k, []).append(m.group(1))
+                    else:  # 数字 >= len(paths)，说明是字段本身的数字（如 tick 盘口字段）
+                        k_dict.setdefault(0, []).append(k)  # 保留完整字段名
                 for k_id, v in k_dict.items():
                     if _is_key_exist(diff, paths[k_id], v):
                         return True
@@ -4120,18 +4135,5 @@ class TqApi(TqBaseApi):
 
 print("在使用天勤量化之前，默认您已经知晓并同意以下免责条款，如果不同意请立即停止使用：https://www.shinnytech.com/blog/disclaimer/", file=sys.stderr)
 
-if platform.python_version().startswith('3.7.'):
-    warnings.warn("TqSdk 计划在 20250601 之后放弃支持 Python 3.7 版本，请尽快升级 Python 版本。", FutureWarning, stacklevel=1)
-
-
-try:
-    res = requests.get("https://shinny-tqsdk.oss-cn-shanghai.aliyuncs.com/tqsdk_metadata.json", timeout=10)
-    tq_metadata = res.json()
-    current_version = version.parse(__version__)
-    change_version = version.parse(tq_metadata.get('tqsdk_version', '0.0.0'))
-    if tq_metadata.get('tqsdk_changelog') and current_version < change_version:
-        print(tq_metadata['tqsdk_changelog'], file=sys.stderr)
-    if tq_metadata.get('tqsdk_notify'):
-        print(tq_metadata['tqsdk_notify'], file=sys.stderr)
-except:
-    pass
+if platform.python_version().startswith('3.8.'):
+    warnings.warn("TqSdk 计划在 20260601 之后放弃支持 Python 3.8 版本，请尽快升级 Python 版本。", FutureWarning, stacklevel=1)

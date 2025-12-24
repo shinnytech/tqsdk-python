@@ -15,5 +15,6 @@
     for_vnpy_user.rst
     for_ctp_user.rst
     unanttended.rst
+    emergency_stop.rst
     targetpostask2.rst
     scheduler.rst

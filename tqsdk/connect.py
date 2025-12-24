@@ -260,7 +260,27 @@ class TqReconnect(object):
         try:
             async for pack in ws_recv_chan:
                 self._record_upper_data(pack)
-                if self._un_processed:  # 处理重连后数据
+                is_reconnected = False
+                for i in range(len(pack.get("data", []))):
+                    for _, notify in pack["data"][i].get("notify", {}).items():
+                        if notify["code"] == 2019112902:  # 重连建立
+                            is_reconnected = True
+                            self._un_processed = True
+                            self._logger = self._logger.bind(status=self._status)
+                            self._pending_diffs = pack.get("data", [])[i:]
+                            break
+                if is_reconnected:
+                    self._data = Entity()
+                    self._data._instance_entity([])
+                    for d in self._pending_diffs:
+                        _merge_diff(self._data, d, self._api._prototype, persist=False, reduce_diff=False)
+                    # 发送所有 resend_request
+                    for msg in self._resend_request.values():
+                        # 这里必须用 send_nowait 而不是 send，因为如果使用异步写法，在循环中，代码可能执行到 send_task, 可能会修改 _resend_request
+                        ws_send_chan.send_nowait(msg)
+                        self._logger.debug("resend request", pack=msg)
+                    await ws_send_chan.send({"aid": "peek_message"})
+                elif self._un_processed:  # 处理重连后数据
                     pack_data = pack.get("data", [])
                     self._pending_diffs.extend(pack_data)
                     for d in pack_data:
@@ -280,33 +300,7 @@ class TqReconnect(object):
                         await ws_send_chan.send({"aid": "peek_message"})
                         self._logger.debug("wait for data completed", pack={"aid": "peek_message"})
                 else:
-                    is_reconnected = False
-                    for i in range(len(pack.get("data", []))):
-                        for _, notify in pack["data"][i].get("notify", {}).items():
-                            if notify["code"] == 2019112902:  # 重连建立
-                                is_reconnected = True
-                                self._un_processed = True
-                                self._logger = self._logger.bind(status=self._status)
-                                if i > 0:
-                                    ws_send_chan.send_nowait({
-                                        "aid": "rtn_data",
-                                        "data": pack.get("data", [])[0:i]
-                                    })
-                                self._pending_diffs = pack.get("data", [])[i:]
-                                break
-                    if is_reconnected:
-                        self._data = Entity()
-                        self._data._instance_entity([])
-                        for d in self._pending_diffs:
-                            _merge_diff(self._data, d, self._api._prototype, persist=False, reduce_diff=False)
-                        # 发送所有 resend_request
-                        for msg in self._resend_request.values():
-                            # 这里必须用 send_nowait 而不是 send，因为如果使用异步写法，在循环中，代码可能执行到 send_task, 可能会修改 _resend_request
-                            ws_send_chan.send_nowait(msg)
-                            self._logger.debug("resend request", pack=msg)
-                        await ws_send_chan.send({"aid": "peek_message"})
-                    else:
-                        await api_recv_chan.send(pack)
+                    await api_recv_chan.send(pack)
         finally:
             await self._api._cancel_task(send_task)
 

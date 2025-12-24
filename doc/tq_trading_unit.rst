@@ -114,6 +114,16 @@ TqSdk 多策略使用手册
 使用 `pip install -U --upgrade-strategy eager tqsdk-zq` 更新多策略功能所有依赖包
 
 .. line-block::
+    **2025/12/10**
+    tqsdk-zq: 1.0.3
+    tqsdk-zq-server: 1.0.6
+    tqsdk-zq-history: 1.0.0
+    tqsdk-zq-pgserver: 1.0.0
+    tqsdk-zq-proxy: 1.0.0
+
+* 修复: 撤单失败的问题
+
+.. line-block::
     **2025/06/16**
     tqsdk-zq: 1.0.3
     tqsdk-zq-server: 1.0.5

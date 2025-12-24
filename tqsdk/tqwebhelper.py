@@ -175,8 +175,6 @@ class TqWebHelper(object):
                     # 处理 trade
                     trade = d.get("trade")
                     if trade is not None:
-                        _simple_merge_diff(self._data["trade"], trade)
-                        web_diffs.append({"trade": trade})
                         # 账户是否有变化
                         # todo: 这里本来使用类似 is_changing 的做法，判断 diffs 中是否有 static_balance 字段；由于 _simple_merge_diff 去掉了默认参数 reduce_diff
                         #  现在修改为手动比较 diffs 中的 static_balance 和 self._data 中的 static_balance 是否一样
@@ -188,6 +186,8 @@ class TqWebHelper(object):
                         orders_changed = d.get("trade", {}).get(account_key, {}).get("orders", {})
                         if static_balance_changed is True or trades_changed != {} or orders_changed != {}:
                             account_changed = True
+                        _simple_merge_diff(self._data["trade"], trade)
+                        web_diffs.append({"trade": trade})
                     # 处理 backtest replay
                     if d.get("_tqsdk_backtest") or d.get("_tqsdk_replay"):
                         _simple_merge_diff(self._data, d)
