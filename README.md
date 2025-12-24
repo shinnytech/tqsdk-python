@@ -4,7 +4,7 @@
 <p align="center">
     <img src ="https://img.shields.io/pypi/v/tqsdk?color=blueviolet">
     <img src ="https://img.shields.io/badge/platform-windows|linux|macos-green.svg"/>
-    <img src ="https://img.shields.io/badge/python-3.7+-blue.svg" />
+    <img src ="https://img.shields.io/badge/python-3.8+-blue.svg" />
     <img src ="https://img.shields.io/pypi/dm/tqsdk?color=yellowgreen">
     <img src ="https://img.shields.io/github/license/shinnytech/tqsdk-python.svg?color=orange"/>
 </p>
@@ -71,7 +71,7 @@ TqSdk提供的功能可以支持从简单到复杂的各类策略程序：
 
 ## 安装方法
 
-TqSdk 仅支持 Python 3.7 及更高版本。要安装 TqSdk，可使用 pip：
+TqSdk 仅支持 Python 3.8 及更高版本。要安装 TqSdk，可使用 pip：
 
 ```bash
 pip install tqsdk

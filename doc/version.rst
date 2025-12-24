@@ -2,6 +2,23 @@
 
 版本变更
 =============================
+3.8.9 (2025/12/23)
+
+* 修复: 回测/下载数据在行情服务运维阶段发生断线重连，重连成功后没有发送已订阅请求，导致回测/下载数据无法继续推进的问题
+* 修复: web_gui 净值图漏更新问题
+
+
+3.8.8 (2025/12/11)
+
+* 修复: :py:meth:`~tqsdk.TqApi.is_changing` 接口无法正确判断 tick 中的字段更新
+* 优化: :py:meth:`~tqsdk.TqApi.query_symbol_settlement` 和 :py:meth:`~tqsdk.TqApi.query_symbol_settlement` 接口复用 tcp 连接
+* 优化: 版本变更信息的通知时机
+* docs: 多策略依赖包升级
+* docs: 修改外盘行情描述
+* docs: 提供 trae IDE 配置方式
+* 自该版本起仅支持 Python >=3.8
+
+
 3.8.7 (2025/10/27)
 
 * 修复: 多进程回测触发的超时报错

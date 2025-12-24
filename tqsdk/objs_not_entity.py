@@ -321,9 +321,9 @@ class TqMdSettlementDataFrame(DataFrame):
 
     async def _get_settlement_data(self, settlement_id):
         # 下载结算价数据，并将数据发回到 api.recv_chan
-        async with aiohttp.ClientSession(headers=self.__dict__["_api"]._base_headers) as session:
-            url = "https://md-settlement-system-fc-api.shinnytech.com/mss"
-            async with session.get(url, params=self.__dict__["_params"]) as response:
+        session = self.__dict__["_api"]._http_session
+        url = "https://md-settlement-system-fc-api.shinnytech.com/mss"
+        async with session.get(url, params=self.__dict__["_params"]) as response:
                 response.raise_for_status()
                 content = await response.json()
                 await self.__dict__["_api"]._ws_md_recv_chan.send({
@@ -422,9 +422,9 @@ class TqSymbolRankingDataFrame(DataFrame):
 
     async def _get_ranking_data(self, ranking_id):
         # 下载持仓排名数据，并将数据发回到 api.recv_chan
-        async with aiohttp.ClientSession(headers=self.__dict__["_api"]._base_headers) as session:
-            url = "https://symbol-ranking-system-fc-api.shinnytech.com/srs"
-            async with session.get(url, params=self.__dict__["_params"]) as response:
+        session = self.__dict__["_api"]._http_session
+        url = "https://symbol-ranking-system-fc-api.shinnytech.com/srs"
+        async with session.get(url, params=self.__dict__["_params"]) as response:
                 response.raise_for_status()
                 content = await response.json()
                 await self.__dict__["_api"]._ws_md_recv_chan.send({

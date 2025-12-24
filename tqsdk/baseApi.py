@@ -37,8 +37,7 @@ class TqBaseApi(object):
 
     def _create_task(self, coro: Coroutine, _caller_api: bool = False) -> asyncio.Task:
         task = self._loop.create_task(coro)
-        py_ver = sys.version_info
-        current_task = asyncio.Task.current_task(loop=self._loop) if (py_ver.major == 3 and py_ver.minor < 7) else asyncio.current_task(loop=self._loop)
+        current_task = asyncio.current_task(loop=self._loop)
         if current_task is None or _caller_api:  # 由 api 创建的 task，需要 api 主动管理
             self._tasks.add(task)
             task.add_done_callback(self._on_task_done)
@@ -145,11 +144,13 @@ class TqBaseApi(object):
         while True:
             await asyncio.sleep(1)
 
-    def _close(self) -> None:
+    def _close_tasks(self) -> None:
         self._run_until_idle(async_run=False)  # 由于有的处于 ready 状态 task 可能需要报撤单, 因此一直运行到没有 ready 状态的 task
         for task in self._tasks:
             task.cancel()
         while self._tasks:  # 等待 task 执行完成
             self._run_once()
+
+    def _close_loop(self) -> None:
         self._loop.run_until_complete(self._loop.shutdown_asyncgens())
         self._loop.close()
