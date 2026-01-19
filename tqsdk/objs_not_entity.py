@@ -3,11 +3,11 @@
 __author__ = 'mayanqiong'
 
 from collections import namedtuple
-from typing import Callable, Tuple
+import datetime
+from typing import Callable, Tuple, Optional
 
-import aiohttp
 import numpy
-from pandas import DataFrame, Series
+from pandas import DataFrame, Series, Index
 from sgqlc.operation import Operation
 from tqsdk.backtest import TqBacktest
 
@@ -565,6 +565,136 @@ class TqOptionGreeksDataFrame(DataFrame):
         self["gamma"] = get_gamma(series_close1, self["strike_price"], self.__dict__["_r"], series_v, series_t, series_d1)
         self["vega"] = get_vega(series_close1, self["strike_price"], self.__dict__["_r"], series_v, series_t, series_d1)
         self["rho"] = get_rho(series_close1, self["strike_price"], self.__dict__["_r"], series_v, series_t, series_o, series_d1)
+
+    def __await__(self):
+        return self.__dict__["_task"].__await__()
+
+
+class TqEdbIndexDataFrame(DataFrame):
+    """
+    EDB 指标取值查询结果（不更新）。
+    行索引为日期字符串 YYYY-MM-DD，列为指标 id（去重后保持请求顺序 / 以服务端返回为准）。
+    """
+
+    def __init__(
+            self, api, ids, start: str = None, end: str = None, align: str = None, fill: str = None,
+            raw_df: Optional["TqEdbIndexDataFrame"] = None
+    ):
+        self.__dict__["_api"] = api
+        self.__dict__["_ids"] = ids
+        self.__dict__["_start"] = start
+        self.__dict__["_end"] = end
+        self.__dict__["_align"] = align
+        self.__dict__["_fill"] = fill
+        self.__dict__["_raw_df"] = raw_df
+        payload = {"ids": ids}
+        if start is not None:
+            payload["start"] = start
+        if end is not None:
+            payload["end"] = end
+        self.__dict__["_payload"] = payload
+        self.__dict__["_url"] = "https://edb.shinnytech.com/data/index_data"
+        super(TqEdbIndexDataFrame, self).__init__(data=[], columns=list(ids))
+        self.index.name = "date"
+        self.__dict__["_task"] = api.create_task(self.async_update(), _caller_api=True)
+
+    @staticmethod
+    def _apply_align_fill(df: DataFrame, start_s: str, end_s: str, align: Optional[str], fill: Optional[str]) -> DataFrame:
+        """
+        根据 align/fill 对 index 做补齐/填充。
+        注意：回测模式下必须先切片窗口再调用，避免引入未来数据。
+        """
+        if align != "day":
+            return df
+        start_d = datetime.datetime.strptime(start_s, "%Y-%m-%d").date()
+        end_d = datetime.datetime.strptime(end_s, "%Y-%m-%d").date()
+        all_dates = [(start_d + datetime.timedelta(days=i)).strftime("%Y-%m-%d")
+                     for i in range((end_d - start_d).days + 1)]
+        df2 = df.reindex(Index(all_dates, name=df.index.name))
+        if fill == "ffill":
+            df2 = df2.infer_objects().ffill()
+        elif fill == "bfill":
+            df2 = df2.infer_objects().bfill()
+        return df2
+
+    async def _get_index_data(self, req_id):
+        session = self.__dict__["_api"]._http_session
+        async with session.post(self.__dict__["_url"], json=self.__dict__["_payload"]) as response:
+            response.raise_for_status()
+            content = await response.json()
+
+            if content.get("error_code", 0) != 0:
+                raise Exception(f"edb 指标取值查询失败: {content.get('error_msg', '')}")
+
+            # 只下发 data 节点，且将 values 改名为 datas，避免覆盖 Entity.values()
+            data = content.get("data", {}) or {}
+            payload = {
+                "ids": data.get("ids", []),
+                "datas": data.get("values", {}) or {}
+            }
+            await self.__dict__["_api"]._ws_md_recv_chan.send({
+                "aid": "rtn_data",
+                "data": [{
+                    "_edb_index_data": {req_id: payload},
+                    "_edb_index_data_finished": {req_id: True}
+                }]
+            })
+
+    async def async_update(self):
+        # window 模式：从 raw_df 切片窗口，再对齐/补全（避免引入未来数据）
+        raw_df = self.__dict__.get("_raw_df")
+        if raw_df is not None:
+            await raw_df
+            requested_ids = list(self.__dict__.get("_ids", []))
+            start_s = self.__dict__.get("_start")
+            end_s = self.__dict__.get("_end")
+            align = self.__dict__.get("_align", None)
+            fill = self.__dict__.get("_fill", None)
+
+            idx = raw_df.index
+            if len(idx) == 0:
+                df2 = DataFrame([], index=Index([], name="date"), columns=requested_ids)
+            else:
+                # YYYY-MM-DD 字符串按字典序与时间序一致
+                mask = (idx >= start_s) & (idx <= end_s)
+                df2 = raw_df.loc[mask, requested_ids].copy()
+            df2 = self._apply_align_fill(df2, start_s=start_s, end_s=end_s, align=align, fill=fill)
+            self._update_inplace(df2)
+            return self
+
+        # raw 模式：raw_df 为空时走原始下载结构（ws->api._data->finished）
+        # 在 query_edb_data 的 raw 缓存场景下，会传入 align=None/fill=None，因此不会发生对齐/补全，原始下载结构不变。
+        req_id = _generate_uuid("PYSDK_edb_data")
+        self.__dict__["_api"].create_task(self._get_index_data(req_id), _caller_api=True)
+        finished = _get_obj(self.__dict__["_api"]._data, ["_edb_index_data_finished"])
+        async with self.__dict__["_api"].register_update_notify(finished) as update_chan:
+            async for _ in update_chan:
+                if not finished.get(req_id, False):
+                    continue
+                content = self.__dict__["_api"]._data.get("_edb_index_data", {}).get(req_id, {})
+                ids_from_server = list(content.get("ids", self.__dict__.get("_ids", [])) or [])
+                values = content.get("datas", {}) or {}
+
+                # 列顺序：优先保持用户请求顺序（去重后），避免与服务端返回顺序不一致导致列错位
+                requested_ids = list(self.__dict__.get("_ids", []))
+                self.columns = requested_ids
+
+                for dt in sorted(values.keys()):
+                    row = values.get(dt, None)
+                    if row is None:
+                        continue
+                    row_map = {k: v for k, v in zip(ids_from_server, row)}
+                    self.loc[dt] = [row_map.get(i, None) for i in requested_ids]
+
+                # 读完数据，清空缓存（保持原有结构不变）
+                await self.__dict__["_api"]._ws_md_recv_chan.send({
+                    "aid": "rtn_data",
+                    "data": [{
+                        "_edb_index_data": {req_id: None},
+                        "_edb_index_data_finished": {req_id: None}
+                    }]
+                })
+                return self
 
     def __await__(self):
         return self.__dict__["_task"].__await__()

@@ -213,6 +213,14 @@ class TqBacktest(object):
                 # 收到的 symbols 应该转发给下游
                 if d.get("symbols"):
                     self._diffs.append({"symbols": d["symbols"]})
+                # EDB 指标查询结果：回测模块不理解其数据结构，只做透传，保证下游 api 能收到完成标记
+                edb_diff = {}
+                if "_edb_index_data" in d:
+                    edb_diff["_edb_index_data"] = d["_edb_index_data"]
+                if "_edb_index_data_finished" in d:
+                    edb_diff["_edb_index_data_finished"] = d["_edb_index_data_finished"]
+                if edb_diff:
+                    self._diffs.append(edb_diff)
             # 如果没有收到 quotes（合约信息），或者当前的 self._data.get('quotes', {}) 里没有股票，那么不应该向 _diffs 里添加元素
             if recv_quotes:
                 quotes_stock = self._stock_dividend._get_dividend(self._data.get('quotes', {}), self._trading_day)

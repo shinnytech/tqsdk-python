@@ -16,6 +16,29 @@ from tqsdk.connect import TqConnect, TdReconnectHandler
 
 
 class BaseOtg(Tradeable):
+    @staticmethod
+    def _mask_sm_password_in_url(url: str) -> str:
+        """
+        Replace the password segment with a fixed placeholder for logging (keep original structure).
+
+        Example:
+          sm://host/smcfg/smuser/smpass/foo/bar  ->  sm://host/smcfg/smuser/xxx/foo/bar
+
+        Note: this is ONLY for logging. The real connection should still use the full url.
+        """
+        try:
+            info = urlparse(url)
+            if not info.scheme.startswith("sm"):
+                return url
+            # path: /smcfg/smuser/smpass/...
+            parts = info.path.split("/", 4)
+            # ['', smcfg, smuser, smpass, rest...]
+            parts[3] = "xxx"
+            new_path = "/".join(parts)
+            return info._replace(path=new_path).geturl()
+        except Exception:
+            return url
+
     def __init__(self, broker_id: str, account_id: str, password: str, td_url: Optional[str] = None, sm: bool = False) -> None:
         if not isinstance(broker_id, str):
             raise Exception("broker_id 参数类型应该是 str")
@@ -81,7 +104,8 @@ class BaseOtg(Tradeable):
 
     def _connect_td(self, api, index: int) -> Optional[str]:
         # 连接交易服务器
-        td_logger = ShinnyLoggerAdapter(api._logger.getChild("TqConnect"), url=self._td_url, broker_id=self._broker_id, account_id=self._account_id)
+        log_td_url = type(self)._mask_sm_password_in_url(self._td_url)
+        td_logger = ShinnyLoggerAdapter(api._logger.getChild("TqConnect"), url=log_td_url, broker_id=self._broker_id, account_id=self._account_id)
         conn_id = f"td_{index}"
         ws_td_send_chan = TqChan(api, chan_name=f"send to {conn_id}", logger=td_logger)
         ws_td_recv_chan = TqChan(api, chan_name=f"recv from {conn_id}", logger=td_logger)
@@ -90,7 +114,7 @@ class BaseOtg(Tradeable):
         ws_td_send_chan._logger_bind(chan_from=f"td_reconn_{index}")
         ws_td_recv_chan._logger_bind(chan_to=f"td_reconn_{index}")
 
-        td_handler_logger = ShinnyLoggerAdapter(api._logger.getChild("TdReconnect"), url=self._td_url, broker_id=self._broker_id, account_id=self._account_id)
+        td_handler_logger = ShinnyLoggerAdapter(api._logger.getChild("TdReconnect"), url=log_td_url, broker_id=self._broker_id, account_id=self._account_id)
         td_reconnect = TdReconnectHandler(td_handler_logger)
         self._td_send_chan = TqChan(api, chan_name=f"send to td_reconn_{index}", logger=td_handler_logger)
         self._td_recv_chan = TqChan(api, chan_name=f"recv from td_reconn_{index}", logger=td_handler_logger)

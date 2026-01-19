@@ -240,6 +240,10 @@ class TqConnect(object):
                         warnings.warn(f"订阅合约信息字段总长度大于 {self._query_max_length}，可能会引起服务器限制。", stacklevel=3)
                 msg = json.dumps(pack)
                 await client.send(msg)
+                if pack.get("aid") == "req_login":
+                    log_pack = pack.copy()
+                    log_pack.pop("password", None)
+                    msg = json.dumps(log_pack)
                 self._logger.debug("websocket send data", pack=msg)
         except asyncio.CancelledError:  # 取消任务不抛出异常，不然等待者无法区分是该任务抛出的取消异常还是有人直接取消等待者
             pass
@@ -278,7 +282,11 @@ class TqReconnect(object):
                     for msg in self._resend_request.values():
                         # 这里必须用 send_nowait 而不是 send，因为如果使用异步写法，在循环中，代码可能执行到 send_task, 可能会修改 _resend_request
                         ws_send_chan.send_nowait(msg)
-                        self._logger.debug("resend request", pack=msg)
+                        log_msg = msg
+                        if log_msg.get("aid") == "req_login":
+                            log_msg = msg.copy()
+                            log_msg.pop("password", None)
+                        self._logger.debug("resend request", pack=log_msg)
                     await ws_send_chan.send({"aid": "peek_message"})
                 elif self._un_processed:  # 处理重连后数据
                     pack_data = pack.get("data", [])
