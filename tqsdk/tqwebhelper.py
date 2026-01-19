@@ -294,6 +294,7 @@ class TqWebHelper(object):
             url_response = {
                 "ins_url": self._api._ins_url,
                 "md_url": self._api._md_url,
+                "access_token": self._api._auth._access_token,
             }
             # TODO：在复盘模式下发送 replay_dt 给 web 端，服务器改完后可以去掉
             if isinstance(self._api._backtest, TqReplay):

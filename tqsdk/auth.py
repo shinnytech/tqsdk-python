@@ -118,7 +118,9 @@ class TqAuth(object):
         data = {"client_id": "shinny_tq", "client_secret": "be30b9f4-6862-488a-99ad-21bde0400081"}
         data.update(payload)
         url = f"{self._auth_url}/auth/realms/shinnytech/protocol/openid-connect/token"
-        self._logger.debug("request token", url=url, params=data, method="POST")
+        log_data = data.copy()
+        log_data.pop("password", None)
+        self._logger.debug("request token", url=url, params=log_data, method="POST")
         response = requests.post(url=url, headers=self._base_headers, data=data, timeout=30)
         self._logger.debug("request token result", url=response.url, status_code=response.status_code, headers=response.headers, reason=response.reason, text=response.text)
         if response.status_code == 200:
