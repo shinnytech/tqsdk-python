@@ -10,12 +10,8 @@
 * :ref:`for_ctp_user`
 * :ref:`for_vnpy_user`
 
-注意: TqSdk 使用了 python3 的原生协程和异步通讯库 asyncio，部分 Python IDE 不支持 asyncio，例如:
+强烈推荐结合提供 AI 能力的开发工具一起使用，例如 :ref:`tqsdk_trae` 、:ref:`tqsdk_codex` 、VSCode 等，可以大大提高开发效率。更多内容请见 :ref:`ai_editor` 。
 
-* spyder: 详见 https://github.com/spyder-ide/spyder/issues/7096
-* jupyter: 详见 https://github.com/jupyter/notebook/issues/3397
-
-可以直接运行示例代码，或使用支持 asyncio 的 IDE (例如: pycharm / vscode)
 
 
 .. _tqsdk_install:
@@ -108,33 +104,6 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 这部分的完整示例程序请见 :ref:`tutorial-t30` .
 
 到这里为止, 你已经知道了如何获取实时行情和K线数据, 下面一段将介绍如何访问你的交易账户并发送交易指令
-
-.. _quickstart_2_web_gui:
-
-生成图形化界面
--------------------------------------------------
-如果想要将你订阅的K线或策略图形化显示, 只需在 :py:meth:`~tqsdk.TqApi` 中传入参数 web_gui = True即可::
-
-        # 引入TqSdk模块
-        from tqsdk import TqApi, TqAuth
-        # 创建api实例，设置web_gui=True生成图形化界面
-        api = TqApi(web_gui=True, auth=TqAuth("快期账户", "账户密码"))
-        # 订阅 ni2010 合约的10秒线
-        klines = api.get_kline_serial("SHFE.ni2010", 10)
-        while True:
-            # 通过wait_update刷新数据
-            api.wait_update()
-
-当你运行该程序后，预期会显示如下两条信息::
-
-        2019-12-13 10:45:26,468 - INFO - 您可以访问 http://127.0.0.1:62964 查看策略绘制出的 K 线图形。
-        2019-12-13 10:45:27,422 - INFO - 通知: 与 wss://openmd.shinnytech.com/t/md/front/mobile 的网络连接已建立
-
-点击生成的地址，即可访问订阅的K线图形
-
-.. figure:: images/web_gui_demo.png
-
-具体请见 :ref:`web_gui`
 
 
 .. _quickstart_3:

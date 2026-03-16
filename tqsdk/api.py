@@ -250,8 +250,7 @@ class TqApi(TqBaseApi):
             "trading_status": set(),
             "quotes": set(),
             "klines": {},
-            "ticks": {},
-            "edb": {},  # 记录已发出的 EDB 请求（key: 参数元组, value: DataFrame 对象），用于请求去重/复用
+            "ticks": {}
         }  # 记录已发出的请求
         self._serials = {}  # 记录所有数据序列
         # 记录所有(若有多个serial 则仅data_length不同, right_id相同)合约、周期相同的多合约K线中最大的更新数据范围
@@ -2363,6 +2362,8 @@ class TqApi(TqBaseApi):
             api.close()
 
         """
+        if isinstance(self._backtest, TqBacktest):
+            raise Exception("query_symbol_settlement 不支持回测模式。请在实盘模式先下载所需区间数据，再在回测中自行使用该 DataFrame。")
         if not (isinstance(symbol, (str, list))):
             raise Exception(f"symbol 参数类型 {type(symbol)} 错误。")
         if not (start_dt is None or isinstance(start_dt, date)):
@@ -2376,27 +2377,24 @@ class TqApi(TqBaseApi):
                 raise TqTimeoutError("获取每日结算价信息超时，请检查客户端及网络是否正常")
         return df
 
-    def query_edb_data(self, ids: List[int], n: int = 1, align: Optional[str] = None, fill: Optional[str] = None) -> TqEdbIndexDataFrame:
+    def query_edb_data(
+            self, ids: List[int], start_dt: date, end_dt: date, align: Optional[str] = None, fill: Optional[str] = None
+    ) -> TqEdbIndexDataFrame:
         """
         查询非量价指标数据
-
-        .. warning::
-            这是一个实验性接口（**unstable**）：EDB 后端的 id/表结构/数据口径可能变更，
-            本接口的参数与返回结构未来可能调整，届时可能不兼容旧代码。
 
         EDB 指标数据说明：
             - EDB 指标数据网站入口：`https://edb.shinnytech.com`
             - 指标 id 列表、指标含义、以及数据可视化展示，可在上述网站中在线查询与查看
 
         Args:
-            ids (list[int]): [必填] 指标 id 列表，长度 1~100（会去重并保持请求顺序）
-            n (int): [可选] 时间窗口长度（单位：自然日，闭区间），默认 1。
-                - end 使用当前 api 时间（回测模式下为回测推进的当前时间对应日期）
-                - start = end - (n - 1) 天
+            ids (list[int]): [必填] 指标 id 列表
+            start_dt (date): [必填] 起始日期（包含）
+            end_dt (date): [必填] 结束日期（包含）
             align (str/None): [可选] 对齐方式：
                 - None [默认]：仅返回实际有值的日期（稀疏），不补齐缺失日期
-                - "day"：在 [start, end] 内按自然日补齐日期
-            fill (str): [可选] 填充方式（仅在 align="day" 时生效）：
+                - "day"：在 [start_dt, end_dt] 内按自然日补齐日期
+            fill (str/None): [可选] 填充方式（仅在 align="day" 时生效）：
                 - None [默认]：不填充，缺失为 NaN
                 - "ffill"：用前一个已知值向后填充
                 - "bfill"：用后一个已知值向前填充
@@ -2406,132 +2404,91 @@ class TqApi(TqBaseApi):
 
             * index: 日期字符串，格式为 YYYY-MM-DD
                 * align=None 时：仅包含实际有值的日期（稀疏），不补齐缺失日期
-                * align="day" 时：包含 [start, end] 内的所有自然日（补齐缺失日期）
-            * columns: 指标 id（会对 ids 去重并保持请求顺序；最终以服务端返回为准）
+                * align="day" 时：包含 [start_dt, end_dt] 内的所有自然日（补齐缺失日期）
+            * columns: 指标 id，保持请求顺序
             * values: 指标取值
                 * 缺失值为 NaN
                 * align="day" 且 fill="ffill"/"bfill" 时，会对缺失值进行前向/后向填充
 
         Example (实盘)::
 
+            from datetime import date
+
             from tqsdk import TqApi, TqAuth
 
             api = TqApi(auth=TqAuth("快期账号", "快期密码"))
             try:
-                # Case 1: 最小调用（只传 ids，其余用默认）
-                # - n 默认为 1：窗口为 [end, end]
-                # - align=None：稀疏返回，不补齐日期
-                df1 = api.query_edb_data(ids=[472])
-
-                # Case 2: ids 去重并保持顺序（重复的 472 会被去掉）
-                df2 = api.query_edb_data(ids=[472, 497, 472])
-
-                # Case 3: 指定 n（自然日，闭区间）
-                # - end 为 api 当前日期（回测模式下为回测推进到的当前日期）
-                # - start = end - (n-1)
-                df3 = api.query_edb_data(ids=[472, 497], n=10)
-
-                # Case 4: align=None（稀疏，不补齐），fill 会被忽略
-                df4 = api.query_edb_data(ids=[472, 497, 10350], n=10, align=None, fill=None)
-
-                # Case 5: align="day"（自然日补齐），不填充缺失（NaN）
-                df5 = api.query_edb_data(ids=[472, 497, 10350], n=10, align="day", fill=None)
-
-                # Case 6: align="day" + fill="ffill"（前值填充）
-                df6 = api.query_edb_data(ids=[472, 497, 10350], n=10, align="day", fill="ffill")
-
-                # Case 7: align="day" + fill="bfill"（后值填充）
-                df7 = api.query_edb_data(ids=[472, 497, 10350], n=10, align="day", fill="bfill")
-
-                print(df1.to_string())
-                print(df2.to_string())
-                print(df3.to_string())
-                print(df4.to_string())
-                print(df5.to_string())
-                print(df6.to_string())
-                print(df7.to_string())
+                df = api.query_edb_data(ids=[472, 497, 10350], start_dt=date(2024, 1, 1), end_dt=date(2024, 1, 31))
+                print(df.to_string())
             finally:
                 api.close()
 
-        Example (回测)::
+        Example (回测中使用外部数据的推荐方式)::
+        
+            import os
+            from datetime import date, datetime, timedelta
 
-            from datetime import datetime
-            from tqsdk import TqApi, TqAuth, TqBacktest
+            from tqsdk import BacktestFinished, TqApi, TqAuth, TqBacktest
 
-            api = TqApi(
-                auth=TqAuth("快期账号", "快期密码"),
-                backtest=TqBacktest(start_dt=datetime(2025, 10, 1), end_dt=datetime(2026, 1, 12)),
-            )
-            klines = api.get_kline_serial(symbol="SHFE.ni2512", duration_seconds=86400, data_length=10)
+            TQ_USER = os.getenv("TQ_USER", "快期账号")
+            TQ_PASS = os.getenv("TQ_PASS", "快期密码")
+
+            SYMBOL = "SHFE.ni2512"
+            IDS = [472, 497, 10350]
+            START_DT = date(2025, 1, 1)
+            END_DT = date(2025, 12, 31)
+            WINDOW_DAYS = 10  # 向前窗口天数（含当天）
+
             try:
-                # 初次查询：以当前回测推进到的日期作为 end
-                edb = api.query_edb_data(ids=[472, 497, 10350], n=10, align="day", fill="ffill")
-                print(edb.to_string())
-                # 之后随着回测时间推进，end 会变化
-                while True:
-                    api.wait_update()
-                    if api.is_changing(klines.iloc[-1], "datetime"):
-                        edb = api.query_edb_data(ids=[472, 497, 10350], n=10, align="day", fill="ffill")
-                        print(edb.to_string())
-            finally:
-                api.close()
+                # 1) 非回测模式先下载 EDB 数据
+                with TqApi(auth=TqAuth(TQ_USER, TQ_PASS)) as api:
+                    edb_df = api.query_edb_data(
+                        ids=IDS,
+                        start_dt=START_DT,
+                        end_dt=END_DT,
+                        align="day",
+                        fill="ffill",
+                    )
+
+                # 2) 启动回测，按日期使用 edb_df
+                with TqApi(
+                    auth=TqAuth(TQ_USER, TQ_PASS),
+                    backtest=TqBacktest(start_dt=START_DT, end_dt=END_DT)
+                ) as api:
+                    klines = api.get_kline_serial(symbol=SYMBOL, duration_seconds=86400, data_length=10)
+                    while True:
+                        api.wait_update()
+                        if not api.is_changing(klines.iloc[-1], "datetime"):
+                            continue
+                        ts_nano = int(klines.iloc[-1]["datetime"])
+                        if ts_nano <= 0:
+                            continue
+
+                        end_s = datetime.fromtimestamp((ts_nano // 1000) / 1000000).strftime("%Y-%m-%d")
+                        end_d = datetime.strptime(end_s, "%Y-%m-%d").date()
+                        start_s = (end_d - timedelta(days=WINDOW_DAYS - 1)).strftime("%Y-%m-%d")
+
+                        # 以当前 kline 日期向前切 WINDOW_DAYS 天窗口（含当天）
+                        print(edb_df.loc[start_s:end_s])
+            except BacktestFinished:
+                pass
         """
+        if isinstance(self._backtest, TqBacktest):
+            raise Exception("query_edb_data 不支持回测模式。请在实盘模式先下载所需区间数据，再在回测中自行使用该 DataFrame。")
         if not isinstance(ids, list) or len(ids) == 0:
             raise Exception("ids 不能为空。")
-        if not isinstance(n, int) or n < 1:
-            raise Exception(f"n 参数 {n} 错误，应为 >= 1 的整数。")
+        if not isinstance(start_dt, date) or not isinstance(end_dt, date):
+            raise Exception("start_dt 和 end_dt 必须为 date 类型。")
+        if start_dt > end_dt:
+            raise Exception("start_dt 必须小于等于 end_dt。")
         if align not in (None, "day"):
             raise Exception(f"align 参数 {align} 错误，仅支持 None 或 'day'")
         if fill not in (None, "ffill", "bfill"):
             raise Exception(f"fill 参数 {fill} 错误，仅支持 None/'ffill'/'bfill'")
-
-        # 以 api 当前时间计算窗口（回测模式下会随回测推进）
-        now_dt = self._get_current_datetime()
-        # backtest 初始化早期 current_dt 可能为 0，兜底到 backtest start_dt
-        if isinstance(self._backtest, TqBacktest) and getattr(now_dt, "year", 1970) <= 1970:
-            now_dt = _timestamp_nano_to_datetime(self._backtest._start_dt)
-        end_date = now_dt.date()
-        start_date = end_date - timedelta(days=n - 1)
-        start_s = start_date.strftime("%Y-%m-%d")
-        end_s = end_date.strftime("%Y-%m-%d")
-
-        # ids 归一化：去重保持顺序
-        seen = set()
-        norm_ids = []
-        for x in ids:
-            if not isinstance(x, int):
-                raise Exception(f"ids 中包含非法 id: {x} (仅支持 int)")
-            v = x
-            if v not in seen:
-                seen.add(v)
-                norm_ids.append(v)
-        if len(norm_ids) > 100:
-            raise Exception("ids 数量超过限制(<=100)")
-
-        edb_cache = self._requests["edb"]
-
-        # 统一策略（实盘/回测）：
-        # - api._requests 只缓存“原始数据”（HTTP 拉取得到的稀疏日期数据），缓存 key 不包含 align/fill，避免重复下载
-        # - 返回给用户时再按窗口切片，并做 align/fill（回测下先切片再 fill，避免引入未来数据）
-        if isinstance(self._backtest, TqBacktest):
-            bt_start_d = _timestamp_nano_to_datetime(self._backtest._start_dt).date()
-            bt_end_d = _timestamp_nano_to_datetime(self._backtest._end_dt).date()
-            raw_start_s = (bt_start_d - timedelta(days=n - 1)).strftime("%Y-%m-%d")
-            raw_end_s = bt_end_d.strftime("%Y-%m-%d")
-        else:
-            raw_start_s = start_s
-            raw_end_s = end_s
-
-        raw_request = (tuple(norm_ids), raw_start_s, raw_end_s)
-        raw_df = edb_cache.get(raw_request, None)
-        if raw_df is None:
-            raw_df = TqEdbIndexDataFrame(self, ids=norm_ids, start=raw_start_s, end=raw_end_s,
-                                         align=None, fill=None)
-            edb_cache[raw_request] = raw_df
-
-        # 每次调用返回窗口 df（不缓存窗口对象：同一个 raw 可派生出多种 align/fill）
-        df = TqEdbIndexDataFrame(self, ids=norm_ids, start=start_s, end=end_s, align=align, fill=fill, raw_df=raw_df)
+        start_s = start_dt.strftime("%Y-%m-%d")
+        end_s = end_dt.strftime("%Y-%m-%d")
         deadline = time.time() + 30
+        df = TqEdbIndexDataFrame(self, ids=ids, start=start_s, end=end_s, align=align, fill=fill)
         while not self._loop.is_running() and not df.__dict__["_task"].done():
             if not self.wait_update(deadline=deadline, _task=df.__dict__["_task"]):
                 raise TqTimeoutError("获取 EDB 指标取值超时，请检查客户端及网络是否正常")
@@ -2599,6 +2556,8 @@ class TqApi(TqBaseApi):
             api.close()
 
         """
+        if isinstance(self._backtest, TqBacktest):
+            raise Exception("query_symbol_ranking 不支持回测模式。请在实盘模式先下载所需区间数据，再在回测中自行使用该 DataFrame。")
         if not isinstance(symbol, str) or symbol == "":
             raise Exception(f"symbol 参数应该填入有效的合约代码。")
         if ranking_type not in ['VOLUME', 'LONG', 'SHORT']:

@@ -11,7 +11,7 @@
 
 用快期账户来模拟交易
 -------------------------------------------------
-注册完成的快期账户的【手机号】/【邮箱地址】/【用户名】和【密码】可以作为 快期模拟 账号，通过 :py:class:`~tqsdk.api.TqKq` 对 auth 传入参数进行登录，这个 快期模拟 账户在快期APP、快期专业版  和天勤量化上是互通的::
+注册完成的快期账户的【手机号】/【邮箱地址】/【用户名】和【密码】可以作为 快期模拟 账号，通过 :py:class:`~tqsdk.TqKq` 对 auth 传入参数进行登录，这个 快期模拟 账户在快期APP、快期专业版  和天勤量化上是互通的::
 
     from tqsdk import TqApi, TqAuth, TqKq
     api = TqApi(TqKq(), auth=TqAuth("快期账户", "账户密码"))
@@ -24,7 +24,7 @@
 快期账户会在用户使用实盘账户时自动进行绑定，直到该快期账户没有能绑定实盘账户的名额::
 
     from tqsdk import TqApi, TqAccount, TqAuth, TqKq
-    api = TqApi(TqAccount("H海通期货", "320102", "123456"), auth=TqAuth("快期账户", "账户密码"))
+    api = TqApi(TqAccount("H宏源期货", "320102", "123456"), auth=TqAuth("快期账户", "账户密码"))
 
 如果需要注册快期账户或者修改您的快期账户绑定的实盘账户请参见  :ref:`user_center`
 
