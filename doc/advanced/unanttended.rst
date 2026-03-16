@@ -18,7 +18,7 @@ TqSdk可以在windows/linux或macosx环境下运行. 无论您选择使用window
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 将每个策略程序配置为独立直连实盘账号. 在创建 TqApi 时, 传入TqAccount实例. 注意期货公司名称需要与天勤中的名称一致::
 
-  api = TqApi(TqAccount("H海通期货", "022631", "123456"), auth=TqAuth("快期账户", "账户密码"))
+  api = TqApi(TqAccount("H宏源期货", "022631", "123456"), auth=TqAuth("快期账户", "账户密码"))
 
 
 检查策略程序
@@ -67,7 +67,7 @@ TqSdk可以在windows/linux或macosx环境下运行. 无论您选择使用window
 
   from tqsdk import TqApi, TqAccount
 
-  api = TqApi(TqAccount("H海通期货", "0330203", "123456"), auth=TqAuth("快期账户", "账户密码"))
+  api = TqApi(TqAccount("H宏源期货", "0330203", "123456"), auth=TqAuth("快期账户", "账户密码"))
   # 开仓两手并等待完成
   order = api.insert_order(symbol="SHFE.rb1901", direction="BUY", offset="OPEN", limit_price=4310,volume=2)
   while order.status != "FINISHED":
@@ -100,7 +100,7 @@ TqSdk可以在windows/linux或macosx环境下运行. 无论您选择使用window
 
 要通过命令行运行此策略, 可以输入::
 
-  python args.py --broker=H海通期货 --user_name=0330203 --password=123456 --symbol=SHFE.cu1901
+  python args.py --broker=H宏源期货 --user_name=0330203 --password=123456 --symbol=SHFE.cu1901
 
 
 要在 PyCharm 中同时执行此程序的多种参数版本, 可以通过 PyCharm 的 Run Configuration 实现.

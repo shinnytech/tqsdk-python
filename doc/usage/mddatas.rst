@@ -90,11 +90,6 @@ GFEX               广州期货交易所
 
 天勤主力的选定标准为该合约持仓量和成交量均为最大后，在下一个交易日开盘后进行切换，且切换后不会再切换到之前的合约
 
-
-.. image:
-  ...
-
-
 实时行情
 ----------------------------------------------------
 :py:meth:`~tqsdk.TqApi.get_quote` 函数提供实时行情和合约信息::
@@ -208,7 +203,7 @@ K线数据
 要使用K线数据, 请使用 pandas.DataFrame 的相关函数. 常见用法示例如下::
 
     klines.iloc[-1].close  # 最后一根K线的收盘价
-    klines.close          # 收盘价序列, 一个 pandas.Serial
+    klines.close          # 收盘价序列, 一个 pandas.Series
 
 TqSdk中, K线周期以秒数表示，支持不超过1日的任意周期K线，例如::
 
@@ -244,7 +239,7 @@ Tick序列
 :py:meth:`~tqsdk.TqApi.get_tick_serial` 的返回值是一个 pandas.DataFrame, 常见用法示例如下::
 
     ticks.iloc[-1].bid_price1       # 最后一个Tick的买一价
-    ticks.volume                    # 成交量序列, 一个 pandas.Serial
+    ticks.volume                    # 成交量序列, 一个 pandas.Series
 
 tick序列的更新监控, 与K线序列采用同样的方式.
 

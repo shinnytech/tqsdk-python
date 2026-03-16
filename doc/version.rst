@@ -2,6 +2,12 @@
 
 版本变更
 =============================
+3.9.1 (2026/03/16)
+
+* docs: 优化文档，添加 tqsdk skills, 详情参考 :ref:`tqsdk_skills`
+* BREAKING: :py:meth:`~tqsdk.TqApi.query_edb_data` 接口参数调整，不再支持按窗口大小更新数据
+
+
 3.9.0 (2026/01/16)
 
 * 新增: :py:meth:`~tqsdk.TqApi.query_edb_data` 接口，获取非量价数据

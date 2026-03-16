@@ -144,7 +144,7 @@
 -------------------------------------------------
 TqSdk 在 3.2.0 版本后支持了对股票合约进行回测功能，在回测过程中用户需要初始化 :py:class:`~tqsdk.TqSimStock` 类，且该类只能支持股票模拟交易
 
-由于股票市场 T+1 的规则, :py:class:`~tqsdk.lib.TargetPosTask`  函数目前还不支持在股票交易中使用，股票合约交易时只支持使用 :py:class:`~tqsdk.TqApi.insert_order`
+由于股票市场 T+1 的规则, :py:class:`~tqsdk.TargetPosTask`  函数目前还不支持在股票交易中使用，股票合约交易时只支持使用 :py:class:`~tqsdk.TqApi.insert_order`
 
 如果您想要在回测中同时交易期货和股票合约，则可以使用 :py:class:`~tqsdk.TqMultiAccount` 来实现该需求::
 

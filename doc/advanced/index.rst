@@ -10,6 +10,7 @@
     order.rst
     backtest.rst
     multi_strategy.rst
+    tq_trading_unit.rst
     gui.rst
     dingding.rst
     for_vnpy_user.rst

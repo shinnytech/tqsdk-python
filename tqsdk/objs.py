@@ -143,7 +143,7 @@ class Quote(Entity):
         self.exercise_type: str = ""
         #: 品种代码
         self.product_id: str = ""
-        #: ETF实时单位基金净值
+        #: ETF实时单位基金净值，由于上游交易所协议变动，预计在2026年4月以后不再提供此字段
         self.iopv: float = float("nan")
         #: 日流通股数，只对证券产品有效。
         self.public_float_share_quantity: int = 0
