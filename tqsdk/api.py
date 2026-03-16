@@ -224,7 +224,8 @@ class TqApi(TqBaseApi):
             user_name, pwd = auth[:comma_index], auth[comma_index + 1:]
             self._auth = TqAuth(user_name, pwd)
         else:
-            self._auth = None
+            from tqsdk.auth import TqAuthDummy
+            self._auth = TqAuthDummy()
         self._account = TqSim() if account is None else account
         self._backtest = backtest
         self._stock = False if isinstance(self._backtest, TqReplay) else _stock
@@ -3405,21 +3406,22 @@ class TqApi(TqBaseApi):
                            py_version=platform.python_version(), py_arch=platform.architecture()[0],
                            cmd=sys.argv, mem_total=mem.total, mem_free=mem.free)
         if self._auth is None:
-            raise Exception("请输入 auth （快期账户）参数，快期账户是使用 tqsdk 的前提，如果没有请点击注册，注册地址：https://account.shinnytech.com/。")
-        else:
-            self._auth.init(mode="bt" if isinstance(self._backtest, TqBacktest) else "real")
-            self._auth.login()  # tqwebhelper 有可能会设置 self._auth
+            from tqsdk.auth import TqAuthDummy
+            self._auth = TqAuthDummy()
+
+        self._auth.init(mode="bt" if isinstance(self._backtest, TqBacktest) else "real")
+        self._auth.login()  # tqwebhelper 有可能会设置 self._auth
             
-            # tqsdk 内部捕获异常如果需要打印日志，则需要自定义异常
-            # 对于第三方代码产生的异常需要逐个捕获，可以参考 connect.py TqConnect._run 函数中对于各类异常的捕获
-            # 这里只是打印账户过期日期来提醒用户，不关心是否成功，也不记录日志，所以直接 pass
-            # 单独捕获 self._auth.expire_datetime 是为了语义清晰，表明异常的来源
-            try:
-                self._auth.expire_datetime
-            except Exception:
-                pass
-            if self._auth._expire_days_left is not None and self._auth._product_type is not None and self._auth._expire_days_left < 30:
-                self._print(f"TqSdk {self._auth._product_type} 版剩余 {self._auth._expire_days_left} 天到期，如需续费或升级请访问 https://account.shinnytech.com/ 或联系相关工作人员。")
+        # tqsdk 内部捕获异常如果需要打印日志，则需要自定义异常
+        # 对于第三方代码产生的异常需要逐个捕获，可以参考 connect.py TqConnect._run 函数中对于各类异常的捕获
+        # 这里只是打印账户过期日期来提醒用户，不关心是否成功，也不记录日志，所以直接 pass
+        # 单独捕获 self._auth.expire_datetime 是为了语义清晰，表明异常的来源
+        try:
+            self._auth.expire_datetime
+        except Exception:
+            pass
+        if self._auth._expire_days_left is not None and self._auth._product_type is not None and self._auth._expire_days_left < 30:
+            self._print(f"TqSdk {self._auth._product_type} 版剩余 {self._auth._expire_days_left} 天到期，如需续费或升级请访问 https://account.shinnytech.com/ 或联系相关工作人员。")
 
         # 在快期账户登录之后，对于账户的基本信息校验及更新
         for acc in self._account._account_list:
