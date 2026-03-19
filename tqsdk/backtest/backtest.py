@@ -453,7 +453,9 @@ class TqBacktest(object):
                 await update_chan.recv()
 
     async def _ensure_quote(self, symbol):
-        if symbol not in self._quotes or self._quotes[symbol]["min_duration"] > 60000000000:
+        # if symbol not in self._quotes or self._quotes[symbol]["min_duration"] > 60000000000:
+        #     await self._ensure_serial(symbol, 60000000000)
+        if symbol not in self._quotes:
             await self._ensure_serial(symbol, 60000000000)
 
     async def _fetch_serial(self, key):

@@ -445,7 +445,9 @@ class TqBacktest(object):
                 quote["_listener"].add(update_chan)
                 while math.isnan(quote.get("price_tick")):
                     await update_chan.recv()
-        if ins not in self._quotes or self._quotes[ins]["min_duration"] > 60000000000:
+        # if ins not in self._quotes or self._quotes[ins]["min_duration"] > 60000000000:
+        #     await self._ensure_serial(ins, 60000000000)
+        if ins not in self._quotes:
             await self._ensure_serial(ins, 60000000000)
 
     async def _fetch_serial(self, key):
