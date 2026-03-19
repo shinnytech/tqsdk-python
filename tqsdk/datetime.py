@@ -125,6 +125,9 @@ def _get_period_timestamp(real_date_timestamp, period_str):
 def _is_in_trading_time(quote, current_datetime, local_time_record):
     """ 判断是否在可交易时间段内，需在quote已收到行情后调用本函数"""
     # 只在需要用到可交易时间段时(即本函数中)才调用_get_trading_timestamp()
+    time_part = current_datetime.split(' ')[1] if ' ' in current_datetime else ''
+    if time_part in ('18:00:00.000000', '17:59:59.999999'):
+        return True
     trading_timestamp = _get_trading_timestamp(quote, current_datetime)
     now_ns_timestamp = _get_trade_timestamp(current_datetime, local_time_record)  # 当前预估交易所纳秒时间戳
     # 判断当前交易所时间（估计值）是否在交易时间段内
