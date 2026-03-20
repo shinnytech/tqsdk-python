@@ -450,8 +450,16 @@ class Position(Entity):
         :return: dict, 其中每个元素的key为委托单ID, value为 :py:class:`~tqsdk.objs.Order`
         """
         tdict = _get_obj(self._api._data, ["trade", self._path[1], "orders"])
-        fts = {order_id: order for order_id, order in tdict.items() if (not order_id.startswith(
-            "_")) and order.instrument_id == self.instrument_id and order.exchange_id == self.exchange_id and order.status == "ALIVE"}
+        inst_id = self._data.get('instrument_id', '')
+        exch_id = self._data.get('exchange_id', '')
+        fts = {}
+        for order_id, order in tdict._data.items():
+            try:
+                od = order._data
+            except AttributeError:
+                continue
+            if od.get('status') == "ALIVE" and od.get('instrument_id') == inst_id and od.get('exchange_id') == exch_id:
+                fts[order_id] = order
         return fts
 
 
@@ -509,8 +517,15 @@ class Order(Entity):
         :return: dict, 其中每个元素的key为成交ID, value为 :py:class:`~tqsdk.objs.Trade`
         """
         tdict = _get_obj(self._api._data, ["trade", self._path[1], "trades"])
-        fts = {trade_id: trade for trade_id, trade in tdict.items() if
-               (not trade_id.startswith("_")) and trade.order_id == self.order_id}
+        target_order_id = self._data.get('order_id', '')
+        fts = {}
+        for trade_id, trade in tdict._data.items():
+            try:
+                od = trade._data
+            except AttributeError:
+                continue
+            if od.get('order_id') == target_order_id:
+                fts[trade_id] = trade
         return fts
 
 
@@ -837,8 +852,16 @@ class SecurityPosition(Entity):
     @property
     def orders(self):
         tdict = _get_obj(self._api._data, ["trade", self._path[1], "orders"])
-        fts = {order_id: order for order_id, order in tdict.items() if (not order_id.startswith(
-            "_")) and order.instrument_id == self.instrument_id and order.exchange_id == self.exchange_id and order.status == "ALIVE"}
+        inst_id = self._data.get('instrument_id', '')
+        exch_id = self._data.get('exchange_id', '')
+        fts = {}
+        for order_id, order in tdict._data.items():
+            try:
+                od = order._data
+            except AttributeError:
+                continue
+            if od.get('status') == "ALIVE" and od.get('instrument_id') == inst_id and od.get('exchange_id') == exch_id:
+                fts[order_id] = order
         return fts
 
 
@@ -884,8 +907,15 @@ class SecurityOrder(Entity):
         :return: dict, 其中每个元素的key为成交ID, value为 :py:class:`~tqsdk.objs.Trade`
         """
         tdict = _get_obj(self._api._data, ["trade", self._path[1], "trades"])
-        fts = {trade_id: trade for trade_id, trade in tdict.items() if
-               (not trade_id.startswith("_")) and trade.order_id == self.order_id}
+        target_order_id = self._data.get('order_id', '')
+        fts = {}
+        for trade_id, trade in tdict._data.items():
+            try:
+                od = trade._data
+            except AttributeError:
+                continue
+            if od.get('order_id') == target_order_id:
+                fts[trade_id] = trade
         return fts
 
 

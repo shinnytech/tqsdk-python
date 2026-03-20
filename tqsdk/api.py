@@ -2057,7 +2057,7 @@ class TqApi(TqBaseApi):
                 if id(obj) in self._serials:
                     paths = []
                     for root in self._serials[id(obj)]["root"]:
-                        paths.append(root["_path"])
+                        paths.append(root._path)
                 elif len(obj) == 0:
                     return False
                 else:  # 处理传入的为一个 copy 出的 DataFrame (与原 DataFrame 数据相同的另一个object)
@@ -2088,7 +2088,7 @@ class TqApi(TqBaseApi):
                     paths.append(["ticks", obj["symbol"], "data", str(int(obj["id"]))])
 
             else:
-                paths = [obj["_path"]]
+                paths = [obj._path]
         except (KeyError, IndexError):
             return False
         for diff in diffs:
@@ -3629,12 +3629,12 @@ class TqApi(TqBaseApi):
         temp_df = pd.DataFrame()
         temp_df._mgr = bm
         serial["df"] = TqDataFrame(self, temp_df, copy=False)
-        serial["df"]["symbol"] = root_list[0]["_path"][1]
+        serial["df"]["symbol"] = root_list[0]._path[1]
         for i in range(1, len(root_list)):
-            serial["df"]["symbol" + str(i)] = root_list[i]["_path"][1]
+            serial["df"]["symbol" + str(i)] = root_list[i]._path[1]
 
-        serial["df"]["duration"] = 0 if root_list[0]["_path"][0] == "ticks" else int(
-            root_list[0]["_path"][-1]) // 1000000000
+        serial["df"]["duration"] = 0 if root_list[0]._path[0] == "ticks" else int(
+            root_list[0]._path[-1]) // 1000000000
         return serial
 
     def _update_serial_single(self, serial):
@@ -3842,8 +3842,8 @@ class TqApi(TqBaseApi):
         serial["all_attr"] = set(serial["df"].columns.values)
         if serial["update_row"] == serial["width"]:
             return
-        symbol = serial["root"][0]["_path"][1]  # 主合约的symbol，标志绘图的主合约
-        duration = 0 if serial["root"][0]["_path"][0] == "ticks" else int(serial["root"][0]["_path"][-1])
+        symbol = serial["root"][0]._path[1]  # 主合约的symbol，标志绘图的主合约
+        duration = 0 if serial["root"][0]._path[0] == "ticks" else int(serial["root"][0]._path[-1])
         cols = list(serial["extra_array"].keys())
         # 归并数据序列
         while len(cols) != 0:
@@ -4033,8 +4033,8 @@ class TqApi(TqBaseApi):
 
     @staticmethod
     def _deep_copy_dict(source, dest):
-        for key, value in source.__dict__.items():
-            if isinstance(value, Entity):
+        for key, value in source._data.items():
+            if hasattr(value, '_data'):
                 dest[key] = {}
                 TqApi._deep_copy_dict(value, dest[key])
             else:
@@ -4216,7 +4216,7 @@ class TqApi(TqBaseApi):
 
     def _send_chart_data(self, base_kserial_frame, serial_id, serial_data):
         s = self._serials[id(base_kserial_frame)]
-        p = s["root"][0]["_path"]
+        p = s["root"][0]._path
         symbol = p[-2]
         dur_nano = int(p[-1])
         pack = {

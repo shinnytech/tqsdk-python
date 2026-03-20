@@ -29,7 +29,7 @@ def _merge_diff(result, diff, prototype, persist, reduce_diff=False, notify_upda
             else:
                 if notify_update_diff:
                     dv = result.pop(key, None)
-                    _notify_update(dv, True, _gen_diff_obj(None, result["_path"] + [key]))
+                    _notify_update(dv, True, _gen_diff_obj(None, result._path + [key]))
                 else:
                     dv = result.pop(key, None)
                     _notify_update(dv, True, True)
@@ -65,7 +65,7 @@ def _merge_diff(result, diff, prototype, persist, reduce_diff=False, notify_upda
             # 这里发的数据目前是不需要 copy (浅拷贝会有坑，深拷贝的话性能不知道有多大影响)
             # 因为这里现在会用到发送这个 diff 的只有 quote 对象，只有 sim 会收到使用，sim 收到之后是不会修改这个 diff
             # 所以这里就约定接收方不能改 diff 中的值
-            diff_obj = _gen_diff_obj(diff, result["_path"])
+            diff_obj = _gen_diff_obj(diff, result._path)
         _notify_update(result, False, diff_obj)
 
 
@@ -79,7 +79,7 @@ def _gen_diff_obj(diff, path):
 
 def _notify_update(target, recursive, content):
     """同步通知业务数据更新"""
-    if isinstance(target, dict) or isinstance(target, Entity):
+    if type(target) is dict or hasattr(target, '_data'):
         for q in getattr(target, "_listener", {}):
             q.send_nowait(content)
         if recursive:
@@ -96,7 +96,7 @@ def _get_obj(root, path, default=None):
                 dv = Entity()
             else:
                 dv = copy.copy(default)
-            dv._instance_entity(d["_path"] + [path[i]])
+            dv._instance_entity(d._path + [path[i]])
             d[path[i]] = dv
         d = d[path[i]]
     return d
@@ -106,7 +106,7 @@ def _register_update_chan(objs, chan):
     if not isinstance(objs, list):
         objs = [objs]
     for o in objs:
-        o["_listener"].add(chan)
+        o._listener.add(chan)
     return chan
 
 
