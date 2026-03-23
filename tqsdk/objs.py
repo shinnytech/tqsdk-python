@@ -545,14 +545,32 @@ class Order(Entity):
         """
         tdict = _get_obj(self._api._data, ["trade", self._path[1], "trades"])
         target_order_id = self._data.get('order_id', '')
-        fts = {}
-        for trade_id, trade in tdict._data.items():
-            try:
-                if trade._data['order_id'] == target_order_id:
-                    fts[trade_id] = trade
-            except (AttributeError, KeyError):
-                continue
-        return fts
+        trades_data = tdict._data
+        # Build/update reverse index (order_id -> [trade_id, ...]) on the trades entity
+        try:
+            idx = tdict._trade_order_index
+            idx_len = tdict._trade_order_index_len
+        except AttributeError:
+            idx = {}
+            idx_len = 0
+            object.__setattr__(tdict, '_trade_order_index', idx)
+            object.__setattr__(tdict, '_trade_order_index_len', 0)
+        cur_len = len(trades_data)
+        if cur_len != idx_len:
+            count = 0
+            for t_id, trade in trades_data.items():
+                count += 1
+                if count <= idx_len:
+                    continue
+                try:
+                    oid = trade._data['order_id']
+                except (AttributeError, KeyError):
+                    continue
+                if oid:
+                    idx.setdefault(oid, []).append(t_id)
+            object.__setattr__(tdict, '_trade_order_index_len', cur_len)
+        trade_ids = idx.get(target_order_id, ())
+        return {tid: trades_data[tid] for tid in trade_ids if tid in trades_data}
 
 
 class Trade(Entity):
@@ -934,14 +952,32 @@ class SecurityOrder(Entity):
         """
         tdict = _get_obj(self._api._data, ["trade", self._path[1], "trades"])
         target_order_id = self._data.get('order_id', '')
-        fts = {}
-        for trade_id, trade in tdict._data.items():
-            try:
-                if trade._data['order_id'] == target_order_id:
-                    fts[trade_id] = trade
-            except (AttributeError, KeyError):
-                continue
-        return fts
+        trades_data = tdict._data
+        # Build/update reverse index (order_id -> [trade_id, ...]) on the trades entity
+        try:
+            idx = tdict._trade_order_index
+            idx_len = tdict._trade_order_index_len
+        except AttributeError:
+            idx = {}
+            idx_len = 0
+            object.__setattr__(tdict, '_trade_order_index', idx)
+            object.__setattr__(tdict, '_trade_order_index_len', 0)
+        cur_len = len(trades_data)
+        if cur_len != idx_len:
+            count = 0
+            for t_id, trade in trades_data.items():
+                count += 1
+                if count <= idx_len:
+                    continue
+                try:
+                    oid = trade._data['order_id']
+                except (AttributeError, KeyError):
+                    continue
+                if oid:
+                    idx.setdefault(oid, []).append(t_id)
+            object.__setattr__(tdict, '_trade_order_index_len', cur_len)
+        trade_ids = idx.get(target_order_id, ())
+        return {tid: trades_data[tid] for tid in trade_ids if tid in trades_data}
 
 
 class SecurityTrade(Entity):
