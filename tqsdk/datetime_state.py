@@ -26,7 +26,9 @@ class TqDatetimeState:
             return int(time.time() * 1000000) * 1000
 
     def update_state(self, diff):
-        self.tqsdk_backtest.update(diff.get('_tqsdk_backtest', {}))
+        backtest_data = diff.get('_tqsdk_backtest')
+        if backtest_data:
+            self.tqsdk_backtest.update(backtest_data)
         if not self.data_ready and diff.get('mdhis_more_data', True) is False:
             self.data_ready = True
 

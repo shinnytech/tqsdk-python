@@ -228,9 +228,9 @@ class SimTradeBase(object):
     def _append_to_diffs(self, path, obj):
         target = {}
         diff = {'trade': {self._account_key: target}}
-        while len(path) > 0:
-            k = path.pop(0)
-            target[k] = obj.copy() if len(path) == 0 else {}
+        last = len(path) - 1
+        for i, k in enumerate(path):
+            target[k] = obj.copy() if i == last else {}
             target = target[k]
         self._diffs.append(diff)
 
