@@ -16,14 +16,19 @@ def _merge_diff(result, diff, prototype, persist, reduce_diff=False, notify_upda
     _Entity = Entity
     _dict = dict
     result_data = result._data
+    # Access prototype._data directly to bypass Entity method dispatch
+    try:
+        _pd = prototype._data
+    except AttributeError:
+        _pd = prototype
     for key in tuple(diff):
         val = diff[key]
         value_type = _type(val)
-        if value_type is str and key in prototype and _type(prototype[key]) is not str:
-            val = prototype[key]
+        if value_type is str and key in _pd and _type(_pd[key]) is not str:
+            val = _pd[key]
             diff[key] = val
         if val is None:
-            if (persist or "#" in prototype) and reduce_diff:
+            if (persist or "#" in _pd) and reduce_diff:
                 del diff[key]
             else:
                 dv = result_data.pop(key, None)
@@ -35,15 +40,15 @@ def _merge_diff(result, diff, prototype, persist, reduce_diff=False, notify_upda
         elif value_type is _dict or value_type is _Entity:
             default = None
             tpersist = persist
-            if key in prototype:
-                tpt = prototype[key]
-            elif "*" in prototype:
-                tpt = prototype["*"]
-            elif "@" in prototype:
-                tpt = prototype["@"]
+            if key in _pd:
+                tpt = _pd[key]
+            elif "*" in _pd:
+                tpt = _pd["*"]
+            elif "@" in _pd:
+                tpt = _pd["@"]
                 default = tpt
-            elif "#" in prototype:
-                tpt = prototype["#"]
+            elif "#" in _pd:
+                tpt = _pd["#"]
                 default = tpt
                 tpersist = True
             else:
