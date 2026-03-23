@@ -450,13 +450,13 @@ class Position(Entity):
         :return: dict, 其中每个元素的key为委托单ID, value为 :py:class:`~tqsdk.objs.Order`
         """
         tdict = _get_obj(self._api._data, ["trade", self._path[1], "orders"])
-        inst_id = self._data.get('instrument_id', '')
-        exch_id = self._data.get('exchange_id', '')
+        self_data = self._data
+        inst_id = self_data.get('instrument_id', '')
+        exch_id = self_data.get('exchange_id', '')
         fts = {}
         for order_id, order in tdict._data.items():
-            try:
-                od = order._data
-            except AttributeError:
+            od = getattr(order, '_data', None)
+            if od is None:
                 continue
             if od.get('status') == "ALIVE" and od.get('instrument_id') == inst_id and od.get('exchange_id') == exch_id:
                 fts[order_id] = order

@@ -62,6 +62,24 @@ class Entity(MutableMapping):
     def __contains__(self, key):
         return key in self._data
 
+    def get(self, key, default=None):
+        return self._data.get(key, default)
+
+    def keys(self):
+        return self._data.keys()
+
+    def values(self):
+        return self._data.values()
+
+    def items(self):
+        return self._data.items()
+
+    def pop(self, key, *args):
+        return self._data.pop(key, *args)
+
+    def setdefault(self, key, default=None):
+        return self._data.setdefault(key, default)
+
     def __copy__(self):
         new = type(self).__new__(type(self))
         # Copy private attrs from __dict__ (excluding _data which is handled separately)

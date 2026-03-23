@@ -11,29 +11,28 @@ from tqsdk.entity import Entity
 def _merge_diff(result, diff, prototype, persist, reduce_diff=False, notify_update_diff=False):
     """
     更新业务数据,并同步发送更新通知，保证业务数据的更新和通知是原子操作
-    :param result: 更新结果
-    :param diff: diff pack
-    :param persist: 是否保留 result 中所有字段，如果为 True，则 diff 里为 None 的对象在 result 中不会删除；如果是 False，则 result 结果中会删除 diff 里为 None 的对象
-    :param reduce_diff: 表示是否修改 diff 对象本身，如果为 True 函数运行完成后，diff 会更新为与 result 真正的有区别的字段；如果为 False，diff 不会修改
-        默认不会修改 diff，只有 api 中 is_changing 接口需要 diffs 为真正有变化的数据
-    :param notify_update_diff: 为 True 表示发送更新通知的发送的是包含 diff 的完整数据包（方便 TqSim 中能每个合约的 task 可以单独维护自己的数据），反之只发送 True
-    :return:
     """
-    for key in list(diff.keys()):
-        value_type = type(diff[key])
-        if value_type is str and key in prototype and not type(prototype[key]) is str:
-            diff[key] = prototype[key]
-        if diff[key] is None:
+    _type = type
+    _Entity = Entity
+    _dict = dict
+    result_data = result._data
+    for key in tuple(diff):
+        val = diff[key]
+        value_type = _type(val)
+        if value_type is str and key in prototype and _type(prototype[key]) is not str:
+            val = prototype[key]
+            diff[key] = val
+        if val is None:
             if (persist or "#" in prototype) and reduce_diff:
                 del diff[key]
             else:
-                if notify_update_diff:
-                    dv = result.pop(key, None)
-                    _notify_update(dv, True, _gen_diff_obj(None, result._path + [key]))
-                else:
-                    dv = result.pop(key, None)
-                    _notify_update(dv, True, True)
-        elif value_type is dict or value_type is Entity:
+                dv = result_data.pop(key, None)
+                if dv is not None:
+                    if notify_update_diff:
+                        _notify_update(dv, True, _gen_diff_obj(None, result._path + [key]))
+                    else:
+                        _notify_update(dv, True, True)
+        elif value_type is _dict or value_type is _Entity:
             default = None
             tpersist = persist
             if key in prototype:
@@ -49,22 +48,21 @@ def _merge_diff(result, diff, prototype, persist, reduce_diff=False, notify_upda
                 tpersist = True
             else:
                 tpt = {}
-            target = _get_obj(result, [key], default=default)
-            _merge_diff(target, diff[key], tpt, persist=tpersist, reduce_diff=reduce_diff, notify_update_diff=notify_update_diff)
-            if reduce_diff and len(diff[key]) == 0:
+            target = _get_obj_single(result, key, default)
+            _merge_diff(target, val, tpt, persist=tpersist, reduce_diff=reduce_diff, notify_update_diff=notify_update_diff)
+            if reduce_diff and len(val) == 0:
                 del diff[key]
-        elif reduce_diff and key in result and (
-                result[key] == diff[key] or (diff[key] != diff[key] and result[key] != result[key])):
-            # 判断 diff[key] != diff[key] and result[key] != result[key] 以处理 value 为 nan 的情况
-            del diff[key]
+        elif reduce_diff and key in result_data:
+            rval = result_data[key]
+            if rval == val or (val != val and rval != rval):
+                del diff[key]
+            else:
+                result_data[key] = val
         else:
-            result[key] = diff[key]
-    if len(diff) != 0:
+            result_data[key] = val
+    if diff:
         diff_obj = True
         if notify_update_diff:
-            # 这里发的数据目前是不需要 copy (浅拷贝会有坑，深拷贝的话性能不知道有多大影响)
-            # 因为这里现在会用到发送这个 diff 的只有 quote 对象，只有 sim 会收到使用，sim 收到之后是不会修改这个 diff
-            # 所以这里就约定接收方不能改 diff 中的值
             diff_obj = _gen_diff_obj(diff, result._path)
         _notify_update(result, False, diff_obj)
 
@@ -85,6 +83,21 @@ def _notify_update(target, recursive, content):
         if recursive:
             for v in target.values():
                 _notify_update(v, recursive, content)
+
+
+def _get_obj_single(root, key, default=None):
+    """获取业务数据 - optimized for single key lookup (most common case)"""
+    root_data = root._data
+    try:
+        return root_data[key]
+    except KeyError:
+        if default is None:
+            dv = Entity()
+        else:
+            dv = copy.copy(default)
+        dv._instance_entity(root._path + [key])
+        root_data[key] = dv
+        return dv
 
 
 def _get_obj(root, path, default=None):
