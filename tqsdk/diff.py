@@ -146,26 +146,22 @@ def _is_key_exist(diff, path, key):
 def _simple_merge_diff(result, diff):
     """
     更新业务数据
-    :param result: 更新结果
-    :param diff: diff pack
-    :return:
     """
-    for key in list(diff.keys()):
-        if diff[key] is None:
+    for key in tuple(diff):
+        val = diff[key]
+        if val is None:
             result.pop(key, None)
-        elif isinstance(diff[key], dict):
+        elif type(val) is dict:
             target = result.setdefault(key, {})
-            _simple_merge_diff(target, diff[key])
+            _simple_merge_diff(target, val)
         else:
-            result[key] = diff[key]
+            result[key] = val
 
 
 def _simple_merge_diff_and_collect_paths(result, diff, path: Tuple, diff_paths: Set, prototype: Union[Dict, None]):
     """
     更新业务数据并收集指定节点的路径
     """
-    _isinstance = isinstance
-    _dict = dict
     for key in tuple(diff):
         val = diff[key]
         if val is None:
@@ -174,7 +170,7 @@ def _simple_merge_diff_and_collect_paths(result, diff, path: Tuple, diff_paths: 
                 pkey = '*' if '*' in prototype else key
                 if pkey in prototype and prototype[pkey] is None:
                     diff_paths.add(path + (key, ))
-        elif _isinstance(val, _dict):
+        elif type(val) is dict:
             target = result.setdefault(key, {})
             sub_path = path + (key, )
             sub_prototype = None
