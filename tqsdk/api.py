@@ -1947,7 +1947,7 @@ class TqApi(TqBaseApi):
                 for d in self._diffs:
                     # 判断账户类别, 对股票和期货的 trade 数据分别进行处理
                     if "trade" in d:
-                        for k, v in d.get('trade').items():
+                        for k, v in d['trade'].items():
                             prototype = self._security_prototype if self._account._is_stock_type(k) else self._prototype
                             _merge_diff(self._data, {'trade': {k: v}}, prototype, persist=False, reduce_diff=True)
                     # 非交易数据均按照期货处理逻辑

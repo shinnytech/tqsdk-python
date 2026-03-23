@@ -49,7 +49,7 @@ def _merge_diff(result, diff, prototype, persist, reduce_diff=False, notify_upda
             else:
                 tpt = {}
             target = _get_obj_single(result, key, default)
-            _merge_diff(target, val, tpt, persist=tpersist, reduce_diff=reduce_diff, notify_update_diff=notify_update_diff)
+            _merge_diff(target, val, tpt, tpersist, reduce_diff, notify_update_diff)
             if reduce_diff and not val:
                 del diff[key]
         elif reduce_diff and key in result_data:
@@ -136,15 +136,15 @@ def _register_update_chan(objs, chan):
 def _is_key_exist(diff, path, key):
     """判断指定数据是否存在"""
     for p in path:
-        if not isinstance(diff, dict) or p not in diff:
+        if type(diff) is not dict or p not in diff:
             return False
         diff = diff[p]
-    if not isinstance(diff, dict):
+    if type(diff) is not dict:
         return False
     for k in key:
         if k in diff:
             return True
-    return len(key) == 0
+    return not key
 
 
 def _simple_merge_diff(result, diff):
