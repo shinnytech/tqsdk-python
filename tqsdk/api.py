@@ -3679,39 +3679,53 @@ class TqApi(TqBaseApi):
         if serial["root"][0].get("last_id", -1) == -1:
             # 该 kline 没有任何数据，直接退出
             return
-        symbol = serial["chart"]["ins_list"].split(",")[0]  # 合约列表
+        # Cache computed values that don't change between calls
+        try:
+            keys = serial["_cached_keys"]
+            symbol = serial["_cached_symbol"]
+            cols = serial["_cached_cols"]
+        except KeyError:
+            symbol = serial["chart"]["ins_list"].split(",")[0]
+            serial["_cached_symbol"] = symbol
+            keys = list(serial["default"].keys())
+            keys.remove('datetime')
+            serial["_cached_keys"] = keys
+            duration = serial["chart"]["duration"]
+            if duration != 0:
+                cols = ["open", "high", "low", "close"]
+            else:
+                cols = ["last_price", "highest", "lowest"] + [f"{x}{i}" for x in
+                                                              ["bid_price", "ask_price"] for i in
+                                                              range(1, 6)]
+            serial["_cached_cols"] = cols
         quote = self._data.quotes.get(symbol, {})
-        duration = serial["chart"]["duration"]  # 周期
-        keys = list(serial["default"].keys())
-        keys.remove('datetime')
-        if duration != 0:
-            cols = ["open", "high", "low", "close"]
-        else:
-            cols = ["last_price", "highest", "lowest"] + [f"{x}{i}" for x in
-                                                          ["bid_price", "ask_price"] for i in
-                                                          range(1, 6)]
-        for i in range(serial["update_row"], serial["width"]):
-            index = last_id - serial["width"] + 1 + i
-            item = serial["default"] if index < 0 else _get_obj(serial["root"][0], ["data", str(index)],
-                                                                serial["default"])
+        adj_type = serial["adj_type"]
+        root0 = serial["root"][0]
+        default = serial["default"]
+        width = serial["width"]
+        update_row = serial["update_row"]
+        needs_adj = adj_type in ("B", "F") and hasattr(quote, 'ins_class') and quote.ins_class in ("STOCK", "FUND")
+        for i in range(update_row, width):
+            index = last_id - width + 1 + i
+            item = default if index < 0 else _get_obj(root0, ["data", str(index)], default)
             # 如果需要复权，计算复权
-            if index > 0 and serial["adj_type"] in ["B", "F"] and quote.ins_class in ["STOCK", "FUND"]:
+            if index > 0 and needs_adj:
                 self._ensure_dividend_factor(symbol)
                 last_index = index - 1
-                last_item = _get_obj(serial["root"][0], ["data", str(last_index)], serial["default"])
+                last_item = _get_obj(root0, ["data", str(last_index)], default)
                 factor = get_dividend_factor(self._dividend_cache[symbol]["df"], last_item, item)
-                if serial["adj_type"] == "B":
+                if adj_type == "B":
                     self._dividend_cache[symbol]["back_factor"] = self._dividend_cache[symbol]["back_factor"] * (1 / factor)
                     if self._dividend_cache[symbol]["back_factor"] != 1.0:
                         item = item.copy()
                         for c in cols:
                             item[c] = item[c] * self._dividend_cache[symbol]["back_factor"]
-                elif serial["adj_type"] == "F" and factor != 1.0 and i not in serial['calc_ids_F']:
+                elif adj_type == "F" and factor != 1.0 and i not in serial['calc_ids_F']:
                     serial['calc_ids_F'].append(i)
                     for c in cols:
                         col_index = keys.index(c) + 2
                         array[:i, col_index] = array[:i, col_index] * factor
-            array[i] = [item["datetime"]] + [index] + [item[k] for k in keys if k != "datetime"]
+            array[i] = [item["datetime"], index] + [item[k] for k in keys]
 
     def _ensure_dividend_factor(self, symbol):
         quote = self._data.quotes.get(symbol, {})
@@ -3840,16 +3854,18 @@ class TqApi(TqBaseApi):
                     array[-1, 1] + 1)  # array[-1, 1] + 1： 保持左闭右开规范
 
     def _process_serial_extra_array(self, serial):
-        for col in set(serial["df"].columns.values) - serial["default_attr"]:
+        df_cols = set(serial["df"].columns.values)
+        extra_cols = df_cols - serial["default_attr"]
+        for col in extra_cols:
             if col not in serial["all_attr"]:
                 serial["update_row"] = 0  # 只有在第一次添加某个列时，才会赋值为 0。
             # klines["ma_MAIN"] = ma.ma 不是在原来的序列上原地修改，而是返回一个新的序列，
             # 所以这里 serial["extra_array"] 中的列每次需要重新赋值。
             serial["extra_array"][col] = serial["df"][col].to_numpy()
         # 如果策略中删除了之前添加到 df 中的序列，则 extra_array 中也将其删除
-        for col in serial["all_attr"] - set(serial["df"].columns.values):
+        for col in serial["all_attr"] - df_cols:
             del serial["extra_array"][col]
-        serial["all_attr"] = set(serial["df"].columns.values)
+        serial["all_attr"] = df_cols
         if serial["update_row"] == serial["width"]:
             return
         symbol = serial["root"][0]._path[1]  # 主合约的symbol，标志绘图的主合约
