@@ -159,7 +159,7 @@ def _simple_merge_diff(result, diff):
     """
     更新业务数据
     """
-    for key in tuple(diff):
+    for key in diff:
         val = diff[key]
         if val is None:
             result.pop(key, None)
@@ -174,7 +174,7 @@ def _simple_merge_diff_and_collect_paths(result, diff, path: Tuple, diff_paths: 
     """
     更新业务数据并收集指定节点的路径
     """
-    for key in tuple(diff):
+    for key in diff:
         val = diff[key]
         if val is None:
             result.pop(key, None)
