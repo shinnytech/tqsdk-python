@@ -461,12 +461,10 @@ class Position(Entity):
         for order_id, order in orders_entity._data.items():
             try:
                 od = order._data
-            except AttributeError:
+                if od['status'] == "ALIVE" and od['instrument_id'] == inst_id and od['exchange_id'] == exch_id:
+                    fts[order_id] = order
+            except (AttributeError, KeyError):
                 continue
-            if od.get('status') != "ALIVE":
-                continue
-            if od.get('instrument_id') == inst_id and od.get('exchange_id') == exch_id:
-                fts[order_id] = order
         return fts
 
 
@@ -528,11 +526,10 @@ class Order(Entity):
         fts = {}
         for trade_id, trade in tdict._data.items():
             try:
-                od = trade._data
-            except AttributeError:
+                if trade._data['order_id'] == target_order_id:
+                    fts[trade_id] = trade
+            except (AttributeError, KeyError):
                 continue
-            if od.get('order_id') == target_order_id:
-                fts[trade_id] = trade
         return fts
 
 
@@ -918,11 +915,10 @@ class SecurityOrder(Entity):
         fts = {}
         for trade_id, trade in tdict._data.items():
             try:
-                od = trade._data
-            except AttributeError:
+                if trade._data['order_id'] == target_order_id:
+                    fts[trade_id] = trade
+            except (AttributeError, KeyError):
                 continue
-            if od.get('order_id') == target_order_id:
-                fts[trade_id] = trade
         return fts
 
 

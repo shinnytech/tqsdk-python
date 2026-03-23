@@ -105,7 +105,7 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
             offset_priority (str): [可选]开平仓顺序，昨=平昨仓，今=平今仓，开=开仓，逗号=等待之前操作完成
 
                                    对于下单指令区分平今/昨的交易所(如上期所)，按照今/昨仓的数量计算是否能平今/昨仓
-                                   对于下单指令不区分平今/昨的交易所(如中金所)，按照“先平当日新开仓，再平历史仓”的规则计算是否能平今/昨仓，如果这些交易所设置为"昨开"在有当日新开仓和历史仓仓的情况下，会自动跳过平昨仓进入到下一步
+                                   对于下单指令不区分平今/昨的交易所(如中金所)，按照"先平当日新开仓，再平历史仓"的规则计算是否能平今/昨仓，如果这些交易所设置为"昨开"在有当日新开仓和历史仓仓的情况下，会自动跳过平昨仓进入到下一步
 
                                    * "今昨,开" 表示先平今仓，再平昨仓，等待平仓完成后开仓，对于没有单向大边的品种避免了开仓保证金不足
                                    * "今昨开" 表示先平今仓，再平昨仓，并开仓，所有指令同时发出，适合有单向大边的品种
@@ -285,17 +285,18 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
             raise Exception("已经结束的 TargetPosTask 实例不可以再设置手数。")
         self._pos_chan.send_nowait(int(volume))
 
-    def _get_order(self, offset, vol, pending_frozen):
+    def _get_order(self, offset, vol, pending_frozen, pos_orders=None):
         """
         根据指定的offset和预期下单手数vol, 返回符合要求的委托单最大报单手数
         :param offset: "昨" / "今" / "开"
         :param vol: int, <0表示SELL, >0表示BUY
+        :param pos_orders: cached result of self._pos.orders to avoid recomputation
         :return: order_offset: "CLOSE"/"CLOSETODAY"/"OPEN"; order_dir: "BUY"/"SELL"; "order_volume": >=0, 报单手数
         """
-        if vol > 0:  # 买单(增加净持仓)
+        if vol > 0:
             order_dir = "BUY"
             pos_all = self._pos.pos_short
-        else:  # 卖单
+        else:
             order_dir = "SELL"
             pos_all = self._pos.pos_long
         if offset == "昨":
@@ -305,12 +306,15 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
                     pos_all = self._pos.pos_short_his
                 else:
                     pos_all = self._pos.pos_long_his
-                frozen_volume = sum([order.volume_left for order in self._pos.orders.values() if
-                                     not order.is_dead and order.offset == order_offset and order.direction == order_dir])
+                if pos_orders is None:
+                    pos_orders = self._pos.orders
+                frozen_volume = sum(order.volume_left for order in pos_orders.values() if
+                                    not order.is_dead and order.offset == order_offset and order.direction == order_dir)
             else:
-                frozen_volume = pending_frozen + sum([order.volume_left for order in self._pos.orders.values() if
-                                                      not order.is_dead and order.offset != "OPEN" and order.direction == order_dir])
-                # 判断是否有未冻结的今仓手数: 若有则不平昨仓
+                if pos_orders is None:
+                    pos_orders = self._pos.orders
+                frozen_volume = pending_frozen + sum(order.volume_left for order in pos_orders.values() if
+                                                     not order.is_dead and order.offset != "OPEN" and order.direction == order_dir)
                 if (self._pos.pos_short_today if vol > 0 else self._pos.pos_long_today) - frozen_volume > 0:
                     pos_all = frozen_volume
             order_volume = min(abs(vol), max(0, pos_all - frozen_volume))
@@ -321,12 +325,16 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
                     pos_all = self._pos.pos_short_today
                 else:
                     pos_all = self._pos.pos_long_today
-                frozen_volume = sum([order.volume_left for order in self._pos.orders.values() if
-                                     not order.is_dead and order.offset == order_offset and order.direction == order_dir])
+                if pos_orders is None:
+                    pos_orders = self._pos.orders
+                frozen_volume = sum(order.volume_left for order in pos_orders.values() if
+                                    not order.is_dead and order.offset == order_offset and order.direction == order_dir)
             else:
                 order_offset = "CLOSE"
-                frozen_volume = pending_frozen + sum([order.volume_left for order in self._pos.orders.values() if
-                                                      not order.is_dead and order.offset != "OPEN" and order.direction == order_dir])
+                if pos_orders is None:
+                    pos_orders = self._pos.orders
+                frozen_volume = pending_frozen + sum(order.volume_left for order in pos_orders.values() if
+                                                     not order.is_dead and order.offset != "OPEN" and order.direction == order_dir)
                 pos_all = self._pos.pos_short_today if vol > 0 else self._pos.pos_long_today
             order_volume = min(abs(vol), max(0, pos_all - frozen_volume))
         elif offset == "开":
@@ -385,13 +393,15 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
                 # 确定调仓增减方向
                 delta_volume = target_pos - self._pos.pos
                 pending_forzen = 0
-                for each_priority in self._offset_priority + ",":  # 按不同模式的优先级顺序报出不同的offset单，股指(“昨开”)平昨优先从不平今就先报平昨，原油平今优先("今昨开")就报平今
+                cached_orders = None
+                for each_priority in self._offset_priority + ",":  # 按不同模式的优先级顺序报出不同的offset单
                     if each_priority == ",":
                         await gather(*[each._task for each in all_tasks])
                         pending_forzen = 0
+                        cached_orders = None
                         all_tasks = []
                         continue
-                    order_offset, order_dir, order_volume = self._get_order(each_priority, delta_volume, pending_forzen)
+                    order_offset, order_dir, order_volume = self._get_order(each_priority, delta_volume, pending_forzen, cached_orders)
                     if order_volume == 0:  # 如果没有则直接到下一种offset
                         continue
                     elif order_offset != "OPEN":
