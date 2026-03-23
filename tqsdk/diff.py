@@ -21,7 +21,8 @@ def _merge_diff(result, diff, prototype, persist, reduce_diff=False, notify_upda
         _pd = prototype._data
     except AttributeError:
         _pd = prototype
-    for key in tuple(diff):
+    # Only need tuple(diff) when reduce_diff may delete keys during iteration
+    for key in (tuple(diff) if reduce_diff else diff):
         val = diff[key]
         value_type = _type(val)
         if value_type is str and key in _pd and _type(_pd[key]) is not str:
@@ -74,10 +75,18 @@ def _merge_diff(result, diff, prototype, persist, reduce_diff=False, notify_upda
         else:
             result_data[key] = val
     if diff:
-        diff_obj = True
+        # Inline _notify_update for non-recursive case (saves ~1M function calls)
         if notify_update_diff:
             diff_obj = _gen_diff_obj(diff, result._path)
-        _notify_update(result, False, diff_obj)
+        else:
+            diff_obj = True
+        try:
+            listener = object.__getattribute__(result, '_listener')
+        except AttributeError:
+            return
+        if listener is not None and listener.data:
+            for q in listener:
+                q.send_nowait(diff_obj)
 
 
 def _gen_diff_obj(diff, path):
