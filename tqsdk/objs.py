@@ -10,6 +10,17 @@ from tqsdk.diff import _get_obj
 from tqsdk.entity import Entity
 
 
+class _OrdersDirtyFlag:
+    """Lightweight listener that sets a dirty flag when orders entity is updated."""
+    __slots__ = ('dirty', '__weakref__')
+
+    def __init__(self):
+        self.dirty = True
+
+    def send_nowait(self, _):
+        self.dirty = True
+
+
 class Quote(Entity):
     """ Quote 是一个行情对象 """
 
@@ -454,6 +465,15 @@ class Position(Entity):
         except AttributeError:
             orders_entity = _get_obj(self._api._data, ["trade", self._path[1], "orders"])
             object.__setattr__(self, '_orders_entity', orders_entity)
+        # Use dirty-flag cache: only recompute when orders entity has been updated
+        try:
+            dirty_flag = self._orders_dirty_flag
+            if not dirty_flag.dirty:
+                return self._orders_cache
+        except AttributeError:
+            dirty_flag = _OrdersDirtyFlag()
+            object.__setattr__(self, '_orders_dirty_flag', dirty_flag)
+            orders_entity._listener.add(dirty_flag)
         self_data = self._data
         inst_id = self_data.get('instrument_id', '')
         exch_id = self_data.get('exchange_id', '')
@@ -465,6 +485,8 @@ class Position(Entity):
                     fts[order_id] = order
             except (AttributeError, KeyError):
                 continue
+        dirty_flag.dirty = False
+        object.__setattr__(self, '_orders_cache', fts)
         return fts
 
 
