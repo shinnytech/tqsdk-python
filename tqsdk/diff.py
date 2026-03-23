@@ -100,7 +100,7 @@ def _notify_update(target, recursive, content):
         listener = object.__getattribute__(target, '_listener')
     except AttributeError:
         return
-    if listener:
+    if listener.data:
         for q in listener:
             q.send_nowait(content)
     if recursive:
