@@ -1969,8 +1969,22 @@ class TqApi(TqBaseApi):
                     # K线df的更新与原始数据、left_id、right_id、more_data、last_id相关，其中任何一个发生改变都应重新计算df
                     # 注：订阅某K线后再订阅合约代码、周期相同但长度更短的K线时, 服务器不会再发送已有数据到客户端，即chart发生改变但内存中原始数据未改变。
                     # 检测到K线数据或chart的任何字段发生改变则更新serial的数据
-                    if self._is_obj_changing(serial["df"], diffs=self._diffs, key=[]) \
-                            or self._is_obj_changing(serial["chart"], diffs=self._diffs, key=[]):
+                    # Fast path: cache paths and check diffs directly, avoiding isinstance overhead
+                    try:
+                        cached_paths = serial["_cached_check_paths"]
+                    except KeyError:
+                        cached_paths = [root._path for root in serial["root"]]
+                        cached_paths.append(serial["chart"]._path)
+                        serial["_cached_check_paths"] = cached_paths
+                    serial_changed = False
+                    for diff in self._diffs:
+                        for path in cached_paths:
+                            if _is_key_exist(diff, path, []):
+                                serial_changed = True
+                                break
+                        if serial_changed:
+                            break
+                    if serial_changed:
                         if len(serial["root"]) == 1:  # 订阅单个合约
                             self._update_serial_single(serial)
                         else:  # 订阅多个合约
