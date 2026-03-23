@@ -1947,13 +1947,23 @@ class TqApi(TqBaseApi):
                 for d in self._diffs:
                     # 判断账户类别, 对股票和期货的 trade 数据分别进行处理
                     if "trade" in d:
-                        for k, v in d['trade'].items():
-                            prototype = self._security_prototype if self._account._is_stock_type(k) else self._prototype
-                            _merge_diff(self._data, {'trade': {k: v}}, prototype, persist=False, reduce_diff=True)
+                        trade_data = d['trade']
+                        futures_trade = {}
+                        stock_trade = {}
+                        _is_stock = self._account._is_stock_type
+                        for k, v in trade_data.items():
+                            if _is_stock(k):
+                                stock_trade[k] = v
+                            else:
+                                futures_trade[k] = v
+                        if futures_trade:
+                            _merge_diff(self._data, {'trade': futures_trade}, self._prototype, False, True, False)
+                        if stock_trade:
+                            _merge_diff(self._data, {'trade': stock_trade}, self._security_prototype, False, True, False)
                     # 非交易数据均按照期货处理逻辑
                     diff_without_trade = {k: v for k, v in d.items() if k != "trade"}
                     if diff_without_trade:
-                        _merge_diff(self._data, diff_without_trade, self._prototype, persist=False, reduce_diff=True)
+                        _merge_diff(self._data, diff_without_trade, self._prototype, False, True, False)
                 self._risk_manager._on_recv_data(self._diffs)
                 for _, serial in self._serials.items():
                     # K线df的更新与原始数据、left_id、right_id、more_data、last_id相关，其中任何一个发生改变都应重新计算df
