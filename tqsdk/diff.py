@@ -100,7 +100,7 @@ def _notify_update(target, recursive, content):
         listener = object.__getattribute__(target, '_listener')
     except AttributeError:
         return
-    if listener.data:
+    if listener is not None and listener.data:
         for q in listener:
             q.send_nowait(content)
     if recursive:
@@ -142,7 +142,7 @@ def _register_update_chan(objs, chan):
     if not isinstance(objs, list):
         objs = [objs]
     for o in objs:
-        o._listener.add(chan)
+        o._add_listener(chan)
     return chan
 
 

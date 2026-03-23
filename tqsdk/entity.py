@@ -15,7 +15,7 @@ class Entity(MutableMapping):
 
     def _instance_entity(self, path):
         object.__setattr__(self, '_path', path)
-        object.__setattr__(self, '_listener', weakref.WeakSet())
+        object.__setattr__(self, '_listener', None)
 
     def __setattr__(self, key, value):
         if key.startswith('_'):
@@ -28,6 +28,14 @@ class Entity(MutableMapping):
             return self._data[key]
         except KeyError:
             raise AttributeError(key)
+
+    def _add_listener(self, chan):
+        """Add a listener, lazily creating the WeakSet if needed."""
+        listener = object.__getattribute__(self, '_listener')
+        if listener is None:
+            listener = weakref.WeakSet()
+            object.__setattr__(self, '_listener', listener)
+        listener.add(chan)
 
     def __delattr__(self, key):
         if key.startswith('_'):

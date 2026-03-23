@@ -473,7 +473,7 @@ class Position(Entity):
         except AttributeError:
             dirty_flag = _OrdersDirtyFlag()
             object.__setattr__(self, '_orders_dirty_flag', dirty_flag)
-            orders_entity._listener.add(dirty_flag)
+            orders_entity._add_listener(dirty_flag)
         self_data = self._data
         inst_id = self_data.get('instrument_id', '')
         exch_id = self_data.get('exchange_id', '')

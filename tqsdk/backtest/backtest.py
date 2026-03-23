@@ -233,7 +233,7 @@ class TqBacktest(object):
     async def _send_snapshot(self):
         """发送初始合约信息"""
         async with TqChan(self._api, last_only=True) as update_chan:  # 等待与行情服务器连接成功
-            self._data._listener.add(update_chan)
+            self._data._add_listener(update_chan)
             while self._data.get("mdhis_more_data", True):
                 await update_chan.recv()
         # 发送初始行情(合约信息截面)时
@@ -434,7 +434,7 @@ class TqBacktest(object):
         if query_pack.items() <= self._data.get("symbols", {}).get(pack["query_id"], {}).items():
             return
         async with TqChan(self._api, last_only=True) as update_chan:
-            self._data._listener.add(update_chan)
+            self._data._add_listener(update_chan)
             while not query_pack.items() <= self._data.get("symbols", {}).get(pack["query_id"], {}).items():
                 await update_chan.recv()
 
@@ -448,7 +448,7 @@ class TqBacktest(object):
             await self._md_send_chan.send(query_pack)
         async with TqChan(self._api, last_only=True) as update_chan:
             for q in quotes:
-                q._listener.add(update_chan)
+                q._add_listener(update_chan)
             while any([math.isnan(q.get("price_tick")) for q in quotes]):
                 await update_chan.recv()
 
@@ -491,9 +491,9 @@ class TqBacktest(object):
             serials = [_get_obj(self._data, ["klines", s, str(dur)]) for s in symbol_list]
         async with TqChan(self._api, last_only=True) as update_chan:
             for serial in serials:
-                serial._listener.add(update_chan)
-            chart_a._listener.add(update_chan)
-            chart_b._listener.add(update_chan)
+                serial._add_listener(update_chan)
+            chart_a._add_listener(update_chan)
+            chart_b._add_listener(update_chan)
             await self._md_send_chan.send(chart_info.copy())
             try:
                 async for _ in update_chan:
@@ -520,10 +520,11 @@ class TqBacktest(object):
                         yield self._current_dt, diff, None, "OPEN"
                         return
                     if self._data.get("mdhis_more_data", True):
-                        self._data._listener.add(update_chan)
+                        self._data._add_listener(update_chan)
                         continue
                     else:
-                        self._data._listener.discard(update_chan)
+                        if self._data._listener is not None:
+                            self._data._listener.discard(update_chan)
                     left_id = chart.get("left_id", -1)
                     right_id = chart.get("right_id", -1)
                     if current_id is None:
