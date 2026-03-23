@@ -12,7 +12,7 @@ from tqsdk import utils
 from tqsdk.api import TqApi
 from tqsdk.backtest import TqBacktest
 from tqsdk.channel import TqChan
-from tqsdk.datetime import _is_in_trading_time, _timestamp_nano_to_str
+from tqsdk.datetime import _is_in_trading_time, _is_in_trading_time_nano, _timestamp_nano_to_str
 from tqsdk.diff import _get_obj
 from tqsdk.lib.utils import _check_volume_limit, _check_direction, _check_offset, _check_volume, _check_price, \
     _check_offset_priority
@@ -380,13 +380,13 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
                 while True:
                     if isinstance(self._api._backtest, TqBacktest):
                         cur_timestamp = self._api._data.get("_tqsdk_backtest", {}).get("current_dt", float("nan"))
-                        cur_dt = _timestamp_nano_to_str(cur_timestamp)
-                        time_record = float("nan")
+                        if _is_in_trading_time_nano(self._quote, cur_timestamp):
+                            break
                     else:
                         cur_dt = self._quote["datetime"]
                         time_record = self._local_time_record
-                    if _is_in_trading_time(self._quote, cur_dt, time_record):
-                        break
+                        if _is_in_trading_time(self._quote, cur_dt, time_record):
+                            break
                     await self._local_time_record_update_chan.recv()
 
                 target_pos = self._pos_chan.recv_latest(target_pos)  # 获取最后一个target_pos目标仓位

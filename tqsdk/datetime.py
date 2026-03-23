@@ -106,9 +106,12 @@ def _get_trading_day_from_timestamp(timestamp):
 
 def _get_trading_timestamp(quote, current_datetime: str):
     """ 将 quote 在 current_datetime 所在交易日的所有可交易时间段转换为纳秒时间戳(tqsdk内部使用的时间戳统一为纳秒)并返回 """
-    # 获取当前交易日时间戳
-    current_trading_day_timestamp = _get_trading_day_from_timestamp(_str_to_timestamp_nano(current_datetime))
-    # 获取上一交易日时间戳
+    return _get_trading_timestamp_nano(quote, _str_to_timestamp_nano(current_datetime))
+
+
+def _get_trading_timestamp_nano(quote, nano_timestamp: int):
+    """ 将 quote 在 nano_timestamp 所在交易日的所有可交易时间段转换为纳秒时间戳并返回 """
+    current_trading_day_timestamp = _get_trading_day_from_timestamp(nano_timestamp)
     last_trading_day_timestamp = _get_trading_day_from_timestamp(
         _get_trading_day_start_time(current_trading_day_timestamp) - 1)
     trading_timestamp = {
@@ -144,6 +147,21 @@ def _is_in_trading_time(quote, current_datetime, local_time_record):
     for v in trading_timestamp.values():
         for period in v:
             if period[0] <= now_ns_timestamp < period[1]:
+                return True
+    return False
+
+
+def _is_in_trading_time_nano(quote, nano_timestamp):
+    """ 判断是否在可交易时间段内 - 接受纳秒时间戳避免 str<->nano 转换开销 """
+    # Check for 18:00:00 and 17:59:59 boundaries in nano
+    # Time-of-day in CST: offset from midnight in nanos
+    day_offset = (nano_timestamp - 631123200000000000) % 86400000000000  # offset within day
+    if day_offset == 64800000000000 or day_offset == 64799999999000:  # 18:00:00.000000 or 17:59:59.999999
+        return True
+    trading_timestamp = _get_trading_timestamp_nano(quote, nano_timestamp)
+    for v in trading_timestamp.values():
+        for period in v:
+            if period[0] <= nano_timestamp < period[1]:
                 return True
     return False
 

@@ -50,7 +50,7 @@ def _merge_diff(result, diff, prototype, persist, reduce_diff=False, notify_upda
                 tpt = {}
             target = _get_obj_single(result, key, default)
             _merge_diff(target, val, tpt, persist=tpersist, reduce_diff=reduce_diff, notify_update_diff=notify_update_diff)
-            if reduce_diff and len(val) == 0:
+            if reduce_diff and not val:
                 del diff[key]
         elif reduce_diff and key in result_data:
             rval = result_data[key]
