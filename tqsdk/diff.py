@@ -48,7 +48,15 @@ def _merge_diff(result, diff, prototype, persist, reduce_diff=False, notify_upda
                 tpersist = True
             else:
                 tpt = {}
-            target = _get_obj_single(result, key, default)
+            try:
+                target = result_data[key]
+            except KeyError:
+                if default is None:
+                    target = _Entity()
+                else:
+                    target = copy.copy(default)
+                target._instance_entity(result._path + [key])
+                result_data[key] = target
             _merge_diff(target, val, tpt, tpersist, reduce_diff, notify_update_diff)
             if reduce_diff and not val:
                 del diff[key]
@@ -70,8 +78,8 @@ def _merge_diff(result, diff, prototype, persist, reduce_diff=False, notify_upda
 def _gen_diff_obj(diff, path):
     """将 diff 根据 path 拼成一个完整的 diff 包"""
     diff_obj = diff
-    for i in range(len(path)):
-        diff_obj = {path[len(path)-i-1]: diff_obj}
+    for p in reversed(path):
+        diff_obj = {p: diff_obj}
     return diff_obj
 
 
