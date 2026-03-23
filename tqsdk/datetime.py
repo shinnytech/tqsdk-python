@@ -60,10 +60,20 @@ def _timestamp_nano_to_datetime(nano: int) -> datetime.datetime:
 
 
 def _timestamp_nano_to_str(nano: int, fmt="%Y-%m-%d %H:%M:%S.%f") -> str:
+    if fmt == "%Y-%m-%d %H:%M:%S.%f":
+        dt = datetime.datetime.fromtimestamp((nano // 1000) / 1000000, tz=_cst_tz)
+        return f"{dt.year:04d}-{dt.month:02d}-{dt.day:02d} {dt.hour:02d}:{dt.minute:02d}:{dt.second:02d}.{dt.microsecond:06d}"
     return datetime.datetime.fromtimestamp((nano // 1000) / 1000000, tz=_cst_tz).strftime(fmt)
 
 
 def _str_to_timestamp_nano(current_datetime: str, fmt="%Y-%m-%d %H:%M:%S.%f") -> int:
+    if fmt == "%Y-%m-%d %H:%M:%S.%f":
+        # Fast path: parse "YYYY-MM-DD HH:MM:SS.ffffff" directly
+        dt = datetime.datetime(int(current_datetime[0:4]), int(current_datetime[5:7]),
+                               int(current_datetime[8:10]), int(current_datetime[11:13]),
+                               int(current_datetime[14:16]), int(current_datetime[17:19]),
+                               int(current_datetime[20:26]), tzinfo=_cst_tz)
+        return int(dt.timestamp() * 1000000) * 1000
     return _datetime_to_timestamp_nano(datetime.datetime.strptime(current_datetime, fmt))
 
 
