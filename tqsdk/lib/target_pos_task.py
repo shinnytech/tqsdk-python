@@ -401,6 +401,8 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
                         cached_orders = None
                         all_tasks = []
                         continue
+                    if each_priority != "开" and cached_orders is None:
+                        cached_orders = self._pos.orders
                     order_offset, order_dir, order_volume = self._get_order(each_priority, delta_volume, pending_forzen, cached_orders)
                     if order_volume == 0:  # 如果没有则直接到下一种offset
                         continue
