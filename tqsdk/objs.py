@@ -455,10 +455,14 @@ class Position(Entity):
         exch_id = self_data.get('exchange_id', '')
         fts = {}
         for order_id, order in tdict._data.items():
-            od = getattr(order, '_data', None)
-            if od is None:
+            try:
+                od = order._data
+            except AttributeError:
                 continue
-            if od.get('status') == "ALIVE" and od.get('instrument_id') == inst_id and od.get('exchange_id') == exch_id:
+            s = od.get('status')
+            if s != "ALIVE":
+                continue
+            if od.get('instrument_id') == inst_id and od.get('exchange_id') == exch_id:
                 fts[order_id] = order
         return fts
 

@@ -77,11 +77,17 @@ def _gen_diff_obj(diff, path):
 
 def _notify_update(target, recursive, content):
     """同步通知业务数据更新"""
-    if type(target) is dict or hasattr(target, '_data'):
-        for q in getattr(target, "_listener", {}):
-            q.send_nowait(content)
+    target_type = type(target)
+    if target_type is dict:
         if recursive:
             for v in target.values():
+                _notify_update(v, recursive, content)
+    elif hasattr(target, '_data'):
+        listener = object.__getattribute__(target, '_listener')
+        for q in listener:
+            q.send_nowait(content)
+        if recursive:
+            for v in target._data.values():
                 _notify_update(v, recursive, content)
 
 
@@ -157,32 +163,33 @@ def _simple_merge_diff(result, diff):
 def _simple_merge_diff_and_collect_paths(result, diff, path: Tuple, diff_paths: Set, prototype: Union[Dict, None]):
     """
     更新业务数据并收集指定节点的路径
-    默认行为 reduce_diff=False，表示函数运行过程中不会修改 diff 本身
-    :param result: 更新结果
-    :param diff: diff pack
-    :param path: 当前迭代 merge_diff 的节点路径
-    :param diff_paths: 收集指定节点的路径
-    :param prototype: 数据原型, 为 None 的节点路径会被记录在 diff_paths 集合中
-    :return:
     """
-    for key in list(diff.keys()):
-        if diff[key] is None:
+    _isinstance = isinstance
+    _dict = dict
+    for key in tuple(diff):
+        val = diff[key]
+        if val is None:
             result.pop(key, None)
-            if prototype and ('*' in prototype or key in prototype) and prototype['*' if '*' in prototype else key] is None:
-                diff_paths.add(path + (key, ))
-        elif isinstance(diff[key], dict):
+            if prototype:
+                pkey = '*' if '*' in prototype else key
+                if pkey in prototype and prototype[pkey] is None:
+                    diff_paths.add(path + (key, ))
+        elif _isinstance(val, _dict):
             target = result.setdefault(key, {})
             sub_path = path + (key, )
             sub_prototype = None
-            if prototype and ('*' in prototype or key in prototype):
-                sub_prototype = prototype['*' if '*' in prototype else key]
-                if sub_prototype is None:
-                    diff_paths.add(sub_path)
-            _simple_merge_diff_and_collect_paths(target, diff[key], path=sub_path, prototype=sub_prototype, diff_paths=diff_paths)
-        elif key in result and result[key] == diff[key]:
+            if prototype:
+                pkey = '*' if '*' in prototype else key
+                if pkey in prototype:
+                    sub_prototype = prototype[pkey]
+                    if sub_prototype is None:
+                        diff_paths.add(sub_path)
+            _simple_merge_diff_and_collect_paths(target, val, path=sub_path, prototype=sub_prototype, diff_paths=diff_paths)
+        elif key in result and result[key] == val:
             pass
         else:
-            result[key] = diff[key]
-            # 只有确实有变更的字段，会出现在 diff_paths 里
-            if prototype and ('*' in prototype or key in prototype) and prototype['*' if '*' in prototype else key] is None:
-                diff_paths.add(path + (key, ))
+            result[key] = val
+            if prototype:
+                pkey = '*' if '*' in prototype else key
+                if pkey in prototype and prototype[pkey] is None:
+                    diff_paths.add(path + (key, ))
