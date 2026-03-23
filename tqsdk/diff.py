@@ -82,13 +82,17 @@ def _notify_update(target, recursive, content):
         if recursive:
             for v in target.values():
                 _notify_update(v, recursive, content)
-    elif hasattr(target, '_data'):
+        return
+    try:
         listener = object.__getattribute__(target, '_listener')
+    except AttributeError:
+        return
+    if listener:
         for q in listener:
             q.send_nowait(content)
-        if recursive:
-            for v in target._data.values():
-                _notify_update(v, recursive, content)
+    if recursive:
+        for v in target._data.values():
+            _notify_update(v, recursive, content)
 
 
 def _get_obj_single(root, key, default=None):
