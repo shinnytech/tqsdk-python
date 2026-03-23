@@ -194,15 +194,45 @@ class DataExtension(object):
         return {'trade': pend_diff} if pend_diff else {}
 
     def _get_trade_price(self, account_key, order_id):
-        # 计算某个 order_id 对应的成交均价
+        # 计算某个 order_id 对应的成交均价, using reverse index
         trades = self._data['trade'][account_key]['trades']
-        trade_id_list = [t_id for t_id in trades.keys() if trades[t_id]['order_id'] == order_id]
-        sum_volume = sum([trades[t_id]['volume'] for t_id in trade_id_list])
+        # Build/update reverse index: order_id -> [trade_id, ...]
+        try:
+            idx_account = self._trade_order_index[account_key]
+            old_len = self._trade_order_index_len[account_key]
+        except (AttributeError, KeyError):
+            if not hasattr(self, '_trade_order_index'):
+                self._trade_order_index = {}
+                self._trade_order_index_len = {}
+            idx_account = {}
+            self._trade_order_index[account_key] = idx_account
+            old_len = 0
+            self._trade_order_index_len[account_key] = 0
+        cur_len = len(trades)
+        if cur_len != old_len:
+            # New trades added, index them
+            count = 0
+            for t_id, trade in trades.items():
+                count += 1
+                if count <= old_len:
+                    continue
+                oid = trade.get('order_id', '')
+                if oid:
+                    idx_account.setdefault(oid, []).append(t_id)
+            self._trade_order_index_len[account_key] = cur_len
+        trade_id_list = idx_account.get(order_id, [])
+        if not trade_id_list:
+            return float('nan')
+        sum_volume = 0
+        sum_amount = 0.0
+        for t_id in trade_id_list:
+            td = trades[t_id]
+            vol = td['volume']
+            sum_volume += vol
+            sum_amount += vol * td['price']
         if sum_volume == 0:
             return float('nan')
-        else:
-            sum_amount = sum([trades[t_id]['volume'] * trades[t_id]['price'] for t_id in trade_id_list])
-            return sum_amount / sum_volume
+        return sum_amount / sum_volume
 
     async def _send_diff(self):
         if self._datetime_state.data_ready and self._pending_peek and self._diffs:
