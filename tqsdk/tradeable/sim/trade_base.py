@@ -226,13 +226,20 @@ class SimTradeBase(object):
         return quote, underlying_quote
 
     def _append_to_diffs(self, path, obj):
-        target = {}
-        diff = {'trade': {self._account_key: target}}
-        last = len(path) - 1
-        for i, k in enumerate(path):
-            target[k] = obj.copy() if i == last else {}
-            target = target[k]
-        self._diffs.append(diff)
+        plen = len(path)
+        if plen == 2:
+            # Fast path for common 2-element paths (e.g., ('positions', symbol), ('orders', id))
+            self._diffs.append({'trade': {self._account_key: {path[0]: {path[1]: obj.copy()}}}})
+        elif plen == 1:
+            self._diffs.append({'trade': {self._account_key: {path[0]: obj.copy()}}})
+        else:
+            target = {}
+            diff = {'trade': {self._account_key: target}}
+            last = plen - 1
+            for i, k in enumerate(path):
+                target[k] = obj.copy() if i == last else {}
+                target = target[k]
+            self._diffs.append(diff)
 
     def _return_results(self):
         """

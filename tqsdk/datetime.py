@@ -121,18 +121,25 @@ def _get_trading_timestamp_nano(quote, nano_timestamp: int):
     return trading_timestamp
 
 
+_period_offsets_cache = {}
+
 def _get_period_timestamp(real_date_timestamp, period_str):
     """
     real_date_timestamp：period_str 所在真实日期的纳秒时间戳（如 period_str 为周一(周二)的夜盘,则real_date_timestamp为上周五(周一)的日期; period_str 为周一的白盘,则real_date_timestamp为周一的日期）
     period_str: quote["trading_time"]["day"] or quote["trading_time"]["night"]
     """
-    period_timestamp = []
-    for duration in period_str:  # 对于白盘（或夜盘）中的每一个可交易时间段
-        start = [int(i) for i in duration[0].split(":")]  # 交易时间段起始点
-        end = [int(i) for i in duration[1].split(":")]  # 交易时间段结束点
-        period_timestamp.append([real_date_timestamp + (start[0] * 3600 + start[1] * 60 + start[2]) * 1000000000,
-                                 real_date_timestamp + (end[0] * 3600 + end[1] * 60 + end[2]) * 1000000000])
-    return period_timestamp
+    # Cache parsed time offsets (nanoseconds within a day) keyed by period_str identity
+    period_id = id(period_str)
+    offsets = _period_offsets_cache.get(period_id)
+    if offsets is None:
+        offsets = []
+        for duration in period_str:
+            start = [int(i) for i in duration[0].split(":")]
+            end = [int(i) for i in duration[1].split(":")]
+            offsets.append(((start[0] * 3600 + start[1] * 60 + start[2]) * 1000000000,
+                           (end[0] * 3600 + end[1] * 60 + end[2]) * 1000000000))
+        _period_offsets_cache[period_id] = offsets
+    return [[real_date_timestamp + s, real_date_timestamp + e] for s, e in offsets]
 
 
 def _is_in_trading_time(quote, current_datetime, local_time_record):
