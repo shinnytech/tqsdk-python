@@ -80,6 +80,10 @@ class TqMultiAccount(object):
         self._account_list = accounts if accounts else [TqSim()]
         self._all_sim_account = all([isinstance(a, BaseSim) for a in self._account_list])  # 是否全部为本地模拟帐号
         self._map_conn_id = {}  # 每次建立连接时，记录每个 conn_id 对应的账户
+        # Cache: account_key -> account instance for O(1) lookup
+        self._account_key_map = {a._account_key: a for a in self._account_list}
+        # Cache: account_key -> is_stock_type for hot-path lookups
+        self._is_stock_cache = {a._account_key: isinstance(a, StockMixin) for a in self._account_list}
         if self._has_duplicate_account():
             raise Exception("多账户列表中不允许使用重复的账户实例.")
 
@@ -94,8 +98,7 @@ class TqMultiAccount(object):
         account: 类型 str 表示 account_key，其他为账户类型或者 None
         """
         if isinstance(account, str):
-            selected_list = [a for a in self._account_list if a._account_key == account]
-            return selected_list[0] if selected_list else None
+            return self._account_key_map.get(account)
         elif account is None:
             return self._account_list[0] if len(self._account_list) == 1 else None
         else:
@@ -113,6 +116,8 @@ class TqMultiAccount(object):
 
     def _is_stock_type(self, account_or_account_key):
         """ 判断账户类型是否为股票账户 """
+        if isinstance(account_or_account_key, str):
+            return self._is_stock_cache.get(account_or_account_key, False)
         acc = self._check_valid(account_or_account_key)
         return isinstance(acc, StockMixin)
 
