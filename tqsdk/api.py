@@ -60,7 +60,7 @@ from tqsdk.data_extension import DataExtension
 from tqsdk.data_series import DataSeries
 from tqsdk.datetime import _get_trading_day_from_timestamp, _datetime_to_timestamp_nano, _timestamp_nano_to_datetime, \
     _cst_now, _convert_user_input_to_nano
-from tqsdk.diff import _merge_diff, _get_obj, _is_key_exist, _register_update_chan
+from tqsdk.diff import _merge_diff, _get_obj, _get_obj_single, _is_key_exist, _register_update_chan
 from tqsdk.entity import Entity
 from tqsdk.exceptions import TqTimeoutError
 from tqsdk.log import _clear_logs, _get_log_name, _get_disk_free
@@ -3722,14 +3722,28 @@ class TqApi(TqBaseApi):
         width = serial["width"]
         update_row = serial["update_row"]
         needs_adj = adj_type in ("B", "F") and hasattr(quote, 'ins_class') and quote.ins_class in ("STOCK", "FUND")
+        # Cache the "data" sub-entity to avoid 2-level _get_obj lookup per iteration
+        root0_data_entity = _get_obj_single(root0, "data")
+        root0_data_entity_data = root0_data_entity._data
         for i in range(update_row, width):
             index = last_id - width + 1 + i
-            item = default if index < 0 else _get_obj(root0, ["data", str(index)], default)
+            if index < 0:
+                item = default
+            else:
+                str_index = str(index)
+                try:
+                    item = root0_data_entity_data[str_index]
+                except KeyError:
+                    item = _get_obj_single(root0_data_entity, str_index, default)
             # 如果需要复权，计算复权
             if index > 0 and needs_adj:
                 self._ensure_dividend_factor(symbol)
                 last_index = index - 1
-                last_item = _get_obj(root0, ["data", str(last_index)], default)
+                str_last_index = str(last_index)
+                try:
+                    last_item = root0_data_entity_data[str_last_index]
+                except KeyError:
+                    last_item = _get_obj_single(root0_data_entity, str_last_index, default)
                 factor = get_dividend_factor(self._dividend_cache[symbol]["df"], last_item, item)
                 if adj_type == "B":
                     self._dividend_cache[symbol]["back_factor"] = self._dividend_cache[symbol]["back_factor"] * (1 / factor)
