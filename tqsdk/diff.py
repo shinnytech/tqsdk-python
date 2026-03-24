@@ -81,7 +81,7 @@ def _merge_diff(result, diff, prototype, persist, reduce_diff=False, notify_upda
         else:
             diff_obj = True
         try:
-            listener = object.__getattribute__(result, '_listener')
+            listener = result._listener
         except AttributeError:
             return
         if listener is not None and listener.data:
@@ -106,7 +106,7 @@ def _notify_update(target, recursive, content):
                 _notify_update(v, recursive, content)
         return
     try:
-        listener = object.__getattribute__(target, '_listener')
+        listener = target._listener
     except AttributeError:
         return
     if listener is not None and listener.data:

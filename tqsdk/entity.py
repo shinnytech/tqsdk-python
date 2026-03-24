@@ -8,6 +8,8 @@ from collections.abc import MutableMapping
 
 
 class Entity(MutableMapping):
+    __slots__ = ('_data', '_path', '_listener', '__dict__')
+
     def __new__(cls, *args, **kwargs):
         instance = super().__new__(cls)
         object.__setattr__(instance, '_data', {})
@@ -31,7 +33,7 @@ class Entity(MutableMapping):
 
     def _add_listener(self, chan):
         """Add a listener, lazily creating the WeakSet if needed."""
-        listener = object.__getattribute__(self, '_listener')
+        listener = self._listener
         if listener is None:
             listener = weakref.WeakSet()
             object.__setattr__(self, '_listener', listener)
@@ -90,10 +92,18 @@ class Entity(MutableMapping):
 
     def __copy__(self):
         new = type(self).__new__(type(self))
-        # Copy private attrs from __dict__ (excluding _data which is handled separately)
+        # Copy slot attrs
+        try:
+            object.__setattr__(new, '_path', self._path)
+        except AttributeError:
+            pass
+        try:
+            object.__setattr__(new, '_listener', self._listener)
+        except AttributeError:
+            pass
+        # Copy any extra attrs from __dict__
         for k, v in self.__dict__.items():
-            if k != '_data':
-                object.__setattr__(new, k, v)
+            object.__setattr__(new, k, v)
         object.__setattr__(new, '_data', self._data.copy())
         return new
 
