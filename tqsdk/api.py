@@ -1918,9 +1918,12 @@ class TqApi(TqBaseApi):
         #    同步代码：此次调用 wait_update 之前应该已经修改执行
         #    异步代码：上一行 self._run_until_idle() 可能会修改 klines 附加列的值
         # 所以放在这里处理， 总会发送 serial_extra_array 数据，由 TqWebHelper 处理
+        _any_serial_updated = False
         for _, serial in self._serials.items():
-            self._process_serial_extra_array(serial)
-        self._run_until_idle(async_run=False)  # 这里 self._run_until_idle() 主要为了把上一步计算出得需要绘制的数据发送到 TqWebHelper
+            if self._process_serial_extra_array(serial):
+                _any_serial_updated = True
+        if _any_serial_updated:
+            self._run_until_idle(async_run=False)  # 这里 self._run_until_idle() 主要为了把上一步计算出得需要绘制的数据发送到 TqWebHelper
         if _task is not None:
             # 如果 _task 已经 done，则提前返回 True, False 代表超时会抛错
             _tasks = _task if isinstance(_task, list) else [_task]
@@ -3868,9 +3871,10 @@ class TqApi(TqBaseApi):
                     array[-1, 1] + 1)  # array[-1, 1] + 1： 保持左闭右开规范
 
     def _process_serial_extra_array(self, serial):
+        """Process extra columns. Returns True if chart data was sent."""
         # Fast path: skip when no extra columns and no pending updates
         if serial["update_row"] == serial["width"] and not serial["extra_array"]:
-            return
+            return False
         df_cols = set(serial["df"].columns.values)
         extra_cols = df_cols - serial["default_attr"]
         for col in extra_cols:
@@ -3884,7 +3888,7 @@ class TqApi(TqBaseApi):
             del serial["extra_array"][col]
         serial["all_attr"] = df_cols
         if serial["update_row"] == serial["width"]:
-            return
+            return False
         symbol = serial["root"][0]._path[1]  # 主合约的symbol，标志绘图的主合约
         duration = 0 if serial["root"][0]._path[0] == "ticks" else int(serial["root"][0]._path[-1])
         cols = list(serial["extra_array"].keys())
@@ -3898,6 +3902,7 @@ class TqApi(TqBaseApi):
             self._process_chart_data_for_web(serial, symbol, duration, col, serial["width"] - serial["update_row"],
                                              int(serial["array"][-1, 1]) + 1, data)
         serial["update_row"] = serial["width"]
+        return True
 
     def _process_chart_data_for_web(self, serial, symbol, duration, col, count, right, data):
         # 与 _process_chart_data 函数功能类似，但是处理成符合 diff 协议的序列，在 js 端就不需要特殊处理了
