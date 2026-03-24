@@ -109,15 +109,23 @@ def _get_trading_timestamp(quote, current_datetime: str):
     return _get_trading_timestamp_nano(quote, _str_to_timestamp_nano(current_datetime))
 
 
+_trading_timestamp_nano_cache = {}
+
 def _get_trading_timestamp_nano(quote, nano_timestamp: int):
     """ 将 quote 在 nano_timestamp 所在交易日的所有可交易时间段转换为纳秒时间戳并返回 """
     current_trading_day_timestamp = _get_trading_day_from_timestamp(nano_timestamp)
+    trading_time = quote["trading_time"]
+    cache_key = (id(trading_time), current_trading_day_timestamp)
+    cached = _trading_timestamp_nano_cache.get(cache_key)
+    if cached is not None:
+        return cached
     last_trading_day_timestamp = _get_trading_day_from_timestamp(
         _get_trading_day_start_time(current_trading_day_timestamp) - 1)
     trading_timestamp = {
-        "day": _get_period_timestamp(current_trading_day_timestamp, quote["trading_time"].get("day", [])),
-        "night": _get_period_timestamp(last_trading_day_timestamp, quote["trading_time"].get("night", []))
+        "day": _get_period_timestamp(current_trading_day_timestamp, trading_time.get("day", [])),
+        "night": _get_period_timestamp(last_trading_day_timestamp, trading_time.get("night", []))
     }
+    _trading_timestamp_nano_cache[cache_key] = trading_timestamp
     return trading_timestamp
 
 
