@@ -3887,8 +3887,17 @@ class TqApi(TqBaseApi):
     def _process_serial_extra_array(self, serial):
         """Process extra columns. Returns True if chart data was sent."""
         # Fast path: skip when no extra columns and no pending updates
-        if serial["update_row"] == serial["width"] and not serial["extra_array"]:
-            return False
+        if not serial["extra_array"]:
+            if serial["update_row"] == serial["width"]:
+                return False
+            # No extra columns but update_row != width: check if user added columns
+            # Use cached column identity to avoid expensive set() computation
+            df_cols_obj = serial["df"].columns
+            if serial.get("_last_cols_id") == id(df_cols_obj):
+                # Columns haven't changed, no extra columns to process
+                serial["update_row"] = serial["width"]
+                return False
+            serial["_last_cols_id"] = id(df_cols_obj)
         df_cols = set(serial["df"].columns.values)
         extra_cols = df_cols - serial["default_attr"]
         for col in extra_cols:
@@ -3901,6 +3910,7 @@ class TqApi(TqBaseApi):
         for col in serial["all_attr"] - df_cols:
             del serial["extra_array"][col]
         serial["all_attr"] = df_cols
+        serial["_last_cols_id"] = id(serial["df"].columns)
         if serial["update_row"] == serial["width"]:
             return False
         symbol = serial["root"][0]._path[1]  # 主合约的symbol，标志绘图的主合约
