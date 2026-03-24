@@ -198,15 +198,18 @@ def _simple_merge_diff_and_collect_paths(result, diff, path: Tuple, diff_paths: 
                     diff_paths.add(path + (key, ))
         elif type(val) is dict:
             target = result.setdefault(key, {})
-            sub_path = path + (key, )
             sub_prototype = None
             if prototype:
                 pkey = '*' if '*' in prototype else key
                 if pkey in prototype:
                     sub_prototype = prototype[pkey]
                     if sub_prototype is None:
-                        diff_paths.add(sub_path)
-            _simple_merge_diff_and_collect_paths(target, val, path=sub_path, prototype=sub_prototype, diff_paths=diff_paths)
+                        diff_paths.add(path + (key, ))
+            if sub_prototype is not None:
+                _simple_merge_diff_and_collect_paths(target, val, path=path + (key, ), prototype=sub_prototype, diff_paths=diff_paths)
+            else:
+                # No further path collection needed in this subtree
+                _simple_merge_diff(target, val)
         elif key in result and result[key] == val:
             pass
         else:

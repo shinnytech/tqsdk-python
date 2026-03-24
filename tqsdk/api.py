@@ -3868,6 +3868,9 @@ class TqApi(TqBaseApi):
                     array[-1, 1] + 1)  # array[-1, 1] + 1： 保持左闭右开规范
 
     def _process_serial_extra_array(self, serial):
+        # Fast path: skip when no extra columns and no pending updates
+        if serial["update_row"] == serial["width"] and not serial["extra_array"]:
+            return
         df_cols = set(serial["df"].columns.values)
         extra_cols = df_cols - serial["default_attr"]
         for col in extra_cols:
