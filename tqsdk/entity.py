@@ -6,6 +6,8 @@ import copy
 import weakref
 from collections.abc import MutableMapping
 
+_UNSET = object()
+
 
 class Entity(MutableMapping):
     __slots__ = ('_data', '_path', '_listener', '__dict__')
@@ -92,19 +94,20 @@ class Entity(MutableMapping):
 
     def __copy__(self):
         new = type(self).__new__(type(self))
-        # Copy slot attrs
-        try:
-            object.__setattr__(new, '_path', self._path)
-        except AttributeError:
-            pass
-        try:
-            object.__setattr__(new, '_listener', self._listener)
-        except AttributeError:
-            pass
+        # Copy slot attrs using getattr to avoid exception overhead for unset slots
+        _setattr = object.__setattr__
+        _p = getattr(self, '_path', _UNSET)
+        if _p is not _UNSET:
+            _setattr(new, '_path', _p)
+        _l = getattr(self, '_listener', _UNSET)
+        if _l is not _UNSET:
+            _setattr(new, '_listener', _l)
         # Copy any extra attrs from __dict__
-        for k, v in self.__dict__.items():
-            object.__setattr__(new, k, v)
-        object.__setattr__(new, '_data', self._data.copy())
+        d = self.__dict__
+        if d:
+            for k, v in d.items():
+                _setattr(new, k, v)
+        _setattr(new, '_data', self._data.copy())
         return new
 
     def copy(self):
