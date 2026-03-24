@@ -84,6 +84,8 @@ class TqMultiAccount(object):
         self._account_key_map = {a._account_key: a for a in self._account_list}
         # Cache: account_key -> is_stock_type for hot-path lookups
         self._is_stock_cache = {a._account_key: isinstance(a, StockMixin) for a in self._account_list}
+        # Fast flag: True if any account is a stock account (enables split logic in _wait_update)
+        self._has_any_stock = any(self._is_stock_cache.values())
         if self._has_duplicate_account():
             raise Exception("多账户列表中不允许使用重复的账户实例.")
 

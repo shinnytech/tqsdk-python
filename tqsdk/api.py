@@ -1947,26 +1947,31 @@ class TqApi(TqBaseApi):
                 self._pending_diffs = []
                 # 清空K线更新范围，避免在 wait_update 未更新K线时仍通过 is_changing 的判断
                 self._klines_update_range = {}
+                _has_any_stock = self._account._has_any_stock
                 for d in self._diffs:
-                    # 判断账户类别, 对股票和期货的 trade 数据分别进行处理
-                    if "trade" in d:
-                        trade_data = d['trade']
-                        futures_trade = {}
-                        stock_trade = {}
-                        _is_stock = self._account._is_stock_type
-                        for k, v in trade_data.items():
-                            if _is_stock(k):
-                                stock_trade[k] = v
-                            else:
-                                futures_trade[k] = v
-                        if futures_trade:
-                            _merge_diff(self._data, {'trade': futures_trade}, self._prototype, False, True, False)
-                        if stock_trade:
-                            _merge_diff(self._data, {'trade': stock_trade}, self._security_prototype, False, True, False)
-                    # 非交易数据均按照期货处理逻辑
-                    diff_without_trade = {k: v for k, v in d.items() if k != "trade"}
-                    if diff_without_trade:
-                        _merge_diff(self._data, diff_without_trade, self._prototype, False, True, False)
+                    if _has_any_stock:
+                        # 判断账户类别, 对股票和期货的 trade 数据分别进行处理
+                        if "trade" in d:
+                            trade_data = d['trade']
+                            futures_trade = {}
+                            stock_trade = {}
+                            _is_stock = self._account._is_stock_type
+                            for k, v in trade_data.items():
+                                if _is_stock(k):
+                                    stock_trade[k] = v
+                                else:
+                                    futures_trade[k] = v
+                            if futures_trade:
+                                _merge_diff(self._data, {'trade': futures_trade}, self._prototype, False, True, False)
+                            if stock_trade:
+                                _merge_diff(self._data, {'trade': stock_trade}, self._security_prototype, False, True, False)
+                        # 非交易数据均按照期货处理逻辑
+                        diff_without_trade = {k: v for k, v in d.items() if k != "trade"}
+                        if diff_without_trade:
+                            _merge_diff(self._data, diff_without_trade, self._prototype, False, True, False)
+                    else:
+                        # No stock accounts: merge entire diff directly (no split needed)
+                        _merge_diff(self._data, d, self._prototype, False, True, False)
                 self._risk_manager._on_recv_data(self._diffs)
                 for _, serial in self._serials.items():
                     # K线df的更新与原始数据、left_id、right_id、more_data、last_id相关，其中任何一个发生改变都应重新计算df
