@@ -3725,16 +3725,18 @@ class TqApi(TqBaseApi):
         # Cache the "data" sub-entity to avoid 2-level _get_obj lookup per iteration
         root0_data_entity = _get_obj_single(root0, "data")
         root0_data_entity_data = root0_data_entity._data
+        # Pre-fetch default's _data for direct dict access (bypasses Entity.__getitem__)
+        default_data = default._data
         for i in range(update_row, width):
             index = last_id - width + 1 + i
             if index < 0:
-                item = default
+                item_data = default_data
             else:
                 str_index = str(index)
                 try:
-                    item = root0_data_entity_data[str_index]
+                    item_data = root0_data_entity_data[str_index]._data
                 except KeyError:
-                    item = _get_obj_single(root0_data_entity, str_index, default)
+                    item_data = _get_obj_single(root0_data_entity, str_index, default)._data
             # 如果需要复权，计算复权
             if index > 0 and needs_adj:
                 self._ensure_dividend_factor(symbol)
@@ -3744,19 +3746,19 @@ class TqApi(TqBaseApi):
                     last_item = root0_data_entity_data[str_last_index]
                 except KeyError:
                     last_item = _get_obj_single(root0_data_entity, str_last_index, default)
-                factor = get_dividend_factor(self._dividend_cache[symbol]["df"], last_item, item)
+                factor = get_dividend_factor(self._dividend_cache[symbol]["df"], last_item, item_data)
                 if adj_type == "B":
                     self._dividend_cache[symbol]["back_factor"] = self._dividend_cache[symbol]["back_factor"] * (1 / factor)
                     if self._dividend_cache[symbol]["back_factor"] != 1.0:
-                        item = item.copy()
+                        item_data = item_data.copy()
                         for c in cols:
-                            item[c] = item[c] * self._dividend_cache[symbol]["back_factor"]
+                            item_data[c] = item_data[c] * self._dividend_cache[symbol]["back_factor"]
                 elif adj_type == "F" and factor != 1.0 and i not in serial['calc_ids_F']:
                     serial['calc_ids_F'].append(i)
                     for c in cols:
                         col_index = keys.index(c) + 2
                         array[:i, col_index] = array[:i, col_index] * factor
-            array[i] = [item["datetime"], index] + [item[k] for k in keys]
+            array[i] = [item_data["datetime"], index] + [item_data[k] for k in keys]
 
     def _ensure_dividend_factor(self, symbol):
         quote = self._data.quotes.get(symbol, {})
