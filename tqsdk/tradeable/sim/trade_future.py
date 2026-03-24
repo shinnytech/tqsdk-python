@@ -416,8 +416,11 @@ class SimTrade(SimTradeBase):
             position["future_margin"] = future_margin
             position["last_price"] = quote["last_price"]
             position["underlying_last_price"] = underlying_last_price
-        self._append_to_diffs(['positions', symbol], position)  # 一定要返回 position，下游会用到 future_margin 字段判断修改保证金是否成功
-        self._append_to_diffs(['accounts', 'CNY'], self._account)
+        # Combine position + account diffs into one to reduce diff count and merge overhead
+        self._diffs.append({'trade': {self._account_key: {
+            'positions': {symbol: position.copy()},
+            'accounts': {'CNY': self._account.copy()}
+        }}})
 
     def _adjust_position_account(self, symbol, quote, underlying_quote=None, pre_last_price=float('nan'), last_price=float('nan'),
                                  pre_underlying_last_price=float('nan'), underlying_last_price=float('nan'),
