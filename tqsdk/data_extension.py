@@ -196,9 +196,9 @@ class DataExtension(object):
         return {'trade': pend_diff} if pend_diff else {}
 
     def _get_trade_price(self, account_key, order_id):
-        # 计算某个 order_id 对应的成交均价, using reverse index
+        # 计算某个 order_id 对应的成交均价, using reverse index with cached running sums
         trades = self._data['trade'][account_key]['trades']
-        # Build/update reverse index: order_id -> [trade_id, ...]
+        # Build/update reverse index: order_id -> [sum_volume, sum_amount]
         try:
             idx_account = self._trade_order_index[account_key]
             old_len = self._trade_order_index_len[account_key]
@@ -212,25 +212,23 @@ class DataExtension(object):
             self._trade_order_index_len[account_key] = 0
         cur_len = len(trades)
         if cur_len != old_len:
-            # New trades added, index only new entries using islice to skip old ones in C
+            # New trades added — update running sums incrementally
             for t_id, trade in islice(trades.items(), old_len, None):
                 oid = trade.get('order_id', '')
                 if oid:
-                    idx_account.setdefault(oid, []).append(t_id)
+                    vol = trade.get('volume', 0)
+                    price = trade.get('price', 0.0)
+                    entry = idx_account.get(oid)
+                    if entry is None:
+                        idx_account[oid] = [vol, vol * price]
+                    else:
+                        entry[0] += vol
+                        entry[1] += vol * price
             self._trade_order_index_len[account_key] = cur_len
-        trade_id_list = idx_account.get(order_id, [])
-        if not trade_id_list:
+        entry = idx_account.get(order_id)
+        if entry is None or entry[0] == 0:
             return float('nan')
-        sum_volume = 0
-        sum_amount = 0.0
-        for t_id in trade_id_list:
-            td = trades[t_id]
-            vol = td['volume']
-            sum_volume += vol
-            sum_amount += vol * td['price']
-        if sum_volume == 0:
-            return float('nan')
-        return sum_amount / sum_volume
+        return entry[1] / entry[0]
 
     async def _send_diff(self):
         if self._datetime_state.data_ready and self._pending_peek and self._diffs:
