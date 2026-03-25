@@ -84,9 +84,8 @@ class TqChan(asyncio.Queue):
             item (any): 待发送的对象
         """
         if not self._closed:
-            if self._last_only:
-                while not self.empty():
-                    asyncio.Queue.get_nowait(self)
+            if self._last_only and self._queue:
+                self._queue.clear()
             await asyncio.Queue.put(self, item)
             if self._log_enabled:
                 self._logger.log(TqChan._level, "tqchan send", item=self._sanitize_log_item(item))
@@ -102,9 +101,8 @@ class TqChan(asyncio.Queue):
             asyncio.QueueFull: 如果channel已满则会抛出 asyncio.QueueFull
         """
         if not self._closed:
-            if self._last_only:
-                while not self.empty():
-                    asyncio.Queue.get_nowait(self)
+            if self._last_only and self._queue:
+                self._queue.clear()
             asyncio.Queue.put_nowait(self, item)
             if self._log_enabled:
                 self._logger.log(TqChan._level, "tqchan send_nowait", item=self._sanitize_log_item(item))
