@@ -184,10 +184,9 @@ def _simple_merge_diff(result, diff):
             result[key] = val
 
 
-def _simple_merge_diff_and_collect_paths(result, diff, path, diff_paths: Set, prototype: Union[Dict, None]):
+def _simple_merge_diff_and_collect_paths(result, diff, path: Tuple, diff_paths: Set, prototype: Union[Dict, None]):
     """
     更新业务数据并收集指定节点的路径
-    path: list (mutable) — caller passes list, we append/pop to avoid tuple allocation per recursive call
     """
     for key in diff:
         val = diff[key]
@@ -196,9 +195,7 @@ def _simple_merge_diff_and_collect_paths(result, diff, path, diff_paths: Set, pr
             if prototype:
                 pkey = '*' if '*' in prototype else key
                 if pkey in prototype and prototype[pkey] is None:
-                    path.append(key)
-                    diff_paths.add(tuple(path))
-                    path.pop()
+                    diff_paths.add(path + (key, ))
         elif type(val) is dict:
             target = result.setdefault(key, {})
             sub_prototype = None
@@ -207,14 +204,11 @@ def _simple_merge_diff_and_collect_paths(result, diff, path, diff_paths: Set, pr
                 if pkey in prototype:
                     sub_prototype = prototype[pkey]
                     if sub_prototype is None:
-                        path.append(key)
-                        diff_paths.add(tuple(path))
-                        path.pop()
+                        diff_paths.add(path + (key, ))
             if sub_prototype is not None:
-                path.append(key)
-                _simple_merge_diff_and_collect_paths(target, val, path, diff_paths, sub_prototype)
-                path.pop()
+                _simple_merge_diff_and_collect_paths(target, val, path=path + (key, ), prototype=sub_prototype, diff_paths=diff_paths)
             else:
+                # No further path collection needed in this subtree
                 _simple_merge_diff(target, val)
         elif key in result and result[key] == val:
             pass
@@ -223,6 +217,4 @@ def _simple_merge_diff_and_collect_paths(result, diff, path, diff_paths: Set, pr
             if prototype:
                 pkey = '*' if '*' in prototype else key
                 if pkey in prototype and prototype[pkey] is None:
-                    path.append(key)
-                    diff_paths.add(tuple(path))
-                    path.pop()
+                    diff_paths.add(path + (key, ))

@@ -123,7 +123,7 @@ class DataExtension(object):
                 _simple_merge_diff_and_collect_paths(
                     result=self._data['trade'],
                     diff=d['trade'],
-                    path=['trade'],
+                    path=('trade', ),
                     diff_paths=self._diffs_paths,
                     prototype=self._prototype['trade']
                 )
