@@ -148,12 +148,19 @@ class SimTradeBase(object):
         for q in quotes_diff.values():
             self._max_datetime = max(q.get("datetime", ""), self._max_datetime)
         # Specialized quote merge: quote fields are always scalars, never None/nested
+        # Normalize Entity objects to plain dicts for fast C-level dict.update
         _quotes = self._quotes
         for sym, fields in quotes_diff.items():
+            ftype = type(fields)
+            if ftype is not dict:
+                try:
+                    fields = fields._data
+                except AttributeError:
+                    continue
             existing = _quotes.get(sym)
             if existing is None:
-                _quotes[sym] = fields.copy() if type(fields) is dict else fields
-            elif type(fields) is dict:
+                _quotes[sym] = fields.copy()
+            else:
                 existing.update(fields)
         quote, underlying_quote = self._get_quotes_by_symbol(symbol)
         # 某些非交易时间段，ticks 回测是 quote 的最新价有可能是 nan，无效的行情直接跳过
