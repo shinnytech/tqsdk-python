@@ -576,26 +576,30 @@ class Order(Entity):
         tdict = _get_obj(self._api._data, ["trade", self._path[1], "trades"])
         target_order_id = self._data.get('order_id', '')
         trades_data = tdict._data
-        # Build/update reverse index (order_id -> [trade_id, ...]) on the trades entity
+        # Dirty-flag + incremental index: only rebuild when entity changes
         try:
+            dirty_flag = tdict._trades_dirty_flag
+        except AttributeError:
+            dirty_flag = _OrdersDirtyFlag()
+            object.__setattr__(tdict, '_trades_dirty_flag', dirty_flag)
+            object.__setattr__(tdict, '_trade_order_index', {})
+            object.__setattr__(tdict, '_trade_order_index_len', 0)
+            tdict._add_listener(dirty_flag)
+        if dirty_flag.dirty:
             idx = tdict._trade_order_index
             idx_len = tdict._trade_order_index_len
-        except AttributeError:
-            idx = {}
-            idx_len = 0
-            object.__setattr__(tdict, '_trade_order_index', idx)
-            object.__setattr__(tdict, '_trade_order_index_len', 0)
-        cur_len = len(trades_data)
-        if cur_len != idx_len:
-            for t_id, trade in islice(trades_data.items(), idx_len, None):
-                try:
-                    oid = trade._data['order_id']
-                except (AttributeError, KeyError):
-                    continue
-                if oid:
-                    idx.setdefault(oid, []).append(t_id)
-            object.__setattr__(tdict, '_trade_order_index_len', cur_len)
-        trade_ids = idx.get(target_order_id, ())
+            cur_len = len(trades_data)
+            if cur_len != idx_len:
+                for t_id, trade in islice(trades_data.items(), idx_len, None):
+                    try:
+                        oid = trade._data['order_id']
+                    except (AttributeError, KeyError):
+                        continue
+                    if oid:
+                        idx.setdefault(oid, []).append(t_id)
+                object.__setattr__(tdict, '_trade_order_index_len', cur_len)
+            dirty_flag.dirty = False
+        trade_ids = tdict._trade_order_index.get(target_order_id, ())
         return {tid: trades_data[tid] for tid in trade_ids if tid in trades_data}
 
 
@@ -979,26 +983,30 @@ class SecurityOrder(Entity):
         tdict = _get_obj(self._api._data, ["trade", self._path[1], "trades"])
         target_order_id = self._data.get('order_id', '')
         trades_data = tdict._data
-        # Build/update reverse index (order_id -> [trade_id, ...]) on the trades entity
+        # Dirty-flag + incremental index: only rebuild when entity changes
         try:
+            dirty_flag = tdict._trades_dirty_flag
+        except AttributeError:
+            dirty_flag = _OrdersDirtyFlag()
+            object.__setattr__(tdict, '_trades_dirty_flag', dirty_flag)
+            object.__setattr__(tdict, '_trade_order_index', {})
+            object.__setattr__(tdict, '_trade_order_index_len', 0)
+            tdict._add_listener(dirty_flag)
+        if dirty_flag.dirty:
             idx = tdict._trade_order_index
             idx_len = tdict._trade_order_index_len
-        except AttributeError:
-            idx = {}
-            idx_len = 0
-            object.__setattr__(tdict, '_trade_order_index', idx)
-            object.__setattr__(tdict, '_trade_order_index_len', 0)
-        cur_len = len(trades_data)
-        if cur_len != idx_len:
-            for t_id, trade in islice(trades_data.items(), idx_len, None):
-                try:
-                    oid = trade._data['order_id']
-                except (AttributeError, KeyError):
-                    continue
-                if oid:
-                    idx.setdefault(oid, []).append(t_id)
-            object.__setattr__(tdict, '_trade_order_index_len', cur_len)
-        trade_ids = idx.get(target_order_id, ())
+            cur_len = len(trades_data)
+            if cur_len != idx_len:
+                for t_id, trade in islice(trades_data.items(), idx_len, None):
+                    try:
+                        oid = trade._data['order_id']
+                    except (AttributeError, KeyError):
+                        continue
+                    if oid:
+                        idx.setdefault(oid, []).append(t_id)
+                object.__setattr__(tdict, '_trade_order_index_len', cur_len)
+            dirty_flag.dirty = False
+        trade_ids = tdict._trade_order_index.get(target_order_id, ())
         return {tid: trades_data[tid] for tid in trade_ids if tid in trades_data}
 
 
