@@ -3,6 +3,8 @@
 __author__ = 'mayanqiong'
 
 
+from itertools import islice
+
 from tqsdk.datetime import _get_expire_rest_days
 from tqsdk.datetime_state import TqDatetimeState
 from tqsdk.diff import _simple_merge_diff, _is_key_exist, _simple_merge_diff_and_collect_paths, _get_obj
@@ -210,12 +212,8 @@ class DataExtension(object):
             self._trade_order_index_len[account_key] = 0
         cur_len = len(trades)
         if cur_len != old_len:
-            # New trades added, index them
-            count = 0
-            for t_id, trade in trades.items():
-                count += 1
-                if count <= old_len:
-                    continue
+            # New trades added, index only new entries using islice to skip old ones in C
+            for t_id, trade in islice(trades.items(), old_len, None):
                 oid = trade.get('order_id', '')
                 if oid:
                     idx_account.setdefault(oid, []).append(t_id)

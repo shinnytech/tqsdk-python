@@ -4,6 +4,7 @@ __author__ = 'chengzhi'
 
 import copy
 import json
+from itertools import islice
 from typing import List
 
 from tqsdk.diff import _get_obj
@@ -465,29 +466,35 @@ class Position(Entity):
         except AttributeError:
             orders_entity = _get_obj(self._api._data, ["trade", self._path[1], "orders"])
             object.__setattr__(self, '_orders_entity', orders_entity)
-        # Use dirty-flag cache: only recompute when orders entity has been updated
+        # Use shared index on orders_entity: rebuilt once per change, shared across all positions
         try:
-            dirty_flag = self._orders_dirty_flag
-            if not dirty_flag.dirty:
-                return self._orders_cache
+            shared_flag = orders_entity._orders_shared_flag
         except AttributeError:
-            dirty_flag = _OrdersDirtyFlag()
-            object.__setattr__(self, '_orders_dirty_flag', dirty_flag)
-            orders_entity._add_listener(dirty_flag)
+            shared_flag = _OrdersDirtyFlag()
+            object.__setattr__(orders_entity, '_orders_shared_flag', shared_flag)
+            object.__setattr__(orders_entity, '_orders_shared_index', {})
+            orders_entity._add_listener(shared_flag)
+        if shared_flag.dirty:
+            # Rebuild the entire shared index once
+            index = {}
+            for order_id, order in orders_entity._data.items():
+                try:
+                    od = order._data
+                    if od['status'] == "ALIVE":
+                        key = (od['instrument_id'], od['exchange_id'])
+                        bucket = index.get(key)
+                        if bucket is None:
+                            bucket = {}
+                            index[key] = bucket
+                        bucket[order_id] = order
+                except (AttributeError, KeyError):
+                    continue
+            object.__setattr__(orders_entity, '_orders_shared_index', index)
+            shared_flag.dirty = False
         self_data = self._data
-        inst_id = self_data.get('instrument_id', '')
-        exch_id = self_data.get('exchange_id', '')
-        fts = {}
-        for order_id, order in orders_entity._data.items():
-            try:
-                od = order._data
-                if od['status'] == "ALIVE" and od['instrument_id'] == inst_id and od['exchange_id'] == exch_id:
-                    fts[order_id] = order
-            except (AttributeError, KeyError):
-                continue
-        dirty_flag.dirty = False
-        object.__setattr__(self, '_orders_cache', fts)
-        return fts
+        return orders_entity._orders_shared_index.get(
+            (self_data.get('instrument_id', ''), self_data.get('exchange_id', '')), {}
+        )
 
 
 class Order(Entity):
@@ -557,11 +564,7 @@ class Order(Entity):
             object.__setattr__(tdict, '_trade_order_index_len', 0)
         cur_len = len(trades_data)
         if cur_len != idx_len:
-            count = 0
-            for t_id, trade in trades_data.items():
-                count += 1
-                if count <= idx_len:
-                    continue
+            for t_id, trade in islice(trades_data.items(), idx_len, None):
                 try:
                     oid = trade._data['order_id']
                 except (AttributeError, KeyError):
@@ -964,11 +967,7 @@ class SecurityOrder(Entity):
             object.__setattr__(tdict, '_trade_order_index_len', 0)
         cur_len = len(trades_data)
         if cur_len != idx_len:
-            count = 0
-            for t_id, trade in trades_data.items():
-                count += 1
-                if count <= idx_len:
-                    continue
+            for t_id, trade in islice(trades_data.items(), idx_len, None):
                 try:
                     oid = trade._data['order_id']
                 except (AttributeError, KeyError):
