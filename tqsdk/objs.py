@@ -466,30 +466,53 @@ class Position(Entity):
         except AttributeError:
             orders_entity = _get_obj(self._api._data, ["trade", self._path[1], "orders"])
             object.__setattr__(self, '_orders_entity', orders_entity)
-        # Use shared index on orders_entity: rebuilt once per change, shared across all positions
+        # Incremental alive-tracking index: only checks alive set + new orders on each change
         try:
             shared_flag = orders_entity._orders_shared_flag
         except AttributeError:
             shared_flag = _OrdersDirtyFlag()
             object.__setattr__(orders_entity, '_orders_shared_flag', shared_flag)
             object.__setattr__(orders_entity, '_orders_shared_index', {})
+            object.__setattr__(orders_entity, '_orders_alive_set', {})  # order_id -> key
+            object.__setattr__(orders_entity, '_orders_indexed_len', 0)
             orders_entity._add_listener(shared_flag)
         if shared_flag.dirty:
-            # Rebuild the entire shared index once
-            index = {}
-            for order_id, order in orders_entity._data.items():
+            index = orders_entity._orders_shared_index
+            alive_set = orders_entity._orders_alive_set
+            orders_data = orders_entity._data
+            indexed_len = orders_entity._orders_indexed_len
+            # 1. Check existing alive orders — remove any no longer ALIVE
+            to_remove = []
+            for oid, key in alive_set.items():
                 try:
-                    od = order._data
-                    if od['status'] == "ALIVE":
-                        key = (od['instrument_id'], od['exchange_id'])
+                    if orders_data[oid]._data['status'] != "ALIVE":
+                        to_remove.append(oid)
                         bucket = index.get(key)
-                        if bucket is None:
-                            bucket = {}
-                            index[key] = bucket
-                        bucket[order_id] = order
-                except (AttributeError, KeyError):
-                    continue
-            object.__setattr__(orders_entity, '_orders_shared_index', index)
+                        if bucket:
+                            bucket.pop(oid, None)
+                            if not bucket:
+                                del index[key]
+                except (KeyError, AttributeError):
+                    to_remove.append(oid)
+            for oid in to_remove:
+                del alive_set[oid]
+            # 2. Check new orders (from indexed_len onwards)
+            cur_len = len(orders_data)
+            if cur_len != indexed_len:
+                for order_id, order in islice(orders_data.items(), indexed_len, None):
+                    try:
+                        od = order._data
+                        if od['status'] == "ALIVE":
+                            key = (od['instrument_id'], od['exchange_id'])
+                            alive_set[order_id] = key
+                            bucket = index.get(key)
+                            if bucket is None:
+                                bucket = {}
+                                index[key] = bucket
+                            bucket[order_id] = order
+                    except (AttributeError, KeyError):
+                        continue
+                object.__setattr__(orders_entity, '_orders_indexed_len', cur_len)
             shared_flag.dirty = False
         self_data = self._data
         return orders_entity._orders_shared_index.get(
