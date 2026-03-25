@@ -144,9 +144,17 @@ class SimTradeBase(object):
         return self._return_results()
 
     def update_quotes(self, symbol, pack):
-        for q in pack.get("quotes", {}).values():
+        quotes_diff = pack.get("quotes", {})
+        for q in quotes_diff.values():
             self._max_datetime = max(q.get("datetime", ""), self._max_datetime)
-        _simple_merge_diff(self._quotes, pack.get("quotes", {}))
+        # Specialized quote merge: quote fields are always scalars, never None/nested
+        _quotes = self._quotes
+        for sym, fields in quotes_diff.items():
+            existing = _quotes.get(sym)
+            if existing is None:
+                _quotes[sym] = fields.copy() if type(fields) is dict else fields
+            elif type(fields) is dict:
+                existing.update(fields)
         quote, underlying_quote = self._get_quotes_by_symbol(symbol)
         # 某些非交易时间段，ticks 回测是 quote 的最新价有可能是 nan，无效的行情直接跳过
         if math.isnan(quote["last_price"]):
@@ -217,13 +225,19 @@ class SimTradeBase(object):
 
     def _get_quotes_by_symbol(self, symbol):
         """返回指定合约及标的合约，在本模块执行过程中，应该保证一定有合约行情"""
-        quote = self._quotes.get(symbol)
-        assert quote and quote.get("datetime"), "未收到指定合约行情"
-        underlying_quote = None
-        if quote["ins_class"].endswith("OPTION"):
-            underlying_quote = self._quotes.get(quote["underlying_symbol"])
-            assert underlying_quote and underlying_quote.get("datetime"), "未收到指定合约的标的行情"
-        return quote, underlying_quote
+        quote = self._quotes[symbol]
+        # Cache option status per symbol to avoid repeated string operations
+        try:
+            is_option = self._symbol_is_option[symbol]
+        except (AttributeError, KeyError):
+            if not hasattr(self, '_symbol_is_option'):
+                self._symbol_is_option = {}
+            is_option = quote["ins_class"].endswith("OPTION")
+            self._symbol_is_option[symbol] = is_option
+        if is_option:
+            underlying_quote = self._quotes[quote["underlying_symbol"]]
+            return quote, underlying_quote
+        return quote, None
 
     def _append_to_diffs(self, path, obj):
         plen = len(path)
