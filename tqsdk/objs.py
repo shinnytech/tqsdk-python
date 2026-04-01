@@ -4,10 +4,22 @@ __author__ = 'chengzhi'
 
 import copy
 import json
+from itertools import islice
 from typing import List
 
 from tqsdk.diff import _get_obj
 from tqsdk.entity import Entity
+
+
+class _OrdersDirtyFlag:
+    """Lightweight listener that sets a dirty flag when orders entity is updated."""
+    __slots__ = ('dirty', '__weakref__')
+
+    def __init__(self):
+        self.dirty = True
+
+    def send_nowait(self, _):
+        self.dirty = True
 
 
 class Quote(Entity):
@@ -449,18 +461,66 @@ class Position(Entity):
 
         :return: dict, 其中每个元素的key为委托单ID, value为 :py:class:`~tqsdk.objs.Order`
         """
-        tdict = _get_obj(self._api._data, ["trade", self._path[1], "orders"])
-        inst_id = self._data.get('instrument_id', '')
-        exch_id = self._data.get('exchange_id', '')
-        fts = {}
-        for order_id, order in tdict._data.items():
+        # Fast path: all cached refs in a single tuple [orders_entity, shared_flag, pos_key, index]
+        try:
+            cache = self._orders_cache
+            shared_flag = cache[1]
+        except AttributeError:
+            orders_entity = _get_obj(self._api._data, ["trade", self._path[1], "orders"])
+            # Setup shared index on orders entity if needed
             try:
-                od = order._data
+                shared_flag = orders_entity._orders_shared_flag
             except AttributeError:
-                continue
-            if od.get('status') == "ALIVE" and od.get('instrument_id') == inst_id and od.get('exchange_id') == exch_id:
-                fts[order_id] = order
-        return fts
+                shared_flag = _OrdersDirtyFlag()
+                object.__setattr__(orders_entity, '_orders_shared_flag', shared_flag)
+                object.__setattr__(orders_entity, '_orders_shared_index', {})
+                object.__setattr__(orders_entity, '_orders_alive_set', {})
+                object.__setattr__(orders_entity, '_orders_indexed_len', 0)
+                orders_entity._add_listener(shared_flag)
+            sd = self._data
+            pos_key = (sd.get('instrument_id', ''), sd.get('exchange_id', ''))
+            cache = (orders_entity, shared_flag, pos_key, orders_entity._orders_shared_index)
+            object.__setattr__(self, '_orders_cache', cache)
+        if shared_flag.dirty:
+            orders_entity = cache[0]
+            index = cache[3]
+            alive_set = orders_entity._orders_alive_set
+            orders_data = orders_entity._data
+            indexed_len = orders_entity._orders_indexed_len
+            # 1. Check existing alive orders — remove any no longer ALIVE
+            to_remove = []
+            for oid, key in alive_set.items():
+                try:
+                    if orders_data[oid]._data['status'] != "ALIVE":
+                        to_remove.append(oid)
+                        bucket = index.get(key)
+                        if bucket:
+                            bucket.pop(oid, None)
+                            if not bucket:
+                                del index[key]
+                except (KeyError, AttributeError):
+                    to_remove.append(oid)
+            for oid in to_remove:
+                del alive_set[oid]
+            # 2. Check new orders (from indexed_len onwards)
+            cur_len = len(orders_data)
+            if cur_len != indexed_len:
+                for order_id, order in islice(orders_data.items(), indexed_len, None):
+                    try:
+                        od = order._data
+                        if od['status'] == "ALIVE":
+                            key = (od['instrument_id'], od['exchange_id'])
+                            alive_set[order_id] = key
+                            bucket = index.get(key)
+                            if bucket is None:
+                                bucket = {}
+                                index[key] = bucket
+                            bucket[order_id] = order
+                    except (AttributeError, KeyError):
+                        continue
+                object.__setattr__(orders_entity, '_orders_indexed_len', cur_len)
+            shared_flag.dirty = False
+        return cache[3].get(cache[2], {})
 
 
 class Order(Entity):
@@ -516,17 +576,42 @@ class Order(Entity):
 
         :return: dict, 其中每个元素的key为成交ID, value为 :py:class:`~tqsdk.objs.Trade`
         """
-        tdict = _get_obj(self._api._data, ["trade", self._path[1], "trades"])
-        target_order_id = self._data.get('order_id', '')
-        fts = {}
-        for trade_id, trade in tdict._data.items():
+        # Fast path: cache tdict, dirty_flag, trades_data, index refs
+        try:
+            cache = self._trades_cache
+            dirty_flag = cache[1]
+        except AttributeError:
+            tdict = _get_obj(self._api._data, ["trade", self._path[1], "trades"])
+            trades_data = tdict._data
             try:
-                od = trade._data
+                dirty_flag = tdict._trades_dirty_flag
             except AttributeError:
-                continue
-            if od.get('order_id') == target_order_id:
-                fts[trade_id] = trade
-        return fts
+                dirty_flag = _OrdersDirtyFlag()
+                object.__setattr__(tdict, '_trades_dirty_flag', dirty_flag)
+                object.__setattr__(tdict, '_trade_order_index', {})
+                object.__setattr__(tdict, '_trade_order_index_len', 0)
+                tdict._add_listener(dirty_flag)
+            target_order_id = self._data.get('order_id', '')
+            cache = (tdict, dirty_flag, trades_data, tdict._trade_order_index, target_order_id)
+            object.__setattr__(self, '_trades_cache', cache)
+        if dirty_flag.dirty:
+            tdict = cache[0]
+            trades_data = cache[2]
+            idx = cache[3]
+            idx_len = tdict._trade_order_index_len
+            cur_len = len(trades_data)
+            if cur_len != idx_len:
+                for t_id, trade in islice(trades_data.items(), idx_len, None):
+                    try:
+                        oid = trade._data['order_id']
+                    except (AttributeError, KeyError):
+                        continue
+                    if oid:
+                        idx.setdefault(oid, []).append(t_id)
+                object.__setattr__(tdict, '_trade_order_index_len', cur_len)
+            dirty_flag.dirty = False
+        trade_ids = cache[3].get(cache[4], ())
+        return {tid: cache[2][tid] for tid in trade_ids if tid in cache[2]}
 
 
 class Trade(Entity):
@@ -908,15 +993,32 @@ class SecurityOrder(Entity):
         """
         tdict = _get_obj(self._api._data, ["trade", self._path[1], "trades"])
         target_order_id = self._data.get('order_id', '')
-        fts = {}
-        for trade_id, trade in tdict._data.items():
-            try:
-                od = trade._data
-            except AttributeError:
-                continue
-            if od.get('order_id') == target_order_id:
-                fts[trade_id] = trade
-        return fts
+        trades_data = tdict._data
+        # Dirty-flag + incremental index: only rebuild when entity changes
+        try:
+            dirty_flag = tdict._trades_dirty_flag
+        except AttributeError:
+            dirty_flag = _OrdersDirtyFlag()
+            object.__setattr__(tdict, '_trades_dirty_flag', dirty_flag)
+            object.__setattr__(tdict, '_trade_order_index', {})
+            object.__setattr__(tdict, '_trade_order_index_len', 0)
+            tdict._add_listener(dirty_flag)
+        if dirty_flag.dirty:
+            idx = tdict._trade_order_index
+            idx_len = tdict._trade_order_index_len
+            cur_len = len(trades_data)
+            if cur_len != idx_len:
+                for t_id, trade in islice(trades_data.items(), idx_len, None):
+                    try:
+                        oid = trade._data['order_id']
+                    except (AttributeError, KeyError):
+                        continue
+                    if oid:
+                        idx.setdefault(oid, []).append(t_id)
+                object.__setattr__(tdict, '_trade_order_index_len', cur_len)
+            dirty_flag.dirty = False
+        trade_ids = tdict._trade_order_index.get(target_order_id, ())
+        return {tid: trades_data[tid] for tid in trade_ids if tid in trades_data}
 
 
 class SecurityTrade(Entity):

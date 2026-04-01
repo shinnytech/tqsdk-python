@@ -3,6 +3,8 @@
 __author__ = 'mayanqiong'
 
 
+from itertools import islice
+
 from tqsdk.datetime import _get_expire_rest_days
 from tqsdk.datetime_state import TqDatetimeState
 from tqsdk.diff import _simple_merge_diff, _is_key_exist, _simple_merge_diff_and_collect_paths, _get_obj
@@ -139,7 +141,7 @@ class DataExtension(object):
         pend_diff = {}
         _simple_merge_diff(pend_diff, self._get_positions_pend_diff())
         orders_set = set()  # 计算过委托单，is_dead、is_online、is_error
-        orders_price_set = set()  # 根据成交计算哪些 order 需要重新计算平均成交价 trade_price
+        orders_price_updates = {}  # (account_key, order_id) -> need recalc
         for path in self._diffs_paths:
             if path[2] == 'orders':
                 _, account_key, _, order_id, _ = path
@@ -156,11 +158,25 @@ class DataExtension(object):
                 trade = _get_obj(self._data, path)
                 order_id = trade.get('order_id', '')
                 if order_id:
-                    orders_price_set.add(('trade', account_key, 'orders', order_id))
-        for path in orders_price_set:
-            _, account_key, _, order_id = path
-            trade_price = self._get_trade_price(account_key, order_id)
-            if trade_price == trade_price:
+                    # Accumulate running sums directly instead of building separate index
+                    key = (account_key, order_id)
+                    if key not in orders_price_updates:
+                        # Get existing sums from cache or start fresh
+                        if not hasattr(self, '_trade_price_cache'):
+                            self._trade_price_cache = {}
+                        entry = self._trade_price_cache.get(key)
+                        if entry is None:
+                            entry = [0, 0.0]
+                            self._trade_price_cache[key] = entry
+                        orders_price_updates[key] = entry
+                    vol = trade.get('volume', 0)
+                    price = trade.get('price', 0.0)
+                    entry = orders_price_updates[key]
+                    entry[0] += vol
+                    entry[1] += vol * price
+        for (account_key, order_id), entry in orders_price_updates.items():
+            if entry[0] > 0:
+                trade_price = entry[1] / entry[0]
                 pend_order = pend_diff.setdefault('trade', {}).setdefault(account_key, {}).setdefault('orders', {}).setdefault(order_id, {})
                 pend_order['trade_price'] = trade_price
         self._diffs_paths = set()
@@ -194,15 +210,39 @@ class DataExtension(object):
         return {'trade': pend_diff} if pend_diff else {}
 
     def _get_trade_price(self, account_key, order_id):
-        # 计算某个 order_id 对应的成交均价
+        # 计算某个 order_id 对应的成交均价, using reverse index with cached running sums
         trades = self._data['trade'][account_key]['trades']
-        trade_id_list = [t_id for t_id in trades.keys() if trades[t_id]['order_id'] == order_id]
-        sum_volume = sum([trades[t_id]['volume'] for t_id in trade_id_list])
-        if sum_volume == 0:
+        # Build/update reverse index: order_id -> [sum_volume, sum_amount]
+        try:
+            idx_account = self._trade_order_index[account_key]
+            old_len = self._trade_order_index_len[account_key]
+        except (AttributeError, KeyError):
+            if not hasattr(self, '_trade_order_index'):
+                self._trade_order_index = {}
+                self._trade_order_index_len = {}
+            idx_account = {}
+            self._trade_order_index[account_key] = idx_account
+            old_len = 0
+            self._trade_order_index_len[account_key] = 0
+        cur_len = len(trades)
+        if cur_len != old_len:
+            # New trades added — update running sums incrementally
+            for t_id, trade in islice(trades.items(), old_len, None):
+                oid = trade.get('order_id', '')
+                if oid:
+                    vol = trade.get('volume', 0)
+                    price = trade.get('price', 0.0)
+                    entry = idx_account.get(oid)
+                    if entry is None:
+                        idx_account[oid] = [vol, vol * price]
+                    else:
+                        entry[0] += vol
+                        entry[1] += vol * price
+            self._trade_order_index_len[account_key] = cur_len
+        entry = idx_account.get(order_id)
+        if entry is None or entry[0] == 0:
             return float('nan')
-        else:
-            sum_amount = sum([trades[t_id]['volume'] * trades[t_id]['price'] for t_id in trade_id_list])
-            return sum_amount / sum_volume
+        return entry[1] / entry[0]
 
     async def _send_diff(self):
         if self._datetime_state.data_ready and self._pending_peek and self._diffs:

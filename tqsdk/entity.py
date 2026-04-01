@@ -6,8 +6,12 @@ import copy
 import weakref
 from collections.abc import MutableMapping
 
+_UNSET = object()
+
 
 class Entity(MutableMapping):
+    __slots__ = ('_data', '_path', '_listener', '__dict__')
+
     def __new__(cls, *args, **kwargs):
         instance = super().__new__(cls)
         object.__setattr__(instance, '_data', {})
@@ -15,7 +19,7 @@ class Entity(MutableMapping):
 
     def _instance_entity(self, path):
         object.__setattr__(self, '_path', path)
-        object.__setattr__(self, '_listener', weakref.WeakSet())
+        object.__setattr__(self, '_listener', None)
 
     def __setattr__(self, key, value):
         if key.startswith('_'):
@@ -28,6 +32,14 @@ class Entity(MutableMapping):
             return self._data[key]
         except KeyError:
             raise AttributeError(key)
+
+    def _add_listener(self, chan):
+        """Add a listener, lazily creating the WeakSet if needed."""
+        listener = self._listener
+        if listener is None:
+            listener = weakref.WeakSet()
+            object.__setattr__(self, '_listener', listener)
+        listener.add(chan)
 
     def __delattr__(self, key):
         if key.startswith('_'):
@@ -62,13 +74,40 @@ class Entity(MutableMapping):
     def __contains__(self, key):
         return key in self._data
 
+    def get(self, key, default=None):
+        return self._data.get(key, default)
+
+    def keys(self):
+        return self._data.keys()
+
+    def values(self):
+        return self._data.values()
+
+    def items(self):
+        return self._data.items()
+
+    def pop(self, key, *args):
+        return self._data.pop(key, *args)
+
+    def setdefault(self, key, default=None):
+        return self._data.setdefault(key, default)
+
     def __copy__(self):
         new = type(self).__new__(type(self))
-        # Copy private attrs from __dict__ (excluding _data which is handled separately)
-        for k, v in self.__dict__.items():
-            if k != '_data':
-                object.__setattr__(new, k, v)
-        object.__setattr__(new, '_data', self._data.copy())
+        # Copy slot attrs using getattr to avoid exception overhead for unset slots
+        _setattr = object.__setattr__
+        _p = getattr(self, '_path', _UNSET)
+        if _p is not _UNSET:
+            _setattr(new, '_path', _p)
+        _l = getattr(self, '_listener', _UNSET)
+        if _l is not _UNSET:
+            _setattr(new, '_listener', _l)
+        # Copy any extra attrs from __dict__
+        d = self.__dict__
+        if d:
+            for k, v in d.items():
+                _setattr(new, k, v)
+        _setattr(new, '_data', self._data.copy())
         return new
 
     def copy(self):
