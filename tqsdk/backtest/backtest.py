@@ -9,7 +9,7 @@ import math
 from datetime import date, datetime
 from typing import Union, Any, List, Dict
 
-from tqsdk.backtest.utils import TqBacktestDividend
+from tqsdk.backtest.utils import TqBacktestContinuous, TqBacktestDividend
 from tqsdk.channel import TqChan
 from tqsdk.datetime import _get_trading_day_start_time, _get_trading_day_end_time, _get_trading_day_from_timestamp, \
     _timestamp_nano_to_str, _convert_user_input_to_nano
@@ -87,12 +87,16 @@ class TqBacktest(object):
     async def _run(self, api, sim_send_chan, sim_recv_chan, md_send_chan, md_recv_chan):
         """回测task"""
         self._api = api
-        start_trading_day = _get_trading_day_from_timestamp(self._start_dt)
-        end_trading_day = _get_trading_day_from_timestamp(self._end_dt)
+        # 下载历史主连合约信息
+        start_trading_day = _get_trading_day_from_timestamp(self._start_dt)  # 回测开始交易日
+        end_trading_day = _get_trading_day_from_timestamp(self._end_dt)  # 回测结束交易日
+        self._continuous_table = TqBacktestContinuous(start_dt=start_trading_day,
+                                                      end_dt=end_trading_day,
+                                                      headers=self._api._base_headers)
         self._stock_dividend = TqBacktestDividend(start_dt=start_trading_day,
                                                   end_dt=end_trading_day,
                                                   headers=self._api._base_headers)
-        self._logger = api._logger.getChild("TqBacktest")
+        self._logger = api._logger.getChild("TqBacktest")  # 调试信息输出
         self._sim_send_chan = sim_send_chan
         self._sim_recv_chan = sim_recv_chan
         self._md_send_chan = md_send_chan
@@ -225,6 +229,8 @@ class TqBacktest(object):
         invalid_keys.union({'open', 'close', 'settlement', 'lowest', 'lower_limit', 'upper_limit', 'pre_open_interest', 'pre_settlement', 'pre_close', 'expired'})
         for symbol, quote in quotes.items():
             [quote.pop(k, None) for k in invalid_keys]
+            if symbol.startswith("KQ.m"):
+                quote.pop("underlying_symbol", None)
             if quote.get('expire_datetime'):
                 # 先删除所有的 quote 的 expired 字段，只在有 expire_datetime 字段时才会添加 expired 字段
                 quote['expired'] = quote.get('expire_datetime') * 1000000000 <= self._trading_day_start
@@ -272,6 +278,11 @@ class TqBacktest(object):
                     "option_class": quote.get("option_class", ""),
                     "product_id": quote.get("product_id", ""),
                 }
+        # 修改历史主连合约信息
+        cont_quotes = self._continuous_table._get_history_cont_quotes(self._trading_day)
+        for k, v in cont_quotes.items():
+            quotes.setdefault(k, {})  # 实际上，初始行情截面中只有下市合约，没有主连
+            quotes[k].update(v)
         self._diffs.append({
             "quotes": quotes,
             "ins_list": "",
@@ -287,13 +298,16 @@ class TqBacktest(object):
                 # 发送数据集中添加 backtest 字段，开始时间、结束时间、当前时间，表示当前行情推进是由 backtest 推进
                 self._diffs.append({"_tqsdk_backtest": self._get_backtest_time()})
 
-                # 切换交易日
+                # 切换交易日，将历史的主连合约信息添加的 diffs
                 if self._current_dt > self._trading_day_end:
                     # 使用交易日结束时间，每个交易日切换只需要计算一次交易日结束时间
                     # 相比发送 diffs 前每次都用 _current_dt 计算当前交易日，计算次数更少
                     self._trading_day = _get_trading_day_from_timestamp(self._current_dt)
                     self._trading_day_start = _get_trading_day_start_time(self._trading_day)
                     self._trading_day_end = _get_trading_day_end_time(self._trading_day)
+                    self._diffs.append({
+                        "quotes": self._continuous_table._get_history_cont_quotes(self._trading_day)
+                    })
                     self._diffs.append({
                         "quotes": self._stock_dividend._get_dividend(self._data.get('quotes'), self._trading_day)
                     })
