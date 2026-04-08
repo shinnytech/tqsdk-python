@@ -96,7 +96,7 @@ class TqBacktest(object):
         self._stock_dividend = TqBacktestDividend(start_dt=start_trading_day,
                                                   end_dt=end_trading_day,
                                                   headers=self._api._base_headers)
-        self._logger = api._logger.getChild("TqBacktest")  # 调试信息输出
+        self._logger = api._logger.getChild("TqBacktest") # 调试信息输出
         self._sim_send_chan = sim_send_chan
         self._sim_recv_chan = sim_recv_chan
         self._md_send_chan = md_send_chan
@@ -239,7 +239,7 @@ class TqBacktest(object):
     async def _send_snapshot(self):
         """发送初始合约信息"""
         async with TqChan(self._api, last_only=True) as update_chan:  # 等待与行情服务器连接成功
-            self._data["_listener"].add(update_chan)
+            self._data._listener.add(update_chan)
             while self._data.get("mdhis_more_data", True):
                 await update_chan.recv()
         # 发送初始行情(合约信息截面)时
@@ -451,7 +451,7 @@ class TqBacktest(object):
         if query_pack.items() <= self._data.get("symbols", {}).get(pack["query_id"], {}).items():
             return
         async with TqChan(self._api, last_only=True) as update_chan:
-            self._data["_listener"].add(update_chan)
+            self._data._listener.add(update_chan)
             while not query_pack.items() <= self._data.get("symbols", {}).get(pack["query_id"], {}).items():
                 await update_chan.recv()
 
@@ -465,12 +465,14 @@ class TqBacktest(object):
             await self._md_send_chan.send(query_pack)
         async with TqChan(self._api, last_only=True) as update_chan:
             for q in quotes:
-                q["_listener"].add(update_chan)
+                q._listener.add(update_chan)
             while any([math.isnan(q.get("price_tick")) for q in quotes]):
                 await update_chan.recv()
 
     async def _ensure_quote(self, symbol):
-        if symbol not in self._quotes or self._quotes[symbol]["min_duration"] > 60000000000:
+        # if symbol not in self._quotes or self._quotes[symbol]["min_duration"] > 60000000000:
+        #     await self._ensure_serial(symbol, 60000000000)
+        if symbol not in self._quotes:
             await self._ensure_serial(symbol, 60000000000)
 
     async def _fetch_serial(self, key):
@@ -506,9 +508,9 @@ class TqBacktest(object):
             serials = [_get_obj(self._data, ["klines", s, str(dur)]) for s in symbol_list]
         async with TqChan(self._api, last_only=True) as update_chan:
             for serial in serials:
-                serial["_listener"].add(update_chan)
-            chart_a["_listener"].add(update_chan)
-            chart_b["_listener"].add(update_chan)
+                serial._listener.add(update_chan)
+            chart_a._listener.add(update_chan)
+            chart_b._listener.add(update_chan)
             await self._md_send_chan.send(chart_info.copy())
             try:
                 async for _ in update_chan:
@@ -535,10 +537,10 @@ class TqBacktest(object):
                         yield self._current_dt, diff, None, "OPEN"
                         return
                     if self._data.get("mdhis_more_data", True):
-                        self._data["_listener"].add(update_chan)
+                        self._data._listener.add(update_chan)
                         continue
                     else:
-                        self._data["_listener"].discard(update_chan)
+                        self._data._listener.discard(update_chan)
                     left_id = chart.get("left_id", -1)
                     right_id = chart.get("right_id", -1)
                     if current_id is None:

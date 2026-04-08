@@ -230,7 +230,8 @@ class TqApi(TqBaseApi):
             user_name, pwd = auth[:comma_index], auth[comma_index + 1:]
             self._auth = TqAuth(user_name, pwd)
         else:
-            self._auth = None
+            from tqsdk.auth import TqAuthDummy
+            self._auth = TqAuthDummy()
         self._account = TqSim() if account is None else account
         self._backtest = backtest
         self._stock = False if isinstance(self._backtest, TqReplay) else _stock
@@ -2150,7 +2151,7 @@ class TqApi(TqBaseApi):
                 if id(obj) in self._serials:
                     paths = []
                     for root in self._serials[id(obj)]["root"]:
-                        paths.append(root["_path"])
+                        paths.append(root._path)
                 elif len(obj) == 0:
                     return False
                 else:  # 处理传入的为一个 copy 出的 DataFrame (与原 DataFrame 数据相同的另一个object)
@@ -2181,7 +2182,7 @@ class TqApi(TqBaseApi):
                     paths.append(["ticks", obj["symbol"], "data", str(int(obj["id"]))])
 
             else:
-                paths = [obj["_path"]]
+                paths = [obj._path]
         except (KeyError, IndexError):
             return False
         for diff in diffs:
@@ -3531,21 +3532,22 @@ class TqApi(TqBaseApi):
                            py_version=platform.python_version(), py_arch=platform.architecture()[0],
                            cmd=sys.argv, mem_total=mem.total, mem_free=mem.free)
         if self._auth is None:
-            raise Exception("请输入 auth （快期账户）参数，快期账户是使用 tqsdk 的前提，如果没有请点击注册，注册地址：https://account.shinnytech.com/。")
-        else:
-            self._auth.init(mode="bt" if isinstance(self._backtest, TqBacktest) else "real")
-            self._auth.login()  # tqwebhelper 有可能会设置 self._auth
+            from tqsdk.auth import TqAuthDummy
+            self._auth = TqAuthDummy()
+
+        self._auth.init(mode="bt" if isinstance(self._backtest, TqBacktest) else "real")
+        self._auth.login()  # tqwebhelper 有可能会设置 self._auth
             
-            # tqsdk 内部捕获异常如果需要打印日志，则需要自定义异常
-            # 对于第三方代码产生的异常需要逐个捕获，可以参考 connect.py TqConnect._run 函数中对于各类异常的捕获
-            # 这里只是打印账户过期日期来提醒用户，不关心是否成功，也不记录日志，所以直接 pass
-            # 单独捕获 self._auth.expire_datetime 是为了语义清晰，表明异常的来源
-            try:
-                self._auth.expire_datetime
-            except Exception:
-                pass
-            if self._auth._expire_days_left is not None and self._auth._product_type is not None and self._auth._expire_days_left < 30:
-                self._print(f"TqSdk {self._auth._product_type} 版剩余 {self._auth._expire_days_left} 天到期，如需续费或升级请访问 https://account.shinnytech.com/ 或联系相关工作人员。")
+        # tqsdk 内部捕获异常如果需要打印日志，则需要自定义异常
+        # 对于第三方代码产生的异常需要逐个捕获，可以参考 connect.py TqConnect._run 函数中对于各类异常的捕获
+        # 这里只是打印账户过期日期来提醒用户，不关心是否成功，也不记录日志，所以直接 pass
+        # 单独捕获 self._auth.expire_datetime 是为了语义清晰，表明异常的来源
+        try:
+            self._auth.expire_datetime
+        except Exception:
+            pass
+        if self._auth._expire_days_left is not None and self._auth._product_type is not None and self._auth._expire_days_left < 30:
+            self._print(f"TqSdk {self._auth._product_type} 版剩余 {self._auth._expire_days_left} 天到期，如需续费或升级请访问 https://account.shinnytech.com/ 或联系相关工作人员。")
 
         # 在快期账户登录之后，对于账户的基本信息校验及更新
         for acc in self._account._account_list:
@@ -3753,12 +3755,12 @@ class TqApi(TqBaseApi):
         temp_df = pd.DataFrame()
         temp_df._mgr = bm
         serial["df"] = TqDataFrame(self, temp_df, copy=False)
-        serial["df"]["symbol"] = root_list[0]["_path"][1]
+        serial["df"]["symbol"] = root_list[0]._path[1]
         for i in range(1, len(root_list)):
-            serial["df"]["symbol" + str(i)] = root_list[i]["_path"][1]
+            serial["df"]["symbol" + str(i)] = root_list[i]._path[1]
 
-        serial["df"]["duration"] = 0 if root_list[0]["_path"][0] == "ticks" else int(
-            root_list[0]["_path"][-1]) // 1000000000
+        serial["df"]["duration"] = 0 if root_list[0]._path[0] == "ticks" else int(
+            root_list[0]._path[-1]) // 1000000000
         return serial
 
     def _update_serial_single(self, serial):
@@ -3966,8 +3968,8 @@ class TqApi(TqBaseApi):
         serial["all_attr"] = set(serial["df"].columns.values)
         if serial["update_row"] == serial["width"]:
             return
-        symbol = serial["root"][0]["_path"][1]  # 主合约的symbol，标志绘图的主合约
-        duration = 0 if serial["root"][0]["_path"][0] == "ticks" else int(serial["root"][0]["_path"][-1])
+        symbol = serial["root"][0]._path[1]  # 主合约的symbol，标志绘图的主合约
+        duration = 0 if serial["root"][0]._path[0] == "ticks" else int(serial["root"][0]._path[-1])
         cols = list(serial["extra_array"].keys())
         # 归并数据序列
         while len(cols) != 0:
@@ -4157,8 +4159,8 @@ class TqApi(TqBaseApi):
 
     @staticmethod
     def _deep_copy_dict(source, dest):
-        for key, value in source.__dict__.items():
-            if isinstance(value, Entity):
+        for key, value in source._data.items():
+            if hasattr(value, '_data'):
                 dest[key] = {}
                 TqApi._deep_copy_dict(value, dest[key])
             else:
@@ -4340,7 +4342,7 @@ class TqApi(TqBaseApi):
 
     def _send_chart_data(self, base_kserial_frame, serial_id, serial_data):
         s = self._serials[id(base_kserial_frame)]
-        p = s["root"][0]["_path"]
+        p = s["root"][0]._path
         symbol = p[-2]
         dur_nano = int(p[-1])
         pack = {

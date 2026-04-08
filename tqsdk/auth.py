@@ -212,3 +212,62 @@ class TqAuth(object):
         if symbol.split('.', 1)[0] in (FUTURE_EXCHANGES + KQ_EXCHANGES) and self._has_feature("futr"):
             return True
         raise Exception(f"您的账户不支持交易 {symbol}，需要购买后才能使用。升级网址：https://www.shinnytech.com/tqsdk-buy/")
+
+
+class TqAuthDummy(object):
+    """无认证桩类，授予所有权限，不做任何网络调用。"""
+
+    def __init__(self):
+        self._user_name = "local_user"
+        self._password = ""
+        self._access_token = ""
+        self._refresh_token = ""
+        self._auth_id = ""
+        self._mode = "real"
+        self._grants = {"features": [], "accounts": []}
+        self._expire_datetime = None
+        self._expire_days_left = None
+        self._product_type = None
+        self._logger = ShinnyLoggerAdapter(
+            logging.getLogger("TqApi.TqAuth"),
+            headers=self._base_headers,
+            grants=self._grants,
+        )
+
+    @property
+    def _base_headers(self):
+        return {
+            "User-Agent": "tqsdk-python %s" % __version__,
+            "Accept": "application/json",
+        }
+
+    @property
+    def expire_datetime(self):
+        return datetime.datetime(2099, 12, 31, 23, 59, 59, tzinfo=_cst_tz)
+
+    def init(self, mode="real"):
+        self._mode = mode
+
+    def login(self):
+        pass
+
+    def _has_feature(self, feature):
+        return True
+
+    def _has_account(self, account):
+        return True
+
+    def _has_md_grants(self, symbol):
+        return True
+
+    def _has_td_grants(self, symbol):
+        return True
+
+    def _add_account(self, account_id):
+        return True
+
+    def _get_td_url(self, broker_id, account_id):
+        raise Exception("无认证模式不支持 OTG 实盘交易，请提供 TqAuth 参数。")
+
+    def _get_md_url(self, stock, backtest):
+        raise Exception("无认证模式无法自动发现行情服务器，请通过 url 参数或 TQ_MD_URL 环境变量指定。")

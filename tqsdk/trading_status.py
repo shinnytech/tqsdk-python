@@ -87,14 +87,14 @@ class TqTradingStatus(TqModule):
     async def _query_symbol_info(self, symbols):
         """查询缺少合约信息的quotes"""
         for symbol in symbols:
-            self._quotes_unready[symbol]["_listener"].add(self._quote_chan)
+            self._quotes_unready[symbol]._listener.add(self._quote_chan)
         for query_pack in _query_for_quote(list(symbols), self._api._pre20_ins_info.keys()):
             await self._md_send_chan.send(query_pack)
 
     async def _symbol_info_watcher(self):
         async for _ in self._quote_chan:
             for symbol in await self._unready_to_ready():
-                self._quotes_ready[symbol]["_listener"].discard(self._quote_chan)
+                self._quotes_ready[symbol]._listener.discard(self._quote_chan)
 
     async def _unready_to_ready(self):
         ready_delta = {symbol for symbol, quote in self._quotes_unready.items() if not math.isnan(quote.price_tick)}
