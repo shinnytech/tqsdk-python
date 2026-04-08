@@ -11,4 +11,5 @@ from tqsdk.backtest import TqBacktest, TqReplay
 from tqsdk.exceptions import BacktestFinished, TqBacktestPermissionError, TqTimeoutError, TqRiskRuleError
 from tqsdk.lib import TargetPosScheduler, TargetPosTask, InsertOrderUntilAllTradedTask, InsertOrderTask, TqNotify
 from tqsdk.multiaccount import TqMultiAccount
+from tqsdk.scenario import TqScenario
 from .__version__ import __version__

@@ -394,6 +394,9 @@ class TqBacktest(object):
             item = quotes_helper[key]["kline_or_tick"]
             if item is None:
                 # item 如果是 None 的话，没有可以生成行情的信息的数据，那么不生成 quote_diff
+                # 添加一个私有字段，告知下游不需要继续发送 peek_message 来获取行情，以致于行情被一直推进到回测结束，影响其他合约的订阅
+                self._quotes[symbol]["sended_init_quote"] = True
+                self._diffs.extend([{"quotes": {symbol: {"_backtest_no_kline": True}}}])
                 continue
             diffs = None
             if self._quotes[symbol]['min_duration'] == 0 and dur == 0:

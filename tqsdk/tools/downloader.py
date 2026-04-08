@@ -252,7 +252,8 @@ class DataDownloader:
                             item = item.copy()
                             for c in cols:  # datetime_nano
                                 index = self._csv_header.index(f"{symbol}.{c}")
-                                item[index] = item[index] * dividend_cache["factor"]
+                                if isinstance(item[index], float):
+                                    item[index] = item[index] * dividend_cache["factor"]
                 csv_writer.writerow(item)
                 if isinstance(self._csv_file_name, asyncio.StreamWriter):
                     await self._csv_file_name.drain()

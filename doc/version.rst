@@ -2,6 +2,13 @@
 
 版本变更
 =============================
+3.9.2 (2026/04/07)
+
+* 新增：:py:class:`~tqsdk.TqScenario` 类，支持场景试算，比如实盘保证金查询、持仓保证金占用试算、保证金率变更引起的风险度变化等
+* 新增：:py:class:`~tqsdk.TqApi.query_options` :py:class:`~tqsdk.TqApi.query_atm_options` :py:class:`~tqsdk.TqApi.query_all_level_options` 接口添加 has_MS 参数，用于过滤系列期权
+* docs: 优化文档
+
+
 3.9.1 (2026/03/16)
 
 * docs: 优化文档，添加 tqsdk skills, 详情参考 :ref:`tqsdk_skills`
@@ -362,7 +369,7 @@
 * 优化：某些情况下启用 web_gui 后网页卡顿的问题
 * 修复：修正上交所 ETF 期权的昨结算（pre_settlement）字段
 * 修复：:py:class:`~tqsdk.TargetPosTask` 及 :py:class:`~tqsdk.algorithm.twap` 添加动力煤期货暂不支持的提示
-* docs：修正文档，增加 tqkq() 的示例，增加 :ref:`tqsdk2ctptest` 文档
+* docs：修正文档，增加 tqkq() 的示例，增加 tqsdk2ctptest 文档
 
 
 3.2.3 (2022/02/16)

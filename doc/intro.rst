@@ -3,6 +3,8 @@
 TqSdk 介绍
 =================================================
 
+.. include:: _includes/tqsdk_ai_agent_intro.rst
+
 源码仓库地址：
 
 * GitHub: `https://github.com/shinnytech/tqsdk-python <https://github.com/shinnytech/tqsdk-python>`_

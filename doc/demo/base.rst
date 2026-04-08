@@ -3,6 +3,16 @@
 基本使用
 ==================================================================
 
+这组示例与 :ref:`quickstart` 对应，适合刚完成安装、准备熟悉主循环和常用接口的新用户。
+
+建议按下面的顺序阅读：
+
+* 行情与更新机制：:ref:`tutorial-t10`、:ref:`tutorial-t20`
+* K 线与基础数据：:ref:`tutorial-t30`
+* 账户与下单：:ref:`tutorial-t40`、:ref:`tutorial-t41`
+* 自动交易：:ref:`tutorial-t60`、:ref:`tutorial-t70`、:ref:`tutorial-t80`
+* 回测与下载：:ref:`tutorial-backtest`、:ref:`tutorial-downloader`、:ref:`tutorial-downloader-orders`
+
 .. contents:: 目录
 
 

@@ -178,7 +178,7 @@ def DMI(df, n, m):
     return new_df
 
 
-def KDJ(df, n, m1, m2):
+def KDJ(df, n, m1, m2, flat_value=0):
     """
     随机指标
 
@@ -190,6 +190,8 @@ def KDJ(df, n, m1, m2):
         m1 (int): 参数m1
 
         m2 (int): 参数m2
+
+        flat_value (float): 当最高价等于最低价时使用的 RSV 默认值
 
     Returns:
         pandas.DataFrame: 返回的DataFrame包含3列, 是"k", "d"和"j", 分别代表计算出来的K值, D值和J值
@@ -215,7 +217,7 @@ def KDJ(df, n, m1, m2):
     new_df = pd.DataFrame()
     hv = df["high"].rolling(n).max()
     lv = df["low"].rolling(n).min()
-    rsv = pd.Series(np.where(hv == lv, 0, (df["close"] - lv) / (hv - lv) * 100))
+    rsv = pd.Series(np.where(hv == lv, flat_value, (df["close"] - lv) / (hv - lv) * 100))
     new_df["k"] = tqsdk.tafunc.sma(rsv, m1, 1)
     new_df["d"] = tqsdk.tafunc.sma(new_df["k"], m2, 1)
     new_df["j"] = 3 * new_df["k"] - 2 * new_df["d"]
