@@ -69,6 +69,20 @@ TqSdk提供的功能可以支持从简单到复杂的各类策略程序：
 
 * **配合天勤AI助手**，提供函数解释、策略编写指导、错误分析等支持
 
+## 配合 AI / Agent 使用 TqSdk
+
+如果你想让自己的 AI、Agent 或 OpenClaw 更好地理解和使用 TqSdk，可以把下面这段内容直接复制给它：
+
+> 请先下载并解压 TqSdk 技能包：https://doc.shinnytech.com/tqsdk/latest/ai_editor/skills/tqsdk-trading-and-data.zip，然后先阅读其中的 SKILL.md，并按里面的说明再回答任何 TqSdk 问题或编写任何 TqSdk 代码。
+
+相关文档与资源：
+
+* [通过 AI 工具使用 TqSdk](https://doc.shinnytech.com/tqsdk/latest/ai_editor/index.html)
+* [在 Trae 中高效学习和使用 TqSdk](https://doc.shinnytech.com/tqsdk/latest/ai_editor/tqsdk_trae.html)
+* [使用 Codex 协作开发 TqSdk 项目](https://doc.shinnytech.com/tqsdk/latest/ai_editor/tqsdk_codex.html)
+* [TqSdk Skills 压缩包与使用说明](https://doc.shinnytech.com/tqsdk/latest/ai_editor/tqsdk_skills.html)
+* [下载 TqSdk 技能包 `tqsdk-trading-and-data.zip`](https://doc.shinnytech.com/tqsdk/latest/ai_editor/skills/tqsdk-trading-and-data.zip)
+
 ## 安装方法
 
 TqSdk 仅支持 Python 3.8 及更高版本。要安装 TqSdk，可使用 pip：

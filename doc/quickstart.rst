@@ -2,15 +2,18 @@
 
 十分钟快速入门
 =================================================
-希望快速开始使用天勤量化(TqSdk)？  本页面将介绍如何开始使用 TqSdk.
 
-如果您以前曾经使用过其它框架编写过策略程序, 这些内容可以快速帮助您了解 TqSdk 与它们的区别:
+.. include:: _includes/tqsdk_ai_agent_intro.rst
+
+希望快速开始使用天勤量化 (TqSdk)？本页面按“安装 -> 登录 -> 行情 -> K 线 -> 下单 -> 回测”的顺序，带你跑通第一套程序。
+
+如果你已经熟悉其它量化框架，可以按需对照这些迁移文档，再回到本页上手：
 
 * :ref:`intro`
 * :ref:`for_ctp_user`
 * :ref:`for_vnpy_user`
 
-强烈推荐结合提供 AI 能力的开发工具一起使用，例如 :ref:`tqsdk_trae` 、:ref:`tqsdk_codex` 、VSCode 等，可以大大提高开发效率。更多内容请见 :ref:`ai_editor` 。
+如果你正在使用带 AI 能力的开发工具，也可以结合 :ref:`tqsdk_trae` 、:ref:`tqsdk_codex` 、VSCode 等提升排错和写示例的效率，更多内容请见 :ref:`ai_editor` 。
 
 
 
@@ -21,7 +24,7 @@
 天勤量化的核心是TqSdk开发包, 在安装天勤量化 (TqSdk) 前, 你需要先准备适当的环境和Python包管理工具, 包括:
 
 * Python >= 3.8 版本
-* Windows 7 以上版本, Mac Os, 或 Linux
+* Windows 7 以上版本, macOS, 或 Linux
 
 
 你可以选择使用 `pip` 命令安装 TqSdk, 或者下载源代码安装. 对于一般用户, 我们推荐采用 `pip` 命令安装/升级 TqSdk::
@@ -36,11 +39,22 @@
 
 注册快期账户
 -------------------------------------------------
-在使用 TqSdk 之前，用户需要先注册自己的 **快期账户** ，传入快期账户是使用任何 TqSdk 程序的前提,点击  `注册快期账户 <https://account.shinnytech.com/>`_
+在使用 TqSdk 之前，需要先准备自己的 **快期账户**。快期账户是运行任何 TqSdk 程序的前提，点击 `注册快期账户 <https://account.shinnytech.com/>`_
 
-快期账户可以使用注册时的手机号/用户名/邮箱号进行登录,详细介绍请点击 :ref:`shinny_account`
+快期账户可以使用注册时的手机号、用户名或邮箱登录，详细介绍请见 :ref:`shinny_account`
 
-在注册完快期账户后，让我们从一个简单的例子开始
+在注册完快期账户后，建议先只跑通下面这个最小示例，确认安装、账户和行情连接都已经打通::
+
+    from tqsdk import TqApi, TqAuth
+
+    api = TqApi(auth=TqAuth("快期账户", "账户密码"))
+    quote = api.get_quote("SHFE.ni2206")
+
+    while True:
+        api.wait_update()
+        print(quote.datetime, quote.last_price)
+
+如果这段脚本可以稳定打印时间和最新价，就说明你已经具备继续阅读后续章节的基础。下面我们把这段脚本拆开讲清楚。
 
 .. _quickstart_1:
 
@@ -73,7 +87,7 @@
 
 :py:meth:`~tqsdk.TqApi.wait_update` 是一个阻塞函数, 程序在这行上等待, 直到收到数据包才返回.
 
-上面这个例子的完整程序请见 :ref:`tutorial-t10` . 你也可以在自己电脑python安装目录的 site_packages/tqsdk/demo 下找到它
+上面这个例子的完整程序请见 :ref:`tutorial-t10` . 你也可以在自己电脑 Python 安装目录的 site-packages/tqsdk/demo 下找到它
 
 很简单, 对吗? 到这里, 你已经了解用 TqSdk 开发程序的几个关键点:
 
@@ -131,6 +145,8 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 
     print("委托单状态: %s, 已成交: %d 手" % (order.status, order.volume_orign - order.volume_left))
 
+需要特别注意的是, ``insert_order()`` 只是把下单请求加入待发送队列, 实际报单会在下一次 :py:meth:`~tqsdk.TqApi.wait_update` 时发出。因此下单后请继续驱动主循环, 不要立刻退出程序。
+
 要撤销一个委托单, 使用 api.cancel_order() 函数::
 
     api.cancel_order(order)
@@ -168,6 +184,12 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 -------------------------------------------------
 在某些场景中, 我们可能会发现, 自己写代码管理下单撤单是一件很麻烦的事情. 在这种情况下, 你可以使用 :py:class:`tqsdk.TargetPosTask`. 你只需要指定账户中预期应有的持仓手数, TqSdk 会自动通过一系列指令调整仓位直到达成目标. 请看例子::
 
+    from tqsdk import TqApi, TqAuth, TargetPosTask
+
+    api = TqApi(auth=TqAuth("快期账户", "账户密码"))
+    quote_near = api.get_quote("SHFE.ni2010")
+    quote_deferred = api.get_quote("SHFE.ni2011")
+
 
     # 创建 ni2010 的目标持仓 task，该 task 负责调整 ni2010 的仓位到指定的目标仓位
     target_pos_near = TargetPosTask(api, "SHFE.ni2010")
@@ -199,6 +221,9 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 -------------------------------------------------
 自己的交易程序写好以后, 我们总是希望在实盘运行前, 能先进行一下模拟测试. 要进行模拟测试, 只需要在创建TqApi实例时, 传入一个backtest参数::
 
+    from datetime import date
+    from tqsdk import TqApi, TqAuth, TqBacktest
+
     api = TqApi(backtest=TqBacktest(start_dt=date(2018, 5, 1), end_dt=date(2018, 10, 1)), auth=TqAuth("快期账户", "账户密码"))
 
 这样, 程序运行时就会按照 TqBacktest 指定的时间范围进行模拟交易测试, 并输出测试结果.
@@ -214,16 +239,16 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 -------------------------------------------------
 要让策略程序在实盘账号运行, 请在创建TqApi时传入一个 :py:class:`~tqsdk.TqAccount` , 填入 期货公司, 账号, 密码 和快期账户信息(使用前请先 import TqAccount)::
 
-  from tqsdk import TqApi, TqAuth, TqAccount
+    from tqsdk import TqApi, TqAuth, TqAccount
 
-# 如果要更换为徽商期货，只需要改为 H徽商期货
-  api = TqApi(TqAccount("H宏源期货", "412432343", "123456"), auth=TqAuth("快期账户", "账户密码"))
+    # 如果要更换为徽商期货，只需要改为 H徽商期货
+    api = TqApi(TqAccount("H宏源期货", "412432343", "123456"), auth=TqAuth("快期账户", "账户密码"))
 
 更多关于实盘交易细节，请点击 :ref:`trade`
 
 其中实盘交易是属于 TqSdk 的专业版功能，用户需要购买 TqSdk 专业版才可以进行实盘交易， `点击申请试用或者购买 <https://account.shinnytech.com/>`_
 
-于此同时，TqSdk 支持在部分的期货公司开户来进行免费的实盘交易，详细期货公司介绍请点击查看 `TqSdk支持的期货公司列表 <https://www.shinnytech.com/blog/tq-support-broker/>`_
+与此同时，TqSdk 支持在部分期货公司开户后进行免费的实盘交易，详细介绍请点击查看 `TqSdk支持的期货公司列表 <https://www.shinnytech.com/blog/tq-support-broker/>`_
 
 
 .. _sim_trading:
@@ -240,7 +265,7 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 
 
 
-特别的，如果创建TqApi实例时没有提供任何 TqAcccount 账户或 TqKq 模块，则每次会自动创建一个临时模拟账号，当程序运行结束时，临时账号内的记录将全部丢失::
+特别地，如果创建 TqApi 实例时没有显式提供账户实例，则会自动创建一个临时模拟账号；当程序运行结束时，临时账号内的记录会全部丢失::
 
   api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 

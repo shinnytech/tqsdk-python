@@ -3,6 +3,14 @@
 交易策略示例
 ====================================================
 
+这一页收集的是可直接改造的完整策略示例。它更适合作为“参考实现”而不是第一篇入门材料；第一次学习 TqSdk，建议先读 :ref:`quickstart` 和 :ref:`demo_base`。
+
+如果你只想先挑几篇代表性示例：
+
+* 趋势与均线：Doublema、:ref:`tutorial-t60`、:ref:`tutorial-t70`
+* 套利与价差：PTA 产业链套利、养殖价差套利、:ref:`tutorial-t80`
+* 执行算法：冰山订单、盘口下单、跟量下单（POV）、Volume Weighted Average Price
+
 .. contents:: 目录
 
 

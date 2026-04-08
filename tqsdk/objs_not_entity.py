@@ -25,11 +25,11 @@ from tqsdk.tafunc import _get_t_series, get_impv, _get_d1, get_delta, get_theta,
 
 
 async def ensure_quote(api, quote):
-    if quote.price_tick > 0 and quote.datetime != "":
+    if quote.price_tick > 0 and (quote.datetime != "" or (hasattr(quote, "_backtest_no_kline") and quote._backtest_no_kline)):
         return quote
     async with api.register_update_notify(quote) as update_chan:
         async for _ in update_chan:
-            if quote.price_tick > 0 and quote.datetime != "":
+            if quote.price_tick > 0 and (quote.datetime != "" or (hasattr(quote, "_backtest_no_kline") and quote._backtest_no_kline)):
                 return quote
 
 
@@ -66,12 +66,12 @@ class QuoteList(list):
                 "aid": "subscribe_quote",
                 "ins_list": ",".join(self._api._requests["quotes"]),
             })
-        if all([q.datetime != "" for q in self]):
+        if all([q.datetime != "" or (hasattr(q, "_backtest_no_kline") and q._backtest_no_kline) for q in self]):
             return self
         all_quotes = self + [_get_obj(self._api._data, ["quotes", s], self._api._prototype["quotes"]["#"]) for s in underlying_symbols]
         async with self._api.register_update_notify(self) as update_chan:
             async for _ in update_chan:
-                if all([q.datetime != "" for q in all_quotes]):
+                if all([q.datetime != "" or (hasattr(q, "_backtest_no_kline") and q._backtest_no_kline) for q in all_quotes]):
                     return self
 
     def __await__(self):
@@ -191,8 +191,9 @@ def _get_col_dtype(col):
         return bool
     if col in [
         "price_tick", "volume_multiple", "strike_price", "upper_limit", "lower_limit", "pre_settlement", "pre_close",
-        "pre_open_interest", "max_limit_order_volume", "max_market_order_volume", "expire_datetime", "expire_rest_days",
-        "delivery_year", "delivery_month", "last_exercise_datetime", "exercise_year", "exercise_month",
+        "pre_open_interest", "max_limit_order_volume", "max_market_order_volume","min_limit_order_volume", "min_market_order_volume", 
+        "open_max_market_order_volume", "open_max_limit_order_volume", "open_min_market_order_volume", "open_min_limit_order_volume", 
+        "expire_datetime", "expire_rest_days", "delivery_year", "delivery_month", "last_exercise_datetime", "exercise_year", "exercise_month",
     ]:
         return float
     return object
@@ -212,6 +213,12 @@ class TqSymbolDataFrame(DataFrame):
             "volume_multiple",
             "max_limit_order_volume",
             "max_market_order_volume",
+            "min_limit_order_volume",
+            "min_market_order_volume",
+            "open_max_market_order_volume",
+            "open_max_limit_order_volume",
+            "open_min_market_order_volume",
+            "open_min_limit_order_volume",
             "underlying_symbol",
             "strike_price",
             "exchange_id",

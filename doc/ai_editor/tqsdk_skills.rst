@@ -12,7 +12,13 @@ TqSdk Skills 压缩包与使用说明
 下载压缩包
 ===========
 
-:download:`下载 tqsdk-trading-and-data.zip <skills/tqsdk-trading-and-data.zip>`
+`下载 tqsdk-trading-and-data.zip <skills/tqsdk-trading-and-data.zip>`_
+
+给 OpenClaw 或本地 Agent 直接使用
+=================================
+
+.. include:: ../_includes/tqsdk_ai_agent_intro.rst
+   :end-before: .. tqsdk_skills_ref_marker
 
 Skills 是什么
 ==============

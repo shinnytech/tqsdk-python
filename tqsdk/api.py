@@ -131,36 +131,42 @@ class TqApi(TqBaseApi):
 
                 * :py:class:`~tqsdk.TqTradingUnit` : 使用交易单元账号
 
-                * :py:class:`~tqsdk.TqMultiAccount` : 多账户列表，列表中支持 :py:class:`~tqsdk.TqAccount`、:py:class:`~tqsdk.TqKq`、:py:class:`~tqsdk.TqKqStock`、\
-                  :py:class:`~tqsdk.TqSim`、:py:class:`~tqsdk.TqSimStock`、:py:class:`~tqsdk.TqZq`、:py:class:`~tqsdk.TqRohon`、:py:class:`~tqsdk.TqJees`、\
-                  :py:class:`~tqsdk.TqYida` 、:py:class:`~tqsdk.TqTradingUnit` 和 :py:class:`~tqsdk.TqCtp` 中的 0 至 N 个或者组合
+                * :py:class:`~tqsdk.TqMultiAccount` : 多账户列表，列表中支持
+                  :py:class:`~tqsdk.TqAccount`、:py:class:`~tqsdk.TqKq`、:py:class:`~tqsdk.TqKqStock`、
+                  :py:class:`~tqsdk.TqSim`、:py:class:`~tqsdk.TqSimStock`、:py:class:`~tqsdk.TqZq`、
+                  :py:class:`~tqsdk.TqRohon`、:py:class:`~tqsdk.TqJees`、:py:class:`~tqsdk.TqYida`、
+                  :py:class:`~tqsdk.TqTradingUnit` 和 :py:class:`~tqsdk.TqCtp` 中的 0 至 N 个或者组合
 
             auth (TqAuth/str): [必填]用户快期账户:
                 * :py:class:`~tqsdk.TqAuth` : 添加快期账户类，例如：TqAuth("tianqin@qq.com", "123456")
 
-                * str: 用户权限认证对象为天勤用户论坛的邮箱和密码，中间以英文逗号分隔，例如： "tianqin@qq.com,123456"\
-                快期账户注册链接 https://www.shinnytech.com/register-intro/
+                * str: 用户权限认证对象为天勤用户论坛的邮箱和密码，中间以英文逗号分隔，
+                  例如： "tianqin@qq.com,123456"。快期账户注册链接：
+                  https://www.shinnytech.com/register-intro/
 
             url (str): [可选]指定服务器的地址
-                * 当 account 为 :py:class:`~tqsdk.TqAccount`、:py:class:`~tqsdk.TqKq`、:py:class:`~tqsdk.TqKqStock` 类型时, 可以通过该参数指定交易服务器地址,\
-                默认使用对应账户的交易服务地址，行情地址使用快期账户对应的行情服务地址
+                * 当 account 为 :py:class:`~tqsdk.TqAccount`、:py:class:`~tqsdk.TqKq`、
+                  :py:class:`~tqsdk.TqKqStock` 类型时，可以通过该参数指定交易服务器地址，
+                  默认使用对应账户的交易服务地址，行情地址使用快期账户对应的行情服务地址
 
                 * 当 account 为 :py:class:`~tqsdk.TqSim`、:py:class:`~tqsdk.TqSimStock` 类型时, 可以通过该参数指定行情服务器地址, 默认使用快期账户对应的行情服务地址
 
             backtest (TqBacktest): [可选] 进入时光机，此时强制要求 account 类型为 :py:class:`~tqsdk.TqSim` 或 :py:class:`~tqsdk.TqSimStock`
-                * :py:class:`~tqsdk.TqBacktest` : 传入 TqBacktest 对象，进入回测模式 \
-                在回测模式下, TqBacktest 连接 wss://backtest.shinnytech.com/t/md/front/mobile 接收行情数据, \
-                由 TqBacktest 内部完成回测时间段内的行情推进和 K 线、Tick 更新.
+                * :py:class:`~tqsdk.TqBacktest` : 传入 TqBacktest 对象，进入回测模式。
+                  在回测模式下，TqBacktest 连接
+                  wss://backtest.shinnytech.com/t/md/front/mobile 接收行情数据，
+                  由 TqBacktest 内部完成回测时间段内的行情推进和 K 线、Tick 更新。
 
             debug(bool/str): [可选] 是否将调试信息输出到指定文件，默认值为 None。
                 * None [默认]: 根据账户情况不同，默认值的行为不同。
 
                     + 仅有本地模拟账户 :py:class:`~tqsdk.TqSim`、:py:class:`~tqsdk.TqSimStock` 时，调试信息不输出。
 
-                    + 当有其他类型账户时，即 :py:class:`~tqsdk.TqAccount`、:py:class:`~tqsdk.TqKq`、:py:class:`~tqsdk.TqKqStock`，\
-                    调试信息输出到指定文件夹 `~/.tqsdk/logs`（如果磁盘剩余空间不足 10G 则不会输出调试信息）。
+                    + 当有其他类型账户时，即 :py:class:`~tqsdk.TqAccount`、:py:class:`~tqsdk.TqKq`、
+                      :py:class:`~tqsdk.TqKqStock`，调试信息输出到指定文件夹 ~/.tqsdk/logs
+                      （如果磁盘剩余空间不足 10G 则不会输出调试信息）。
 
-                * True: 调试信息会输出到指定文件夹 `~/.tqsdk/logs`。
+                * True: 调试信息会输出到指定文件夹 ~/.tqsdk/logs。
 
                 * False: 不输出调试信息。
 
@@ -250,7 +256,8 @@ class TqApi(TqBaseApi):
             "trading_status": set(),
             "quotes": set(),
             "klines": {},
-            "ticks": {}
+            "ticks": {},
+            "margin_rates": {},  # 记录已获取的保证金率, key: (account_key, symbol, direction), value: float
         }  # 记录已发出的请求
         self._serials = {}  # 记录所有数据序列
         # 记录所有(若有多个serial 则仅data_length不同, right_id相同)合约、周期相同的多合约K线中最大的更新数据范围
@@ -392,16 +399,18 @@ class TqApi(TqBaseApi):
             :py:class:`~tqsdk.objs.Quote`: 返回一个盘口行情引用. 其内容将在 :py:meth:`~tqsdk.api.TqApi.wait_update` 时更新.
 
         注意:
-        1. 在 tqsdk 还没有收到行情数据包时, 此对象中各项内容为 NaN 或 0
-        2. 天勤接口从0.8版本开始，合约代码格式变更为 交易所代码.合约代码 的格式. 可用的交易所代码如下：
-            * CFFEX: 中金所
-            * SHFE: 上期所
-            * DCE: 大商所
-            * CZCE: 郑商所
-            * INE: 能源交易所(原油)
-            * SSE: 上交所
-            * SZSE: 深交所
-            * GFEX: 广期所
+
+            1. 在 tqsdk 还没有收到行情数据包时, 此对象中各项内容为 NaN 或 0
+            2. 天勤接口从0.8版本开始，合约代码格式变更为 交易所代码.合约代码 的格式. 可用的交易所代码如下：
+
+               * CFFEX: 中金所
+               * SHFE: 上期所
+               * DCE: 大商所
+               * CZCE: 郑商所
+               * INE: 能源交易所(原油)
+               * SSE: 上交所
+               * SZSE: 深交所
+               * GFEX: 广期所
 
         Example1::
 
@@ -460,16 +469,18 @@ class TqApi(TqBaseApi):
             list of :py:class:`~tqsdk.objs.Quote`: 返回一个列表，每个元素为指定合约盘口行情引用。
 
         注意:
-        1. 在 tqsdk 还没有收到行情数据包时, 此对象中各项内容为 NaN 或 0
-        2. 天勤接口从0.8版本开始，合约代码格式变更为 交易所代码.合约代码 的格式. 可用的交易所代码如下：
-            * CFFEX: 中金所
-            * SHFE: 上期所
-            * DCE: 大商所
-            * CZCE: 郑商所
-            * INE: 能源交易所(原油)
-            * SSE: 上交所
-            * SZSE: 深交所
-            * GFEX: 广期所
+
+            1. 在 tqsdk 还没有收到行情数据包时, 此对象中各项内容为 NaN 或 0
+            2. 天勤接口从0.8版本开始，合约代码格式变更为 交易所代码.合约代码 的格式. 可用的交易所代码如下：
+
+               * CFFEX: 中金所
+               * SHFE: 上期所
+               * DCE: 大商所
+               * CZCE: 郑商所
+               * INE: 能源交易所(原油)
+               * SSE: 上交所
+               * SZSE: 深交所
+               * GFEX: 广期所
 
         Example::
 
@@ -625,22 +636,17 @@ class TqApi(TqBaseApi):
 
             chart_id (str): [Deprecated] 由 api 自动生成，此参数不再使用
 
-            **获取后的 kline 对象请不要修改/重命名原始的 kline 序列，可能会导致后续的 kline 数据不更新 **
+            注意:
+                获取后的 kline 对象请不要修改/重命名原始的 kline 序列，可能会导致后续的 kline 数据不更新。
 
-            **注：关于传入合约代码列表 获取多合约K线的说明：**
+            关于传入合约代码列表获取多合约 K 线的说明:
 
-            1. 主合约的字段名为原始K线数据字段，从第一个副合约开始，字段名在原始字段后加数字，如第一个副合约的开盘价为 "open1" , 第二个副合约的收盘价为 "close2"。
-
-            2. 每条K线都包含了订阅的所有合约数据，即：如果任意一个合约（无论主、副）在某个时刻没有数据（即使其他合约在此时有数据）,\
-                则不能对齐，此多合约K线在该时刻那条数据被跳过，现象表现为K线不连续（如主合约有夜盘，而副合约无夜盘，则生成的多合约K线无夜盘时间的数据）。
-
-            3. 若设置了较大的序列长度参数，而所有可对齐的数据并没有这么多，则序列前面部分数据为NaN（这与获取单合约K线且数据不足序列长度时情况相似）。
-
-            4. 若主合约与副合约的交易时间在所有合约数据中最晚一根K线时间开始往回的 10000*周期 时间段内完全不重合，则无法生成多合约K线，程序会报出获取数据超时异常。
-
-            5. datetime、duration是所有合约公用的字段，则未单独为每个副合约增加一份副本，这两个字段使用原始字段名（即没有数字后缀）。
-
-            6. **暂不支持复权** 获取多合约K线，若填入 adj_type，程序会报参数错误。
+                1. 主合约的字段名为原始 K 线数据字段，从第一个副合约开始，字段名在原始字段后加数字，如第一个副合约的开盘价为 "open1"，第二个副合约的收盘价为 "close2"。
+                2. 每条 K 线都包含了订阅的所有合约数据，即：如果任意一个合约（无论主、副）在某个时刻没有数据（即使其他合约在此时有数据），则不能对齐，此多合约 K 线在该时刻那条数据被跳过，现象表现为 K 线不连续（如主合约有夜盘，而副合约无夜盘，则生成的多合约 K 线无夜盘时间的数据）。
+                3. 若设置了较大的序列长度参数，而所有可对齐的数据并没有这么多，则序列前面部分数据为 NaN（这与获取单合约 K 线且数据不足序列长度时情况相似）。
+                4. 若主合约与副合约的交易时间在所有合约数据中最晚一根 K 线时间开始往回的 10000*周期 时间段内完全不重合，则无法生成多合约 K 线，程序会报出获取数据超时异常。
+                5. datetime、duration 是所有合约公用的字段，则未单独为每个副合约增加一份副本，这两个字段使用原始字段名（即没有数字后缀）。
+                6. 暂不支持复权获取多合约 K 线，若填入 adj_type，程序会报参数错误。
 
         Returns:
             pandas.DataFrame: 本函数总是返回一个 pandas.DataFrame 实例. 行数=data_length, 包含以下列:
@@ -1151,7 +1157,7 @@ class TqApi(TqBaseApi):
                      limit_price: Union[str, float, None] = None, advanced: Optional[str] = None,
                      order_id: Optional[str] = None, account: Optional[UnionTradeable] = None) -> Order:
         """
-        发送下单指令. **注意: 指令将在下次调用** :py:meth:`~tqsdk.api.TqApi.wait_update` **时发出**
+        发送下单指令。调用后会立即返回，委托请求会在下一次 :py:meth:`~tqsdk.api.TqApi.wait_update` 时发出。
 
         Args:
             symbol (str): 拟下单的合约symbol, 格式为 交易所代码.合约代码,  例如 "SHFE.cu1801"
@@ -1503,6 +1509,86 @@ class TqApi(TqBaseApi):
         self._send_pack(msg)
 
     # ----------------------------------------------------------------------
+    def _get_margin_rate(self, quote: Quote, direction: str, account: Union[TqSim, TqAccount, TqKq]) -> float:
+        """
+        内部接口：通过 OTG pre_insert_order 获取指定合约和方向的保证金率。
+        同步函数，内部循环调用 wait_update 直到收到对应的保证金信息。
+
+        根据 OTG 返回的一手预占用保证金，反推出按金额计算的保证金比率：
+            margin_rate = pre_margin / (volume_multiple × pre_settlement)
+
+        Args:
+            quote: 合约行情对象
+            direction: "BUY" 或 "SELL"
+            account: 指定账户实例
+
+        Returns:
+            float: 按金额计算的保证金比率
+        """
+        def _calculate_margin_rate(margin, volume_multiple, pre_settlement):
+            return round(margin / (volume_multiple * pre_settlement), 2) if margin > 0 and volume_multiple > 0 and pre_settlement > 0 else 0.0
+
+        # 模拟账号直接使用模拟的保证金率
+        if isinstance(account, TqSim):
+            margin_rate = _calculate_margin_rate(quote.margin, quote.volume_multiple, quote.pre_settlement)
+            return margin_rate
+
+        # 实盘账号查询保证金率，先查询缓存，如果缓存没有，则查询OTG
+        account_key = self._account._get_account_key(account)
+        symbol = quote.instrument_id
+        cache_key = (account_key, symbol, direction)
+        if cache_key in self._requests["margin_rates"]:
+            return self._requests["margin_rates"][cache_key]
+
+        user_id = self._account._get_account_id(account)
+        exchange_id, instrument_id = symbol.split(".", 1)
+        order_id = account_key + "_" + user_id
+        pack = {
+            "aid": "pre_insert_order",
+            "account_key": account_key,
+            "user_id": user_id,
+            "order_id": order_id,
+            "exchange_id": exchange_id,
+            "instrument_id": instrument_id,
+            "direction": direction,
+            "offset": "OPEN",
+            "limit_price": 0.0,
+            "volume": 1,
+            "price_type": "LIMIT",
+            "volume_condition": "ANY",
+            "time_condition": "GFD",
+            "hedge_flag": "SPECULATION",
+            "contingent_condition": "IMMEDIATELY",
+        }
+
+        try:
+            # 在 treadable.py 中会校验交易请求，校验通过后会把 account_key 从 pack 中移除
+            self._send_pack(pack.copy())
+
+            def _get_pre_margin():
+                """从 _data 中取出当前合约方向的 pre_margin，安全转为 float"""
+                obj = _get_obj(self._data, ["trade", account_key, "pre_insert_orders", order_id])
+                if obj.get("exchange_id", "") != exchange_id or obj.get("instrument_id", "") != instrument_id or obj.get("direction", "") != direction:
+                    return 0.0
+                try:
+                    return float(obj.get("pre_margin", 0.0))
+                except (TypeError, ValueError):
+                    return 0.0
+            self._wait_update_until(lambda: _get_pre_margin() > 0, deadline=time.time() + 5)
+
+            pre_margin = _get_pre_margin()
+            if pre_margin > 0.0:
+                margin_rate = _calculate_margin_rate(pre_margin, quote.volume_multiple, quote.pre_settlement)
+                self._requests["margin_rates"][cache_key] = margin_rate
+                return margin_rate
+            else:
+                self._print(f"获取实盘合约{symbol}的保证金率失败，降级到使用 Quote 中的 margin 信息", "WARNING")
+                return _calculate_margin_rate(quote.margin, quote.volume_multiple, quote.pre_settlement)
+        finally:
+            pack["instrument_id"] = ""
+            self._send_pack(pack)
+
+    # ----------------------------------------------------------------------
     def get_account(self, account: Optional[UnionTradeable] = None) -> Account:
         """
         获取用户账户资金信息
@@ -1540,7 +1626,7 @@ class TqApi(TqBaseApi):
             api = TqApi(TqMultiAccount([account1, account2]), auth=TqAuth("快期账户", "账户密码"))
             account_info1 = account1.get_account()
             account_info2 = account2.get_account()
-            print("账户 1 浮动盈亏 %f, 账户 2 浮动盈亏 %f", account_info1.float_profit, account_info2.float_profit)
+            print("账户 1 浮动盈亏 %f, 账户 2 浮动盈亏 %f" % (account_info1.float_profit, account_info2.float_profit))
             api.close()
 
             # 预计的输出是这样的:
@@ -1570,7 +1656,7 @@ class TqApi(TqBaseApi):
 
             期货账户持仓返回对象类型为 :py:class:`~tqsdk.objs.Position`，股票账户持仓返回对象类型为 :py:class:`~tqsdk.objs.SecurityPosition`。
 
-            不填 symbol 参数调用本函数, 将返回包含用户所有持仓的一个tqsdk.objs.Entity对象引用, 使用方法与dict一致, \
+            不填 symbol 参数调用本函数, 将返回包含用户所有持仓的一个 tqsdk.objs.Entity 对象引用，可像 dict 一样按 key 访问，\
             其中每个元素的key为合约代码, value为 :py:class:`~tqsdk.objs.Position`。
 
             注意: 为保留一些可供用户查询的历史信息, 如 volume_long_yd(本交易日开盘前的多头持仓手数) 等字段, 因此服务器会返回当天已平仓合约( pos_long 和 pos_short 等字段为0)的持仓信息
@@ -1601,8 +1687,13 @@ class TqApi(TqBaseApi):
             api = TqApi(TqMultiAccount([account1, account2]), auth=TqAuth("快期账户", "账户密码"))
             position1 = account1.get_position("DCE.m2101")
             position2 = account2.get_position("DCE.m2101")
-            print("账户 1 浮动盈亏 %f, 账户 2 浮动盈亏 %f", position1.float_profit_long + position2.float_profit_short,
-                  position1.float_profit_long + position2.float_profit_short)
+            print(
+                "账户 1 浮动盈亏 %f, 账户 2 浮动盈亏 %f"
+                % (
+                    position1.float_profit_long + position1.float_profit_short,
+                    position2.float_profit_long + position2.float_profit_short,
+                )
+            )
             api.close()
 
             # 预计的输出是这样的:
@@ -1638,8 +1729,8 @@ class TqApi(TqBaseApi):
 
             期货账户委托单返回对象类型为 :py:class:`~tqsdk.objs.Order`，股票账户委托单返回对象类型为 :py:class:`~tqsdk.objs.SecurityOrder`。
 
-            不填order_id参数调用本函数, 将返回包含用户所有委托单的一个tqsdk.objs.Entity对象引用, \
-            使用方法与dict一致, 其中每个元素的key为委托单号, value为 :py:class:`~tqsdk.objs.Order`
+            不填 order_id 参数调用本函数, 将返回包含用户所有委托单的一个 tqsdk.objs.Entity 对象引用，\
+            可像 dict 一样按 key 访问，其中每个元素的 key 为委托单号, value 为 :py:class:`~tqsdk.objs.Order`
 
             注意: 在刚下单后, tqsdk 还没有收到回单信息时, 此对象中各项内容为空
 
@@ -1700,8 +1791,8 @@ class TqApi(TqBaseApi):
 
             期货账户成交返回对象类型为 :py:class:`~tqsdk.objs.Trade`，股票账户成交返回对象类型为 :py:class:`~tqsdk.objs.SecurityTrade`。
 
-            不填trade_id参数调用本函数, 将返回包含用户当前交易日所有成交记录的一个tqsdk.objs.Entity对象引用, 使用方法与dict一致, \
-            其中每个元素的key为成交号, value为 :py:class:`~tqsdk.objs.Trade`
+            不填 trade_id 参数调用本函数, 将返回包含用户当前交易日所有成交记录的一个 tqsdk.objs.Entity 对象引用，可像 dict 一样按 key 访问，\
+            其中每个元素的 key 为成交号, value 为 :py:class:`~tqsdk.objs.Trade`
 
             推荐优先使用 :py:meth:`~tqsdk.objs.Order.trade_records` 获取某个委托单的相应成交记录, 仅当确有需要时才使用本函数.
 
@@ -1742,7 +1833,7 @@ class TqApi(TqBaseApi):
         Returns:
             :py:class:`~tqsdk.objs.RiskManagementRule`: 当指定了 exchange_id 时, 返回该交易所的风控统计规则对象的引用.
 
-            不填 exchange_id 参数调用本函数, 将返回包含所有交易所风控规则的一个 tqsdk.objs.Entity 对象引用, 使用方法与dict一致, \
+            不填 exchange_id 参数调用本函数, 将返回包含所有交易所风控规则的一个 tqsdk.objs.Entity 对象引用，可像 dict 一样按 key 访问，\
             其中每个元素的 key 为交易所代码, value为 :py:class:`~tqsdk.objs.RiskManagementRule`。
 
         Example::
@@ -1870,22 +1961,25 @@ class TqApi(TqBaseApi):
         """
         等待业务数据更新
 
-        调用此函数将阻塞当前线程, 等待天勤主进程发送业务数据更新并返回
+        这是 TqApi 主循环里最重要的函数。调用它时，当前线程会阻塞，直到收到业务数据更新，或者到达 ``deadline``。
 
-        注: 它是TqApi中最重要的一个函数, 每次调用它时都会发生这些事:
-            * 实际发出网络数据包(如行情订阅指令或交易指令等).
-            * 尝试从服务器接收一个数据包, 并用收到的数据包更新内存中的业务数据截面.
-            * 让正在运行中的后台任务获得动作机会(如策略程序创建的后台调仓任务只会在wait_update()时发出交易指令).
-            * 如果没有收到数据包，则挂起等待.
+        每次调用 ``wait_update()`` 都会同时完成这些工作:
+            * 实际发出待发送的网络请求（如行情订阅、下单、撤单等）。
+            * 推进正在运行的后台任务（如 TargetPosTask 等调仓任务）。
+            * 尝试从服务器接收并合并新的业务数据包。
+            * 如果当前没有新数据，则继续等待。
 
         Args:
-            deadline (float): [可选]指定截止时间，自unix epoch(1970-01-01 00:00:00 GMT)以来的秒数(time.time())。默认没有超时(无限等待), 当 wait_update 有数据更新或者任务执行时会返回为 True，否则会陷入阻塞，使用 deadline 参数会让 wait_update 函数在当前时间大于 deadline 参数后返回 False ，避免长时间阻塞。非简单用法，如果设置的 deadline 过小，而计算任务过多，可能会导致处理任务堆积，引发潜在问题。
+            deadline (float): [可选] 指定截止时间，自 unix epoch(1970-01-01 00:00:00 GMT) 以来的秒数（time.time()）。
+                * 不填: 无限等待，直到有业务数据更新。
+                * 填写后: 到达 deadline 仍没有业务数据更新，则返回 False。
+                * 如果 deadline 设置得过小，而本地计算任务较多，可能导致任务处理堆积。
 
         Returns:
-            bool: 如果收到业务数据更新则返回 True, 如果到截止时间依然没有收到业务数据更新则返回 False
+            bool: 如果收到业务数据更新则返回 True；如果到截止时间依然没有收到业务数据更新则返回 False。
 
         注意:
-            * 由于存在网络延迟, 因此有数据更新不代表之前发出的所有请求都被处理了, 例如::
+            * 由于存在网络延迟，有数据更新并不代表之前发出的所有请求都已经处理完成。例如::
 
                 from tqsdk import TqApi, TqAuth
 
@@ -2326,30 +2420,40 @@ class TqApi(TqBaseApi):
             * symbol (交易所内合约代码)
             * settlement (结算价)
 
-            注意:
+        注意:
+
             1. 每日结算价产生时间: 每天的 18:30 ~ 19:00：
-                * 如果想查询交易日 20241011 的结算价，需要在 20241011 的 19:00 之后查询，否则无法获取 20241011 的数据
-            
+
+               * 如果想查询交易日 20241011 的结算价，需要在 20241011 的 19:00 之后查询，否则无法获取 20241011 的数据
+
             2. 如果没有指定 start_dt 参数，则返回当前日期前，已经产生的 days 个交易日的结算价数据：
-                * 此处的 days 指的是交易日数，会自动跳过节假日、周末等非交易日
-                * 假设当前日期是 20241011，days=7：
-                    * 在 19:00 前查询，返回 20240925 20240926 20240927 20240930 20241008 20241009 20241010 的结算价信息
-                    * 在 19:00 后查询，返回 20240926 20240927 20240930 20241008 20241009 20241010 20241011 的结算价信息
+
+               * 此处的 days 指的是交易日数，会自动跳过节假日、周末等非交易日
+               * 假设当前日期是 20241011，days=7：
+
+                 * 在 19:00 前查询，返回 20240925 20240926 20240927 20240930 20241008 20241009 20241010 的结算价信息
+                 * 在 19:00 后查询，返回 20240926 20240927 20240930 20241008 20241009 20241010 20241011 的结算价信息
 
             3. 如果指定了 start_dt 参数，则返回从 start_dt 日期起，已经产生的 days 个交易日的结算价数据：
-                * 假设开始日期为 20241008，当前日期是 20241011：
-                    * 假设 days=3，返回 20241008 20241009 20241010 三天的结算价信息
-                    * 假设 days=4，如果在 19:00 之前查询，返回 20241008 20241009 20241010 三天的结算价信息
-                    * 假设 days=4，如果在 19:00 之后查询，返回 20241008 20241009 20241010 20241011 四天的结算价信息
-            
+
+               * 假设开始日期为 20241008，当前日期是 20241011：
+
+                 * 假设 days=3，返回 20241008 20241009 20241010 三天的结算价信息
+                 * 假设 days=4，如果在 19:00 之前查询，返回 20241008 20241009 20241010 三天的结算价信息
+                 * 假设 days=4，如果在 19:00 之后查询，返回 20241008 20241009 20241010 20241011 四天的结算价信息
+
             4. 数据支持范围：
-                * 期货数据：
-                    * 中金所、上期所、上能所、大商所、郑商所：20200102 起
-                    * 广期所：20221226 起
-                * 期权数据：
-                    * 中金所、上期所、大商所、郑商所：20200102 起
-                    * 上能所：20210621 起
-                    * 广期所：20221226 起
+
+               * 期货数据：
+
+                 * 中金所、上期所、上能所、大商所、郑商所：20200102 起
+                 * 广期所：20221226 起
+
+               * 期权数据：
+
+                 * 中金所、上期所、大商所、郑商所：20200102 起
+                 * 上能所：20210621 起
+                 * 广期所：20221226 起
 
 
         Example::
@@ -2384,20 +2488,16 @@ class TqApi(TqBaseApi):
         查询非量价指标数据
 
         EDB 指标数据说明：
-            - EDB 指标数据网站入口：`https://edb.shinnytech.com`
-            - 指标 id 列表、指标含义、以及数据可视化展示，可在上述网站中在线查询与查看
+
+            * EDB 指标数据网站入口：``https://edb.shinnytech.com``
+            * 指标 id 列表、指标含义、以及数据可视化展示，可在上述网站中在线查询与查看
 
         Args:
             ids (list[int]): [必填] 指标 id 列表
             start_dt (date): [必填] 起始日期（包含）
             end_dt (date): [必填] 结束日期（包含）
-            align (str/None): [可选] 对齐方式：
-                - None [默认]：仅返回实际有值的日期（稀疏），不补齐缺失日期
-                - "day"：在 [start_dt, end_dt] 内按自然日补齐日期
-            fill (str/None): [可选] 填充方式（仅在 align="day" 时生效）：
-                - None [默认]：不填充，缺失为 NaN
-                - "ffill"：用前一个已知值向后填充
-                - "bfill"：用后一个已知值向前填充
+            align (str/None): [可选] 对齐方式。None [默认] 表示仅返回实际有值的日期（稀疏），不补齐缺失日期；``"day"`` 表示在 ``[start_dt, end_dt]`` 内按自然日补齐日期。
+            fill (str/None): [可选] 填充方式（仅在 ``align="day"`` 时生效）。None [默认] 表示不填充，缺失为 NaN；``"ffill"`` 表示用前一个已知值向后填充；``"bfill"`` 表示用后一个已知值向前填充。
 
         Returns:
             pandas.DataFrame: 本函数返回 pandas.DataFrame 实例。返回值不会再更新。包含以下结构说明:
@@ -2533,13 +2633,13 @@ class TqApi(TqBaseApi):
             * short_change (空头持仓增减量)
             * short_ranking (空头持仓量排名)
 
-            注意:
-            1. 返回值中 datetime、symbol、exchange_id、instrument_id、broker 这几列一定为有效值。其他列会根据不同的 ranking_type 参数值，可能返回 nan：
-                * 例如：当 ranking_type 参数值为 volume_ranking 时，volume、volume_change、volume_ranking 这三列为有效值；
-                    如果该期货公司的 long_ranking 在前 20 名内，long_oi、long_change、long_ranking 这三列为有效值，否则为 nan。
-                    如果该期货公司的 short_ranking 在前 20 名内，short_oi、short_change、short_ranking 这三列为有效值，否则为 nan。
+        注意:
 
-            2. 数据更新时间: 18:30~19:00。 用户在交易日 19:00 之前可以查询当前交易日之前的所有数据，19:00 之后可以查询包括当前交易日的数据。
+            1. 返回值中 datetime、symbol、exchange_id、instrument_id、broker 这几列一定为有效值。其他列会根据不同的 ranking_type 参数值，可能返回 nan：
+
+               * 例如：当 ranking_type 参数值为 volume_ranking 时，volume、volume_change、volume_ranking 这三列为有效值；如果该期货公司的 long_ranking 在前 20 名内，long_oi、long_change、long_ranking 这三列为有效值，否则为 nan。如果该期货公司的 short_ranking 在前 20 名内，short_oi、short_change、short_ranking 这三列为有效值，否则为 nan。
+
+            2. 数据更新时间: 18:30~19:00。用户在交易日 19:00 之前可以查询当前交易日之前的所有数据，19:00 之后可以查询包括当前交易日的数据。
 
             3. 数据支持范围：从 20200720 开始的期货数据。
 
@@ -2781,6 +2881,7 @@ class TqApi(TqBaseApi):
 
     def query_options(self, underlying_symbol: str, option_class: str = None, exercise_year: int = None,
                       exercise_month: int = None, strike_price: float = None, expired: bool = None, has_A: bool = None,
+                      has_MS: bool = None,
                       **kwargs) -> SymbolList:
         """
         发送合约服务请求查询，查询符合条件的期权列表，并返回查询结果
@@ -2801,6 +2902,8 @@ class TqApi(TqBaseApi):
             expired (bool): [可选] 是否下市
 
             has_A (bool): [可选] 是否含有A，输入True代表只含A的期权，输入False代表不含A的期权，默认为None不做区分
+
+            has_MS (bool): [可选] 是否含有 MS 系列，输入 True 代表只含 MS 系列期权，输入 False 代表排除 MS 系列期权，默认为 None 不做区分
 
         Returns:
             list: 符合筛选条件的合约代码的列表，例如: ["SHFE.cu2012C24000", "SHFE.cu2012P24000"]
@@ -2836,28 +2939,25 @@ class TqApi(TqBaseApi):
         query = self._query_options_by_underlying(underlying_symbol)
 
         def filter(query_result):
-            options = []
             exe_year = exercise_year if exercise_year else kwargs.get("delivery_year")
             exe_month = exercise_month if exercise_month else kwargs.get("delivery_month")
-            for quote in query_result.get("result", {}).get("multi_symbol_info", []):
-                if quote.get("derivatives"):
-                    for edge in quote["derivatives"]["edges"]:
-                        option = edge["node"]
-                        if (option_class and option["call_or_put"] != option_class) \
-                                or (exe_year and _timestamp_nano_to_datetime(option["last_exercise_datetime"]).year != exe_year) \
-                                or (exe_month and _timestamp_nano_to_datetime(option["last_exercise_datetime"]).month != exe_month) \
-                                or (strike_price and option["strike_price"] != strike_price) \
-                                or (expired is not None and option["expired"] != expired) \
-                                or (has_A is True and option["english_name"].count('A') == 0) \
-                                or (has_A is False and option["english_name"].count('A') > 0):
-                            continue
-                        options.append(option["instrument_id"])
-            return options
+            options = self._convert_query_result_to_list(query_result)
+            options = self._get_options_filtered(
+                options,
+                option_class=option_class,
+                exercise_year=exe_year,
+                exercise_month=exe_month,
+                strike_price=strike_price,
+                expired=expired,
+                has_A=has_A,
+                has_MS=has_MS,
+            )
+            return [option["instrument_id"] for option in options]
 
         return self._get_symbol_list(query=query, filter=filter)
 
     def query_atm_options(self, underlying_symbol, underlying_price, price_level, option_class, exercise_year: int = None,
-                         exercise_month: int = None, has_A: bool = None) -> SymbolList:
+                         exercise_month: int = None, has_A: bool = None, has_MS: bool = None) -> SymbolList:
         """
         Args:
             underlying_symbol (str): [必填] 标的合约 （目前每个标的只对应一个交易所的期权）
@@ -2876,6 +2976,8 @@ class TqApi(TqBaseApi):
             exercise_month (str): [ETF 期权、股指期权必填] 期权最后行权日月份
 
             has_A (bool): [可选] 是否含有 A，输入True代表只含A的期权，输入False代表不含A的期权，默认为None不做区分
+
+            has_MS (bool): [可选] 是否含有 MS 系列，输入 True 代表只含 MS 系列期权，输入 False 代表排除 MS 系列期权，默认为 None 不做区分
 
             **注：当选择平值期权时，会按以下逻辑进行选择：**
 
@@ -2949,7 +3051,8 @@ class TqApi(TqBaseApi):
             options = self._convert_query_result_to_list(query_result)
             if len(options) == 0:
                 return []
-            options = self._get_options_filtered(options, option_class=option_class, exercise_year=exercise_year, exercise_month=exercise_month, has_A=has_A)
+            options = self._get_options_filtered(options, option_class=option_class, exercise_year=exercise_year,
+                                                 exercise_month=exercise_month, has_A=has_A, has_MS=has_MS)
             if len(options) == 0:
                 return []
             options, option_0_index = self._get_options_sorted(options, underlying_price, option_class)
@@ -2991,6 +3094,12 @@ class TqApi(TqBaseApi):
             * volume_multiple: 合约乘数
             * max_limit_order_volume: 最大限价单手数
             * max_market_order_volume: 最大市价单手数
+            * min_limit_order_volume: 最小限价单手数
+            * min_market_order_volume: 最小市价单手数
+            * open_max_market_order_volume: 最大市价开仓手数
+            * open_max_limit_order_volume: 最大限价开仓手数
+            * open_min_market_order_volume: 最小市价开仓手数
+            * open_min_limit_order_volume: 最小限价开仓手数
             * underlying_symbol: 标的合约 （CONT OPTION 类型的合约此字段有效）
             * strike_price: 期权行权价
             * expired: 合约是否已下市
@@ -3064,7 +3173,7 @@ class TqApi(TqBaseApi):
         return df
 
     def query_all_level_options(self, underlying_symbol, underlying_price, option_class, exercise_year: int = None,
-                         exercise_month: int = None, has_A: bool = None) -> SymbolList:
+                         exercise_month: int = None, has_A: bool = None, has_MS: bool = None) -> SymbolList:
         """
         发送合约服务请求查询，查询符合条件的期权列表，返回全部的实值、平值、虚值期权
 
@@ -3082,6 +3191,8 @@ class TqApi(TqBaseApi):
             exercise_month (str): [ETF 期权、股指期权必填] 期权最后行权日月份
 
             has_A (bool): [可选] 是否含有 A，输入True代表只含A的期权，输入False代表不含A的期权，默认为None不做区分
+
+            has_MS (bool): [可选] 是否含有 MS 系列，输入 True 代表只含 MS 系列期权，输入 False 代表排除 MS 系列期权，默认为 None 不做区分
 
         return:
             返回三个列表，分别为实值期权列表、平值期权列表、虚值期权列表。其中，平值期权列表只包含一个元素。
@@ -3121,7 +3232,8 @@ class TqApi(TqBaseApi):
             options = self._convert_query_result_to_list(query_result)
             if len(options) == 0:
                 return [], [], []
-            options = self._get_options_filtered(options, option_class=option_class, exercise_year=exercise_year, exercise_month=exercise_month, has_A=has_A)
+            options = self._get_options_filtered(options, option_class=option_class, exercise_year=exercise_year,
+                                                 exercise_month=exercise_month, has_A=has_A, has_MS=has_MS)
             if len(options) == 0:
                 return [], [], []
             options, option_0_index = self._get_options_sorted(options, underlying_price, option_class)
@@ -3283,7 +3395,18 @@ class TqApi(TqBaseApi):
     def _options_filter(self, options, filter_handler):
         return list(filter(filter_handler, options))
 
-    def _get_options_filtered(self, options, option_class=None, exercise_year=None, exercise_month=None, has_A=None, nearbys=None):
+    def _has_ms_symbol(self, option: dict) -> bool:
+        instrument_id = option["instrument_id"]
+        exchange_id = option.get("exchange_id") or instrument_id.split(".", 1)[0]
+        symbol = instrument_id.split(".", 1)[1]
+        if exchange_id == "CZCE":
+            return re.fullmatch(r"[A-Za-z]+[0-9]+MS[CP][0-9]+", symbol) is not None
+        if exchange_id == "DCE":
+            return re.fullmatch(r"[A-Za-z]+[0-9]+-MS-[CP]-[0-9]+", symbol) is not None
+        return False
+
+    def _get_options_filtered(self, options, option_class=None, exercise_year=None, exercise_month=None,
+                              strike_price=None, expired=None, has_A=None, has_MS=None, nearbys=None):
         """
         按照参数中的条件筛选期权
         满足以下条件之一：
@@ -3292,7 +3415,10 @@ class TqApi(TqBaseApi):
         """
         options = self._options_filter(options,
                     lambda o: (option_class is None or o["call_or_put"] == option_class)
+                      and (strike_price is None or o["strike_price"] == strike_price)
+                      and (expired is None or o["expired"] == expired)
                       and (has_A is None or (has_A is True and o["english_name"].count('A') > 0) or (has_A is False and o["english_name"].count('A') == 0))
+                      and (has_MS is None or self._has_ms_symbol(o) is has_MS)
                       and (exercise_year is None or o["exercise_year"] == exercise_year)
                       and (exercise_month is None or o["exercise_month"] == exercise_month)
                     )

@@ -495,7 +495,6 @@ class SimTrade(SimTradeBase):
                               position_profit_short, margin_long, margin_short, market_value_long, market_value_short)
         self._adjust_account_by_position(float_profit=float_profit_long + float_profit_short,
                                          position_profit=position_profit_long + position_profit_short,
-                                         margin=margin_long + margin_short,
                                          market_value=market_value_long + market_value_short)
 
     # -------- 对于 position 的计算字段修改分为两类：
@@ -566,16 +565,33 @@ class SimTrade(SimTradeBase):
         self._account["available"] += close_profit - commission + premium
         self._account["risk_ratio"] = self._account["margin"] / self._account["balance"]
 
-    def _adjust_account_by_position(self, float_profit=0, position_profit=0, margin=0, market_value=0):
+    def _adjust_account_by_position(self, float_profit=0, position_profit=0, market_value=0):
         """由 position 变化，account 需要更新的计算字段"""
         # account 计算字段，持仓字段求和的字段
         self._account["float_profit"] += float_profit
         self._account["position_profit"] += position_profit
-        self._account["margin"] += margin
         self._account["market_value"] += market_value
         # account 计算字段
         self._account["balance"] += position_profit + market_value
-        self._account["available"] += position_profit - margin
+        product_margins = {}
+        other_margin = 0.0
+        for symbol, position in self._positions.items():
+            quote, _ = self._get_quotes_by_symbol(symbol)
+            if quote["ins_class"] != "FUTURE":
+                other_margin += position["margin"]
+                continue
+            exchange_id = quote.get("exchange_id", position["exchange_id"])
+            product_id = quote.get("product_id")
+            if not product_id:
+                other_margin += position["margin"]
+                continue
+            key = f"{exchange_id}.{product_id}"
+            if key not in product_margins:
+                product_margins[key] = {"long": 0.0, "short": 0.0}
+            product_margins[key]["long"] += position["margin_long"]
+            product_margins[key]["short"] += position["margin_short"]
+        self._account["margin"] = other_margin + sum(max(item["long"], item["short"]) for item in product_margins.values())
+        self._account["available"] = self._account["balance"] - self._account["margin"] - self._account["frozen_margin"] - self._account["frozen_premium"] - self._account["market_value"]
         self._account["risk_ratio"] = self._account["margin"] / self._account["balance"]
 
     def _adjust_account_by_order(self, frozen_margin=0, frozen_premium=0):

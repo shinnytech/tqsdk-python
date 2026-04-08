@@ -111,7 +111,7 @@ class TqSim(BaseSim, FutureMixin):
             print(sim.get_margin("SHFE.cu2112"))
         """
         if margin != margin:
-            raise Exception("合约手续费不可以设置为 float('nan')")
+            raise Exception("合约保证金不可以设置为 float('nan')")
         quote = _get_obj(self._data, ["quotes", symbol], Quote(self._api if hasattr(self, "_api") else None))
         quote["user_margin"] = margin
         if self._quote_tasks.get(symbol):

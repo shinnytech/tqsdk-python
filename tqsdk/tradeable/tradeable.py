@@ -42,7 +42,7 @@ class Tradeable(ABC, TqModule):
 
     def _is_self_trade_pack(self, pack):
         """是否是当前交易实例应该处理的交易包"""
-        if pack["aid"] in ["insert_order", "cancel_order", "set_risk_management_rule"]:
+        if pack["aid"] in ["insert_order", "cancel_order", "set_risk_management_rule", "pre_insert_order"]:
             assert "account_key" in pack, "发给交易请求的包必须包含 account_key"
             if pack["account_key"] != self._account_key:
                 return False

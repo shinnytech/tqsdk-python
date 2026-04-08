@@ -102,6 +102,57 @@ TqSdk 多策略使用手册
 .. image:: ../images/tq_zq_broker.png
 
 
+日志导出
+=========
+如果您在使用过程中遇到问题，您可以把日志发给我们来帮助您查询
+
+导出日志前，需要先关闭 zq_server 和 zq_server_history_go 两个进程，然后打包日志目录并发送给我们
+
+**Linux**:
+
+.. code-block:: bash
+
+    pkill -f zq_server_history_go
+    pkill -f zq_server
+    tar -czf ~/tqsdk_zq_log.tar.gz -C ~ .tqsdk/zq/log
+
+**Windows** (PowerShell):
+
+.. code-block:: powershell
+
+    taskkill /F /IM zq_server_history_go.exe 2>$null
+    taskkill /F /IM zq_server.exe 2>$null
+    cd $env:USERPROFILE
+    tar -czf tqsdk_zq_log.tar.gz .tqsdk/zq/log
+
+压缩完成后，将生成的 ``tqsdk_zq_log.tar.gz`` 文件发送给我们即可
+
+
+重置本地环境
+-------------------------------------------------
+如果你想彻底清空所有本地数据，重新开始使用众期多策略系统，可以执行以下命令来重置本地环境：
+**Linux**:
+
+.. code-block:: bash
+
+    pkill -f zq_server_history_go
+    pkill -f zq_server
+    pkill -f sock-proxy
+    pkill -f postgres
+    rm -rf ~/.tqsdk/zq
+
+**Windows** (PowerShell):
+
+.. code-block:: powershell
+
+    taskkill /F /IM zq_server_history_go.exe 2>$null
+    taskkill /F /IM zq_server.exe 2>$null
+    taskkill /F /IM sock-proxy.exe 2>$null
+    taskkill /F /IM postgres.exe 2>$null
+    Remove-Item -Recurse -Force $env:USERPROFILE\.tqsdk\zq
+
+删除之后可以使用 ``tqsdk-zq init`` 来重新初始化环境
+
 其他事项
 =========
 - 当用户在众期多策略系统中添加实盘账户时，仍然占用企业版3个实盘账户的名额，如果需要额外购买实盘账户名额请联系我们的商务同事 QQ:1539404802
