@@ -47,6 +47,7 @@ class TqChan(asyncio.Queue):
         asyncio.Queue.__init__(self, loop=api._loop) if (py_ver.major == 3 and py_ver.minor < 10) else asyncio.Queue.__init__(self)
         self._last_only = last_only
         self._closed = False
+        self._log_enabled = self._logger.logger.isEnabledFor(TqChan._level)
 
     def _logger_bind(self, **kwargs):
         self._logger = self._logger.bind(**kwargs)
@@ -83,11 +84,11 @@ class TqChan(asyncio.Queue):
             item (any): 待发送的对象
         """
         if not self._closed:
-            if self._last_only:
-                while not self.empty():
-                    asyncio.Queue.get_nowait(self)
+            if self._last_only and self._queue:
+                self._queue.clear()
             await asyncio.Queue.put(self, item)
-            self._logger.log(TqChan._level, "tqchan send", item=self._sanitize_log_item(item))
+            if self._log_enabled:
+                self._logger.log(TqChan._level, "tqchan send", item=self._sanitize_log_item(item))
 
     def send_nowait(self, item: Any) -> None:
         """
@@ -100,11 +101,11 @@ class TqChan(asyncio.Queue):
             asyncio.QueueFull: 如果channel已满则会抛出 asyncio.QueueFull
         """
         if not self._closed:
-            if self._last_only:
-                while not self.empty():
-                    asyncio.Queue.get_nowait(self)
+            if self._last_only and self._queue:
+                self._queue.clear()
             asyncio.Queue.put_nowait(self, item)
-            self._logger.log(TqChan._level, "tqchan send_nowait", item=self._sanitize_log_item(item))
+            if self._log_enabled:
+                self._logger.log(TqChan._level, "tqchan send_nowait", item=self._sanitize_log_item(item))
 
     async def recv(self) -> Any:
         """
@@ -116,7 +117,8 @@ class TqChan(asyncio.Queue):
         if self._closed and self.empty():
             return None
         item = await asyncio.Queue.get(self)
-        self._logger.log(TqChan._level, "tqchan recv", item=self._sanitize_log_item(item))
+        if self._log_enabled:
+            self._logger.log(TqChan._level, "tqchan recv", item=self._sanitize_log_item(item))
         return item
 
     def recv_nowait(self) -> Any:
@@ -132,7 +134,8 @@ class TqChan(asyncio.Queue):
         if self._closed and self.empty():
             return None
         item = asyncio.Queue.get_nowait(self)
-        self._logger.log(TqChan._level, "tqchan recv_nowait", item=self._sanitize_log_item(item))
+        if self._log_enabled:
+            self._logger.log(TqChan._level, "tqchan recv_nowait", item=self._sanitize_log_item(item))
         return item
 
     def recv_latest(self, latest: Any) -> Any:
@@ -147,7 +150,8 @@ class TqChan(asyncio.Queue):
         """
         while (self._closed and self.qsize() > 1) or (not self._closed and not self.empty()):
             latest = asyncio.Queue.get_nowait(self)
-        self._logger.log(TqChan._level, "tqchan recv_latest", item=self._sanitize_log_item(latest))
+        if self._log_enabled:
+            self._logger.log(TqChan._level, "tqchan recv_latest", item=self._sanitize_log_item(latest))
         return latest
 
     def __aiter__(self):
@@ -157,7 +161,8 @@ class TqChan(asyncio.Queue):
         value = await asyncio.Queue.get(self)
         if self._closed and self.empty():
             raise StopAsyncIteration
-        self._logger.log(TqChan._level, "tqchan recv_next", item=self._sanitize_log_item(value))
+        if self._log_enabled:
+            self._logger.log(TqChan._level, "tqchan recv_next", item=self._sanitize_log_item(value))
         return value
 
     async def __aenter__(self):

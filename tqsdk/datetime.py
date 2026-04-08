@@ -60,10 +60,20 @@ def _timestamp_nano_to_datetime(nano: int) -> datetime.datetime:
 
 
 def _timestamp_nano_to_str(nano: int, fmt="%Y-%m-%d %H:%M:%S.%f") -> str:
+    if fmt == "%Y-%m-%d %H:%M:%S.%f":
+        dt = datetime.datetime.fromtimestamp((nano // 1000) / 1000000, tz=_cst_tz)
+        return f"{dt.year:04d}-{dt.month:02d}-{dt.day:02d} {dt.hour:02d}:{dt.minute:02d}:{dt.second:02d}.{dt.microsecond:06d}"
     return datetime.datetime.fromtimestamp((nano // 1000) / 1000000, tz=_cst_tz).strftime(fmt)
 
 
 def _str_to_timestamp_nano(current_datetime: str, fmt="%Y-%m-%d %H:%M:%S.%f") -> int:
+    if fmt == "%Y-%m-%d %H:%M:%S.%f":
+        # Fast path: parse "YYYY-MM-DD HH:MM:SS.ffffff" directly
+        dt = datetime.datetime(int(current_datetime[0:4]), int(current_datetime[5:7]),
+                               int(current_datetime[8:10]), int(current_datetime[11:13]),
+                               int(current_datetime[14:16]), int(current_datetime[17:19]),
+                               int(current_datetime[20:26]), tzinfo=_cst_tz)
+        return int(dt.timestamp() * 1000000) * 1000
     return _datetime_to_timestamp_nano(datetime.datetime.strptime(current_datetime, fmt))
 
 
@@ -96,41 +106,77 @@ def _get_trading_day_from_timestamp(timestamp):
 
 def _get_trading_timestamp(quote, current_datetime: str):
     """ 将 quote 在 current_datetime 所在交易日的所有可交易时间段转换为纳秒时间戳(tqsdk内部使用的时间戳统一为纳秒)并返回 """
-    # 获取当前交易日时间戳
-    current_trading_day_timestamp = _get_trading_day_from_timestamp(_str_to_timestamp_nano(current_datetime))
-    # 获取上一交易日时间戳
+    return _get_trading_timestamp_nano(quote, _str_to_timestamp_nano(current_datetime))
+
+
+_trading_timestamp_nano_cache = {}
+
+def _get_trading_timestamp_nano(quote, nano_timestamp: int):
+    """ 将 quote 在 nano_timestamp 所在交易日的所有可交易时间段转换为纳秒时间戳并返回 """
+    current_trading_day_timestamp = _get_trading_day_from_timestamp(nano_timestamp)
+    trading_time = quote["trading_time"]
+    cache_key = (id(trading_time), current_trading_day_timestamp)
+    cached = _trading_timestamp_nano_cache.get(cache_key)
+    if cached is not None:
+        return cached
     last_trading_day_timestamp = _get_trading_day_from_timestamp(
         _get_trading_day_start_time(current_trading_day_timestamp) - 1)
     trading_timestamp = {
-        "day": _get_period_timestamp(current_trading_day_timestamp, quote["trading_time"].get("day", [])),
-        "night": _get_period_timestamp(last_trading_day_timestamp, quote["trading_time"].get("night", []))
+        "day": _get_period_timestamp(current_trading_day_timestamp, trading_time.get("day", [])),
+        "night": _get_period_timestamp(last_trading_day_timestamp, trading_time.get("night", []))
     }
+    _trading_timestamp_nano_cache[cache_key] = trading_timestamp
     return trading_timestamp
 
+
+_period_offsets_cache = {}
 
 def _get_period_timestamp(real_date_timestamp, period_str):
     """
     real_date_timestamp：period_str 所在真实日期的纳秒时间戳（如 period_str 为周一(周二)的夜盘,则real_date_timestamp为上周五(周一)的日期; period_str 为周一的白盘,则real_date_timestamp为周一的日期）
     period_str: quote["trading_time"]["day"] or quote["trading_time"]["night"]
     """
-    period_timestamp = []
-    for duration in period_str:  # 对于白盘（或夜盘）中的每一个可交易时间段
-        start = [int(i) for i in duration[0].split(":")]  # 交易时间段起始点
-        end = [int(i) for i in duration[1].split(":")]  # 交易时间段结束点
-        period_timestamp.append([real_date_timestamp + (start[0] * 3600 + start[1] * 60 + start[2]) * 1000000000,
-                                 real_date_timestamp + (end[0] * 3600 + end[1] * 60 + end[2]) * 1000000000])
-    return period_timestamp
+    # Cache parsed time offsets (nanoseconds within a day) keyed by period_str identity
+    period_id = id(period_str)
+    offsets = _period_offsets_cache.get(period_id)
+    if offsets is None:
+        offsets = []
+        for duration in period_str:
+            start = [int(i) for i in duration[0].split(":")]
+            end = [int(i) for i in duration[1].split(":")]
+            offsets.append(((start[0] * 3600 + start[1] * 60 + start[2]) * 1000000000,
+                           (end[0] * 3600 + end[1] * 60 + end[2]) * 1000000000))
+        _period_offsets_cache[period_id] = offsets
+    return [[real_date_timestamp + s, real_date_timestamp + e] for s, e in offsets]
 
 
 def _is_in_trading_time(quote, current_datetime, local_time_record):
     """ 判断是否在可交易时间段内，需在quote已收到行情后调用本函数"""
     # 只在需要用到可交易时间段时(即本函数中)才调用_get_trading_timestamp()
+    time_part = current_datetime.split(' ')[1] if ' ' in current_datetime else ''
+    if time_part in ('18:00:00.000000', '17:59:59.999999'):
+        return True
     trading_timestamp = _get_trading_timestamp(quote, current_datetime)
     now_ns_timestamp = _get_trade_timestamp(current_datetime, local_time_record)  # 当前预估交易所纳秒时间戳
     # 判断当前交易所时间（估计值）是否在交易时间段内
     for v in trading_timestamp.values():
         for period in v:
             if period[0] <= now_ns_timestamp < period[1]:
+                return True
+    return False
+
+
+def _is_in_trading_time_nano(quote, nano_timestamp):
+    """ 判断是否在可交易时间段内 - 接受纳秒时间戳避免 str<->nano 转换开销 """
+    # Check for 18:00:00 and 17:59:59 boundaries in nano
+    # Time-of-day in CST: offset from midnight in nanos
+    day_offset = (nano_timestamp - 631123200000000000) % 86400000000000  # offset within day
+    if day_offset == 64800000000000 or day_offset == 64799999999000:  # 18:00:00.000000 or 17:59:59.999999
+        return True
+    trading_timestamp = _get_trading_timestamp_nano(quote, nano_timestamp)
+    for v in trading_timestamp.values():
+        for period in v:
+            if period[0] <= nano_timestamp < period[1]:
                 return True
     return False
 

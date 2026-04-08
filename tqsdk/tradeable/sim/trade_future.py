@@ -398,26 +398,40 @@ class SimTrade(SimTradeBase):
                     else position["underlying_last_price"]
             else:
                 underlying_last_price = underlying_quote["last_price"]
-        future_margin = _get_future_margin(quote)
+        # Inline _get_future_margin to avoid 864K function calls
+        _ins_class = quote.get("ins_class", "")
+        if _ins_class.endswith("OPTION"):
+            future_margin = float('nan')
+        else:
+            future_margin = quote.get("user_margin", quote.get("margin", float('nan')))
+        quote_last_price = quote["last_price"]
         if position["volume_long"] > 0 or position["volume_short"] > 0:
-            if position["last_price"] != quote["last_price"] \
+            if position["last_price"] != quote_last_price \
                     or (math.isnan(future_margin) or future_margin != position["future_margin"]) \
                     or (underlying_quote and underlying_last_price != position["underlying_last_price"]):
                 self._adjust_position_account(symbol, quote, underlying_quote,
                                               pre_last_price=position["last_price"],
-                                              last_price=quote["last_price"],
+                                              last_price=quote_last_price,
                                               pre_underlying_last_price=position["underlying_last_price"],
                                               underlying_last_price=underlying_last_price)
                 position["future_margin"] = future_margin
-                position["last_price"] = quote["last_price"]
+                position["last_price"] = quote_last_price
                 position["underlying_last_price"] = underlying_last_price
+                # Both position and account changed
+                self._diffs.append({'trade': {self._account_key: {
+                    'positions': {symbol: position.copy()},
+                    'accounts': {'CNY': self._account.copy()}
+                }}})
+            # else: nothing changed, skip diff entirely
         else:
-            # 修改辅助变量
+            # No volume — only update auxiliary fields, no account diff needed
             position["future_margin"] = future_margin
-            position["last_price"] = quote["last_price"]
+            position["last_price"] = quote_last_price
             position["underlying_last_price"] = underlying_last_price
-        self._append_to_diffs(['positions', symbol], position)  # 一定要返回 position，下游会用到 future_margin 字段判断修改保证金是否成功
-        self._append_to_diffs(['accounts', 'CNY'], self._account)
+            # Only send position diff (account unchanged)
+            self._diffs.append({'trade': {self._account_key: {
+                'positions': {symbol: position.copy()}
+            }}})
 
     def _adjust_position_account(self, symbol, quote, underlying_quote=None, pre_last_price=float('nan'), last_price=float('nan'),
                                  pre_underlying_last_price=float('nan'), underlying_last_price=float('nan'),
@@ -437,45 +451,50 @@ class SimTrade(SimTradeBase):
         margin_short = 0  # 空头占用保证金
         market_value_long = 0  # 期权权利方市值(始终 >= 0)
         market_value_short = 0  # 期权义务方市值(始终 <= 0)
+        # Inline _get_future_margin and cache ins_class check
+        _ins_class = quote.get("ins_class", "")
+        _is_option = _ins_class.endswith("OPTION")
+        if not _is_option:
+            _fm = quote.get("user_margin", quote.get("margin", float('nan')))
         assert [buy_open, buy_close, sell_open, sell_close].count(0) >= 3  # 只有一个大于0, 或者都是0，表示价格变化导致的字段修改
         if buy_open > 0:
             # 买开，pre_last_price 应该是成交价格，last_price 应该是 position['last_price']
             float_profit_long = (last_price - pre_last_price) * buy_open * quote["volume_multiple"]
-            if quote["ins_class"].endswith("OPTION"):
+            if _is_option:
                 market_value_long = last_price * buy_open * quote["volume_multiple"]
             else:
-                margin_long = buy_open * _get_future_margin(quote)
+                margin_long = buy_open * _fm
                 position_profit_long = (last_price - pre_last_price) * buy_open * quote["volume_multiple"]
         elif sell_close > 0:
             # 卖平，pre_last_price 应该是 position['last_price']，last_price 应该是 0
             float_profit_long = -position["float_profit_long"] / position["volume_long"] * sell_close
-            if quote["ins_class"].endswith("OPTION"):
+            if _is_option:
                 market_value_long = -pre_last_price * sell_close * quote["volume_multiple"]
             else:
-                margin_long = -sell_close * _get_future_margin(quote)
+                margin_long = -sell_close * _fm
                 position_profit_long = -position["position_profit_long"] / position["volume_long"] * sell_close
         elif sell_open > 0:
             # 卖开
             float_profit_short = (pre_last_price - last_price) * sell_open * quote["volume_multiple"]
-            if quote["ins_class"].endswith("OPTION"):
+            if _is_option:
                 market_value_short = -last_price * sell_open * quote["volume_multiple"]
                 margin_short = sell_open * _get_option_margin(quote, last_price, underlying_last_price)
             else:
-                margin_short = sell_open * _get_future_margin(quote)
+                margin_short = sell_open * _fm
                 position_profit_short = (pre_last_price - last_price) * sell_open * quote["volume_multiple"]
         elif buy_close > 0:
             # 买平
             float_profit_short = -position["float_profit_short"] / position["volume_short"] * buy_close
-            if quote["ins_class"].endswith("OPTION"):
+            if _is_option:
                 market_value_short = pre_last_price * buy_close * quote["volume_multiple"]
                 margin_short = -buy_close * _get_option_margin(quote, pre_last_price, pre_underlying_last_price)
             else:
-                margin_short = -buy_close * _get_future_margin(quote)
+                margin_short = -buy_close * _fm
                 position_profit_short = -position["position_profit_short"] / position["volume_short"] * buy_close
         else:
             float_profit_long = (last_price - pre_last_price) * position["volume_long"] * quote["volume_multiple"]  # 多头浮动盈亏
             float_profit_short = (pre_last_price - last_price) * position["volume_short"] * quote["volume_multiple"]  # 空头浮动盈亏
-            if quote["ins_class"].endswith("OPTION"):
+            if _is_option:
                 margin_short = _get_option_margin(quote, last_price, underlying_last_price) * position["volume_short"] - position["margin_short"]
                 market_value_long = (last_price - pre_last_price) * position["volume_long"] * quote["volume_multiple"]
                 market_value_short = (pre_last_price - last_price) * position["volume_short"] * quote["volume_multiple"]
@@ -483,8 +502,8 @@ class SimTrade(SimTradeBase):
                 # 期权持仓盈亏为 0
                 position_profit_long = float_profit_long  # 多头持仓盈亏
                 position_profit_short = float_profit_short  # 空头持仓盈亏
-                margin_long = _get_future_margin(quote) * position["volume_long"] - position["margin_long"]
-                margin_short = _get_future_margin(quote) * position["volume_short"] - position["margin_short"]
+                margin_long = _fm * position["volume_long"] - position["margin_long"]
+                margin_short = _fm * position["volume_short"] - position["margin_short"]
 
         if any([buy_open, buy_close, sell_open, sell_close]):
             # 修改 position volume 相关的计算字段

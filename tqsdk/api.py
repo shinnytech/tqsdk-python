@@ -60,7 +60,7 @@ from tqsdk.data_extension import DataExtension
 from tqsdk.data_series import DataSeries
 from tqsdk.datetime import _get_trading_day_from_timestamp, _datetime_to_timestamp_nano, _timestamp_nano_to_datetime, \
     _cst_now, _convert_user_input_to_nano
-from tqsdk.diff import _merge_diff, _get_obj, _is_key_exist, _register_update_chan
+from tqsdk.diff import _merge_diff, _get_obj, _get_obj_single, _is_key_exist, _register_update_chan
 from tqsdk.entity import Entity
 from tqsdk.exceptions import TqTimeoutError
 from tqsdk.log import _clear_logs, _get_log_name, _get_disk_free
@@ -230,7 +230,8 @@ class TqApi(TqBaseApi):
             user_name, pwd = auth[:comma_index], auth[comma_index + 1:]
             self._auth = TqAuth(user_name, pwd)
         else:
-            self._auth = None
+            from tqsdk.auth import TqAuthDummy
+            self._auth = TqAuthDummy()
         self._account = TqSim() if account is None else account
         self._backtest = backtest
         self._stock = False if isinstance(self._backtest, TqReplay) else _stock
@@ -2011,9 +2012,12 @@ class TqApi(TqBaseApi):
         #    同步代码：此次调用 wait_update 之前应该已经修改执行
         #    异步代码：上一行 self._run_until_idle() 可能会修改 klines 附加列的值
         # 所以放在这里处理， 总会发送 serial_extra_array 数据，由 TqWebHelper 处理
+        _any_serial_updated = False
         for _, serial in self._serials.items():
-            self._process_serial_extra_array(serial)
-        self._run_until_idle(async_run=False)  # 这里 self._run_until_idle() 主要为了把上一步计算出得需要绘制的数据发送到 TqWebHelper
+            if self._process_serial_extra_array(serial):
+                _any_serial_updated = True
+        if _any_serial_updated:
+            self._run_until_idle(async_run=False)  # 这里 self._run_until_idle() 主要为了把上一步计算出得需要绘制的数据发送到 TqWebHelper
         if _task is not None:
             # 如果 _task 已经 done，则提前返回 True, False 代表超时会抛错
             _tasks = _task if isinstance(_task, list) else [_task]
@@ -2037,23 +2041,52 @@ class TqApi(TqBaseApi):
                 self._pending_diffs = []
                 # 清空K线更新范围，避免在 wait_update 未更新K线时仍通过 is_changing 的判断
                 self._klines_update_range = {}
+                _has_any_stock = self._account._has_any_stock
                 for d in self._diffs:
-                    # 判断账户类别, 对股票和期货的 trade 数据分别进行处理
-                    if "trade" in d:
-                        for k, v in d.get('trade').items():
-                            prototype = self._security_prototype if self._account._is_stock_type(k) else self._prototype
-                            _merge_diff(self._data, {'trade': {k: v}}, prototype, persist=False, reduce_diff=True)
-                    # 非交易数据均按照期货处理逻辑
-                    diff_without_trade = {k: v for k, v in d.items() if k != "trade"}
-                    if diff_without_trade:
-                        _merge_diff(self._data, diff_without_trade, self._prototype, persist=False, reduce_diff=True)
+                    if _has_any_stock:
+                        # 判断账户类别, 对股票和期货的 trade 数据分别进行处理
+                        if "trade" in d:
+                            trade_data = d['trade']
+                            futures_trade = {}
+                            stock_trade = {}
+                            _is_stock = self._account._is_stock_type
+                            for k, v in trade_data.items():
+                                if _is_stock(k):
+                                    stock_trade[k] = v
+                                else:
+                                    futures_trade[k] = v
+                            if futures_trade:
+                                _merge_diff(self._data, {'trade': futures_trade}, self._prototype, False, True, False)
+                            if stock_trade:
+                                _merge_diff(self._data, {'trade': stock_trade}, self._security_prototype, False, True, False)
+                        # 非交易数据均按照期货处理逻辑
+                        diff_without_trade = {k: v for k, v in d.items() if k != "trade"}
+                        if diff_without_trade:
+                            _merge_diff(self._data, diff_without_trade, self._prototype, False, True, False)
+                    else:
+                        # No stock accounts: merge entire diff directly (no split needed)
+                        _merge_diff(self._data, d, self._prototype, False, True, False)
                 self._risk_manager._on_recv_data(self._diffs)
                 for _, serial in self._serials.items():
                     # K线df的更新与原始数据、left_id、right_id、more_data、last_id相关，其中任何一个发生改变都应重新计算df
                     # 注：订阅某K线后再订阅合约代码、周期相同但长度更短的K线时, 服务器不会再发送已有数据到客户端，即chart发生改变但内存中原始数据未改变。
                     # 检测到K线数据或chart的任何字段发生改变则更新serial的数据
-                    if self._is_obj_changing(serial["df"], diffs=self._diffs, key=[]) \
-                            or self._is_obj_changing(serial["chart"], diffs=self._diffs, key=[]):
+                    # Fast path: cache paths and check diffs directly, avoiding isinstance overhead
+                    try:
+                        cached_paths = serial["_cached_check_paths"]
+                    except KeyError:
+                        cached_paths = [root._path for root in serial["root"]]
+                        cached_paths.append(serial["chart"]._path)
+                        serial["_cached_check_paths"] = cached_paths
+                    serial_changed = False
+                    for diff in self._diffs:
+                        for path in cached_paths:
+                            if _is_key_exist(diff, path, []):
+                                serial_changed = True
+                                break
+                        if serial_changed:
+                            break
+                    if serial_changed:
                         if len(serial["root"]) == 1:  # 订阅单个合约
                             self._update_serial_single(serial)
                         else:  # 订阅多个合约
@@ -2150,7 +2183,7 @@ class TqApi(TqBaseApi):
                 if id(obj) in self._serials:
                     paths = []
                     for root in self._serials[id(obj)]["root"]:
-                        paths.append(root["_path"])
+                        paths.append(root._path)
                 elif len(obj) == 0:
                     return False
                 else:  # 处理传入的为一个 copy 出的 DataFrame (与原 DataFrame 数据相同的另一个object)
@@ -2181,7 +2214,7 @@ class TqApi(TqBaseApi):
                     paths.append(["ticks", obj["symbol"], "data", str(int(obj["id"]))])
 
             else:
-                paths = [obj["_path"]]
+                paths = [obj._path]
         except (KeyError, IndexError):
             return False
         for diff in diffs:
@@ -3531,21 +3564,22 @@ class TqApi(TqBaseApi):
                            py_version=platform.python_version(), py_arch=platform.architecture()[0],
                            cmd=sys.argv, mem_total=mem.total, mem_free=mem.free)
         if self._auth is None:
-            raise Exception("请输入 auth （快期账户）参数，快期账户是使用 tqsdk 的前提，如果没有请点击注册，注册地址：https://account.shinnytech.com/。")
-        else:
-            self._auth.init(mode="bt" if isinstance(self._backtest, TqBacktest) else "real")
-            self._auth.login()  # tqwebhelper 有可能会设置 self._auth
+            from tqsdk.auth import TqAuthDummy
+            self._auth = TqAuthDummy()
+
+        self._auth.init(mode="bt" if isinstance(self._backtest, TqBacktest) else "real")
+        self._auth.login()  # tqwebhelper 有可能会设置 self._auth
             
-            # tqsdk 内部捕获异常如果需要打印日志，则需要自定义异常
-            # 对于第三方代码产生的异常需要逐个捕获，可以参考 connect.py TqConnect._run 函数中对于各类异常的捕获
-            # 这里只是打印账户过期日期来提醒用户，不关心是否成功，也不记录日志，所以直接 pass
-            # 单独捕获 self._auth.expire_datetime 是为了语义清晰，表明异常的来源
-            try:
-                self._auth.expire_datetime
-            except Exception:
-                pass
-            if self._auth._expire_days_left is not None and self._auth._product_type is not None and self._auth._expire_days_left < 30:
-                self._print(f"TqSdk {self._auth._product_type} 版剩余 {self._auth._expire_days_left} 天到期，如需续费或升级请访问 https://account.shinnytech.com/ 或联系相关工作人员。")
+        # tqsdk 内部捕获异常如果需要打印日志，则需要自定义异常
+        # 对于第三方代码产生的异常需要逐个捕获，可以参考 connect.py TqConnect._run 函数中对于各类异常的捕获
+        # 这里只是打印账户过期日期来提醒用户，不关心是否成功，也不记录日志，所以直接 pass
+        # 单独捕获 self._auth.expire_datetime 是为了语义清晰，表明异常的来源
+        try:
+            self._auth.expire_datetime
+        except Exception:
+            pass
+        if self._auth._expire_days_left is not None and self._auth._product_type is not None and self._auth._expire_days_left < 30:
+            self._print(f"TqSdk {self._auth._product_type} 版剩余 {self._auth._expire_days_left} 天到期，如需续费或升级请访问 https://account.shinnytech.com/ 或联系相关工作人员。")
 
         # 在快期账户登录之后，对于账户的基本信息校验及更新
         for acc in self._account._account_list:
@@ -3753,12 +3787,12 @@ class TqApi(TqBaseApi):
         temp_df = pd.DataFrame()
         temp_df._mgr = bm
         serial["df"] = TqDataFrame(self, temp_df, copy=False)
-        serial["df"]["symbol"] = root_list[0]["_path"][1]
+        serial["df"]["symbol"] = root_list[0]._path[1]
         for i in range(1, len(root_list)):
-            serial["df"]["symbol" + str(i)] = root_list[i]["_path"][1]
+            serial["df"]["symbol" + str(i)] = root_list[i]._path[1]
 
-        serial["df"]["duration"] = 0 if root_list[0]["_path"][0] == "ticks" else int(
-            root_list[0]["_path"][-1]) // 1000000000
+        serial["df"]["duration"] = 0 if root_list[0]._path[0] == "ticks" else int(
+            root_list[0]._path[-1]) // 1000000000
         return serial
 
     def _update_serial_single(self, serial):
@@ -3793,39 +3827,69 @@ class TqApi(TqBaseApi):
         if serial["root"][0].get("last_id", -1) == -1:
             # 该 kline 没有任何数据，直接退出
             return
-        symbol = serial["chart"]["ins_list"].split(",")[0]  # 合约列表
+        # Cache computed values that don't change between calls
+        try:
+            keys = serial["_cached_keys"]
+            symbol = serial["_cached_symbol"]
+            cols = serial["_cached_cols"]
+        except KeyError:
+            symbol = serial["chart"]["ins_list"].split(",")[0]
+            serial["_cached_symbol"] = symbol
+            keys = list(serial["default"].keys())
+            keys.remove('datetime')
+            serial["_cached_keys"] = keys
+            duration = serial["chart"]["duration"]
+            if duration != 0:
+                cols = ["open", "high", "low", "close"]
+            else:
+                cols = ["last_price", "highest", "lowest"] + [f"{x}{i}" for x in
+                                                              ["bid_price", "ask_price"] for i in
+                                                              range(1, 6)]
+            serial["_cached_cols"] = cols
         quote = self._data.quotes.get(symbol, {})
-        duration = serial["chart"]["duration"]  # 周期
-        keys = list(serial["default"].keys())
-        keys.remove('datetime')
-        if duration != 0:
-            cols = ["open", "high", "low", "close"]
-        else:
-            cols = ["last_price", "highest", "lowest"] + [f"{x}{i}" for x in
-                                                          ["bid_price", "ask_price"] for i in
-                                                          range(1, 6)]
-        for i in range(serial["update_row"], serial["width"]):
-            index = last_id - serial["width"] + 1 + i
-            item = serial["default"] if index < 0 else _get_obj(serial["root"][0], ["data", str(index)],
-                                                                serial["default"])
+        adj_type = serial["adj_type"]
+        root0 = serial["root"][0]
+        default = serial["default"]
+        width = serial["width"]
+        update_row = serial["update_row"]
+        needs_adj = adj_type in ("B", "F") and hasattr(quote, 'ins_class') and quote.ins_class in ("STOCK", "FUND")
+        # Cache the "data" sub-entity to avoid 2-level _get_obj lookup per iteration
+        root0_data_entity = _get_obj_single(root0, "data")
+        root0_data_entity_data = root0_data_entity._data
+        # Pre-fetch default's _data for direct dict access (bypasses Entity.__getitem__)
+        default_data = default._data
+        for i in range(update_row, width):
+            index = last_id - width + 1 + i
+            if index < 0:
+                item_data = default_data
+            else:
+                str_index = str(index)
+                try:
+                    item_data = root0_data_entity_data[str_index]._data
+                except KeyError:
+                    item_data = _get_obj_single(root0_data_entity, str_index, default)._data
             # 如果需要复权，计算复权
-            if index > 0 and serial["adj_type"] in ["B", "F"] and quote.ins_class in ["STOCK", "FUND"]:
+            if index > 0 and needs_adj:
                 self._ensure_dividend_factor(symbol)
                 last_index = index - 1
-                last_item = _get_obj(serial["root"][0], ["data", str(last_index)], serial["default"])
-                factor = get_dividend_factor(self._dividend_cache[symbol]["df"], last_item, item)
-                if serial["adj_type"] == "B":
+                str_last_index = str(last_index)
+                try:
+                    last_item = root0_data_entity_data[str_last_index]
+                except KeyError:
+                    last_item = _get_obj_single(root0_data_entity, str_last_index, default)
+                factor = get_dividend_factor(self._dividend_cache[symbol]["df"], last_item, item_data)
+                if adj_type == "B":
                     self._dividend_cache[symbol]["back_factor"] = self._dividend_cache[symbol]["back_factor"] * (1 / factor)
                     if self._dividend_cache[symbol]["back_factor"] != 1.0:
-                        item = item.copy()
+                        item_data = item_data.copy()
                         for c in cols:
-                            item[c] = item[c] * self._dividend_cache[symbol]["back_factor"]
-                elif serial["adj_type"] == "F" and factor != 1.0 and i not in serial['calc_ids_F']:
+                            item_data[c] = item_data[c] * self._dividend_cache[symbol]["back_factor"]
+                elif adj_type == "F" and factor != 1.0 and i not in serial['calc_ids_F']:
                     serial['calc_ids_F'].append(i)
                     for c in cols:
                         col_index = keys.index(c) + 2
                         array[:i, col_index] = array[:i, col_index] * factor
-            array[i] = [item["datetime"]] + [index] + [item[k] for k in keys if k != "datetime"]
+            array[i] = [item_data["datetime"], index] + [item_data[k] for k in keys]
 
     def _ensure_dividend_factor(self, symbol):
         quote = self._data.quotes.get(symbol, {})
@@ -3954,20 +4018,36 @@ class TqApi(TqBaseApi):
                     array[-1, 1] + 1)  # array[-1, 1] + 1： 保持左闭右开规范
 
     def _process_serial_extra_array(self, serial):
-        for col in set(serial["df"].columns.values) - serial["default_attr"]:
+        """Process extra columns. Returns True if chart data was sent."""
+        # Fast path: skip when no extra columns and no pending updates
+        if not serial["extra_array"]:
+            if serial["update_row"] == serial["width"]:
+                return False
+            # No extra columns but update_row != width: check if user added columns
+            # Use cached column identity to avoid expensive set() computation
+            df_cols_obj = serial["df"].columns
+            if serial.get("_last_cols_id") == id(df_cols_obj):
+                # Columns haven't changed, no extra columns to process
+                serial["update_row"] = serial["width"]
+                return False
+            serial["_last_cols_id"] = id(df_cols_obj)
+        df_cols = set(serial["df"].columns.values)
+        extra_cols = df_cols - serial["default_attr"]
+        for col in extra_cols:
             if col not in serial["all_attr"]:
                 serial["update_row"] = 0  # 只有在第一次添加某个列时，才会赋值为 0。
             # klines["ma_MAIN"] = ma.ma 不是在原来的序列上原地修改，而是返回一个新的序列，
             # 所以这里 serial["extra_array"] 中的列每次需要重新赋值。
             serial["extra_array"][col] = serial["df"][col].to_numpy()
         # 如果策略中删除了之前添加到 df 中的序列，则 extra_array 中也将其删除
-        for col in serial["all_attr"] - set(serial["df"].columns.values):
+        for col in serial["all_attr"] - df_cols:
             del serial["extra_array"][col]
-        serial["all_attr"] = set(serial["df"].columns.values)
+        serial["all_attr"] = df_cols
+        serial["_last_cols_id"] = id(serial["df"].columns)
         if serial["update_row"] == serial["width"]:
-            return
-        symbol = serial["root"][0]["_path"][1]  # 主合约的symbol，标志绘图的主合约
-        duration = 0 if serial["root"][0]["_path"][0] == "ticks" else int(serial["root"][0]["_path"][-1])
+            return False
+        symbol = serial["root"][0]._path[1]  # 主合约的symbol，标志绘图的主合约
+        duration = 0 if serial["root"][0]._path[0] == "ticks" else int(serial["root"][0]._path[-1])
         cols = list(serial["extra_array"].keys())
         # 归并数据序列
         while len(cols) != 0:
@@ -3979,6 +4059,7 @@ class TqApi(TqBaseApi):
             self._process_chart_data_for_web(serial, symbol, duration, col, serial["width"] - serial["update_row"],
                                              int(serial["array"][-1, 1]) + 1, data)
         serial["update_row"] = serial["width"]
+        return True
 
     def _process_chart_data_for_web(self, serial, symbol, duration, col, count, right, data):
         # 与 _process_chart_data 函数功能类似，但是处理成符合 diff 协议的序列，在 js 端就不需要特殊处理了
@@ -4157,8 +4238,8 @@ class TqApi(TqBaseApi):
 
     @staticmethod
     def _deep_copy_dict(source, dest):
-        for key, value in source.__dict__.items():
-            if isinstance(value, Entity):
+        for key, value in source._data.items():
+            if hasattr(value, '_data'):
                 dest[key] = {}
                 TqApi._deep_copy_dict(value, dest[key])
             else:
@@ -4340,7 +4421,7 @@ class TqApi(TqBaseApi):
 
     def _send_chart_data(self, base_kserial_frame, serial_id, serial_data):
         s = self._serials[id(base_kserial_frame)]
-        p = s["root"][0]["_path"]
+        p = s["root"][0]._path
         symbol = p[-2]
         dur_nano = int(p[-1])
         pack = {

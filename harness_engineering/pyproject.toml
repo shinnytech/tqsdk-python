@@ -1,0 +1,21 @@
+[project]
+name = "tq-local-server"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "ipdb>=0.13.13",
+    "orjson>=3.11.7",
+    "snakeviz>=2.2.2",
+    "tqdm>=4.67.3",
+    "tqsdk",
+]
+
+[[index]]
+name = "tuna"
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+default = true
+
+[tool.uv.sources]
+tqsdk = { path = "../tqsdk-python", editable = true }
