@@ -17,6 +17,7 @@
 Read [account-type-matrix.md](account-type-matrix.md) first if the user is still choosing an account class.
 Read [object-fields.md](object-fields.md) when the user asks what a field means.
 Read [order-functions-and-position-tools.md](order-functions-and-position-tools.md) for `insert_order`, `cancel_order`, and `TargetPosTask`.
+Read [scenario-and-margin.md](scenario-and-margin.md) for `TqScenario`, real-account margin-rate lookup, and margin or risk what-if analysis.
 
 ## Core Getters
 

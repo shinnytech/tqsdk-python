@@ -103,11 +103,13 @@ Typical cause:
 
 - the user expects polling behavior from a blocking update loop
 - the code is running in Jupyter and hangs waiting for updates
+- the first real-account `TqScenario` margin-rate lookup is waiting for OTG data synchronously
 
 Fix:
 
 - use `deadline=...` when the user truly needs a timeout
 - in Jupyter, prefer simple synchronous examples and explicitly mention the limitation
+- if the code uses `TqScenario(account=TqAccount(...))` or `TqScenario(account=TqKq())`, explain that the first uncached margin-rate lookup may block while TqSdk fetches the account-specific rate
 
 ## Backtest Behavior Looks Wrong
 

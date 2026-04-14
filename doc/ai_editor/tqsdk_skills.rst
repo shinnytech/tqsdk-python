@@ -73,6 +73,11 @@ Skills 有什么用
   例如：
   “请用 TqSdk 登录后获取账户权益、可用资金、某个合约的持仓，以及当日全部委托和成交记录。”
 
+* **试算保证金和风险度**
+
+  例如：
+  “请用 TqSdk 判断当前持仓下还能再开多少手螺纹钢，或者把某个品种保证金率调到 15% 后，账户风险度会变成多少。”
+
 * **定位为什么策略没成交**
 
   例如：
@@ -94,6 +99,7 @@ Skills 有什么用
 * ``agents/openai.yaml``: 面向支持 skill UI 的元信息。
 * ``references/market-data.md``: 行情、K 线、Tick、合约发现和历史下载。
 * ``references/accounts-and-trading.md``: 登录、资金、持仓、委托、成交、下单和撤单。
+* ``references/scenario-and-margin.md``: ``TqScenario``、实盘保证金率、保证金试算和风险度试算。
 * ``references/simulation-and-backtest.md``: ``TqSim``、``TqKq`` 和回测。
 * ``references/example-map.md``: 仓库内示例文件索引。
 
@@ -118,6 +124,7 @@ Skills 有什么用
    * 先阅读 ``SKILL.md``。
    * 涉及行情与历史数据时读取 ``references/market-data.md``。
    * 涉及账户、持仓、委托、成交和交易时读取 ``references/accounts-and-trading.md``。
+   * 涉及 ``TqScenario``、保证金率、保证金占用或风险度试算时读取 ``references/scenario-and-margin.md``。
    * 涉及回测或模拟环境时读取 ``references/simulation-and-backtest.md``。
 
 方式三：给 Codex 或类似代码代理使用

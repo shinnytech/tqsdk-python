@@ -3092,6 +3092,7 @@ class TqApi(TqBaseApi):
             * product_id: 品种代码
             * price_tick: 合约价格变动单位
             * volume_multiple: 合约乘数
+            * open_limit: 日内开仓限额，交易所规定的当日该合约买开仓+卖开仓手数限额，目前只对期货生效
             * max_limit_order_volume: 最大限价单手数
             * max_market_order_volume: 最大市价单手数
             * min_limit_order_volume: 最小限价单手数

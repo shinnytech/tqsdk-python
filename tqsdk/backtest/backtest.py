@@ -264,6 +264,7 @@ class TqBacktest(object):
                     "price_tick": quote["price_tick"],
                     "price_decs": quote["price_decs"],
                     "volume_multiple": quote["volume_multiple"],
+                    "open_limit": quote.get("open_limit", 0),
                     "max_limit_order_volume": quote["max_limit_order_volume"],
                     "max_market_order_volume": quote["max_market_order_volume"],
                     "min_limit_order_volume": quote["min_limit_order_volume"],

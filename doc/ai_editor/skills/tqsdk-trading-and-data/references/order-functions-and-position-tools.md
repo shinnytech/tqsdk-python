@@ -6,7 +6,7 @@
 - `cancel_order`
 - `TargetPosTask`
 - `TargetPosScheduler`
-- Choosing between manual order control and target-position control
+- Choosing between manual order control, target-position control, and `TqScenario`
 
 ## Table Of Contents
 
@@ -15,6 +15,7 @@
 - When to use manual orders
 - `TargetPosTask`
 - `TargetPosScheduler`
+- `TqScenario` versus live execution tools
 - Advanced helpers beyond the default answer
 - Stock limitations
 
@@ -140,6 +141,18 @@ from tqsdk.algorithm import twap_table, vwap_table
 ```
 
 It still depends on continuous `wait_update()` calls and must not be mixed with `TargetPosTask` or manual `insert_order()` for the same workflow.
+
+## `TqScenario` Versus Live Execution Tools
+
+Use `TqScenario` when the user wants synchronous trial calculation for futures margin or risk changes without sending live orders.
+
+Read [scenario-and-margin.md](scenario-and-margin.md) when the request is about:
+
+- how many lots can still be opened
+- how much margin can be released by reducing positions
+- what margin or risk ratio becomes after changing positions, balance, or margin rates
+
+Do not route live execution requests to `TqScenario`.
 
 ## Advanced Helpers Beyond The Default Answer
 

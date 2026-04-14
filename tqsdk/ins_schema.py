@@ -401,7 +401,7 @@ class future(sgqlc.types.Type, basic, tradeable):
     '''期货'''
     __schema__ = ins_schema
     __field_names__ = ('categories', 'close_max_limit_order_volume', 'close_max_market_order_volume', 'close_min_limit_order_volume', 'close_min_market_order_volume', 'commission', 'delivery_month', 'delivery_year', 'expire_datetime', 'expired', 'margin', 'max_limit_order_volume', 'max_market_order_volume', 'min_limit_order_volume',
-                       'min_market_order_volume', 'mmsa', 'open_max_limit_order_volume', 'open_max_market_order_volume', 'open_min_limit_order_volume', 'open_min_market_order_volume', 'position_limit', 'pre_open_interest', 'pre_open_interest2', 'product_id', 'product_short_name', 'product_short_name_wh', 'settlement_price')
+                       'min_market_order_volume', 'mmsa', 'open_limit', 'open_max_limit_order_volume', 'open_max_market_order_volume', 'open_min_limit_order_volume', 'open_min_market_order_volume', 'position_limit', 'pre_open_interest', 'pre_open_interest2', 'product_id', 'product_short_name', 'product_short_name_wh', 'settlement_price')
     categories = sgqlc.types.Field(sgqlc.types.list_of(categoryInfo), graphql_name='categories')
     '''所属板块'''
 
@@ -449,6 +449,9 @@ class future(sgqlc.types.Type, basic, tradeable):
 
     mmsa = sgqlc.types.Field(Boolean, graphql_name='mmsa')
     '''单向大边'''
+
+    open_limit = sgqlc.types.Field(Int, graphql_name='open_limit')
+    '''开仓限额'''
 
     open_max_limit_order_volume = sgqlc.types.Field(Int, graphql_name='open_max_limit_order_volume')
     '''开仓限价单最大下单量'''
@@ -661,6 +664,7 @@ future_frag.max_market_order_volume()
 future_frag.max_limit_order_volume()
 future_frag.min_market_order_volume()
 future_frag.min_limit_order_volume()
+future_frag.open_limit()
 future_frag.open_max_market_order_volume()
 future_frag.open_max_limit_order_volume()
 future_frag.open_min_market_order_volume()
