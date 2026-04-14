@@ -7,9 +7,9 @@
 
 如果你只想先挑几篇代表性示例：
 
-* 趋势与均线：Doublema、:ref:`tutorial-t60`、:ref:`tutorial-t70`
-* 套利与价差：PTA 产业链套利、养殖价差套利、:ref:`tutorial-t80`
-* 执行算法：冰山订单、盘口下单、跟量下单（POV）、Volume Weighted Average Price
+* 趋势与均线：:ref:`Doublema <demo-strategy-doublema>`、:ref:`tutorial-t60`、:ref:`tutorial-t70`
+* 套利与价差：:ref:`PTA 产业链套利 <demo-strategy-pta-spread>`、:ref:`养殖价差套利 <demo-strategy-smash-spread>`、:ref:`tutorial-t80`
+* 执行算法：:ref:`冰山订单算法 <demo-strategy-iceberg>`、:ref:`盘口下单算法 <demo-strategy-handicap>`、:ref:`跟量下单算法（POV） <demo-strategy-pov>`、:ref:`VWAP（Volume Weighted Average Price） <demo-strategy-vwap>`
 
 .. contents:: 目录
 
@@ -25,6 +25,8 @@ Aberration 策略 (难度：初级)
 .. literalinclude:: ../../tqsdk/demo/example/aberration.py
   :language: python
 
+
+.. _demo-strategy-doublema:
 
 Doublema 双均线策略 (难度：初级)
 """"""""""""""""""""""""""""""""""""""""""""""""
@@ -120,6 +122,8 @@ Dual Thrust 策略 (难度：中级)
 .. literalinclude:: ../../tqsdk/demo/example/turtle.py
   :language: python
 
+
+.. _demo-strategy-vwap:
 
 Volume Weighted Average Price 策略 (难度：高级)
 """"""""""""""""""""""""""""""""""""""""""""""""
@@ -218,6 +222,8 @@ Aroon指标趋势策略 (难度：初级)
 套利策略
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+.. _demo-strategy-pta-spread:
+
 PTA产业链套利 (涤纶短纤生产利润)策略 (难度：初级)
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
@@ -226,6 +232,8 @@ PTA产业链套利 (涤纶短纤生产利润)策略 (难度：初级)
 .. literalinclude:: ../../tqsdk/demo/example/pta_spread.py
   :language: python
 
+
+.. _demo-strategy-smash-spread:
 
 养殖价差套利策略 (难度：初级)
 """"""""""""""""""""""""""""""""""""""""""""""""
@@ -365,6 +373,8 @@ Z-Score均值回归策略 (难度：初级)
 算法交易策略
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+.. _demo-strategy-iceberg:
+
 冰山订单算法 (难度：初级)
 """"""""""""""""""""""""""""""""""""""""""""""""
 
@@ -374,6 +384,8 @@ Z-Score均值回归策略 (难度：初级)
   :language: python
 
 
+.. _demo-strategy-handicap:
+
 盘口下单算法 (难度：初级)
 """"""""""""""""""""""""""""""""""""""""""""""""
 
@@ -382,6 +394,8 @@ Z-Score均值回归策略 (难度：初级)
 .. literalinclude:: ../../tqsdk/demo/example/handicap_algorithm.py
   :language: python
 
+
+.. _demo-strategy-pov:
 
 跟量下单算法（POV） (难度：初级)
 """"""""""""""""""""""""""""""""""""""""""""""""

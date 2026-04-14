@@ -93,6 +93,8 @@ class Quote(Entity):
         self.price_decs: int = 0
         #: 合约乘数
         self.volume_multiple: int = 0
+        #: 日内开仓限额，交易所规定的当日该合约买开仓+卖开仓手数限额，目前只对期货生效
+        self.open_limit: int = 0
         #: 最大限价单手数
         self.max_limit_order_volume: int = 0
         #: 最大市价单手数

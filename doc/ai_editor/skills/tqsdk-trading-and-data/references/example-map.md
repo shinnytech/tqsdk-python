@@ -51,6 +51,19 @@ Use this file when you need a concrete repository example or doc page before wri
 - `doc/advanced/scheduler.rst`
   - `TargetPosScheduler`
 
+## If The User Asks About Margin Trials Or `TqScenario`
+
+- `tqsdk/scenario/tqscenario.py`
+  - public `TqScenario` docstrings and method semantics
+- `design/scenario.md`
+  - scenario design, margin-rate source rules, and discount-model notes
+- `tqsdk/test/scenario/test_scenario.py`
+  - runnable what-if patterns for margin and risk changes
+- `tqsdk/test/scenario/test_pre_insert_order.py`
+  - real-account margin-rate lookup examples and expected values
+- `doc/reference/tqsdk.scenario.rst`
+  - public API reference entry
+
 ## If The User Asks About Account Types Or Multi-Account
 
 - `doc/usage/shinny_account.rst`

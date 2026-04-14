@@ -1,4 +1,4 @@
 interface:
   display_name: "TqSdk Trading and Data"
-  short_description: "Guide TqSdk data, account, order, and strategy workflows"
-  default_prompt: "Use $tqsdk-trading-and-data to explain or implement a TqSdk data, account, order, strategy, or debugging task."
+  short_description: "Guide TqSdk data, trading, margin, and strategy workflows"
+  default_prompt: "Use $tqsdk-trading-and-data to explain or implement a TqSdk data, trading, scenario, or debugging task."
