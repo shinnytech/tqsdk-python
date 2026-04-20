@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 __time__ = '2020/8/5 22:45'
 __author__ = 'Hong Yan'

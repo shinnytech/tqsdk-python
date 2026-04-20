@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #  -*- coding: utf-8 -*-
 """
 包含有关时间处理的功能函数
