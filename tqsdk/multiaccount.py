@@ -35,7 +35,7 @@ class TqMultiAccount(object):
         创建 TqMultiAccount 实例
 
         Args:
-            accounts (List[Union[TqAccount, TqKq, TqKqStock, TqSim, TqSimStock, TqZq, TqCtp, TqRohon, TqJees, TqYida, TqTradingUnit]]): [可选] 多账户列表, 若未指定任何账户, 则为 [TqSim()]
+            accounts (List[Union[TqAccount, TqKq, TqKqStock, TqSim, TqSimStock, TqZq, TqCtp, TqRohon, TqJees, TqYida, TqO32, TqTradingUnit]]): [可选] 多账户列表, 若未指定任何账户, 则为 [TqSim()]
 
         Example1::
 

@@ -35,7 +35,8 @@ class TargetPosTaskSingleton(type):
     _instances = {}
 
     def __call__(cls, api, symbol, price="ACTIVE", offset_priority="今昨,开", min_volume=None, max_volume=None,
-                 trade_chan=None, trade_objs_chan=None, account: Optional[Union[TqAccount, TqKq, TqSim]]=None, *args, **kwargs):
+                 trade_chan=None, trade_objs_chan=None, account: Optional[Union[TqAccount, TqKq, TqSim]]=None,
+                 support_open_min_volume: bool = False, *args, **kwargs):
         target_account = api._account._check_valid(account)
         if target_account is None:
             raise Exception(f"多账户模式下, 需要指定账户实例 account")
@@ -47,6 +48,7 @@ class TargetPosTaskSingleton(type):
                                                                                                  trade_chan,
                                                                                                  trade_objs_chan,
                                                                                                  target_account,
+                                                                                                 support_open_min_volume,
                                                                                                  *args, **kwargs)
         else:
             instance = TargetPosTaskSingleton._instances[key]
@@ -59,6 +61,21 @@ class TargetPosTaskSingleton(type):
                 raise Exception(f"您试图用不同的 min_volume 参数创建两个 {symbol} 调仓任务, min_volume 参数原为 {instance._min_volume}, 现为 {min_volume}")
             if instance._max_volume != max_volume:
                 raise Exception(f"您试图用不同的 max_volume 参数创建两个 {symbol} 调仓任务, max_volume 参数原为 {instance._max_volume}, 现为 {max_volume}")
+            if instance._trade_chan is not trade_chan:
+                raise Exception(
+                    f"您试图用不同的 trade_chan 参数创建两个 {symbol} 调仓任务, "
+                    f"trade_chan 原对象 id 为 {id(instance._trade_chan)}, 现为 {id(trade_chan)}"
+                )
+            if instance._trade_objs_chan is not trade_objs_chan:
+                raise Exception(
+                    f"您试图用不同的 trade_objs_chan 参数创建两个 {symbol} 调仓任务, "
+                    f"trade_objs_chan 原对象 id 为 {id(instance._trade_objs_chan)}, 现为 {id(trade_objs_chan)}"
+                )
+            if instance._support_open_min_volume != support_open_min_volume:
+                raise Exception(
+                    f"您试图用不同的 support_open_min_volume 参数创建两个 {symbol} 调仓任务, "
+                    f"support_open_min_volume 参数原为 {instance._support_open_min_volume}, 现为 {support_open_min_volume}"
+                )
         return TargetPosTaskSingleton._instances[key]
 
 
@@ -68,7 +85,8 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
     def __init__(self, api: TqApi, symbol: str, price: Union[str, Callable[[str], Union[float, int]]] = "ACTIVE",
                  offset_priority: str = "今昨,开", min_volume: Optional[int] = None, max_volume: Optional[int] = None,
                  trade_chan: Optional[TqChan] = None, trade_objs_chan: Optional[TqChan] = None,
-                 account: Optional[Union[TqAccount, TqKq, TqSim]] = None) -> None:
+                 account: Optional[Union[TqAccount, TqKq, TqSim]] = None,
+                 support_open_min_volume: bool = False) -> None:
         """
         创建目标持仓task实例，负责调整归属于该task的持仓 **(默认为整个账户的该合约净持仓)**.
 
@@ -121,6 +139,13 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
             trade_objs_chan (TqChan): [可选]成交对象通知channel, 当有成交发生时会将成交对象发送到该channel上
 
             account (TqAccount/TqKq/TqSim): [可选]指定发送下单指令的账户实例, 多账户模式下，该参数必须指定
+
+            support_open_min_volume (bool): [可选]是否支持有最小开仓手数限制的合约，默认 False。
+                为 False 时，当 open_min_market_order_volume > 1 或 open_min_limit_order_volume > 1 时抛出异常；
+                为 True 时，当 open_min_limit_order_volume > 1 时仅打印提示信息；
+                如果启用了大单拆分，且 min_volume 或 max_volume 小于 open_min_limit_order_volume，则会直接抛出异常；
+                当 offset_priority == "开" 并且 target_pos_task 内部计算的总下单手数 < open_min_limit_order_volume，会创建一个开仓追单任务，但是不会发单，并且直接认为调仓任务完成；
+                当 OPEN 追单剩余手数小于 open_min_limit_order_volume 时，对应 OPEN 追单任务会结束，不再继续报单。
 
         **注意**
 
@@ -210,12 +235,33 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
         self._pos_chan = TqChan(self._api, last_only=True)
         self._trade_chan = trade_chan
         self._trade_objs_chan = trade_objs_chan
+        self._support_open_min_volume = bool(support_open_min_volume)
         self._task = self._api.create_task(self._target_pos_task())
         self._time_update_task = self._api.create_task(self._update_time_from_md())  # 监听行情更新并记录当时本地时间的task
         self._local_time_record = time.time() - 0.005  # 更新最新行情时间时的本地时间
         self._local_time_record_update_chan = TqChan(self._api, last_only=True)  # 监听 self._local_time_record 更新
         self._wait_task_finished = self._api._loop.create_future()
         self._task.add_done_callback(lambda _: self._api.create_task(self._exit_task()))
+
+    def _get_open_min_volume_message(self, open_min_limit_volume: int, support_enabled: bool) -> str:
+        if support_enabled:
+            return (
+                f"交易所规定 {self._symbol} 最小限价开仓手数 ({self._quote.open_min_limit_order_volume}) 大于 1。"
+                + f"已启用 support_open_min_volume=True，调仓合约最终持仓手数只能满足："
+                + f"|当前持仓手数 - 目标持仓手数| < {open_min_limit_volume}。"
+            )
+        return (
+            f"交易所规定 {self._symbol} 最小市价开仓手数 ({self._quote.open_min_market_order_volume})"
+            f" 或最小限价开仓手数 ({self._quote.open_min_limit_order_volume}) 大于 1，"
+            f"target_pos_task 默认不支持有最小开仓手数限制的合约，如果需要支持，请设置 support_open_min_volume=True。"
+        )
+
+    def _get_split_open_min_volume_error_message(self, open_min_limit_volume: int) -> str:
+        return (
+            f"交易所规定 {self._symbol} 最小限价开仓手数 ({open_min_limit_volume}) 大于 1，"
+            f"当前 min_volume ({self._min_volume}) 或 max_volume ({self._max_volume}) 小于最小限价开仓手数，"
+            f"可能导致第一次拆单就开仓失败。请调整 min_volume 或 max_volume 参数，使之大于等于最小限价开仓手数。"
+        )
 
     async def _exit_task(self):
         """
@@ -357,12 +403,19 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
         all_tasks = []
         try:
             self._quote = await self._api.get_quote(self._symbol)
-            # 判断最小下单手数是否大于1
-            if self._quote.open_min_market_order_volume > 1 or self._quote.open_min_limit_order_volume > 1:
-                raise Exception(
-                    f"交易所规定 {self._symbol} 最小市价开仓手数 ({self._quote.open_min_market_order_volume})"
-                    f" 或最小限价开仓手数 ({self._quote.open_min_limit_order_volume}) 大于 1，targetpostask、twap、vwap 这些函数还未支持该规则!比如A合约最小开仓手数限制为3手，当要下单5手时是可以直接被下单的，但是如果部分成交了4手，剩余的1手在撤销后是无法重新下单的，因此无法对这些合约使用targetpostask"
-                )
+            open_min_market_volume = self._quote.open_min_market_order_volume
+            open_min_limit_volume = self._quote.open_min_limit_order_volume
+            if self._support_open_min_volume:
+                if open_min_limit_volume > 1:
+                    if self._min_volume is not None and self._min_volume < open_min_limit_volume:
+                        raise Exception(self._get_split_open_min_volume_error_message(open_min_limit_volume))
+                    if self._max_volume is not None and self._max_volume < open_min_limit_volume:
+                        raise Exception(self._get_split_open_min_volume_error_message(open_min_limit_volume))
+                    msg = self._get_open_min_volume_message(open_min_limit_volume, True)
+                    self._api._print(msg, level="WARNING")
+            elif open_min_market_volume > 1 or open_min_limit_volume > 1:
+                msg = self._get_open_min_volume_message(open_min_limit_volume, False)
+                raise Exception(msg)
             async for target_pos in self._pos_chan:
                 # lib 中对于时间判断的方案:
                 #   如果当前时间（模拟交易所时间）不在交易时间段内，则：等待直到行情更新
@@ -555,6 +608,10 @@ class InsertOrderUntilAllTradedTask(object):
             limit_price = self._get_price(self._direction)
             if limit_price != limit_price:
                 raise Exception("设置价格函数返回 nan，无法处理。请检查后重试。")
+            open_min_limit_volume = self._quote.open_min_limit_order_volume
+            if self._offset == "OPEN" and open_min_limit_volume > 1 and self._volume < open_min_limit_volume:
+                self._api._print(f"合约 {self._symbol} ({self._direction} 方向), 剩余开仓手数 {self._volume} 小于最小开仓手数 {open_min_limit_volume}，不进行开仓，本轮追单任务结束", level="WARNING")
+                break
             # 当前下单手数
             if self._min_volume and self._max_volume and self._volume >= self._max_volume:
                 this_volume = utils.RD.randint(self._min_volume, self._max_volume)

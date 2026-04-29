@@ -179,7 +179,7 @@ class DataDownloader:
         if not self._task.done():
             return None
         if isinstance(self._csv_file_name, str):
-            if not self._data_series:
+            if self._data_series is None:
                 self._data_series = pandas.read_csv(self._csv_file_name)
             return self._data_series
         else:
