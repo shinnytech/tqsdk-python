@@ -53,3 +53,24 @@ front_broker="RohonDemo"
 融航实盘情况下将对应信息换成实盘信息即可
 
 融航资管平台连接模式的详细介绍，请点击 :py:class:`~tqsdk.TqRohon`
+
+
+恒生 O32 柜台连接功能
+-------------------------------------------------
+TqSdk 提供了恒生 O32 柜台的连接支持，支持用户通过直连模式接入恒生 O32 柜台，详情可以点击 :py:class:`~tqsdk.TqO32` ::
+
+   from tqsdk import TqApi, TqAuth, TqO32, O32Account
+
+   account = TqO32(
+       account_id=O32Account(user="用户", fund="基金", asset_unit="资产单元", portfolio="组合"),
+       password="O32 密码",
+       td_front_url="trade_front_host:trade_front_port",
+       mc_front_url="query_front_host:query_front_port",
+       license_file="/path/to/license.dat",
+       auth_code="O32 授权码",
+   )
+   api = TqApi(account, auth=TqAuth("快期账户", "账户密码"))
+
+其中 `account_id` 通过 :py:class:`~tqsdk.O32Account` 传入，内部会拼接成 ``用户.基金.资产单元.组合`` 
+
+`td_front_url` / `mc_front_url` 为柜台方提供的前置地址，`license_file` 为本地许可证文件位置

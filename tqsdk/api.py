@@ -72,7 +72,7 @@ from tqsdk.risk_manager import TqRiskManager
 from tqsdk.risk_rule import TqRiskRule
 from tqsdk.ins_schema import ins_schema, basic, derivative, future, option
 from tqsdk.symbols import TqSymbols
-from tqsdk.tradeable import TqAccount, TqZq, TqKq, TqKqStock, TqSim, TqSimStock, BaseSim, BaseOtg, TqCtp, TqRohon, TqJees, TqYida, TqTradingUnit
+from tqsdk.tradeable import TqAccount, TqZq, TqKq, TqKqStock, TqSim, TqSimStock, BaseSim, BaseOtg, TqCtp, TqRohon, TqJees, TqYida, TqO32, TqTradingUnit
 from tqsdk.trading_status import TqTradingStatus
 from tqsdk.tqwebhelper import TqWebHelper
 from tqsdk.utils import _generate_uuid, _query_for_quote, BlockManagerUnconsolidated, _quotes_add_night, _bisect_value, \
@@ -86,7 +86,7 @@ from .__version__ import __version__
 # 在 python 文档中对 type alias 的定义有多种：TypeAliasType, TypeAlias 以及 simple assignment https://docs.python.org/3.13/library/typing.html#type-aliases
 # Union 类型支持嵌套 Union 类型，但是不支持嵌套 Union TypeAliasType 类型：https://docs.python.org/3.13/library/typing.html#typing.Union
 # 但是 Union 文档没有明说是否支持嵌套 Union simple assignment 类型，从实现上看，目前所有版本都支持（最新 3.13）
-UnionTradeable = Union[TqAccount, TqKq, TqZq, TqKqStock, TqSim, TqSimStock, TqCtp, TqRohon, TqJees, TqYida, TqTradingUnit]
+UnionTradeable = Union[TqAccount, TqKq, TqZq, TqKqStock, TqSim, TqSimStock, TqCtp, TqRohon, TqJees, TqYida, TqO32, TqTradingUnit]
 
 
 class TqApi(TqBaseApi):
@@ -106,7 +106,7 @@ class TqApi(TqBaseApi):
         创建天勤接口实例
 
         Args:
-            account (None/TqAccount/TqKq/TqKqStock/TqSim/TqSimStock/TqZq/TqMultiAccount): [可选]交易账号:
+            account (None/TqAccount/TqKq/TqKqStock/TqSim/TqSimStock/TqZq/TqCtp/TqRohon/TqJees/TqYida/TqO32/TqTradingUnit/TqMultiAccount): [可选]交易账号:
                 * None: 账号将根据环境变量决定, 默认为 :py:class:`~tqsdk.TqSim`
 
                 * :py:class:`~tqsdk.TqAccount` : 使用实盘账号, 直连行情和交易服务器, 需提供期货公司/帐号/密码
@@ -129,12 +129,15 @@ class TqApi(TqBaseApi):
 
                 * :py:class:`~tqsdk.TqYida` : 使用易达账号
 
+                * :py:class:`~tqsdk.TqO32` : 使用恒生 O32 账号
+
                 * :py:class:`~tqsdk.TqTradingUnit` : 使用交易单元账号
 
                 * :py:class:`~tqsdk.TqMultiAccount` : 多账户列表，列表中支持
                   :py:class:`~tqsdk.TqAccount`、:py:class:`~tqsdk.TqKq`、:py:class:`~tqsdk.TqKqStock`、
                   :py:class:`~tqsdk.TqSim`、:py:class:`~tqsdk.TqSimStock`、:py:class:`~tqsdk.TqZq`、
                   :py:class:`~tqsdk.TqRohon`、:py:class:`~tqsdk.TqJees`、:py:class:`~tqsdk.TqYida`、
+                  :py:class:`~tqsdk.TqO32`、
                   :py:class:`~tqsdk.TqTradingUnit` 和 :py:class:`~tqsdk.TqCtp` 中的 0 至 N 个或者组合
 
             auth (TqAuth/str): [必填]用户快期账户:

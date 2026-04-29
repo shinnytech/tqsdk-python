@@ -2,6 +2,18 @@
 
 版本变更
 =============================
+3.9.5 (2026/04/29)
+
+* 新增: :py:class:`~tqsdk.TargetPosTask` 支持有最小开仓手数限制的合约
+* docs: 优化文档
+
+
+3.9.4 (2026/04/17)
+
+* 新增: 支持恒生 O32 柜台，详情参考 :py:class:`~tqsdk.TqO32`
+* docs: 优化文档
+
+
 3.9.3 (2026/04/14)
 
 * 新增: :py:class:`~tqsdk.objs.Quote` 增加 :py:class:`~tqsdk.objs.Quote.open_limit` 属性，返回合约日内开仓限额，目前只支持期货合约

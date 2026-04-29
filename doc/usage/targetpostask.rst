@@ -74,5 +74,34 @@
 * 如需主动取消当前 TargetPosTask 任务，请参考 :ref:`targetpostask2` 。
 * 请勿在使用 TargetPosTask 的同时混用 ``insert_order()``，否则容易导致 TargetPosTask 报错或出现错误下单。
 
+最小开仓手数限制合约
+----------------------------------------------------
+
+默认情况下，``TargetPosTask`` 不支持交易所限制最小开仓手数的合约。若合约的
+``open_min_market_order_volume`` 或 ``open_min_limit_order_volume`` 大于 1，
+创建后的调仓任务会在后续 ``wait_update()`` 中抛出异常。
+
+如果确认需要在这类合约上继续使用追单逻辑，可以在创建实例时设置
+``support_open_min_volume=True`` 。启用后请注意：
+
+* ``TargetPosTask`` 仍会根据行情变化撤单重报，但最终持仓只能保证满足
+  ``|当前持仓手数 - 目标持仓手数| < quote.open_min_limit_order_volume``
+* 当开仓追单剩余手数小于 ``quote.open_min_limit_order_volume`` 时，该次开仓追单会直接结束，不再继续报单
+* 如果启用了大单拆分，``min_volume`` 和 ``max_volume`` 都必须大于等于 ``quote.open_min_limit_order_volume``
+* 如果 ``offset_priority="开"`` 且本次需要开仓的总手数本身就小于 ``quote.open_min_limit_order_volume``，则不会发单，调仓任务会直接结束
+
+示例::
+
+    from tqsdk import TqApi, TqAuth, TargetPosTask
+
+    api = TqApi(auth=TqAuth("快期账户", "账户密码"))
+    quote = api.get_quote("GFEX.ps2704")
+    target_pos = TargetPosTask(api, "GFEX.ps2704", support_open_min_volume=True)
+
+    while True:
+        api.wait_update()
+        if quote.open_min_limit_order_volume > 1:
+            print("最小限价开仓手数:", quote.open_min_limit_order_volume)
+
 
 

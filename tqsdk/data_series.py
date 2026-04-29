@@ -166,6 +166,8 @@ class DataSeries:
     async def _download_data_series(self, rangeset):
         symbol = self._symbol_list[0]
         for start_dt, end_dt in rangeset:
+            task = None
+            temp_file = None
             try:
                 start_id, end_id = None, None
                 temp_filename = os.path.join(CACHE_DIR, f"{symbol}.{self._dur_nano}.temp")
@@ -177,15 +179,18 @@ class DataSeries:
                     if start_id is None:
                         start_id = item[0]
                     end_id = item[0]
-            except Exception as e:
-                temp_file.close()  # 这里如果遇到 exception，不应该再重命名文件，相当于下载失败
+            except Exception:
+                if temp_file is not None:
+                    temp_file.close()  # 这里如果遇到 exception，不应该再重命名文件，相当于下载失败
+                assert False, f"下载 {symbol} 从 {start_dt} 到 {end_dt} 的历史数据失败, 请检查日志"
             else:
                 temp_file.close()
                 if start_id is not None and end_id is not None:
                     target_filename = os.path.join(CACHE_DIR, f"{symbol}.{self._dur_nano}.{start_id}.{end_id + 1}")
                     shutil.move(temp_filename, target_filename)
             finally:
-                await self._api._cancel_task(task)
+                if task is not None:
+                    await self._api._cancel_task(task)
 
     async def _download_data(self, start_dt, end_dt, data_chan):
         # 下载的数据应该是 [start_dt, end_dt）

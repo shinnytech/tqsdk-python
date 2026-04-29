@@ -77,7 +77,7 @@ class TqRuleOpenCountsLimit(TqRiskRule):
                 * str: 一个合约代码
                 * list of str: 合约代码列表
 
-            account (TqAccount/TqKq/TqZq/TqKqStock/TqSim/TqSimStock/TqCtp/TqRohon/TqJees/TqYida/TqTradingUnit): [可选] 指定发送下单指令的账户实例, 多账户模式下，该参数必须指定
+            account (TqAccount/TqKq/TqZq/TqKqStock/TqSim/TqSimStock/TqCtp/TqRohon/TqJees/TqYida/TqO32/TqTradingUnit): [可选] 指定发送下单指令的账户实例, 多账户模式下，该参数必须指定
 
         Example1::
 
@@ -151,7 +151,7 @@ class TqRuleOpenVolumesLimit(TqRiskRule):
                 * str: 一个合约代码
                 * list of str: 合约代码列表
 
-            account (TqAccount/TqKq/TqZq/TqKqStock/TqSim/TqSimStock/TqCtp/TqRohon/TqJees/TqYida/TqTradingUnit): [可选] 指定发送下单指令的账户实例, 多账户模式下，该参数必须指定
+            account (TqAccount/TqKq/TqZq/TqKqStock/TqSim/TqSimStock/TqCtp/TqRohon/TqJees/TqYida/TqO32/TqTradingUnit): [可选] 指定发送下单指令的账户实例, 多账户模式下，该参数必须指定
 
         Example1::
 
@@ -248,7 +248,7 @@ class TqRuleAccOpenVolumesLimit(TqRiskRule):
                 * str: 一个合约代码
                 * list of str: 合约代码列表
 
-            account (TqAccount/TqKq/TqZq/TqKqStock/TqSim/TqSimStock/TqCtp/TqRohon/TqJees/TqYida/TqTradingUnit): [可选] 指定发送下单指令的账户实例, 多账户模式下，该参数必须指定
+            account (TqAccount/TqKq/TqZq/TqKqStock/TqSim/TqSimStock/TqCtp/TqRohon/TqJees/TqYida/TqO32/TqTradingUnit): [可选] 指定发送下单指令的账户实例, 多账户模式下，该参数必须指定
 
         Example::
 
@@ -328,7 +328,7 @@ class TqRuleOrderRateLimit(TqRiskRule):
                 * str: 指定交易所代码，如 "SHFE", "DCE", "CZCE", "CFFEX" 等
                 * list of str: 交易所代码列表，如 ["DCE", "SHFE"]，每个交易所分别限制
 
-            account (TqAccount/TqKq/TqZq/TqKqStock/TqSim/TqSimStock/TqCtp/TqRohon/TqJees/TqYida/TqTradingUnit): [可选] 指定发送下单指令的账户实例, 多账户模式下，该参数必须指定
+            account (TqAccount/TqKq/TqZq/TqKqStock/TqSim/TqSimStock/TqCtp/TqRohon/TqJees/TqYida/TqO32/TqTradingUnit): [可选] 指定发送下单指令的账户实例, 多账户模式下，该参数必须指定
 
         Example1::
 
