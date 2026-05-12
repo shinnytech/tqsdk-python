@@ -14,6 +14,7 @@
 - Cancel orders
 - When to use manual orders
 - `TargetPosTask`
+- `TargetPosTask` with exchange minimum open volume
 - `TargetPosScheduler`
 - `TqScenario` versus live execution tools
 - Advanced helpers beyond the default answer
@@ -111,6 +112,7 @@ Rules:
 - keep calling `wait_update()` after `set_target_volume()`
 - do not mix `TargetPosTask` and manual `insert_order()` on the same symbol
 - if you need a different `price`, `offset_priority`, `min_volume`, or `max_volume`, cancel the old task before creating a new one
+- by default, `TargetPosTask` rejects contracts whose `quote.open_min_market_order_volume` or `quote.open_min_limit_order_volume` is greater than 1
 
 Useful parameters:
 
@@ -118,11 +120,47 @@ Useful parameters:
 - `offset_priority`
 - `min_volume` and `max_volume` for split execution
 - `account` in multi-account mode
+- `support_open_min_volume=True` for contracts with an exchange minimum opening size, with the limitations below
 
 Useful lifecycle APIs:
 
 - `target_pos.cancel()`
 - `target_pos.is_finished()`
+
+## `TargetPosTask` With Exchange Minimum Open Volume
+
+Use `support_open_min_volume=True` only when the user explicitly wants `TargetPosTask` on a contract where `quote.open_min_market_order_volume > 1` or `quote.open_min_limit_order_volume > 1`.
+
+Important limits:
+
+- exact target completion is not guaranteed; treat the task as complete when `abs(position.pos - target_volume) < quote.open_min_limit_order_volume`
+- if split execution is enabled, both `min_volume` and `max_volume` must be at least `quote.open_min_limit_order_volume`
+- when the remaining opening chase volume is below `quote.open_min_limit_order_volume`, that opening chase stops instead of sending another order
+- if the task can only open positions and the calculated opening size is already below `quote.open_min_limit_order_volume`, no order is sent and the task ends
+- `support_open_min_volume` is part of the singleton construction parameters; cancel the old task before recreating the same account and symbol with a different value
+
+Example completion check:
+
+```python
+from tqsdk import TqApi, TqAuth, TargetPosTask
+
+api = TqApi(auth=TqAuth("快期账户", "账户密码"))
+symbol = "GFEX.ps2704"
+target_volume = 20
+
+quote = api.get_quote(symbol)
+position = api.get_position(symbol)
+target_pos = TargetPosTask(api, symbol, support_open_min_volume=True)
+target_pos.set_target_volume(target_volume)
+
+while True:
+    api.wait_update()
+    if abs(position.pos - target_volume) < quote.open_min_limit_order_volume:
+        print("Target position task is complete enough for this contract rule.")
+        break
+
+api.close()
+```
 
 ## `TargetPosScheduler`
 

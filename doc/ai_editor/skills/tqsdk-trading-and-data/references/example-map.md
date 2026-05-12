@@ -45,11 +45,15 @@ Use this file when you need a concrete repository example or doc page before wri
 - `tqsdk/demo/tutorial/t70.py`
   - basic `TargetPosTask` strategy
 - `doc/usage/targetpostask.rst`
-  - `TargetPosTask` rules and caveats
+  - `TargetPosTask` rules and caveats, including `support_open_min_volume`
 - `doc/advanced/targetpostask2.rst`
   - `cancel()` and `is_finished()`
 - `doc/advanced/scheduler.rst`
   - `TargetPosScheduler`
+- `design/target_pos_task_support_open_min_limit.md`
+  - design notes for contracts with minimum opening volume rules
+- `tqsdk/test/target_pos_task/test_open_min_volume.py`
+  - regression cases for `support_open_min_volume`
 
 ## If The User Asks About Margin Trials Or `TqScenario`
 

@@ -3,11 +3,13 @@
 __author__ = 'chenli'
 
 import asyncio
+import datetime
 import json
 import os
-import tempfile
-import sys
+import shutil
 import subprocess
+import sys
+import uuid
 from pathlib import Path
 from asyncio.subprocess import DEVNULL, PIPE
 
@@ -15,6 +17,15 @@ from tqsdk.exceptions import TqContextManagerError
 
 
 class ZqOtgContext(object):
+    _otg_logs_dir = Path.home() / ".tqsdk" / "otg_logs"
+    _otg_config_dir = Path.home() / ".tqsdk" / "otg_config"
+    _otg_log_dir_prefix_len = 20
+    _otg_log_protect_days = 3
+
+    @staticmethod
+    def _get_otg_log_max_dirs():
+        return int(os.getenv("TQ_OTG_MAX_LOG_DIRS", 30))
+
     def __init__(self, api):
         acc_types = ", ".join([type(acc).__name__ for acc in api._account._account_list if acc._account_auth.get("feature") == "tq_direct"])
         try:
@@ -31,9 +42,58 @@ class ZqOtgContext(object):
         self._zq_otg_env["LD_LIBRARY_PATH"] = str(self._zq_otg_path)
         self._zq_otg_proc = None
 
+    @staticmethod
+    def _parse_otg_log_dir_dt(path):
+        try:
+            return datetime.datetime.strptime(path.name[:ZqOtgContext._otg_log_dir_prefix_len], "%Y%m%d%H%M%S%f")
+        except Exception:
+            return None
+
+    @staticmethod
+    def _clear_otg_logs():
+        ZqOtgContext._otg_logs_dir.mkdir(parents=True, exist_ok=True)
+        all_dirs = [path for path in ZqOtgContext._otg_logs_dir.iterdir() if path.is_dir()]
+        max_dirs = ZqOtgContext._get_otg_log_max_dirs()
+        if len(all_dirs) <= max_dirs:
+            return
+        protect_dt = datetime.datetime.now() - datetime.timedelta(days=ZqOtgContext._otg_log_protect_days)
+        parsed_dirs = []
+        for path in all_dirs:
+            created_at = ZqOtgContext._parse_otg_log_dir_dt(path)
+            if created_at is None or created_at >= protect_dt:
+                continue
+            parsed_dirs.append((created_at, path.name, path))
+        parsed_dirs.sort()
+        total_dirs = len(all_dirs)
+        for _, _, path in parsed_dirs:
+            if total_dirs <= max_dirs:
+                break
+            try:
+                shutil.rmtree(path)
+                total_dirs -= 1
+            except Exception:
+                pass
+
+    @staticmethod
+    def _create_otg_data_path():
+        ZqOtgContext._clear_otg_logs()
+        while True:
+            dirname = f"{datetime.datetime.now().strftime('%Y%m%d%H%M%S%f')}-{uuid.uuid4().hex}"
+            path = ZqOtgContext._otg_logs_dir / dirname
+            try:
+                path.mkdir(exist_ok=False)
+                return path
+            except FileExistsError:
+                continue
+
+    @staticmethod
+    def _get_otg_config_path():
+        ZqOtgContext._otg_config_dir.mkdir(parents=True, exist_ok=True)
+        return ZqOtgContext._otg_config_dir
+
     async def __aenter__(self):
-        self._zq_otg_data_dir = tempfile.TemporaryDirectory()
-        self._zq_otg_data_path = Path(self._zq_otg_data_dir.name)
+        self._zq_otg_data_path = self._create_otg_data_path()
+        self._zq_otg_config_path = self._get_otg_config_path()
         return self
 
     async def get_url(self, url_info):
@@ -43,7 +103,7 @@ class ZqOtgContext(object):
 
         parameters = json.dumps({
             "log_file_path": str(self._zq_otg_data_path),
-            "user_file_path": str(self._zq_otg_data_path),
+            "user_file_path": str(self._zq_otg_config_path),
             "host": "127.0.0.1",
             "port": 0,
         })
@@ -73,4 +133,3 @@ class ZqOtgContext(object):
                 self._zq_otg_proc.wait()
             else:
                 await self._zq_otg_proc.wait()
-        self._zq_otg_data_dir.cleanup()

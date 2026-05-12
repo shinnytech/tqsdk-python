@@ -13,7 +13,7 @@
 * :ref:`for_ctp_user`
 * :ref:`for_vnpy_user`
 
-如果你正在使用带 AI 能力的开发工具，也可以结合 :ref:`tqsdk_trae` 、:ref:`tqsdk_codex` 、VSCode 等提升排错和写示例的效率，更多内容请见 :ref:`ai_editor` 。
+如果你正在使用带 AI 能力的开发工具，也可以结合 :ref:`tqsdk_trae` 、:ref:`tqsdk_codebuddy` 、:ref:`tqsdk_codex` 、VSCode 等提升排错和写示例的效率，更多内容请见 :ref:`ai_editor` 。
 
 
 

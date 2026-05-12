@@ -34,6 +34,7 @@ Rules:
 | `highest`, `lowest`, `open`, `close`, `average` | session statistics | intraday analysis |
 | `price_tick` | minimum price increment | order price calculation |
 | `volume_multiple` | contract multiplier | PnL and sizing |
+| `open_min_market_order_volume`, `open_min_limit_order_volume` | minimum opening order size for market or limit orders | decide whether `TargetPosTask(..., support_open_min_volume=True)` is needed |
 | `instrument_name`, `instrument_id`, `exchange_id`, `ins_class` | contract identity | explain what the symbol is |
 | `underlying_symbol` | underlying for main contracts and options | map derived contracts |
 | `expired` | whether the contract is expired | avoid stale examples |

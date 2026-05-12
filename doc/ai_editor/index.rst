@@ -12,6 +12,7 @@ AI 编辑器接入
     :maxdepth: 1
 
     tqsdk_trae.rst
+    tqsdk_codebuddy.rst
     tqsdk_codex.rst
 
 技能与研究模板

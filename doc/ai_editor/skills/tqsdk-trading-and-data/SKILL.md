@@ -16,7 +16,7 @@ Read only the references needed for the user's question.
 3. Read [references/account-type-matrix.md](references/account-type-matrix.md) for `TqAccount`, `TqKq`, `TqKqStock`, `TqSim`, `TqSimStock`, OTG account classes, and `TqMultiAccount`.
 4. Read [references/accounts-and-trading.md](references/accounts-and-trading.md) for account, position, order, and trade getters plus multi-account getter patterns.
 5. Read [references/scenario-and-margin.md](references/scenario-and-margin.md) for `TqScenario`, real-account margin-rate lookup, margin occupancy calculation, risk-ratio what-if analysis, and limited built-in margin discount rules.
-6. Read [references/order-functions-and-position-tools.md](references/order-functions-and-position-tools.md) for `insert_order`, `cancel_order`, `TargetPosTask`, `TargetPosScheduler`, and advanced execution helpers.
+6. Read [references/order-functions-and-position-tools.md](references/order-functions-and-position-tools.md) for `insert_order`, `cancel_order`, `TargetPosTask`, `support_open_min_volume`, `TargetPosScheduler`, and advanced execution helpers.
 7. Read [references/object-fields.md](references/object-fields.md) when the user asks what fields mean on `Quote`, K-line or tick rows, `Account`, `Position`, `Order`, `Trade`, or their stock variants.
 8. Read [references/simulation-and-backtest.md](references/simulation-and-backtest.md) for local sim, Quick sim, stock sim, backtest, and cross-account backtest limits.
 9. Read [references/error-faq.md](references/error-faq.md) when the user asks about common TqSdk failures, confusing behavior, or exception messages.
@@ -37,6 +37,7 @@ Read only the references needed for the user's question.
 8. When the user asks for long historical ranges, prefer `DataDownloader` over pretending `get_kline_serial` is an unlimited history API.
 9. When the user asks for advanced execution, prefer public helpers first:
    - `TargetPosTask` for target net position.
+   - `TargetPosTask(..., support_open_min_volume=True)` only for contracts with exchange minimum opening size rules when approximate completion is acceptable.
    - `TargetPosScheduler` plus `twap_table` or `vwap_table` from `tqsdk.algorithm` for scheduled execution.
    - Mention `InsertOrderTask` and `InsertOrderUntilAllTradedTask` as internal or advanced helpers, not the default answer.
 10. Use `TqScenario` for synchronous what-if margin and risk trials, not for live order placement. It is futures-only, single-account, and updates the trial snapshot immediately after each call.

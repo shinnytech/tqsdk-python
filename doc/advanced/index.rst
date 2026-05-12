@@ -41,3 +41,4 @@
 
     for_vnpy_user.rst
     for_ctp_user.rst
+    evaluation_trace.rst

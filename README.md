@@ -79,6 +79,7 @@ TqSdk提供的功能可以支持从简单到复杂的各类策略程序：
 
 * [通过 AI 工具使用 TqSdk](https://doc.shinnytech.com/tqsdk/latest/ai_editor/index.html)
 * [在 Trae 中高效学习和使用 TqSdk](https://doc.shinnytech.com/tqsdk/latest/ai_editor/tqsdk_trae.html)
+* [在 CodeBuddy 中高效学习和使用 TqSdk](https://doc.shinnytech.com/tqsdk/latest/ai_editor/tqsdk_codebuddy.html)
 * [使用 Codex 协作开发 TqSdk 项目](https://doc.shinnytech.com/tqsdk/latest/ai_editor/tqsdk_codex.html)
 * [TqSdk Skills 压缩包与使用说明](https://doc.shinnytech.com/tqsdk/latest/ai_editor/tqsdk_skills.html)
 * [下载 TqSdk 技能包 `tqsdk-trading-and-data.zip`](https://doc.shinnytech.com/tqsdk/latest/ai_editor/skills/tqsdk-trading-and-data.zip)

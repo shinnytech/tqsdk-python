@@ -13,6 +13,7 @@
 - No data, `NaN`, or empty fields
 - `insert_order()` or `cancel_order()` does nothing
 - `TargetPosTask` does not act
+- `TargetPosTask` and minimum open volume contracts
 - Multi-account errors
 - `offset` errors
 - Stock and futures mixed up
@@ -60,6 +61,21 @@ Relevant messages:
 
 - "已经结束的 TargetPosTask 实例不可以再设置手数。"
 - "您试图用不同的 ... 参数创建两个 ... 调仓任务"
+
+## `TargetPosTask` And Minimum Open Volume Contracts
+
+Typical cause:
+
+- the contract has `quote.open_min_market_order_volume > 1` or `quote.open_min_limit_order_volume > 1`
+- by default, `TargetPosTask` refuses these contracts during later `wait_update()` calls
+
+Fix:
+
+- if exact target-position adjustment is required, use manual order control instead
+- if approximate completion is acceptable, create the task with `support_open_min_volume=True`
+- judge completion with `abs(position.pos - target_volume) < quote.open_min_limit_order_volume`
+- if `min_volume` and `max_volume` are used, both must be at least `quote.open_min_limit_order_volume`
+- if the same account and symbol already has a `TargetPosTask`, cancel it before recreating it with a different `support_open_min_volume` value
 
 ## Multi-Account Error: "需要指定账户实例 account"
 

@@ -141,11 +141,14 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
             account (TqAccount/TqKq/TqSim): [可选]指定发送下单指令的账户实例, 多账户模式下，该参数必须指定
 
             support_open_min_volume (bool): [可选]是否支持有最小开仓手数限制的合约，默认 False。
-                为 False 时，当 open_min_market_order_volume > 1 或 open_min_limit_order_volume > 1 时抛出异常；
-                为 True 时，当 open_min_limit_order_volume > 1 时仅打印提示信息；
-                如果启用了大单拆分，且 min_volume 或 max_volume 小于 open_min_limit_order_volume，则会直接抛出异常；
-                当 offset_priority == "开" 并且 target_pos_task 内部计算的总下单手数 < open_min_limit_order_volume，会创建一个开仓追单任务，但是不会发单，并且直接认为调仓任务完成；
-                当 OPEN 追单剩余手数小于 open_min_limit_order_volume 时，对应 OPEN 追单任务会结束，不再继续报单。
+
+                | 为 False 时，当 open_min_market_order_volume > 1 或 open_min_limit_order_volume > 1 时抛出异常；
+                | 为 True 时，当 open_min_limit_order_volume > 1 时仅打印提示信息；
+                | 如果启用了大单拆分，且 min_volume 或 max_volume 小于 open_min_limit_order_volume，则会直接抛出异常；
+                | 当 offset_priority == "开" 并且 target_pos_task 内部计算的总下单手数 < open_min_limit_order_volume，会创建一个开仓追单任务，但是不会发单，并且直接认为本轮调仓任务完成；
+                | 当 OPEN 追单剩余手数小于 open_min_limit_order_volume 时，对应 OPEN 追单任务会结束，不再继续报单。
+
+                详细说明参考 :ref:`最小开仓手数限制合约 <targetpostask_open_min_volume>`。
 
         **注意**
 
