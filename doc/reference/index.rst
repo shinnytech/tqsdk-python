@@ -28,6 +28,7 @@ TqSdk 模块参考
     tqsdk.tqjees.rst
     tqsdk.tqyida.rst
     tqsdk.tqo32.rst
+    tqsdk.tqxuntou.rst
     tqsdk.sim.rst
 
 .. toctree::

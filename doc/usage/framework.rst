@@ -20,8 +20,9 @@ TqApi 实例负责:
 TqApi 创建时, 需要提供一个account参数. 它可以是:
 
 * 一个 :py:class:`tqsdk.TqAccount` 实例: 使用实盘帐号, 直连行情和交易服务器, 需提供期货公司/帐号/密码
+* 一个 :py:class:`tqsdk.TqKq` 实例: 使用快期模拟账户，产生的模拟持仓、委托和成交记录可在快期 APP、快期专业版、快期 v2、快期 v3 中查看
 * 一个 :py:class:`tqsdk.TqSim` 实例: 使用 Api 自带的模拟功能, 直连行情服务器接收行情数据
-* 如果未提供 account 参数, 或者 account == None, 则会自动创建并使用一个 :py:class:`tqsdk.TqSim` 实例
+* 如果未提供 account 参数, 或者 account == None, 则会自动创建并使用一个 :py:class:`tqsdk.TqSim` 实例。这个默认模拟账户只存在于本地程序内，持仓、委托和成交记录不会同步到快期 APP、快期专业版、快期 v2 或快期 v3 中查看
 
 此外还需要传入用户的快期账户，参见 :ref:`shinny_account`
 

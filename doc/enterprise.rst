@@ -74,3 +74,43 @@ TqSdk 提供了恒生 O32 柜台的连接支持，支持用户通过直连模式
 其中 `account_id` 通过 :py:class:`~tqsdk.O32Account` 传入，内部会拼接成 ``用户.基金.资产单元.组合`` 
 
 `td_front_url` / `mc_front_url` 为柜台方提供的前置地址，`license_file` 为本地许可证文件位置
+
+
+迅投柜台连接功能
+-------------------------------------------------
+TqSdk 提供了迅投柜台的连接支持，支持用户通过直连模式接入迅投柜台。
+
+.. note::
+
+   迅投柜台连接目前仅支持 Windows 环境。
+
+详情可以点击 :py:class:`~tqsdk.TqXuntou` ::
+
+   from tqsdk import TqApi, TqAuth, TqXuntou
+
+   account = TqXuntou(
+       account_id="迅投账户",
+       password="迅投密码",
+       account_type=1,
+       front_url="front_host:front_port",
+       app_id="迅投 AppID",
+       auth_code="迅投 AuthCode",
+   )
+   api = TqApi(account, auth=TqAuth("快期账户", "账户密码"))
+
+其中 `account_type` 为迅投账户类型，目前支持：
+
+* ``1``: 期货账户
+* ``5``: 期货期权账户
+
+`front_url` 为柜台方提供的前置地址，格式如 ``112.54.165.180:9003``，`app_id` 和 `auth_code` 也需要向迅投柜台方获取。
+
+使用迅投柜台前，需要先在 ``$HOME/.tqsdk/otg_config/xuntou/config`` 目录下放置以下 3 个配置文件，这些文件由迅投提供：
+
+* ``server.crt``
+* ``traderApi.ini``
+* ``traderApi.log4xx``
+
+如果登录时遇到“缺失 xuntou 配置文件”报错，表示 ``$HOME/.tqsdk/otg_config/xuntou/config`` 目录下缺少上述相关配置文件。
+
+xuntou api 会在 ``$HOME/.tqsdk/otg_config/xuntou/userdata`` 目录下写入文件，此目录由用户自行管理，目录管理策略请咨询迅投。
