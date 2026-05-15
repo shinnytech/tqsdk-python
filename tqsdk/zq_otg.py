@@ -30,11 +30,10 @@ class ZqOtgContext(object):
         acc_types = ", ".join([type(acc).__name__ for acc in api._account._account_list if acc._account_auth.get("feature") == "tq_direct"])
         try:
             from tqsdk_zq_otg import __version__ as otg_version
-            from tqsdk import __version__ as tqsdk_version
             from tqsdk_zq_otg import get_zq_otg_path
         except ImportError:
             raise Exception(f"使用 {acc_types} 账户需要安装 tqsdk_zq_otg 包: pip install -U tqsdk_zq_otg") from None
-        if otg_version != tqsdk_version:
+        if otg_version < "3.9.8":
             raise Exception(f"使用 {acc_types} 账户需要更新 tqsdk_zq_otg 包到最新版本: pip install -U tqsdk_zq_otg")
         self._zq_otg_path = get_zq_otg_path()
         self._zq_otg_exe = str(Path(self._zq_otg_path) / "otg_adapter")
