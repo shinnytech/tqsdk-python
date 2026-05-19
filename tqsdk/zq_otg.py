@@ -33,7 +33,7 @@ class ZqOtgContext(object):
             from tqsdk_zq_otg import get_zq_otg_path
         except ImportError:
             raise Exception(f"使用 {acc_types} 账户需要安装 tqsdk_zq_otg 包: pip install -U tqsdk_zq_otg") from None
-        if otg_version < "3.9.8":
+        if otg_version < "3.9.9":
             raise Exception(f"使用 {acc_types} 账户需要更新 tqsdk_zq_otg 包到最新版本: pip install -U tqsdk_zq_otg")
         self._zq_otg_path = get_zq_otg_path()
         self._zq_otg_exe = str(Path(self._zq_otg_path) / "otg_adapter")

@@ -11,16 +11,16 @@ from tqsdk.tradeable.mixin import FutureMixin
 class TqXuntou(BaseOtg, FutureMixin):
     """Xuntou 账户类"""
 
-    def __init__(self, account_id: str, password: str, account_type: int, front_url: str, app_id: str, auth_code: str) -> None:
+    def __init__(self, account_id: str, password: str, front_url: str, app_id: str, auth_code: str, account_type: int = 1) -> None:
         """
         创建 Xuntou 账户实例
 
         Args:
-            account_id (str): 帐号
+            account_id (str): 帐号, 账号格式为 "迅投账户.子账号", 如 "test001.100555"
 
             password (str): 密码
 
-            account_type (int): Xuntou 账户类型 1 - 期货账户 5 - 期货期权账户
+            account_type (int): Xuntou 账户类型, 目前仅支持 1 - 期货账户(迅投已经将 1 - 期货账户 和 5 - 期货期权合并为一个账户类型，统一使用 1 来表示)
 
             front_url (str): Xuntou 柜台地址，格式为 ip:port, 如 129.211.138.170:10001
 
@@ -31,7 +31,7 @@ class TqXuntou(BaseOtg, FutureMixin):
         Example1::
 
             from tqsdk import TqApi, TqXuntou
-            account = TqXuntou(account_id="Xuntou 账户", password="Xuntou 密码", account_type=1, front_url="Xuntou 柜台地址", app_id="Xuntou AppID", auth_code="Xuntou AuthCode")
+            account = TqXuntou(account_id="Xuntou 账户", password="Xuntou 密码", front_url="Xuntou 柜台地址", app_id="Xuntou AppID", auth_code="Xuntou AuthCode")
             api = TqApi(account, auth=TqAuth("快期账户", "账户密码"))
 
         注意：
