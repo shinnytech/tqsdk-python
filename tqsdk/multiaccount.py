@@ -35,11 +35,11 @@ class TqMultiAccount(object):
         创建 TqMultiAccount 实例
 
         Args:
-            accounts (List[Union[TqAccount, TqKq, TqKqStock, TqSim, TqSimStock, TqZq, TqCtp, TqRohon, TqJees, TqYida, TqO32, TqXuntou, TqTradingUnit]]): [可选] 多账户列表, 若未指定任何账户, 则为 [TqSim()]
+            accounts (List[Union[TqAccount, TqKq, TqKqStock, TqSim, TqSimStock, TqZq, TqCtp, TqRohon, TqJees, TqYida, TqO32, TqIS, TqXuntou, TqTradingUnit]]): [可选] 多账户列表, 若未指定任何账户, 则为 [TqSim()]
 
         Example1::
 
-            from tqsdk import TqApi, TqAccount, TqMultiAccount
+            from tqsdk import TqApi, TqAuth, TqAccount, TqMultiAccount
 
             account1 = TqAccount("H海通期货", "123456", "123456")
             account2 = TqAccount("H宏源期货", "654321", "123456")

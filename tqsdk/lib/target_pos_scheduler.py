@@ -2,7 +2,6 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'mayanqiong'
 
-import asyncio
 from typing import Optional, Union
 
 from pandas import DataFrame
@@ -21,7 +20,8 @@ class TargetPosScheduler(object):
 
     def __init__(self, api: TqApi, symbol: str, time_table: DataFrame, offset_priority: str = "今昨,开",
                  min_volume: Optional[int] = None, max_volume: Optional[int] = None, trade_chan: Optional[TqChan] = None,
-                 trade_objs_chan: Optional[TqChan] = None, account: Optional[Union[TqAccount, TqKq, TqSim]] = None) -> None:
+                 trade_objs_chan: Optional[TqChan] = None, account: Optional[Union[TqAccount, TqKq, TqSim]] = None,
+                 support_open_min_volume: bool = False) -> None:
         """
         创建算法执行引擎实例，根据设定的目标持仓任务列表，调用 TargetPosTask 来调整指定合约到目标头寸。
 
@@ -30,7 +30,7 @@ class TargetPosScheduler(object):
 
             2. 请勿同时使用 TargetPosScheduler、TargetPosTask、insert_order() 函数, 否则将导致报错或错误下单。
 
-            3. `symbol`，`offset_priority`，`min_volume`，`max_volume`，`trade_chan`，`trade_objs_chan`，`account` 这几个参数会直接传给 TargetPosTask，请按照 TargetPosTask 的说明设置参数。
+            3. `symbol`，`offset_priority`，`min_volume`，`max_volume`，`trade_chan`，`trade_objs_chan`，`account`，`support_open_min_volume` 这几个参数会直接传给 TargetPosTask，请按照 TargetPosTask 的说明设置参数。
 
         Args:
             api (TqApi): TqApi实例，该task依托于指定api下单/撤单
@@ -68,10 +68,13 @@ class TargetPosScheduler(object):
 
             account (TqAccount/TqKq/TqSim): [可选]指定发送下单指令的账户实例, 多账户模式下，该参数必须指定
 
+            support_open_min_volume (bool): [可选]是否支持有最小开仓手数限制的合约，默认 False，具体说明参考 TargetPosTask 的同名参数。
+                为 True 时，最后一项任务会在目标持仓达到或当前 TargetPosTask 调仓轮次结束后自动结束。
+
         Example::
 
             from pandas import DataFrame
-            from tqsdk import TqApi, TargetPosScheduler
+            from tqsdk import TqApi, TqAuth, TargetPosScheduler
 
             api = TqApi(auth=TqAuth("快期账户", "账户密码"))
             time_table = DataFrame([
@@ -92,6 +95,26 @@ class TargetPosScheduler(object):
             average_trade_price = sum(scheduler.trades_df['price'] * scheduler.trades_df['volume']) / sum(scheduler.trades_df['volume'])
             print("成交均价:", average_trade_price)
             api.close()
+
+        Example2::
+
+            from pandas import DataFrame
+            from tqsdk import TqApi, TqAuth, TargetPosScheduler
+
+            api = TqApi(auth=TqAuth("快期账户", "账户密码"))
+            time_table = DataFrame([
+                [25, 10, "PASSIVE"],
+                [5, 10, "ACTIVE"],
+                [25, 20, "PASSIVE"],
+                [5, 20, "ACTIVE"],
+            ], columns=['interval', 'target_pos', 'price'])
+
+            scheduler = TargetPosScheduler(api, 'CZCE.MA609', time_table=time_table, support_open_min_volume=True)
+            while True:
+                api.wait_update()
+                if scheduler.is_finished():
+                    break
+            api.close()
         """
         self._api = api
         if isinstance(time_table, TqTimeTable):
@@ -104,6 +127,7 @@ class TargetPosScheduler(object):
         self._min_volume = min_volume
         self._max_volume = max_volume
         self._trade_chan = trade_chan
+        self._support_open_min_volume = support_open_min_volume
 
         self._trade_objs_chan = trade_objs_chan if trade_objs_chan else TqChan(self._api)
         self._time_table = _check_time_table(time_table)
@@ -118,31 +142,36 @@ class TargetPosScheduler(object):
         quote = await self._api.get_quote(self._symbol)
         self._time_table['deadline'] = _get_deadline_from_interval(quote, self._time_table['interval'])
         target_pos_task = None
+        target_volume_chan = None
         try:
             _index = 0  # _index 表示下标
             for index, row in self._time_table.iterrows():
                 if row['price'] is None:
                     target_pos_task = None
+                    target_volume_chan = None
                 else:
+                    target_pos = int(row['target_pos'])
+                    # target_volume_chan 的关闭由 TargetPosTask 负责
+                    target_volume_chan = TqChan(self._api)
                     target_pos_task = TargetPosTask(api=self._api, symbol=self._symbol, price=row['price'],
                                                     offset_priority=self._offset_priority,
                                                     min_volume=self._min_volume, max_volume=self._max_volume,
                                                     trade_chan=self._trade_chan,
                                                     trade_objs_chan=self._trade_objs_chan,
-                                                    account=self._account)
-                    target_pos_task.set_target_volume(row['target_pos'])
+                                                    account=self._account,
+                                                    support_open_min_volume=self._support_open_min_volume,
+                                                    target_volume_chan=target_volume_chan)
+                    target_pos_task.set_target_volume(target_pos)
                 if _index < self._time_table.shape[0] - 1:  # 非最后一项
                     async for _ in self._api.register_update_notify(quote):
                         if _get_trade_timestamp(quote.datetime, float('nan')) > row['deadline']:
                             if target_pos_task:
                                 await self._api._cancel_task(target_pos_task._task)
                             break
-                elif target_pos_task:  # 最后一项，如果有 target_pos_task 等待持仓调整完成，否则直接退出
-                    position = self._account.get_position(self._symbol)
-                    if position.pos != row['target_pos']:
-                        async for _ in self._api.register_update_notify(position):
-                            if position.pos == row['target_pos']:
-                                break
+                elif target_pos_task and target_volume_chan:  # 最后一项，如果有 target_pos_task 等待持仓调整完成，否则直接退出
+                    async for finished_target_pos in target_volume_chan:
+                        if finished_target_pos == target_pos:
+                            break
                 _index = _index + 1
         finally:
             if target_pos_task:
@@ -161,7 +190,7 @@ class TargetPosScheduler(object):
         Example::
 
             from pandas import DataFrame
-            from tqsdk import TqApi, TargetPosScheduler
+            from tqsdk import TqApi, TqAuth, TargetPosScheduler
 
             api = TqApi(auth=TqAuth("快期账户", "账户密码"))
             time_table = DataFrame([

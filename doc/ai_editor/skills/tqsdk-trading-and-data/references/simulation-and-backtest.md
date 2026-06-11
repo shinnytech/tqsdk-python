@@ -78,8 +78,8 @@ api = TqApi(
     auth=TqAuth("快期账户", "账户密码"),
 )
 
-klines = api.get_kline_serial("DCE.m2505", 60, data_length=200)
-target_pos = TargetPosTask(api, "DCE.m2505")
+klines = api.get_kline_serial("DCE.m2609", 60, data_length=200)
+target_pos = TargetPosTask(api, "DCE.m2609")
 
 while True:
     api.wait_update()

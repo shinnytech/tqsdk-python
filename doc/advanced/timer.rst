@@ -14,8 +14,8 @@
     from tqsdk import TqApi, TqAuth, TargetPosTask
 
     api = TqApi(auth=TqAuth("快期账户", "账户密码"))
-    quote = api.get_quote("SHFE.rb2405")
-    target_pos = TargetPosTask(api, "SHFE.rb2405")
+    quote = api.get_quote("SHFE.rb2610")
+    target_pos = TargetPosTask(api, "SHFE.rb2610")
     close_hour, close_minute = 14, 50
 
     while True:
@@ -38,7 +38,7 @@
     from tqsdk import TqApi, TqAuth
 
     api = TqApi(auth=TqAuth("快期账户", "账户密码"))
-    quote = api.get_quote("SHFE.rb2405")
+    quote = api.get_quote("SHFE.rb2610")
 
     while True:
         api.wait_update()

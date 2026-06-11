@@ -2,8 +2,6 @@
 #  -*- coding: utf-8 -*-
 __author__ = 'yanqiong'
 
-
-import asyncio
 from typing import Optional, Union
 
 from tqsdk.algorithm.time_table_generater import _gen_random_list
@@ -50,7 +48,8 @@ class Twap(object):
 
     def __init__(self, api: TqApi, symbol: str, direction: str, offset: str, volume: int, duration: float,
                  min_volume_each_order: int, max_volume_each_order: int,
-                 account: Optional[Union[TqAccount, TqKq, TqSim]] = None):
+                 account: Optional[Union[TqAccount, TqKq, TqSim]] = None,
+                 support_open_min_volume: bool = False):
         """
         创建 Twap 实例
 
@@ -73,6 +72,9 @@ class Twap(object):
             max_volume_each_order (int):单笔最大委托单，每笔委托单数默认在最小和最大值中产生
 
             account (TqAccount/TqKq/TqSim): [可选]指定发送下单指令的账户实例, 多账户模式下，该参数必须指定
+
+            support_open_min_volume (bool): [可选]是否支持有最小开仓手数限制的合约，默认 False。
+                为 True 时，当剩余开仓手数小于 quote.open_min_limit_order_volume 时会结束当前追单，不再继续报单。
 
         Example1::
 
@@ -116,6 +118,20 @@ class Twap(object):
           print(target_twap.trades)
           print(target_twap.average_trade_price)
           api.close()
+
+        Example3::
+
+          from tqsdk import TqApi
+          from tqsdk.algorithm import Twap
+
+          api = TqApi(auth="快期账户,用户密码")
+          target_twap = Twap(api, "CZCE.MA609", "BUY", "OPEN", 200, 300, 5, 10, support_open_min_volume=True)
+
+          while True:
+            api.wait_update()
+            if target_twap.is_finished():
+                break
+          api.close()
         """
         self._api = api
         self._account = api._account._check_valid(account)
@@ -128,6 +144,7 @@ class Twap(object):
         self._duration = duration
         self._min_volume_each_order = int(min_volume_each_order)
         self._max_volume_each_order = int(max_volume_each_order)
+        self._support_open_min_volume = bool(support_open_min_volume)
         if self._max_volume_each_order <= 0 or self._min_volume_each_order <= 0:
             raise Exception("请调整参数, min_volume_each_order、max_volume_each_order 必须是大于 0 的整数。")
         if self._min_volume_each_order > self._max_volume_each_order:
@@ -154,17 +171,33 @@ class Twap(object):
     async def _run(self, volume_list, interval_list):
         self._quote = await self._api.get_quote(self._symbol)
         # 判断最小下单手数是否大于1
-        if self._quote.open_min_market_order_volume > 1 or self._quote.open_min_limit_order_volume > 1:
-            raise Exception(
-                f"交易所规定 {self._symbol} 的最小市价开仓手数 ({self._quote.open_min_market_order_volume})"
-                f" 或最小限价开仓手数 ({self._quote.open_min_limit_order_volume}) 大于 1，targetpostask、twap、vwap 这些函数还未支持该规则!"
+        open_min_limit_volume = self._quote.open_min_limit_order_volume
+        has_open_min_limit = self._offset == "OPEN" and open_min_limit_volume > 1
+        if has_open_min_limit:
+            if not self._support_open_min_volume:
+                raise Exception(
+                    f"交易所规定 {self._symbol} 的最小限价开仓手数 ({open_min_limit_volume}) 大于 1，"
+                    f"Twap 默认不支持有最小开仓手数限制的合约，如果需要支持，请设置 support_open_min_volume=True。"
+                )
+            if self._min_volume_each_order < open_min_limit_volume:
+                raise Exception(
+                    f"交易所规定 {self._symbol} 的最小限价开仓手数 ({open_min_limit_volume}) 大于 1，"
+                    f"当前 min_volume_each_order ({self._min_volume_each_order}) 小于最小限价开仓手数，"
+                    f"可能导致第一次拆单就开仓失败。请调整 min_volume_each_order 参数，使之大于等于最小限价开仓手数。"
+                )
+            self._api._print(
+                f"交易所规定 {self._symbol} 最小限价开仓手数 ({open_min_limit_volume}) 大于 1。"
+                f"已启用 support_open_min_volume=True，Twap 最终成交手数可能小于目标手数，"
+                f"剩余手数会小于 {open_min_limit_volume}。",
+                level="WARNING"
             )
         # 计算得到时间序列，每个时间段快要结束的时间点，此时应该从被动价格切换为主动价格
         deadline_timestamp_list, strict_deadline_timestamp_list = self._get_deadline_timestamp(interval_list)
+        carry_volume = 0
         for i in range(len(volume_list)):
             exit_immediately = (i + 1 == len(volume_list))  # 如果是最后一个时间段，需要全部成交后立即退出
-            await self._insert_order(volume_list[i], deadline_timestamp_list[i], strict_deadline_timestamp_list[i],
-                                     exit_immediately)
+            carry_volume = await self._insert_order(volume_list[i] + carry_volume, deadline_timestamp_list[i],
+                                                    strict_deadline_timestamp_list[i], exit_immediately)
 
     async def _trade_recv(self):
         try:
@@ -200,11 +233,19 @@ class Twap(object):
         return deadline_timestamp_list, strict_deadline_timestamp_list
 
     async def _insert_order(self, volume, end_time, strict_end_time, exit_immediately):
+        if self._check_open_min_volume_stop(volume):
+            return volume
         volume_left = volume
         try:
             trade_chan = TqChan(self._api)
+            volume_limit = (
+                (self._min_volume_each_order, self._max_volume_each_order)
+                if volume > self._max_volume_each_order else (None, None)
+            )
             self._order_task = InsertOrderUntilAllTradedTask(self._api, self._symbol, self._direction, self._offset,
-                                                             volume=volume, price="PASSIVE", trade_chan=trade_chan,
+                                                             volume=volume, min_volume=volume_limit[0],
+                                                             max_volume=volume_limit[1], price="PASSIVE",
+                                                             trade_chan=trade_chan,
                                                              trade_objs_chan=self._trade_objs_chan,
                                                              account=self._account)
             async with self._api.register_update_notify() as update_chan:
@@ -217,6 +258,8 @@ class Twap(object):
                             volume_left = volume_left - (v if self._direction == "BUY" else -v)
                         if exit_immediately and volume_left == 0:
                             break
+                        if self._order_task._task.done() and self._check_open_min_volume_stop(volume_left, False):
+                            break
         finally:
             await self._api._cancel_task(self._order_task._task)
             while not trade_chan.empty():
@@ -224,22 +267,44 @@ class Twap(object):
                 volume_left = volume_left - (v if self._direction == "BUY" else -v)
             await trade_chan.close()
             if volume_left > 0:
-                await self._insert_order_active(volume_left)
+                volume_left = await self._insert_order_active(volume_left)
+        return volume_left
 
     async def _insert_order_active(self, volume):
+        if self._check_open_min_volume_stop(volume):
+            return volume
         try:
             trade_chan = TqChan(self._api)
+            volume_limit = (
+                (self._min_volume_each_order, self._max_volume_each_order)
+                if volume > self._max_volume_each_order else (None, None)
+            )
             self._order_task = InsertOrderUntilAllTradedTask(self._api, self._symbol, self._direction, self._offset,
-                                                             volume=volume, price="ACTIVE", trade_chan=trade_chan,
+                                                             volume=volume, min_volume=volume_limit[0],
+                                                             max_volume=volume_limit[1], price="ACTIVE",
+                                                             trade_chan=trade_chan,
                                                              trade_objs_chan=self._trade_objs_chan,
                                                              account=self._account)
-            async for v in trade_chan:
-                volume = volume - (v if self._direction == "BUY" else -v)
-                if volume == 0:
-                    break
+            await self._order_task._task
         finally:
+            while not trade_chan.empty():
+                v = await trade_chan.recv()
+                volume = volume - (v if self._direction == "BUY" else -v)
             await trade_chan.close()
             await self._api._cancel_task(self._order_task._task)
+        return volume
+
+    def _check_open_min_volume_stop(self, volume: int, print_warning: bool = True) -> bool:
+        open_min_limit_volume = self._quote.open_min_limit_order_volume
+        if self._support_open_min_volume and self._offset == "OPEN" and open_min_limit_volume > 1 and 0 < volume < open_min_limit_volume:
+            if print_warning:
+                self._api._print(
+                    f"合约 {self._symbol} ({self._direction} 方向), 剩余开仓手数 {volume} 小于最小开仓手数 "
+                    f"{open_min_limit_volume}，不进行开仓，本轮追单任务结束",
+                    level="WARNING"
+                )
+            return True
+        return False
 
     def _get_volume_list(self):
         if self._volume < self._max_volume_each_order:

@@ -77,11 +77,11 @@ class TqRuleOpenCountsLimit(TqRiskRule):
                 * str: 一个合约代码
                 * list of str: 合约代码列表
 
-            account (TqAccount/TqKq/TqZq/TqKqStock/TqSim/TqSimStock/TqCtp/TqRohon/TqJees/TqYida/TqO32/TqXuntou/TqTradingUnit): [可选] 指定发送下单指令的账户实例, 多账户模式下，该参数必须指定
+            account (TqAccount/TqKq/TqZq/TqKqStock/TqSim/TqSimStock/TqCtp/TqRohon/TqJees/TqYida/TqO32/TqIS/TqXuntou/TqTradingUnit): [可选] 指定发送下单指令的账户实例, 多账户模式下，该参数必须指定
 
         Example1::
 
-            from tqsdk import TqApi
+            from tqsdk import TqApi, TqAuth, TqRiskRuleError
             from tqsdk.risk_rule import TqRuleOpenCountsLimit
 
             api = TqApi(auth=TqAuth("快期账户", "账户密码"))
@@ -151,11 +151,11 @@ class TqRuleOpenVolumesLimit(TqRiskRule):
                 * str: 一个合约代码
                 * list of str: 合约代码列表
 
-            account (TqAccount/TqKq/TqZq/TqKqStock/TqSim/TqSimStock/TqCtp/TqRohon/TqJees/TqYida/TqO32/TqXuntou/TqTradingUnit): [可选] 指定发送下单指令的账户实例, 多账户模式下，该参数必须指定
+            account (TqAccount/TqKq/TqZq/TqKqStock/TqSim/TqSimStock/TqCtp/TqRohon/TqJees/TqYida/TqO32/TqIS/TqXuntou/TqTradingUnit): [可选] 指定发送下单指令的账户实例, 多账户模式下，该参数必须指定
 
         Example1::
 
-            from tqsdk import TqApi
+            from tqsdk import TqApi, TqAuth, TqRiskRuleError
             from tqsdk.risk_rule import TqRuleOpenVolumesLimit
 
             api = TqApi(auth=TqAuth("快期账户", "账户密码"))
@@ -178,7 +178,7 @@ class TqRuleOpenVolumesLimit(TqRiskRule):
         Example2::
 
 
-            from tqsdk import TqApi, TqKq, TqRiskRuleError
+            from tqsdk import TqApi, TqAuth, TqKq, TqRiskRuleError
             from tqsdk.risk_rule import TqRuleOpenVolumesLimit
 
             account = TqKq()
@@ -248,11 +248,11 @@ class TqRuleAccOpenVolumesLimit(TqRiskRule):
                 * str: 一个合约代码
                 * list of str: 合约代码列表
 
-            account (TqAccount/TqKq/TqZq/TqKqStock/TqSim/TqSimStock/TqCtp/TqRohon/TqJees/TqYida/TqO32/TqXuntou/TqTradingUnit): [可选] 指定发送下单指令的账户实例, 多账户模式下，该参数必须指定
+            account (TqAccount/TqKq/TqZq/TqKqStock/TqSim/TqSimStock/TqCtp/TqRohon/TqJees/TqYida/TqO32/TqIS/TqXuntou/TqTradingUnit): [可选] 指定发送下单指令的账户实例, 多账户模式下，该参数必须指定
 
         Example::
 
-            from tqsdk import TqApi, TqKq, TqRiskRuleError
+            from tqsdk import TqApi, TqAuth, TqKq, TqRiskRuleError
             from tqsdk.risk_rule import TqRuleAccOpenVolumesLimit
 
             account = TqKq()
@@ -328,11 +328,11 @@ class TqRuleOrderRateLimit(TqRiskRule):
                 * str: 指定交易所代码，如 "SHFE", "DCE", "CZCE", "CFFEX" 等
                 * list of str: 交易所代码列表，如 ["DCE", "SHFE"]，每个交易所分别限制
 
-            account (TqAccount/TqKq/TqZq/TqKqStock/TqSim/TqSimStock/TqCtp/TqRohon/TqJees/TqYida/TqO32/TqXuntou/TqTradingUnit): [可选] 指定发送下单指令的账户实例, 多账户模式下，该参数必须指定
+            account (TqAccount/TqKq/TqZq/TqKqStock/TqSim/TqSimStock/TqCtp/TqRohon/TqJees/TqYida/TqO32/TqIS/TqXuntou/TqTradingUnit): [可选] 指定发送下单指令的账户实例, 多账户模式下，该参数必须指定
 
         Example1::
 
-            from tqsdk import TqApi
+            from tqsdk import TqApi, TqAuth, TqRiskRuleError
             from tqsdk.risk_rule import TqRuleOrderRateLimit
 
             api = TqApi(auth=TqAuth("快期账户", "账户密码"))
@@ -352,7 +352,7 @@ class TqRuleOrderRateLimit(TqRiskRule):
 
         Example2::
 
-            from tqsdk import TqApi, TqKq
+            from tqsdk import TqApi, TqAuth, TqKq, TqRiskRuleError
             from tqsdk.risk_rule import TqRuleOrderRateLimit
 
             account = TqKq()
@@ -373,7 +373,7 @@ class TqRuleOrderRateLimit(TqRiskRule):
 
         Example3::
 
-            from tqsdk import TqApi, TqKq
+            from tqsdk import TqApi, TqAuth, TqKq, TqRiskRuleError
             from tqsdk.risk_rule import TqRuleOrderRateLimit
 
             account = TqKq()

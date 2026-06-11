@@ -38,7 +38,7 @@ Notes:
 from tqsdk import TqApi, TqAuth
 
 api = TqApi(auth=TqAuth("快期账户", "账户密码"))
-quote = api.get_quote("SHFE.au2504")
+quote = api.get_quote("SHFE.au2608")
 
 while True:
     api.wait_update()
@@ -58,12 +58,21 @@ Recommended quote fields:
 
 If the user wants "current price", do not hardcode expired delivery months.
 
+When an answer needs a fixed current delivery-month example, query it first:
+
+```python
+contracts = api.query_quotes(ins_class="FUTURE", exchange_id="SHFE", product_id="rb", expired=False)
+print(contracts)
+```
+
+For market-data examples where tradability is not required, prefer `KQ.m@...` main-contract symbols so the example does not expire quickly. For trading, positions, `TargetPosTask`, and margin examples, use a real non-expired delivery-month contract from the query result.
+
 ## K-Line And Tick Series
 
 K-line:
 
 ```python
-klines = api.get_kline_serial("DCE.i2505", 60, data_length=200)
+klines = api.get_kline_serial("DCE.i2609", 60, data_length=200)
 
 while True:
     api.wait_update()
@@ -74,7 +83,7 @@ while True:
 Tick:
 
 ```python
-ticks = api.get_tick_serial("DCE.i2505", data_length=200)
+ticks = api.get_tick_serial("DCE.i2609", data_length=200)
 
 while True:
     api.wait_update()

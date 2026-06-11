@@ -8,7 +8,7 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 TqSdk可以在windows/linux或macosx环境下运行. 无论您选择使用windows或linux系统, 请确保
 
-* 已经装有 Python 3.7+
+* 已经装有 Python 3.9+
 * 安装 :ref:`TqSdk <tqsdk_install>`
 
 创建一个目录, 放置你所有的策略文件. 
@@ -17,6 +17,8 @@ TqSdk可以在windows/linux或macosx环境下运行. 无论您选择使用window
 在每个策略程序中设置实盘账号
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 将每个策略程序配置为独立直连实盘账号. 在创建 TqApi 时, 传入TqAccount实例. 注意期货公司名称需要与天勤中的名称一致::
+
+  from tqsdk import TqApi, TqAccount, TqAuth
 
   api = TqApi(TqAccount("H宏源期货", "022631", "123456"), auth=TqAuth("快期账户", "账户密码"))
 
@@ -27,7 +29,7 @@ TqSdk可以在windows/linux或macosx环境下运行. 无论您选择使用window
 
 * 使用 python 的 logging 模块输出日志信息到文件, 不要使用 print 打印日志信息
 * 策略代码退出时记得调用 api.close() 函数, 或者用 with closing(api) 的格式确保退出时自动关闭
-* 目前api在运行过程中抛出的异常, 默认处理都是整个策略进程直接退出. 如无特殊需求, 不要使用 expect: 的方式捕获异常并阻止程序退出, 这种情况如果没有正确处理, 可能产生难以预测的后果.
+* 目前api在运行过程中抛出的异常, 默认处理都是整个策略进程直接退出. 如无特殊需求, 不要使用 except: 的方式捕获异常并阻止程序退出, 这种情况如果没有正确处理, 可能产生难以预测的后果.
 
 
 在 windows 环境下配置策略的定时启动/停止
@@ -65,22 +67,22 @@ TqSdk可以在windows/linux或macosx环境下运行. 无论您选择使用window
 
   #  -*- coding: utf-8 -*-
 
-  from tqsdk import TqApi, TqAccount
+  from tqsdk import TqApi, TqAccount, TqAuth
 
   api = TqApi(TqAccount("H宏源期货", "0330203", "123456"), auth=TqAuth("快期账户", "账户密码"))
   # 开仓两手并等待完成
-  order = api.insert_order(symbol="SHFE.rb1901", direction="BUY", offset="OPEN", limit_price=4310,volume=2)
+  order = api.insert_order(symbol="SHFE.rb2610", direction="BUY", offset="OPEN", limit_price=4310,volume=2)
   while order.status != "FINISHED":
       api.wait_update()
   print("已开仓")
 
   
-上面的代码中固定了账户及合约代码 SHFE.rb1901. 我们可以利用 python 的 argparse 模块为这个程序添加一些参数::
+上面的代码中固定了账户及合约代码 SHFE.rb2610. 我们可以利用 python 的 argparse 模块为这个程序添加一些参数::
 
   #  -*- coding: utf-8 -*-
 
   import argparse
-  from tqsdk import TqApi, TqSim, TqAccount
+  from tqsdk import TqApi, TqSim, TqAccount, TqAuth
 
   #解析命令行参数
   parser = argparse.ArgumentParser()
@@ -100,7 +102,7 @@ TqSdk可以在windows/linux或macosx环境下运行. 无论您选择使用window
 
 要通过命令行运行此策略, 可以输入::
 
-  python args.py --broker=H宏源期货 --user_name=0330203 --password=123456 --symbol=SHFE.cu1901
+  python args.py --broker=H宏源期货 --user_name=0330203 --password=123456 --symbol=SHFE.cu2607
 
 
 要在 PyCharm 中同时执行此程序的多种参数版本, 可以通过 PyCharm 的 Run Configuration 实现.

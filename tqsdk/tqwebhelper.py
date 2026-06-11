@@ -15,9 +15,9 @@ from aiohttp import web
 from tqsdk.tradeable.sim.basesim import BaseSim
 
 from tqsdk.auth import TqAuth
-from tqsdk.backtest import TqBacktest, TqReplay
+from tqsdk.backtest import TqBacktest
 from tqsdk.channel import TqChan
-from tqsdk.datetime import _get_trading_day_start_time, _datetime_to_timestamp_nano
+from tqsdk.datetime import _datetime_to_timestamp_nano
 from tqsdk.diff import _simple_merge_diff
 from tqsdk.tradeable import TqAccount, TqKq, TqSim
 
@@ -56,9 +56,6 @@ class TqWebHelper(object):
                 self._api._backtest = TqBacktest(start_dt=datetime.strptime(args["_start_dt"], '%Y%m%d'),
                                                  end_dt=datetime.strptime(args["_end_dt"], '%Y%m%d'))
                 self._api._print(f"当前回测区间 {args['_start_dt']} - {args['_end_dt']}。")
-            elif args["_action"] == "replay":
-                self._api._backtest = TqReplay(datetime.strptime(args["_replay_dt"], '%Y%m%d'))
-                self._api._print(f"当前复盘日期 {args['_replay_dt']}。")
         if args["_auth"]:
             comma_index = args["_auth"].find(',')
             user_name, pwd = args["_auth"][:comma_index], args["_auth"][comma_index + 1:]
@@ -97,7 +94,7 @@ class TqWebHelper(object):
                 accounts_info[acc._account_key].update(acc._account_info)
             self._data = {
                 "action": {
-                    "mode": "replay" if isinstance(self._api._backtest, TqReplay) else "backtest" if isinstance(self._api._backtest, TqBacktest) else "run",
+                    "mode": "backtest" if isinstance(self._api._backtest, TqBacktest) else "run",
                     "md_url_status": '-',
                     "user_name": self._api._auth._user_name,
                     "file_path": file_path[0].upper() + file_path[1:],
@@ -188,8 +185,8 @@ class TqWebHelper(object):
                             account_changed = True
                         _simple_merge_diff(self._data["trade"], trade)
                         web_diffs.append({"trade": trade})
-                    # 处理 backtest replay
-                    if d.get("_tqsdk_backtest") or d.get("_tqsdk_replay"):
+                    # 处理 backtest
+                    if d.get("_tqsdk_backtest"):
                         _simple_merge_diff(self._data, d)
                         web_diffs.append(d)
                     # 处理通知，行情和交易连接的状态
@@ -239,17 +236,10 @@ class TqWebHelper(object):
             chan.send_nowait(last_diff)
 
     def dt_func (self):
-        # 回测和复盘模式，用 _api._account 一定是 TqSim, 使用 TqSim _get_current_timestamp() 提供的时间
+        # 回测模式，用 _api._account 一定是 TqSim, 使用 TqSim _get_current_timestamp() 提供的时间
         # todo: 使用 TqSim.EPOCH
         if self._data["action"]["mode"] == "backtest":
             return self._data['_tqsdk_backtest']['current_dt']
-        elif self._data["action"]["mode"] == "replay":
-            tqsim_current_timestamp = self._api._account._account_list[0]._get_current_timestamp()
-            if tqsim_current_timestamp == 631123200000000000:
-                # 未收到任何行情, TqSim 时间没有更新
-                return _get_trading_day_start_time(self._data['_tqsdk_replay']['replay_dt'])
-            else:
-                return tqsim_current_timestamp
         else:
             return _datetime_to_timestamp_nano(datetime.now())
 
@@ -296,9 +286,6 @@ class TqWebHelper(object):
                 "md_url": self._api._md_url,
                 "access_token": self._api._auth._access_token,
             }
-            # TODO：在复盘模式下发送 replay_dt 给 web 端，服务器改完后可以去掉
-            if isinstance(self._api._backtest, TqReplay):
-                url_response["replay_dt"] = _datetime_to_timestamp_nano(datetime.combine(self._api._backtest._replay_dt, datetime.min.time()))
             app = web.Application()
             app.router.add_get(path='/url', handler=lambda request: TqWebHelper.httpserver_url_handler(url_response))
             app.router.add_get(path='/', handler=self.httpserver_index_handler)
@@ -366,9 +353,5 @@ class TqWebHelper(object):
             action["_start_dt"] = os.getenv("TQ_START_DT")
             action["_end_dt"] = os.getenv("TQ_END_DT")
             if not action["_start_dt"] or not action["_end_dt"]:
-                action["_action"] = None
-        elif action["_action"] == "replay":
-            action["_replay_dt"] = os.getenv("TQ_REPLAY_DT")
-            if not action["_replay_dt"]:
                 action["_action"] = None
         return action

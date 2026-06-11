@@ -37,23 +37,23 @@ GFEX               广州期货交易所
 
 一些合约代码示例::
 
-	SHFE.cu1901  -  上期所 cu1901 期货合约
-	DCE.m1901    -  大商所 m1901 期货合约
-	CZCE.SR901   -  郑商所 SR901 期货合约
-	CFFEX.IF1901 -  中金所 IF1901 期货合约
-	INE.sc2109   -  上期能源 sc2109 期货合约
-	GFEX.si2301  -  广期所 si2301 期货合约
+	SHFE.cu2607  -  上期所 cu2607 期货合约
+	DCE.m2609    -  大商所 m2609 期货合约
+	CZCE.SR609   -  郑商所 SR609 期货合约
+	CFFEX.IF2606 -  中金所 IF2606 期货合约
+	INE.sc2607   -  上期能源 sc2607 期货合约
+	GFEX.si2607  -  广期所 si2607 期货合约
 
-	CZCE.SPD SR901&SR903  - 郑商所 SR901&SR903 跨期合约
-	DCE.SP a1709&a1801    - 大商所 a1709&a1801 跨期合约
-	GFEX.SP si2308&si2309 - 广期所 si2308&si2309 跨期组合
+	CZCE.SPD SR609&SR701  - 郑商所 SR609&SR701 跨期合约
+	DCE.SP a2609&a2705    - 大商所 a2609&a2705 跨期合约
+	GFEX.SP si2607&si2609 - 广期所 si2607&si2609 跨期组合
 
-	DCE.m1807-C-2450    - 大商所豆粕期权
-	CZCE.CF003C11000    - 郑商所棉花期权
-	SHFE.au2004C308     - 上期所黄金期权
-	CFFEX.IO2002-C-3550 - 中金所沪深300股指期权
-	INE.sc2109C450      - 上期能源原油期权
-	GFEX.si2308-C-5800  - 广期所硅期权
+	DCE.m2609-C-2700    - 大商所豆粕期权
+	CZCE.CF609C13400    - 郑商所棉花期权
+	SHFE.au2608C944     - 上期所黄金期权
+	CFFEX.IO2606-C-4650 - 中金所沪深300股指期权
+	INE.sc2607C540      - 上期能源原油期权
+	GFEX.si2607-C-8500  - 广期所硅期权
 
 
 	KQ.m@CFFEX.IF - 中金所IF品种主连合约
@@ -75,15 +75,15 @@ GFEX               广州期货交易所
 	SSE.510050 - 上交所上证50ETF
 	SSE.510300 - 上交所沪深300ETF
 	SZSE.159919 - 深交所沪深300ETF
-	SSE.10002513 - 上交所上证50ETF期权
-	SSE.10002504 - 上交所沪深300ETF期权
-	SZSE.90000097 - 深交所沪深300ETF期权
+	SSE.10010303 - 上交所上证50ETF期权
+	SSE.10010936 - 上交所沪深300ETF期权
+	SZSE.90007432 - 深交所沪深300ETF期权
 	SZSE.159915 - 易方达创业板ETF
-	SZSE.90001277 - 创业板ETF期权
+	SZSE.90007481 - 创业板ETF期权
 	SZSE.159922 - 深交所中证500ETF
-	SZSE.90001355 - 深交所中证500ETF期权
+	SZSE.90007447 - 深交所中证500ETF期权
 	SSE.510500 - 上交所中证500ETF
-	SSE.10004497 - 上交所中证500ETF期权
+	SSE.10011720 - 上交所中证500ETF期权
 	SZSE.159901 - 深交所100ETF
 
 
@@ -100,7 +100,7 @@ GFEX               广州期货交易所
 ----------------------------------------------------
 :py:meth:`~tqsdk.TqApi.get_quote` 函数提供实时行情和合约信息::
 
-    q = api.get_quote("SHFE.cu2201")
+    q = api.get_quote("SHFE.cu2607")
 
 返回值为一个dict, 结构如下::
 
@@ -151,8 +151,8 @@ GFEX               广州期货交易所
         "underlying_symbol": "",  # 标的合约
         "strike_price": NaN,  # 行权价
         "ins_class": "FUTURE",  # 合约类型
-        "instrument_id": "SHFE.cu2201",  # 合约代码
-        "instrument_name": "沪铜2201",  # 合约中文名
+        "instrument_id": "SHFE.cu2607",  # 合约代码
+        "instrument_name": "沪铜2607",  # 合约中文名
         "exchange_id": "SHFE",  # 交易所代码
         "expired": false,  # 合约是否已下市
         "trading_time": "{'day': [['09:00:00', '10:15:00'], ['10:30:00', '11:30:00'], ['13:30:00', '15:00:00']], 'night': [['21:00:00', '25:00:00']]}",  # 交易时间段
@@ -176,7 +176,7 @@ GFEX               广州期货交易所
 
 对于每个合约, 只需要调用一次 get_quote 函数. 如果需要监控数据更新, 可以使用 :py:meth:`~tqsdk.TqApi.wait_update`::
 
-    q = api.get_quote("SHFE.cu1812")  # 获取SHFE.cu1812合约的行情
+    q = api.get_quote("SHFE.cu2607")  # 获取SHFE.cu2607合约的行情
 
     while api.wait_update():
       print(q.last_price)    # 收到新行情时都会执行这行
@@ -186,11 +186,11 @@ K线数据
 ----------------------------------------------------
 :py:meth:`~tqsdk.TqApi.get_kline_serial` 函数获取指定合约和周期的K线序列数据::
 
-    klines = api.get_kline_serial("SHFE.cu1812", 10)  # 获取SHFE.cu1812合约的10秒K线
+    klines = api.get_kline_serial("SHFE.cu2607", 10)  # 获取SHFE.cu2607合约的10秒K线
 
 获取按照时间对齐的多合约K线::
 
-    klines = api.get_kline_serial(["SHFE.au1912", "SHFE.au2006"], 5)  # 获取SHFE.au2006向SHFE.au1912对齐的K线
+    klines = api.get_kline_serial(["SHFE.au2608", "SHFE.au2610"], 5)  # 获取SHFE.au2610向SHFE.au2608对齐的K线
 
 详细使用方法及说明请见 :py:meth:`~tqsdk.TqApi.get_kline_serial` 函数使用说明。
 
@@ -213,15 +213,15 @@ K线数据
 
 TqSdk中, K线周期以秒数表示，支持不超过1日的任意周期K线，例如::
 
-    api.get_kline_serial("SHFE.cu1901", 70) # 70秒线
-    api.get_kline_serial("SHFE.cu1901", 86400) # 86400秒线, 即日线
-    api.get_kline_serial("SHFE.cu1901", 86500) # 86500秒线, 超过1日，无效
+    api.get_kline_serial("SHFE.cu2607", 70) # 70秒线
+    api.get_kline_serial("SHFE.cu2607", 86400) # 86400秒线, 即日线
+    api.get_kline_serial("SHFE.cu2607", 86500) # 86500秒线, 超过1日，无效
 
 TqSdk中最多可以获取每个K线序列的最后8000根K线，无论哪个周期。也就是说，你如果提取小时线，最多可以提取最后8000根小时线，如果提取分钟线，最多也是可以提取最后8000根分钟线。
 
 对于每个K线序列, 只需要调用一次 :py:meth:`~tqsdk.TqApi.get_kline_serial` . 如果需要监控数据更新, 可以使用 :py:meth:`~tqsdk.TqApi.wait_update` ::
 
-    klines = api.get_kline_serial("SHFE.cu1812", 10)  # 获取SHFE.cu1812合约的10秒K线
+    klines = api.get_kline_serial("SHFE.cu2607", 10)  # 获取SHFE.cu2607合约的10秒K线
 
     while api.wait_update():
         print(klines.iloc[-1])    # K线数据有任何变动时都会执行这行
@@ -229,7 +229,7 @@ TqSdk中最多可以获取每个K线序列的最后8000根K线，无论哪个周
 
 如果只想在新K线出现时收到信号, 可以配合使用 :py:meth:`~tqsdk.TqApi.is_changing`::
 
-    klines = api.get_kline_serial("SHFE.cu1812", 10)        # 获取SHFE.cu1812合约的10秒K线
+    klines = api.get_kline_serial("SHFE.cu2607", 10)        # 获取SHFE.cu2607合约的10秒K线
 
     while api.wait_update():
         if api.is_changing(klines.iloc[-1], "datetime"):    # 判定最后一根K线的时间是否有变化
@@ -240,7 +240,7 @@ Tick序列
 ----------------------------------------------------
 :py:meth:`~tqsdk.TqApi.get_tick_serial` 函数获取指定合约的Tick序列数据::
 
-    ticks = api.get_tick_serial("SHFE.cu1812")  # 获取SHFE.cu1812合约的Tick序列
+    ticks = api.get_tick_serial("SHFE.cu2607")  # 获取SHFE.cu2607合约的Tick序列
 
 :py:meth:`~tqsdk.TqApi.get_tick_serial` 的返回值是一个 pandas.DataFrame, 常见用法示例如下::
 
@@ -256,10 +256,10 @@ tick序列的更新监控, 与K线序列采用同样的方式.
 
   TqSdk可以订阅任意多个行情和K线, 并在一个wait_update中等待更新. 像这样::
 
-    q1 = api.get_quote("SHFE.cu1901")
-    q2 = api.get_quote("SHFE.cu1902")
-    k1 = api.get_kline_serial("SHFE.cu1901", 60)
-    k2 = api.get_kline_serial("SHFE.cu1902", 60)
+    q1 = api.get_quote("SHFE.cu2607")
+    q2 = api.get_quote("SHFE.cu2608")
+    k1 = api.get_kline_serial("SHFE.cu2607", 60)
+    k2 = api.get_kline_serial("SHFE.cu2608", 60)
 
     while api.wait_update():
       print("收到数据了")        # 上面4项中的任意一项有变化, 都会到这一句. 具体是哪个或哪几个变了, 用 is_changing 判断

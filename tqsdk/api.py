@@ -51,7 +51,7 @@ else:
 from tqsdk.auth import TqAuth
 from tqsdk.baseApi import TqBaseApi
 from tqsdk.multiaccount import TqMultiAccount
-from tqsdk.backtest import TqBacktest, TqReplay
+from tqsdk.backtest import TqBacktest
 from tqsdk.channel import TqChan
 from tqsdk.connect import TqConnect, MdReconnectHandler, ReconnectTimer
 from tqsdk.calendar import _get_trading_calendar, TqContCalendar, _init_chinese_rest_days
@@ -72,7 +72,7 @@ from tqsdk.risk_manager import TqRiskManager
 from tqsdk.risk_rule import TqRiskRule
 from tqsdk.ins_schema import ins_schema, basic, derivative, future, option
 from tqsdk.symbols import TqSymbols
-from tqsdk.tradeable import TqAccount, TqZq, TqKq, TqKqStock, TqSim, TqSimStock, BaseSim, BaseOtg, TqCtp, TqRohon, TqJees, TqYida, TqO32, TqXuntou, TqTradingUnit
+from tqsdk.tradeable import TqAccount, TqZq, TqKq, TqKqStock, TqSim, TqSimStock, BaseSim, BaseOtg, TqCtp, TqRohon, TqJees, TqYida, TqO32, TqIS, TqXuntou, TqTradingUnit
 from tqsdk.trading_status import TqTradingStatus
 from tqsdk.tqwebhelper import TqWebHelper
 from tqsdk.utils import _generate_uuid, _query_for_quote, BlockManagerUnconsolidated, _quotes_add_night, _bisect_value, \
@@ -86,7 +86,7 @@ from .__version__ import __version__
 # 在 python 文档中对 type alias 的定义有多种：TypeAliasType, TypeAlias 以及 simple assignment https://docs.python.org/3.13/library/typing.html#type-aliases
 # Union 类型支持嵌套 Union 类型，但是不支持嵌套 Union TypeAliasType 类型：https://docs.python.org/3.13/library/typing.html#typing.Union
 # 但是 Union 文档没有明说是否支持嵌套 Union simple assignment 类型，从实现上看，目前所有版本都支持（最新 3.13）
-UnionTradeable = Union[TqAccount, TqKq, TqZq, TqKqStock, TqSim, TqSimStock, TqCtp, TqRohon, TqJees, TqYida, TqO32, TqXuntou, TqTradingUnit]
+UnionTradeable = Union[TqAccount, TqKq, TqZq, TqKqStock, TqSim, TqSimStock, TqCtp, TqRohon, TqJees, TqYida, TqO32, TqIS, TqXuntou, TqTradingUnit]
 
 
 class TqApi(TqBaseApi):
@@ -98,7 +98,7 @@ class TqApi(TqBaseApi):
 
     def __init__(self, account: Optional[Union[TqMultiAccount, UnionTradeable]] = None,
                  auth: Union[TqAuth, str, None] = None,
-                 url: Optional[str] = None, backtest: Union[TqBacktest, TqReplay, None] = None,
+                 url: Optional[str] = None, backtest: Union[TqBacktest, None] = None,
                  web_gui: Union[bool, str] = False, debug: Union[bool, str, None] = None,
                  loop: Optional[asyncio.AbstractEventLoop] = None, disable_print: bool = False, _stock: bool = True,
                  _ins_url=None, _md_url=None, _td_url=None) -> None:
@@ -106,7 +106,7 @@ class TqApi(TqBaseApi):
         创建天勤接口实例
 
         Args:
-            account (None/TqAccount/TqKq/TqKqStock/TqSim/TqSimStock/TqZq/TqCtp/TqRohon/TqJees/TqYida/TqO32/TqXuntou/TqTradingUnit/TqMultiAccount): [可选]交易账号:
+            account (None/TqAccount/TqKq/TqKqStock/TqSim/TqSimStock/TqZq/TqCtp/TqRohon/TqJees/TqYida/TqO32/TqIS/TqXuntou/TqTradingUnit/TqMultiAccount): [可选]交易账号:
                 * None: 账号将根据环境变量决定, 默认为 :py:class:`~tqsdk.TqSim`
 
                 * :py:class:`~tqsdk.TqAccount` : 使用实盘账号, 直连行情和交易服务器, 需提供期货公司/帐号/密码
@@ -131,6 +131,8 @@ class TqApi(TqBaseApi):
 
                 * :py:class:`~tqsdk.TqO32` : 使用恒生 O32 账号
 
+                * :py:class:`~tqsdk.TqIS` : 使用 IS 柜台账号
+
                 * :py:class:`~tqsdk.TqTradingUnit` : 使用交易单元账号
 
                 * :py:class:`~tqsdk.TqXuntou` : 使用迅投账号
@@ -139,7 +141,7 @@ class TqApi(TqBaseApi):
                   :py:class:`~tqsdk.TqAccount`、:py:class:`~tqsdk.TqKq`、:py:class:`~tqsdk.TqKqStock`、
                   :py:class:`~tqsdk.TqSim`、:py:class:`~tqsdk.TqSimStock`、:py:class:`~tqsdk.TqZq`、
                   :py:class:`~tqsdk.TqRohon`、:py:class:`~tqsdk.TqJees`、:py:class:`~tqsdk.TqYida`、
-                  :py:class:`~tqsdk.TqO32`、:py:class:`~tqsdk.TqXuntou`、
+                  :py:class:`~tqsdk.TqO32`、:py:class:`~tqsdk.TqIS`、:py:class:`~tqsdk.TqXuntou`、
                   :py:class:`~tqsdk.TqTradingUnit` 和 :py:class:`~tqsdk.TqCtp` 中的 0 至 N 个或者组合
 
             auth (TqAuth/str): [必填]用户快期账户:
@@ -238,7 +240,7 @@ class TqApi(TqBaseApi):
             self._auth = None
         self._account = TqSim() if account is None else account
         self._backtest = backtest
-        self._stock = False if isinstance(self._backtest, TqReplay) else _stock
+        self._stock = _stock
         self._ins_url = os.getenv("TQ_INS_URL", "https://openmd.shinnytech.com/t/md/symbols/latest.json")
         self._md_url = os.getenv("TQ_MD_URL", None)
         self._td_url = os.getenv("TQ_TD_URL", None)
@@ -360,7 +362,7 @@ class TqApi(TqBaseApi):
             from tqsdk import TqApi, TqAuth
             from contextlib import closing
 
-            with closing(TqApi(auth=TqAuth("快期账户", "账户密码")) as api:
+            with closing(TqApi(auth=TqAuth("快期账户", "账户密码"))) as api:
                 api.insert_order(symbol="DCE.m1901", direction="BUY", offset="OPEN", volume=3)
         """
         if self._loop.is_closed():
@@ -592,7 +594,7 @@ class TqApi(TqBaseApi):
         if not self._auth._has_feature('tq_trading_status'):
             raise Exception(f"您的账户不支持查看交易状态信息，需要购买后才能使用。升级网址：https://www.shinnytech.com/tqsdk-buy/")
         if self._backtest:
-            raise Exception('回测/复盘不支持查看交易状态信息')
+            raise Exception('回测不支持查看交易状态信息')
         ts = _get_obj(self._data, ['trading_status', symbol], self._prototype["trading_status"]["#"])
         ts._task = self.create_task(self._handle_trading_status(symbol, ts), _caller_api=True)
         if not self._loop.is_running():
@@ -998,7 +1000,7 @@ class TqApi(TqBaseApi):
             raise Exception(
                 f"{call_func} 数据获取方式仅限专业版用户使用，如需购买专业版或者申请试用，请访问 https://www.shinnytech.com/tqsdk-buy/")
         if self._backtest:
-            raise Exception(f"不支持在回测/复盘中调用 {call_func} 接口")
+            raise Exception(f"不支持在回测中调用 {call_func} 接口")
         dur_nano = duration_seconds * 1000000000
         symbol_list = symbol_list if isinstance(symbol_list, list) else [symbol_list]
         if len(symbol_list) != 1:
@@ -1245,7 +1247,7 @@ class TqApi(TqBaseApi):
         Example4::
 
             # 多账户模式下, 分别获取各账户的成交记录
-            from tqsdk import TqApi, TqAuth, TqMultiAccount
+            from tqsdk import TqApi, TqAuth, TqAccount, TqMultiAccount
 
             account1 = TqAccount("H海通期货", "123456", "123456")
             account2 = TqAccount("H宏源期货", "123456", "123456")
@@ -3560,16 +3562,6 @@ class TqApi(TqBaseApi):
             if not self._check_account_auth(acc):
                 raise Exception(f"您的账户不支持 {type(acc)}，需要购买后才能使用。升级网址：https://www.shinnytech.com/tqsdk-buy/")
 
-        # 等待复盘服务器启动
-        if isinstance(self._backtest, TqReplay):
-            sim = None  # 复盘时如果用户传入的 TqSim 实例，则使用用户传入的参数
-            for acc in self._account._account_list:
-                if isinstance(acc, TqSim):
-                    sim = acc
-                    break
-            self._account = TqMultiAccount([sim if sim else TqSim()])
-            self._ins_url, self._md_url = self._backtest._create_server(self)
-
         # 连接合约和行情服务器
         if self._md_url is None:
             try:
@@ -3630,17 +3622,6 @@ class TqApi(TqBaseApi):
         self.create_task(
             tq_symbols._run(self, tq_symbols_send_chan, tq_symbols_recv_chan, ws_md_send_chan, ws_md_recv_chan))
         ws_md_send_chan, ws_md_recv_chan = tq_symbols_send_chan, tq_symbols_recv_chan
-
-        # 复盘模式，定时发送心跳包, 并将复盘日期发在行情的 recv_chan
-        if isinstance(self._backtest, TqReplay):
-            ws_md_recv_chan.send_nowait({
-                "aid": "rtn_data",
-                "data": [{
-                    "_tqsdk_replay": {
-                        "replay_dt": _datetime_to_timestamp_nano(datetime.combine(self._backtest._replay_dt, datetime.min.time()))}
-                }]
-            })
-            self.create_task(self._backtest._run())
 
         # 如果处于回测模式，则将行情连接对接到 backtest 上
         if isinstance(self._backtest, TqBacktest):
@@ -4388,5 +4369,5 @@ class TqApi(TqBaseApi):
 
 print("在使用天勤量化之前，默认您已经知晓并同意以下免责条款，如果不同意请立即停止使用：https://www.shinnytech.com/blog/disclaimer/", file=sys.stderr)
 
-if platform.python_version().startswith('3.8.'):
-    warnings.warn("TqSdk 计划在 20260601 之后放弃支持 Python 3.8 版本，请尽快升级 Python 版本。", FutureWarning, stacklevel=1)
+if platform.python_version().startswith('3.9.'):
+    warnings.warn("TqSdk 计划在 20270601 之后放弃支持 Python 3.9 版本，请尽快升级 Python 版本。", FutureWarning, stacklevel=1)

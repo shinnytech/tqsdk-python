@@ -23,7 +23,7 @@
 -------------------------------------------------
 天勤量化的核心是TqSdk开发包, 在安装天勤量化 (TqSdk) 前, 你需要先准备适当的环境和Python包管理工具, 包括:
 
-* Python >= 3.8 版本
+* Python >= 3.9 版本
 * Windows 7 以上版本, macOS, 或 Linux
 
 
@@ -48,7 +48,7 @@
     from tqsdk import TqApi, TqAuth
 
     api = TqApi(auth=TqAuth("快期账户", "账户密码"))
-    quote = api.get_quote("SHFE.ni2206")
+    quote = api.get_quote("SHFE.ni2607")
 
     while True:
         api.wait_update()
@@ -70,11 +70,11 @@
 
     api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 
-获得上期所 ni2206 合约的行情引用::
+获得上期所 ni2607 合约的行情引用::
 
-    quote = api.get_quote("SHFE.ni2206")
+    quote = api.get_quote("SHFE.ni2607")
 
-现在, 我们获得了一个对象 quote. 这个对象总是指向 SHFE.ni2206 合约的最新行情. 我们可以通过 quote 的各个字段访问行情数据::
+现在, 我们获得了一个对象 quote. 这个对象总是指向 SHFE.ni2607 合约的最新行情. 我们可以通过 quote 的各个字段访问行情数据::
 
     print (quote.last_price, quote.volume)
 
@@ -103,9 +103,9 @@
 
 使用K线数据
 -------------------------------------------------
-你很可能会需要合约的K线数据. 在TqSdk中, 你可以很方便的获得K线数据. 我们来请求 ni2206 合约的10秒线::
+你很可能会需要合约的K线数据. 在TqSdk中, 你可以很方便的获得K线数据. 我们来请求 ni2607 合约的10秒线::
 
-    klines = api.get_kline_serial("SHFE.ni2206", 10)
+    klines = api.get_kline_serial("SHFE.ni2607", 10)
 
 klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline_serial() 也是返回K线序列的引用对象. K线序列数据也会跟实时行情一起同步自动更新. 你也同样需要用 api.wait_update() 等待数据刷新.
 
@@ -130,7 +130,7 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 
 要获得你交易账户中某个合约的持仓情况, 可以请求一个持仓引用对象::
 
-    position = api.get_position("DCE.m1901")
+    position = api.get_position("DCE.m2609")
 
 与行情数据一样, 它们也通过 api.wait_update() 获得更新, 你也同样可以访问它们的成员变量::
 
@@ -139,7 +139,7 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 
 要在交易账户中发出一个委托单, 使用 api.insert_order() 函数::
 
-    order = api.insert_order(symbol="DCE.m2105", direction="BUY", offset="OPEN", volume=5, limit_price=3000)
+    order = api.insert_order(symbol="DCE.m2609", direction="BUY", offset="OPEN", volume=5, limit_price=3000)
 
 这个函数调用后会立即返回, order 是一个指向此委托单的引用对象, 你总是可以通过它的成员变量来了解委托单的最新状态::
 
@@ -163,7 +163,7 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
 -------------------------------------------------
 在这一节中, 我们将创建一个简单的自动交易程序: 每当行情最新价高于最近15分钟均价时, 开仓买进. 这个程序是这样的::
 
-    klines = api.get_kline_serial("DCE.m2105", 60)
+    klines = api.get_kline_serial("DCE.m2609", 60)
     while True:
         api.wait_update()
         if api.is_changing(klines):
@@ -171,7 +171,7 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
             print("最新价", klines.close.iloc[-1], "MA", ma)
             if klines.close.iloc[-1] > ma:
                 print("最新价大于MA: 市价开仓")
-                api.insert_order(symbol="DCE.m2105", direction="BUY", offset="OPEN", volume=5)
+                api.insert_order(symbol="DCE.m2609", direction="BUY", offset="OPEN", volume=5)
 
 上面的代码中出现了一个新函数 api.is_changing(). 这个函数用于判定指定对象是否在最近一次 wait_update 中被更新.
 
@@ -187,14 +187,14 @@ klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline
     from tqsdk import TqApi, TqAuth, TargetPosTask
 
     api = TqApi(auth=TqAuth("快期账户", "账户密码"))
-    quote_near = api.get_quote("SHFE.ni2010")
-    quote_deferred = api.get_quote("SHFE.ni2011")
+    quote_near = api.get_quote("SHFE.ni2607")
+    quote_deferred = api.get_quote("SHFE.ni2608")
 
 
-    # 创建 ni2010 的目标持仓 task，该 task 负责调整 ni2010 的仓位到指定的目标仓位
-    target_pos_near = TargetPosTask(api, "SHFE.ni2010")
-    # 创建 ni2011 的目标持仓 task，该 task 负责调整 ni2011 的仓位到指定的目标仓位
-    target_pos_deferred = TargetPosTask(api, "SHFE.ni2011")
+    # 创建 ni2607 的目标持仓 task，该 task 负责调整 ni2607 的仓位到指定的目标仓位
+    target_pos_near = TargetPosTask(api, "SHFE.ni2607")
+    # 创建 ni2608 的目标持仓 task，该 task 负责调整 ni2608 的仓位到指定的目标仓位
+    target_pos_deferred = TargetPosTask(api, "SHFE.ni2608")
 
     while True:
         api.wait_update()

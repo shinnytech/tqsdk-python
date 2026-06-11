@@ -3,7 +3,7 @@
 ## Use This Reference For
 
 - Choosing the right account mode before writing code
-- Explaining the difference among `TqAccount`, `TqKq`, `TqKqStock`, `TqSim`, `TqSimStock`, and `TqMultiAccount`
+- Explaining the difference among `TqAccount`, `TqKq`, `TqKqStock`, `TqSim`, `TqSimStock`, `TqTradingUnit`, enterprise OTG accounts, and `TqMultiAccount`
 - Answering "which account class should I use?"
 
 ## Quick Selection
@@ -16,6 +16,7 @@ Use the smallest account type that satisfies the request.
 | `TqSim()` | Local simulation, strategy development, futures backtest | Futures | Usually yes for data | Local simulated account |
 | `TqKq()` | Quick simulated trading that should match Quick clients | Futures | Yes | Remote simulated account in the Quick ecosystem |
 | `TqAccount(...)` | Broker live trading | Futures | Yes | Real trading account |
+| `TqTradingUnit(...)` | Local multi-strategy front account | Futures | Yes | Use after local multi-strategy setup with `tqsdk-zq` |
 | `TqSimStock()` | Local stock simulation or stock backtest | Stock | Usually yes for data | Stock-only simulated account |
 | `TqKqStock()` | Quick stock simulation | Stock | Yes | Remote stock sim |
 | `TqMultiAccount([...])` | One API driving multiple accounts | Mixed | Yes | Pass `account=` for account-sensitive operations |
@@ -29,7 +30,6 @@ These are valid when the user explicitly asks about them or already uses them:
 - `TqJees`
 - `TqYida`
 - `TqZq`
-- `TqTradingUnit`
 
 Do not lead with these unless the user needs that exact connectivity.
 
@@ -53,6 +53,12 @@ Do not lead with these unless the user needs that exact connectivity.
 - It is enough for data questions and defaults to a local simulated account.
 - Use `TqAccount(...)` only when the user wants live trading through a supported broker.
 
+### `TqTradingUnit` And Local Multi-Strategy
+
+- Use `TqTradingUnit(account_id="front_account")` when the user wants TqSdk local multi-strategy: one backend real account split into multiple front accounts.
+- The local multi-strategy system is initialized and managed by `tqsdk-zq`, not only by Python strategy code.
+- If the user asks about log export, automatic trading-day switching, abnormal order assignment, reset, or web management, point to `doc/advanced/tq_trading_unit.rst` instead of inventing code-only answers.
+
 ### `TqMultiAccount`
 
 Use this when one strategy must operate more than one account at once.
@@ -71,12 +77,15 @@ Rules:
 - Stock local sim or stock backtest: `TqSimStock()`
 - Stock Quick sim: `TqKqStock()`
 - Broker live trading: `TqAccount(...)`
+- Local multi-strategy front account: `TqTradingUnit(...)`
 - One API, many accounts: `TqMultiAccount([...])`
 
 ## Repository Sources
 
 - `tqsdk/__init__.py`
 - `tqsdk/tradeable/__init__.py`
+- `tqsdk/tradeable/otg/tqtradingunit.py`
+- `doc/advanced/tq_trading_unit.rst`
 - `doc/usage/framework.rst`
 - `doc/usage/shinny_account.rst`
 - `doc/reference/tqsdk.tqkq.rst`

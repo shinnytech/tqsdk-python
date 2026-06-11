@@ -196,7 +196,7 @@ class FutureMixin:
         Example::
 
             # 多账户模式下, 分别获取各账户的成交记录
-            from tqsdk import TqApi, TqAuth, TqMultiAccount, TqAccount
+            from tqsdk import TqApi, TqAuth, TqAccount, TqKq, TqMultiAccount, TqSim
 
             account = TqAccount("N南华期货", "123456", "123456")
             tqkq = TqKq()

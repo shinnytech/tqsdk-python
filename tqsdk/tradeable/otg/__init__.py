@@ -11,5 +11,6 @@ from tqsdk.tradeable.otg.tqrohon import TqRohon
 from tqsdk.tradeable.otg.tqjees import TqJees
 from tqsdk.tradeable.otg.tqyida import TqYida
 from tqsdk.tradeable.otg.tqo32 import TqO32, O32Account
+from tqsdk.tradeable.otg.tqis import TqIS, ISAccount
 from tqsdk.tradeable.otg.tqxuntou import TqXuntou
 from tqsdk.tradeable.otg.tqtradingunit import TqTradingUnit

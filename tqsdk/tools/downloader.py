@@ -161,7 +161,7 @@ class DataDownloader:
         Example::
 
             from datetime import datetime, date
-            rom tqsdk import TqApi, TqAuth
+            from tqsdk import TqApi, TqAuth
             from contextlib import closing
             from tqsdk.tools import DataDownloader
 

@@ -10,7 +10,7 @@
 常用参数：
 
 - `period`：`60`（1 分钟）或 `86400`（日线，按交易日）
-- `symbol`：如 `SHFE.rb2401`、`KQ.m@CFFEX.IF`
+- `symbol`：如 `SHFE.rb2701`、`KQ.m@CFFEX.IF`
 - `start_time` / `end_time`：`YYYY-MM-DD HH:MM:SS`
 - `col`：逗号分隔列名（可选）：`open,high,low,close,volume,open_oi,close_oi`
 - `token`：可通过 query 传入（不推荐）或用 Header 传入（推荐）

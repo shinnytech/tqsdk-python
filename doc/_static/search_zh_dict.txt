@@ -8,7 +8,6 @@ TqKq 100000
 TqKqStock 100000
 TqMultiAccount 100000
 TqNotify 100000
-TqReplay 100000
 TqRiskRule 100000
 TqRiskRuleError 100000
 TqSim 100000

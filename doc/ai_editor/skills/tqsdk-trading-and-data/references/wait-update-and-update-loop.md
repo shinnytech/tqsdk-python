@@ -48,7 +48,7 @@ Streaming quote:
 from tqsdk import TqApi, TqAuth
 
 api = TqApi(auth=TqAuth("快期账户", "账户密码"))
-quote = api.get_quote("SHFE.au2504")
+quote = api.get_quote("SHFE.au2608")
 
 while True:
     if not api.wait_update():
@@ -60,7 +60,7 @@ while True:
 New K-line only:
 
 ```python
-klines = api.get_kline_serial("DCE.i2505", 60, data_length=200)
+klines = api.get_kline_serial("DCE.i2609", 60, data_length=200)
 
 while True:
     api.wait_update()
@@ -71,7 +71,7 @@ while True:
 Order state tracking:
 
 ```python
-order = api.insert_order("DCE.m2505", "BUY", offset="OPEN", volume=1)
+order = api.insert_order("DCE.m2609", "BUY", offset="OPEN", volume=1)
 
 while order.status != "FINISHED":
     api.wait_update()

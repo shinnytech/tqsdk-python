@@ -114,7 +114,7 @@ Trae 官网：`https://www.trae.cn/ <https://www.trae.cn/>`_
 **基础概念与用法：**
 
 * “TqSdk 中 ``TqApi`` 与 ``TqAccount`` 的关系与区别是什么？”
-* “如何获取 ``SHFE.rb2410`` 的 1 分钟 K 线？请给完整示例。”
+* “如何获取 ``SHFE.rb2610`` 的 1 分钟 K 线？请给完整示例。”
 * “回测 ``TqBacktest`` 的 ``start_dt`` 和 ``end_dt`` 该如何设置？”
 * “``insert_order`` 的 ``limit_price`` 与 ``offset`` 参数如何使用？”
 

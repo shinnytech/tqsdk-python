@@ -28,7 +28,7 @@ class TqYida(BaseOtg, FutureMixin):
 
         Example1::
 
-            from tqsdk import TqApi, TqYida
+            from tqsdk import TqApi, TqAuth, TqYida
             account = TqYida(account_id="易达账户", password="易达密码", front_url="易达柜台地址", app_id="易达 AppID", auth_code="易达 AuthCode")
             api = TqApi(account, auth=TqAuth("快期账户", "账户密码"))
 

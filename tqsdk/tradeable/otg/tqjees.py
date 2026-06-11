@@ -30,7 +30,7 @@ class TqJees(BaseOtg, FutureMixin):
 
         Example1::
 
-            from tqsdk import TqApi, TqJees
+            from tqsdk import TqApi, TqAuth, TqJees
             account = TqJees(account_id="杰宜斯账户", password="杰宜斯密码", front_broker="杰宜斯柜台代码", front_url="杰宜斯柜台地址", app_id="杰宜斯 AppID", auth_code="杰宜斯 AuthCode")
             api = TqApi(account, auth=TqAuth("快期账户", "账户密码"))
 

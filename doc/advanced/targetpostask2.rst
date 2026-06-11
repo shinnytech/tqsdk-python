@@ -23,17 +23,17 @@ TargetPosTask 高级功能
 
 :py:class:`~tqsdk.TargetPosTask` 类提供了 :py:meth:`~tqsdk.TargetPosTask.cancel` 和 :py:meth:`~tqsdk.TargetPosTask.is_finished` 方法。
 
-+ :py:meth:`~tqsdk.TargetPosTask.cancel` 方法会取消当前 :py:class:`~tqsdk.TargetPosTask` 实例，会将该实例已经发出但还未成交的委托单撤单此实例的 set_target_volume 函数不会再生效，并且此实例的 set_target_volume 函数不会再生效。
++ :py:meth:`~tqsdk.TargetPosTask.cancel` 方法会取消当前 :py:class:`~tqsdk.TargetPosTask` 实例，并撤销该实例已经发出但还未成交的委托单。取消后，此实例的 set_target_volume 函数不会再生效。
 + :py:meth:`~tqsdk.TargetPosTask.is_finished` 方法可以获取当前 :py:class:`~tqsdk.TargetPosTask` 实例是否已经结束。已经结束实例的 set_target_volume 函数不会再接受参数，此实例不会再下单或者撤单。
 
 下面是一个例子::
 
     from datetime import datetime, time
-    from tqsdk import TqApi, TargetPosTask
+    from tqsdk import TqApi, TqAuth, TargetPosTask
 
     api = TqApi(auth=TqAuth("快期账户", "账户密码"))
-    quote = api.get_quote("SHFE.rb2110")
-    target_pos_passive = TargetPosTask(api, "SHFE.rb2110", price="PASSIVE")
+    quote = api.get_quote("SHFE.rb2701")
+    target_pos_passive = TargetPosTask(api, "SHFE.rb2701", price="PASSIVE")
 
     while datetime.strptime(quote.datetime, "%Y-%m-%d %H:%M:%S.%f").time() < time(14, 50):
         api.wait_update()
@@ -46,7 +46,7 @@ TargetPosTask 高级功能
         api.wait_update()  # 调用wait_update()，会对已经发出但还是未成交的委托单撤单
 
     # 创建新的 TargetPosTask 实例
-    target_pos_active = TargetPosTask(api, "SHFE.rb2110", price="ACTIVE")
+    target_pos_active = TargetPosTask(api, "SHFE.rb2701", price="ACTIVE")
     target_pos_active.set_target_volume(0)  # 平所有仓位
 
     while True:

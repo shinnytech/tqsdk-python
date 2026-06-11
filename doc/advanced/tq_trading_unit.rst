@@ -16,7 +16,7 @@ TqSdk 多策略使用手册
 ============
 - **Windows**: >= Windows 10
 - **Linux**: >= Ubuntu 22.04
-- **tqsdk**: >= 3.8.0
+- **tqsdk**: >= 3.9
 - **快期专业版**: >= 2504.659
 
 安装
@@ -106,22 +106,18 @@ TqSdk 多策略使用手册
 =========
 如果您在使用过程中遇到问题，您可以把日志发给我们来帮助您查询
 
-导出日志前，需要先关闭 zq_server 和 zq_server_history_go 两个进程，然后打包日志目录并发送给我们
+点击管理页面左下角日志导出按钮，导出日志，然后打包日志目录并发送给我们
 
 **Linux**:
 
 .. code-block:: bash
 
-    pkill -f zq_server_history_go
-    pkill -f zq_server
     tar -czf ~/tqsdk_zq_log.tar.gz -C ~ .tqsdk/zq/log
 
 **Windows** (PowerShell):
 
 .. code-block:: powershell
 
-    taskkill /F /IM zq_server_history_go.exe 2>$null
-    taskkill /F /IM zq_server.exe 2>$null
     cd $env:USERPROFILE
     tar -czf tqsdk_zq_log.tar.gz .tqsdk/zq/log
 
@@ -136,7 +132,7 @@ TqSdk 多策略使用手册
 .. code-block:: bash
 
     pkill -f zq_server_history_go
-    pkill -f zq_server
+    pkill -f service_daemon
     pkill -f sock-proxy
     pkill -f postgres
     rm -rf ~/.tqsdk/zq
@@ -146,7 +142,7 @@ TqSdk 多策略使用手册
 .. code-block:: powershell
 
     taskkill /F /IM zq_server_history_go.exe 2>$null
-    taskkill /F /IM zq_server.exe 2>$null
+    taskkill /F /IM service_daemon.exe 2>$null
     taskkill /F /IM sock-proxy.exe 2>$null
     taskkill /F /IM postgres.exe 2>$null
     Remove-Item -Recurse -Force $env:USERPROFILE\.tqsdk\zq
@@ -163,6 +159,17 @@ TqSdk 多策略使用手册
 版本变更
 =========
 使用 `pip install -U --upgrade-strategy eager tqsdk-zq` 更新多策略功能所有依赖包
+
+.. line-block::
+    **2026/05/26**
+    tqsdk-zq: 1.1.0
+    tqsdk-zq-server: 1.1.0
+    tqsdk-zq-history: 1.0.1
+    tqsdk-zq-pgserver: 1.0.0
+    tqsdk-zq-proxy: 1.0.0
+
+* 新增：自动切换交易日功能
+* 新增：日志导出功能
 
 .. line-block::
     **2025/12/10**

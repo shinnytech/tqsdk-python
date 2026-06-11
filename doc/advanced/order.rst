@@ -33,21 +33,21 @@ FIVELEVEL   FAK      最优五档即时成交剩余撤销指令
 
   api = TqApi(auth=TqAuth("快期账户", "账户密码"))
   # 当日有效限价单
-  api.insert_order("SHFE.cu2009", "BUY", "OPEN", 3, limit_price=14200)
+  api.insert_order("SHFE.cu2607", "BUY", "OPEN", 3, limit_price=14200)
   # FAK 限价单
-  api.insert_order("SHFE.cu2009", "BUY", "OPEN", 3, limit_price=14200, advanced="FAK")
+  api.insert_order("SHFE.cu2607", "BUY", "OPEN", 3, limit_price=14200, advanced="FAK")
   # FOK 限价单
-  api.insert_order("SHFE.cu2009", "BUY", "OPEN", 3, limit_price=14200, advanced="FOK")
+  api.insert_order("SHFE.cu2607", "BUY", "OPEN", 3, limit_price=14200, advanced="FOK")
 
   # 市价单
-  api.insert_order("DCE.m2009", "BUY", "OPEN", 3)
+  api.insert_order("DCE.m2609", "BUY", "OPEN", 3)
   # FOK 市价单
-  api.insert_order("DCE.m2009", "BUY", "OPEN", 3, advanced="FOK")
+  api.insert_order("DCE.m2609", "BUY", "OPEN", 3, advanced="FOK")
 
   # BEST
-  api.insert_order("CFFEX.T2003", "BUY", "OPEN", 3, limit_price="BEST")
+  api.insert_order("CFFEX.T2609", "BUY", "OPEN", 3, limit_price="BEST")
   # FIVELEVEL
-  api.insert_order("CFFEX.T2003", "BUY", "OPEN", 3, limit_price="FIVELEVEL")
+  api.insert_order("CFFEX.T2609", "BUY", "OPEN", 3, limit_price="FIVELEVEL")
 
 
 不同交易所支持的高级指令参数组合：

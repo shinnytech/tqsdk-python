@@ -2,17 +2,17 @@
 
 期权交易 & 交易所官方组合
 ====================================================
-TqSdk 中期权合和交易所官方组合的约代码格式参考如下::
+TqSdk 中期权和交易所官方组合的合约代码格式参考如下::
 
-	DCE.m1807-C-2450 - 大商所豆粕期权
-	CZCE.CF003C11000 - 郑商所棉花期权
-	SHFE.au2004C308 - 上期所黄金期权
-	CFFEX.IO2002-C-3550 - 中金所沪深300股指期权
-	SSE.10002513 - 上交所上证50etf期权
-	SSE.10002504 - 上交所沪深300etf期权
-	SZSE.90000097 - 深交所沪深300etf期权
-	CZCE.SPD SR901&SR903 - 郑商所 SR901&SR903 跨期合约
-	DCE.SP a1709&a1801 - 大商所 a1709&a1801 跨期合约
+	DCE.m2609-C-2700 - 大商所豆粕期权
+	CZCE.CF609C13400 - 郑商所棉花期权
+	SHFE.au2608C944 - 上期所黄金期权
+	CFFEX.IO2606-C-4650 - 中金所沪深300股指期权
+	SSE.10010303 - 上交所上证50etf期权
+	SSE.10010936 - 上交所沪深300etf期权
+	SZSE.90007432 - 深交所沪深300etf期权
+	CZCE.SPD SR609&SR701 - 郑商所 SR609&SR701 跨期合约
+	DCE.SP a2609&a2705 - 大商所 a2609&a2705 跨期合约
 
 
 
@@ -45,17 +45,17 @@ TqSdk 内提供了完善的期权查询函数 :py:meth:`~tqsdk.TqApi.query_optio
     from tqsdk import TqApi, TqAuth
     api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 
-    ls = api.query_options("SHFE.au2012")
-    print(ls)  # 标的为 "SHFE.au2012" 的所有期权
+    ls = api.query_options("SHFE.au2608")
+    print(ls)  # 标的为 "SHFE.au2608" 的所有期权
 
-    ls = api.query_options("SHFE.au2012", option_class="PUT")
-    print(ls)  # 标的为 "SHFE.au2012" 的看跌期权
+    ls = api.query_options("SHFE.au2608", option_class="PUT")
+    print(ls)  # 标的为 "SHFE.au2608" 的看跌期权
 
-    ls = api.query_options("SHFE.au2012", option_class="PUT", expired=False)
-    print(ls)  # 标的为 "SHFE.au2012" 的看跌期权, 未下市的
+    ls = api.query_options("SHFE.au2608", option_class="PUT", expired=False)
+    print(ls)  # 标的为 "SHFE.au2608" 的看跌期权, 未下市的
 
-    ls = api.query_options("SHFE.au2012", strike_price=340)
-    print(ls)  # 标的为 "SHFE.au2012" 、行权价为 340 的期权
+    ls = api.query_options("SHFE.au2608", strike_price=944)
+    print(ls)  # 标的为 "SHFE.au2608" 、行权价为 944 的期权
 
     ls = api.query_options("SSE.510300")
     print(ls)  # 中金所沪深300股指期权

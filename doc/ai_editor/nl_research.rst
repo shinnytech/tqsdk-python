@@ -17,7 +17,7 @@
 --------------------------------
 
 - `股指期货收益来源可视化分析 <https://www.coze.cn/s/yvzxmWYMS3E/>`_
-- `ag2604 au2604 价差曲线分析 <https://www.coze.cn/s/okMcnINx3Po/>`_
+- `ag2608 au2608 价差曲线分析 <https://www.coze.cn/s/okMcnINx3Po/>`_
 - `黄金2604策略逻辑及收益曲线绘制 <https://www.coze.cn/s/8nzZbuCrsXE/>`_
 
 
@@ -105,7 +105,7 @@
 
 .. code-block:: text
 
-   我已经添加了天勤 EDB 数据 SKILL，请获取 SHFE.ag2604 与 SHFE.au2604 的日线 close，计算价差 ag-au 并画出价差曲线；
+   我已经添加了天勤 EDB 数据 SKILL，请获取 SHFE.ag2608 与 SHFE.au2608 的日线 close，计算价差 ag-au 并画出价差曲线；
    额外输出：价差的滚动均值/标准差（例如 20 日），并给出异常波动区间的解释思路。
 
 示例 3：策略回测脚本生成
@@ -113,7 +113,7 @@
 
 .. code-block:: text
 
-   我已经添加了天勤 EDB 数据 SKILL，请获取 period=60 的 SHFE.au2604 历史数据，并做一个简单策略回测：
+   我已经添加了天勤 EDB 数据 SKILL，请获取 period=60 的 SHFE.au2608 历史数据，并做一个简单策略回测：
    - 指标：20/60 均线金叉死叉
    - 交易规则：金叉开多、死叉平仓
    - 输出：权益曲线、最大回撤、年化收益

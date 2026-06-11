@@ -36,7 +36,7 @@ class TargetPosTaskSingleton(type):
 
     def __call__(cls, api, symbol, price="ACTIVE", offset_priority="今昨,开", min_volume=None, max_volume=None,
                  trade_chan=None, trade_objs_chan=None, account: Optional[Union[TqAccount, TqKq, TqSim]]=None,
-                 support_open_min_volume: bool = False, *args, **kwargs):
+                 support_open_min_volume: bool = False, target_volume_chan: Optional[TqChan] = None, *args, **kwargs):
         target_account = api._account._check_valid(account)
         if target_account is None:
             raise Exception(f"多账户模式下, 需要指定账户实例 account")
@@ -49,6 +49,7 @@ class TargetPosTaskSingleton(type):
                                                                                                  trade_objs_chan,
                                                                                                  target_account,
                                                                                                  support_open_min_volume,
+                                                                                                 target_volume_chan,
                                                                                                  *args, **kwargs)
         else:
             instance = TargetPosTaskSingleton._instances[key]
@@ -76,6 +77,11 @@ class TargetPosTaskSingleton(type):
                     f"您试图用不同的 support_open_min_volume 参数创建两个 {symbol} 调仓任务, "
                     f"support_open_min_volume 参数原为 {instance._support_open_min_volume}, 现为 {support_open_min_volume}"
                 )
+            if instance._target_volume_chan is not target_volume_chan:
+                raise Exception(
+                    f"您试图用不同的 target_volume_chan 参数创建两个 {symbol} 调仓任务, "
+                    f"target_volume_chan 原对象 id 为 {id(instance._target_volume_chan)}, 现为 {id(target_volume_chan)}"
+                )
         return TargetPosTaskSingleton._instances[key]
 
 
@@ -86,7 +92,7 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
                  offset_priority: str = "今昨,开", min_volume: Optional[int] = None, max_volume: Optional[int] = None,
                  trade_chan: Optional[TqChan] = None, trade_objs_chan: Optional[TqChan] = None,
                  account: Optional[Union[TqAccount, TqKq, TqSim]] = None,
-                 support_open_min_volume: bool = False) -> None:
+                 support_open_min_volume: bool = False, target_volume_chan: Optional[TqChan] = None) -> None:
         """
         创建目标持仓task实例，负责调整归属于该task的持仓 **(默认为整个账户的该合约净持仓)**.
 
@@ -149,6 +155,9 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
                 | 当 OPEN 追单剩余手数小于 open_min_limit_order_volume 时，对应 OPEN 追单任务会结束，不再继续报单。
 
                 详细说明参考 :ref:`最小开仓手数限制合约 <targetpostask_open_min_volume>`。
+
+            target_volume_chan (TqChan): [可选]高级用法，仅供 TargetPosScheduler 内部使用，外部不应直接使用。
+                当本轮 set_target_volume 对应的调仓任务结束时，通过该 channel 发送目标持仓手数，用于通知 TargetPosScheduler 继续后续调度。
 
         **注意**
 
@@ -238,6 +247,7 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
         self._pos_chan = TqChan(self._api, last_only=True)
         self._trade_chan = trade_chan
         self._trade_objs_chan = trade_objs_chan
+        self._target_volume_chan = target_volume_chan
         self._support_open_min_volume = bool(support_open_min_volume)
         self._task = self._api.create_task(self._target_pos_task())
         self._time_update_task = self._api.create_task(self._update_time_from_md())  # 监听行情更新并记录当时本地时间的task
@@ -284,6 +294,8 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
         # self._account 类型为 TqSim/TqKq/TqAccount，都包括 _account_key 变量
         TargetPosTaskSingleton._instances.pop(self._account._account_key + "#" + self._symbol, None)
         await self._pos_chan.close()
+        if self._target_volume_chan is not None:
+            await self._target_volume_chan.close()
         await self._api._cancel_task(self._time_update_task)
         self._wait_task_finished.set_result(True)
 
@@ -312,7 +324,7 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
         Example2::
 
             # 多账户模式下使用 TargetPosTask
-            from tqsdk import TqApi, TqMultiAccount, TqAuth, TargetPosTask
+            from tqsdk import TqApi, TqAccount, TqMultiAccount, TqAuth, TargetPosTask
 
             account1 = TqAccount("H海通期货", "123456", "123456")
             account2 = TqAccount("H宏源期货", "654321", "123456")
@@ -460,6 +472,9 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
                                                                account=self._account)
                     all_tasks.append(order_task)
                     delta_volume -= order_volume if order_dir == "BUY" else -order_volume
+
+                if self._target_volume_chan is not None:
+                    self._target_volume_chan.send_nowait(target_pos)
         finally:
             await asyncio.gather(*[t._task for t in all_tasks], return_exceptions=True)
 
@@ -474,7 +489,7 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
         Example1::
 
             from datetime import datetime, time
-            from tqsdk import TqApi, TargetPosTask
+            from tqsdk import TqApi, TqAuth, TargetPosTask
 
             api = TqApi(auth=TqAuth("快期账户", "账户密码"))
             quote = api.get_quote("SHFE.rb2110")
@@ -505,7 +520,7 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
 
             # 在异步代码中使用
             from datetime import datetime, time
-            from tqsdk import TqApi, TargetPosTask
+            from tqsdk import TqApi, TqAuth, TargetPosTask
 
             api = TqApi(auth=TqAuth("快期账户", "账户密码"))
             quote = api.get_quote("SHFE.rb2110")
@@ -517,12 +532,13 @@ class TargetPosTask(object, metaclass=TargetPosTaskSingleton):
                     async for _ in update_chan:
                         if datetime.strptime(quote.datetime, "%Y-%m-%d %H:%M:%S.%f").time() < time(14, 50):
                             # ... 策略代码 ...
+                            pass
                         else:
                             target_pos_passive.cancel()  # 取消 TargetPosTask 实例
                             await target_pos_passive  # 等待 target_pos_passive 处理 cancel 结束
                             break
 
-                target_pos_active = TargetPosTask(api, "SHFE.rb2110", price="ACTIVE")
+                target_pos_active = TargetPosTask(api, SYMBOL, price="ACTIVE")
                 target_pos_active.set_target_volume(0)  # 平所有仓位
                 pos = await api.get_position(SYMBOL)
                 async with api.register_update_notify() as update_chan:

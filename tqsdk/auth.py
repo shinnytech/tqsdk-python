@@ -35,6 +35,14 @@ class TqAuth(object):
             api = TqApi(TqAccount("H海通期货", "022631", "123456"), auth=TqAuth("快期账户", "账户密码"))
 
         """
+        if not isinstance(user_name, str):
+            raise Exception("快期账户必须是字符串")
+        if not user_name.strip():
+            raise Exception("快期账户不能为空")
+        if not isinstance(password, str):
+            raise Exception("快期账户密码必须是字符串")
+        if not password.strip():
+            raise Exception("快期账户密码不能为空")
         self._user_name = user_name
         self._password = password
         self._auth_url = os.getenv("TQ_AUTH_URL", "https://auth.shinnytech.com")

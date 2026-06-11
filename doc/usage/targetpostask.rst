@@ -7,7 +7,7 @@
 
 使用示例如下::
 
-    target_pos = TargetPosTask(api, "SHFE.rb1901")      #创建一个自动调仓工具, 负责调整SHFE.rb1901的持仓
+    target_pos = TargetPosTask(api, "SHFE.rb2610")      #创建一个自动调仓工具, 负责调整SHFE.rb2610的持仓
     target_pos.set_target_volume(5)                     #要求自动调仓工具将持仓调整到5手
     do_something_else()                                 #现在你可以做别的事了, 自动调仓工具将会在后台自动下单/撤单/跟单, 直到持仓手数达到5手为止
 
@@ -16,12 +16,12 @@
     from tqsdk import TqApi, TqAuth, TargetPosTask
 
     api = TqApi(auth=TqAuth("快期账户", "账户密码"))
-    quote_near = api.get_quote("SHFE.rb1810")
-    quote_deferred = api.get_quote("SHFE.rb1901")
-    # 创建 rb1810 的目标持仓 task，该 task 负责调整 rb1810 的仓位到指定的目标仓位
-    target_pos_near = TargetPosTask(api, "SHFE.rb1810")
-    # 创建 rb1901 的目标持仓 task，该 task 负责调整 rb1901 的仓位到指定的目标仓位
-    target_pos_deferred = TargetPosTask(api, "SHFE.rb1901")
+    quote_near = api.get_quote("SHFE.rb2610")
+    quote_deferred = api.get_quote("SHFE.rb2701")
+    # 创建 rb2610 的目标持仓 task，该 task 负责调整 rb2610 的仓位到指定的目标仓位
+    target_pos_near = TargetPosTask(api, "SHFE.rb2610")
+    # 创建 rb2701 的目标持仓 task，该 task 负责调整 rb2701 的仓位到指定的目标仓位
+    target_pos_deferred = TargetPosTask(api, "SHFE.rb2701")
 
     while True:
         api.wait_update()
@@ -47,7 +47,7 @@
         from tqsdk import TqApi, TqAuth, TargetPosTask
 
         api = TqApi(auth=TqAuth("快期账户", "账户密码"))
-        target_pos = TargetPosTask(api, "SHFE.rb2001")
+        target_pos = TargetPosTask(api, "SHFE.rb2701")
         # 设定目标净持仓为空头1手
         target_pos.set_target_volume(-1)
         # 目标净持仓由空头1手改为多头1手

@@ -86,7 +86,7 @@ TqApi 提供以下函数来获取交易账户相关信息:
 ----------------------------------------------------
 要在交易账户中发出一个委托单, 使用 :py:meth:`~tqsdk.TqApi.insert_order` 函数::
 
-    order = api.insert_order(symbol="SHFE.rb1901", direction="BUY", offset="OPEN", limit_price=4310, volume=2)
+    order = api.insert_order(symbol="SHFE.rb2610", direction="BUY", offset="OPEN", limit_price=4310, volume=2)
     print(order)
 
 这个函数调用后会立即返回一个指向此委托单的对象引用，你可以通过它的字段查看最新状态。常见字段如下::
@@ -95,7 +95,7 @@ TqApi 提供以下函数来获取交易账户相关信息:
         "order_id": "",  # "123" (委托单ID, 对于一个用户的所有委托单，这个ID都是不重复的)
         "exchange_order_id": "",  # "1928341" (交易所单号)
         "exchange_id": "",  # "SHFE" (交易所)
-        "instrument_id": "",  # "rb1901" (交易所内的合约代码)
+        "instrument_id": "",  # "rb2610" (交易所内的合约代码)
         "direction": "",  # "BUY" (下单方向, BUY=买, SELL=卖)
         "offset": "",  # "OPEN" (开平标志, OPEN=开仓, CLOSE=平仓, CLOSETODAY=平今)
         "volume_orign": 0,  # 10 (总报单手数)
@@ -111,7 +111,7 @@ TqApi 提供以下函数来获取交易账户相关信息:
 
 与其它所有数据一样, 委托单的信息也会在 api.wait_update() 时被自动更新::
 
-    order = api.insert_order(symbol="SHFE.rb1901", direction="BUY", offset="OPEN", limit_price=4310,volume=2)
+    order = api.insert_order(symbol="SHFE.rb2610", direction="BUY", offset="OPEN", limit_price=4310,volume=2)
     while order.status != "FINISHED":
         api.wait_update()
         print("委托单状态: %s, 未成交手数: %d 手" % (order.status, order.volume_left))

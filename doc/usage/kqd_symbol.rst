@@ -10,7 +10,7 @@
 
 .. figure:: /images/foreign01.png
 
-在 TqSdk 中，您可以使用 :py:class:`~tqsdk.TqApi.query_quotes` 函数来获取对应的外盘合约列表，然后再安装自己的需求获取对应合约
+在 TqSdk 中，您可以使用 :py:class:`~tqsdk.TqApi.query_quotes` 函数来获取对应的外盘合约列表，然后再按照自己的需求获取对应合约
 
 
 合约展示

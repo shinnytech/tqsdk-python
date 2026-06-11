@@ -30,7 +30,7 @@ class TqXuntou(BaseOtg, FutureMixin):
 
         Example1::
 
-            from tqsdk import TqApi, TqXuntou
+            from tqsdk import TqApi, TqAuth, TqXuntou
             account = TqXuntou(account_id="Xuntou 账户", password="Xuntou 密码", front_url="Xuntou 柜台地址", app_id="Xuntou AppID", auth_code="Xuntou AuthCode")
             api = TqApi(account, auth=TqAuth("快期账户", "账户密码"))
 

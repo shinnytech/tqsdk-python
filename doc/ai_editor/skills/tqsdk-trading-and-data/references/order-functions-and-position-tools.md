@@ -6,6 +6,7 @@
 - `cancel_order`
 - `TargetPosTask`
 - `TargetPosScheduler`
+- `Twap`
 - Choosing between manual order control, target-position control, and `TqScenario`
 
 ## Table Of Contents
@@ -16,6 +17,7 @@
 - `TargetPosTask`
 - `TargetPosTask` with exchange minimum open volume
 - `TargetPosScheduler`
+- Direct `Twap`
 - `TqScenario` versus live execution tools
 - Advanced helpers beyond the default answer
 - Stock limitations
@@ -46,9 +48,9 @@ Basic futures example:
 from tqsdk import TqApi, TqAuth
 
 api = TqApi(auth=TqAuth("快期账户", "账户密码"))
-quote = api.get_quote("SHFE.au2504")
+quote = api.get_quote("SHFE.au2608")
 order = api.insert_order(
-    symbol="SHFE.au2504",
+    symbol="SHFE.au2608",
     direction="BUY",
     offset="OPEN",
     volume=1,
@@ -99,7 +101,7 @@ Use `TargetPosTask` when the user thinks in target net position, not individual 
 from tqsdk import TqApi, TqAuth, TargetPosTask
 
 api = TqApi(auth=TqAuth("快期账户", "账户密码"))
-target_pos = TargetPosTask(api, "DCE.m2505")
+target_pos = TargetPosTask(api, "DCE.m2609")
 target_pos.set_target_volume(5)
 
 while True:
@@ -138,6 +140,8 @@ Important limits:
 - when the remaining opening chase volume is below `quote.open_min_limit_order_volume`, that opening chase stops instead of sending another order
 - if the task can only open positions and the calculated opening size is already below `quote.open_min_limit_order_volume`, no order is sent and the task ends
 - `support_open_min_volume` is part of the singleton construction parameters; cancel the old task before recreating the same account and symbol with a different value
+- `TargetPosScheduler` passes `support_open_min_volume`, `min_volume`, and `max_volume` through to `TargetPosTask`, so these same limits apply to scheduled execution
+- direct `Twap` has its own `support_open_min_volume` parameter and checks `min_volume_each_order` against `quote.open_min_limit_order_volume`
 
 Example completion check:
 
@@ -180,6 +184,42 @@ from tqsdk.algorithm import twap_table, vwap_table
 
 It still depends on continuous `wait_update()` calls and must not be mixed with `TargetPosTask` or manual `insert_order()` for the same workflow.
 
+For contracts with exchange minimum opening size rules, pass `support_open_min_volume=True` to `TargetPosScheduler` as well. If split execution is enabled, `min_volume` and `max_volume` still need to satisfy the minimum opening volume rules from `TargetPosTask`.
+
+The last scheduled item exits after the target is reached; with `support_open_min_volume=True`, it may also finish when the current target-position round ends because the remaining open volume is below the exchange minimum.
+
+## Direct `Twap`
+
+Prefer `TargetPosScheduler` plus `twap_table(...)` for new scheduled target-position examples.
+
+Use direct `tqsdk.algorithm.Twap` only when the user is already using it or asks for direct TWAP order execution.
+
+Important direct `Twap` rules:
+
+- it does not support backtest
+- it still needs continuous `wait_update()` calls
+- `duration` may cross non-trading pauses but not a trading day boundary
+- for open-min contracts, pass `support_open_min_volume=True`
+- when `support_open_min_volume=True`, `min_volume_each_order` must be at least `quote.open_min_limit_order_volume`
+- final filled volume can be smaller than the requested volume when the remaining open volume is below `quote.open_min_limit_order_volume`
+
+Minimal pattern:
+
+```python
+from tqsdk import TqApi, TqAuth
+from tqsdk.algorithm import Twap
+
+api = TqApi(auth=TqAuth("快期账户", "账户密码"))
+twap = Twap(api, "CZCE.MA609", "BUY", "OPEN", 200, 300, 5, 10, support_open_min_volume=True)
+
+while True:
+    api.wait_update()
+    if twap.is_finished():
+        break
+
+api.close()
+```
+
 ## `TqScenario` Versus Live Execution Tools
 
 Use `TqScenario` when the user wants synchronous trial calculation for futures margin or risk changes without sending live orders.
@@ -198,7 +238,6 @@ These exist, but should not be the first answer unless the user is already using
 
 - `InsertOrderTask`
 - `InsertOrderUntilAllTradedTask`
-- `tqsdk.algorithm.Twap`
 
 Explain them as advanced or specialized execution helpers, not as the default recommendation.
 

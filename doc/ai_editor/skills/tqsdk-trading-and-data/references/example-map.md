@@ -50,6 +50,8 @@ Use this file when you need a concrete repository example or doc page before wri
   - `cancel()` and `is_finished()`
 - `doc/advanced/scheduler.rst`
   - `TargetPosScheduler`
+- `tqsdk/algorithm/twap.py`
+  - direct `Twap` behavior, including `support_open_min_volume`
 - `design/target_pos_task_support_open_min_limit.md`
   - design notes for contracts with minimum opening volume rules
 - `tqsdk/test/target_pos_task/test_open_min_volume.py`
@@ -80,6 +82,8 @@ Use this file when you need a concrete repository example or doc page before wri
   - `TqKq` and `TqKqStock`
 - `doc/reference/tqsdk.sim.rst`
   - `TqSim` and `TqSimStock`
+- `doc/advanced/tq_trading_unit.rst`
+  - local multi-strategy setup, `TqTradingUnit`, log export, and trading-day switching
 
 ## If The User Asks About Backtest
 

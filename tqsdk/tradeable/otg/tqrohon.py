@@ -30,7 +30,7 @@ class TqRohon(BaseOtg, FutureMixin):
 
         Example1::
 
-            from tqsdk import TqApi, TqRohon
+            from tqsdk import TqApi, TqAuth, TqRohon
             account = TqRohon(account_id="融航账户", password="融航密码", front_broker="融航柜台代码", front_url="融航柜台地址", app_id="融航 AppID", auth_code="融航 AuthCode")
             api = TqApi(account, auth=TqAuth("快期账户", "账户密码"))
 

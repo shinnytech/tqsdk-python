@@ -1512,7 +1512,7 @@ def PSY(df, n, m):
     Example::
 
         # 获取 CFFEX.IF1903 合约的心理线
-        from tqsdk import TqApi, TqSim
+        from tqsdk import TqApi, TqAuth, TqSim
         from tqsdk.ta import PSY
 
         api = TqApi(auth=TqAuth("快期账户", "账户密码"))
@@ -1545,7 +1545,7 @@ def QHLSR(df):
     Example::
 
         # 获取 CFFEX.IF1903 合约的阻力指标
-        from tqsdk import TqApi, TqSim
+        from tqsdk import TqApi, TqAuth, TqSim
         from tqsdk.ta import QHLSR
 
         api = TqApi(auth=TqAuth("快期账户", "账户密码"))
@@ -1589,7 +1589,7 @@ def RC(df, n):
     Example::
 
         # 获取 CFFEX.IF1903 合约的变化率指数
-        from tqsdk import TqApi, TqSim
+        from tqsdk import TqApi, TqAuth, TqSim
         from tqsdk.ta import RC
 
         api = TqApi(auth=TqAuth("快期账户", "账户密码"))
@@ -1625,7 +1625,7 @@ def RCCD(df, n, n1, n2):
     Example::
 
         # 获取 CFFEX.IF1903 合约的异同离差变化率指数
-        from tqsdk import TqApi, TqSim
+        from tqsdk import TqApi, TqAuth, TqSim
         from tqsdk.ta import RCCD
 
         api = TqApi(auth=TqAuth("快期账户", "账户密码"))

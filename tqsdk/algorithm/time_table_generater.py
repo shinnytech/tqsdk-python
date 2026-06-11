@@ -48,11 +48,10 @@ def twap_table(api: TqApi, symbol: str, target_pos: int, duration: int, min_volu
 
     Example1::
 
-        from tqsdk import TqApi, TargetPosScheduler
+        from tqsdk import TqApi, TqAuth, TargetPosScheduler
         from tqsdk.algorithm import twap_table
 
-        api = TqApi(auth="快期账户,用户密码")
-        quote = api.get_quote("CZCE.MA109")
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 
         # 设置twap任务参数
         time_table = twap_table(api, "CZCE.MA109", -100, 600, 1, 5)  # 目标持仓 -100 手，600s 内完成
@@ -67,11 +66,12 @@ def twap_table(api: TqApi, symbol: str, target_pos: int, duration: int, min_volu
 
     Example2::
 
-        from tqsdk import TqApi, TargetPosScheduler
+        import pandas
+        from pandas import DataFrame
+        from tqsdk import TqApi, TqAuth, TargetPosScheduler
         from tqsdk.algorithm import twap_table
 
-        api = TqApi(auth="快期账户,用户密码")
-        quote = api.get_quote("CZCE.MA109")
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 
         # 设置 twap 任务参数，
         time_table = twap_table(api, "CZCE.MA109", -100, 600, 1, 5)  # 目标持仓 -100 手，600s 内完成
@@ -91,7 +91,7 @@ def twap_table(api: TqApi, symbol: str, target_pos: int, duration: int, min_volu
         print(target_pos_sch.trades_df)
 
         # 利用成交列表，您可以计算出策略的各种表现指标，例如：
-        average_trade_price = sum(scheduler.trades_df['price'] * scheduler.trades_df['volume']) / sum(scheduler.trades_df['volume'])
+        average_trade_price = sum(target_pos_sch.trades_df['price'] * target_pos_sch.trades_df['volume']) / sum(target_pos_sch.trades_df['volume'])
         print("成交均价:", average_trade_price)
         api.close()
 
@@ -178,11 +178,10 @@ def vwap_table(api: TqApi, symbol: str, target_pos: int, duration: float,
 
     Example1::
 
-        from tqsdk import TqApi, TargetPosScheduler
+        from tqsdk import TqApi, TqAuth, TargetPosScheduler
         from tqsdk.algorithm import vwap_table
 
-        api = TqApi(auth="快期账户,用户密码")
-        quote = api.get_quote("CZCE.MA109")
+        api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 
         # 设置 vwap 任务参数
         time_table = vwap_table(api, "CZCE.MA109", -100, 600)  # 目标持仓 -100 手，600s 内完成
@@ -285,7 +284,7 @@ def _gen_random_list(sum_val: int, min_val: int, max_val: int, length: int = Non
     :return: 整型列表，满足 sum(list) = sum_val, len(list) == length, min_val < any_item(list) < max_val
     """
     if length is None:
-        length = sum_val * 2 // (min_val + max_val)  # 先确定 ist 长度，interval 大小，再生成 volume_list 随机列表
+        length = sum_val * 2 // (min_val + max_val)  # 先确定 list 长度，interval 大小，再生成 volume_list 随机列表
         # 例如：sum = 16 min_val = 11 max_val = 15，不满足 min_val * length <= sum_val <= max_val * length
         assert min_val * length <= sum_val <= max_val * length + min_val
     else:

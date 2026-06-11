@@ -15,6 +15,7 @@
 - `TargetPosTask` does not act
 - `TargetPosTask` and minimum open volume contracts
 - Multi-account errors
+- Multi-strategy setup errors
 - `offset` errors
 - Stock and futures mixed up
 - `wait_update()` blocks too long
@@ -87,6 +88,22 @@ Fix:
 
 - pass `account=` to account-sensitive APIs
 - or switch to `account_obj.get_account()`, `account_obj.get_position()`, `account_obj.get_order()`, `account_obj.get_trade()`
+
+## Multi-Strategy Setup Errors
+
+Typical causes:
+
+- the local multi-strategy system has not been initialized with `tqsdk-zq`
+- the front account was not created in the multi-strategy management page
+- the strategy used a backend account directly instead of `TqTradingUnit(account_id=...)`
+- the user is asking about log export, automatic trading-day switching, or abnormal order assignment as if it were normal strategy code
+
+Fix:
+
+- initialize or update the local multi-strategy environment with `tqsdk-zq`
+- create and fund the front account in the management page first
+- in Python strategy code, use `TqTradingUnit(account_id="前端账户号")`
+- for log export, automatic trading-day switching, reset, web management, and abnormal order assignment, point to `doc/advanced/tq_trading_unit.rst`
 
 ## `offset` Errors
 
@@ -191,6 +208,8 @@ When debugging, check in this order:
 - `tqsdk/lib/target_pos_scheduler.py`
 - `tqsdk/tools/downloader.py`
 - `tqsdk/tradeable/mixin.py`
+- `tqsdk/tradeable/otg/tqtradingunit.py`
+- `doc/advanced/tq_trading_unit.rst`
 - `tqsdk/exceptions.py`
 - `doc/usage/framework.rst`
 - `doc/usage/backtest.rst`

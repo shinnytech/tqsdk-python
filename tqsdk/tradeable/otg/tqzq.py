@@ -24,7 +24,7 @@ class TqZq(BaseOtg, FutureMixin):
 
         Example1::
 
-            from tqsdk import TqApi, TqZq
+            from tqsdk import TqApi, TqAuth, TqZq
             account = TqZq(account_id="众期账户", password="众期密码", td_url="众期柜台地址")
             api = TqApi(account, auth=TqAuth("快期账户", "账户密码"))
 

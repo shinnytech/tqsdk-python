@@ -38,7 +38,7 @@ TargetPosScheduler 执行目标持仓任务列表
 
 :py:class:`~tqsdk.TargetPosScheduler` 类创建 target_pos_scheduler 实例，首先会将 ``time_table`` 中 ``interval`` 间隔时间列转为 ``deadline``，即这项任务结束时间的纳秒数。
 
-然后，依次为 ``time_table`` 中的每一项任务创建 :py:class:`~tqsdk.TargetPosTask` 实例，调整目标持仓，并在到达 ``deadline`` 时退出。每一项未完成的目标持仓都会留都下一项任务中。
+然后，依次为 ``time_table`` 中的每一项任务创建 :py:class:`~tqsdk.TargetPosTask` 实例，调整目标持仓，并在到达 ``deadline`` 时退出。每一项未完成的目标持仓都会留到下一项任务中。
 
 需要注意的是，最后一项任务，是以手数达到目标的，会按照当前项参数，调整到目标持仓再退出。如果最后一项 ``price`` 参数为 ``None`` （表示不下单），由于无法调整持仓，那么会立即退出。
 
@@ -48,22 +48,26 @@ TargetPosScheduler 执行目标持仓任务列表
 
 简单示例及说明如下::
 
+    from pandas import DataFrame
+    from tqsdk import TqApi, TqAuth, TargetPosScheduler
+
+    api = TqApi(auth=TqAuth("快期账户", "账户密码"))
     time_table = DataFrame([
-        [25, 10, "PASSIVE"]
-        [5, 10, "ACTIVE"]
-        [30, 18, "PASSIVE"]
+        [25, 10, "PASSIVE"],
+        [5, 10, "ACTIVE"],
+        [30, 18, "PASSIVE"],
         [5, 18, "ACTIVE"]
     ], columns=['interval', 'target_pos', 'price'])
 
-    target_pos_scheduler = TargetPosScheduler(api, "SHFE.cu2112", time_table)
+    target_pos_scheduler = TargetPosScheduler(api, "SHFE.cu2607", time_table)
 
     # 这个 time_table 表示的下单策略依次是：
-    # 1. 使用排队价下单，调整 "SHFE.cu2112" 到 10 手，到达 25s 时退出（无论目标手数是否达到，都不会继续下单）
-    # 2. 使用对价下单，调整 "SHFE.cu2112" 到 10 手，到达 5s 时退出
+    # 1. 使用排队价下单，调整 "SHFE.cu2607" 到 10 手，到达 25s 时退出（无论目标手数是否达到，都不会继续下单）
+    # 2. 使用对价下单，调整 "SHFE.cu2607" 到 10 手，到达 5s 时退出
     #    如果上一步结束时目标持仓已经达到 10 手，这一步什么都不会做，等待 5s 到下一步；
     #    如果上一步结束时目标持仓没有达到 10 手，这一步会继续调整目标持仓到 10 手
-    # 3. 使用排队价下单，调整 "SHFE.cu2112" 到 18 手，到达 30s 时退出（无论目标手数是否达到，都不会继续下单）
-    # 4. 使用对价下单，调整 "SHFE.cu2112" 到 18 手
+    # 3. 使用排队价下单，调整 "SHFE.cu2607" 到 18 手，到达 30s 时退出（无论目标手数是否达到，都不会继续下单）
+    # 4. 使用对价下单，调整 "SHFE.cu2607" 到 18 手
     #    如果上一步结束时目标持仓已经达到 18 手，这一步什么都不会做，立即退出；
     #    如果上一步结束时目标持仓没有达到 18 手，这一步会继续调整目标持仓到 18 手后退出
 
@@ -82,14 +86,15 @@ TargetPosScheduler 执行目标持仓任务列表
 
 一个完整的 twap 策略示例::
 
-    from tqsdk import TqApi, TargetPosScheduler
+    import pandas
+    from pandas import DataFrame
+    from tqsdk import TqApi, TqAuth, TargetPosScheduler
     from tqsdk.algorithm import twap_table
 
-    api = TqApi(auth="快期账户,用户密码")
-    quote = api.get_quote("CZCE.MA109")
+    api = TqApi(auth=TqAuth("快期账户", "账户密码"))
 
     # 设置 twap 任务参数，
-    time_table = twap_table(api, "CZCE.MA105", -100, 600, 1, 5)  # 目标持仓 -100 手，600s 内完成
+    time_table = twap_table(api, "CZCE.MA609", -100, 600, 1, 5)  # 目标持仓 -100 手，600s 内完成
 
     # 定制化调整 time_table，例如希望第一项任务延迟 10s 再开始下单
     # 可以在 time_table 的头部加一行
@@ -98,7 +103,7 @@ TargetPosScheduler 执行目标持仓任务列表
         time_table
     ], ignore_index=True)
 
-    target_pos_sch = TargetPosScheduler(api, "CZCE.MA105", time_table)
+    target_pos_sch = TargetPosScheduler(api, "CZCE.MA609", time_table)
     while not target_pos_sch.is_finished():
         api.wait_update()
 
@@ -106,6 +111,6 @@ TargetPosScheduler 执行目标持仓任务列表
     print(target_pos_sch.trades_df)
 
     # 利用成交列表，您可以计算出策略的各种表现指标，例如：
-    average_trade_price = sum(scheduler.trades_df['price'] * scheduler.trades_df['volume']) / sum(scheduler.trades_df['volume'])
+    average_trade_price = sum(target_pos_sch.trades_df['price'] * target_pos_sch.trades_df['volume']) / sum(target_pos_sch.trades_df['volume'])
     print("成交均价:", average_trade_price)
     api.close()
