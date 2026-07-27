@@ -3280,6 +3280,7 @@ class TqApi(TqBaseApi):
                 * "SZSE.159915" 为深交所易方达创业板 ETF 期权标的
                 * "SZSE.159922" 为深交所嘉实中证 500 ETF 期权标的
                 * "SSE.510500" 为上交所南方中证 500 ETF 期权标的
+                * "SSE.588000" 为上交所华夏科创 50 ETF 期权标的
 
             underlying_price (float): [必填] 标的价格，该价格用户输入可以是任意值，例如合约最新价，最高价，开盘价等然后以该值去对比实值/虚值/平值期权
 
@@ -3337,7 +3338,7 @@ class TqApi(TqBaseApi):
         if self._stock is False:
             raise Exception("期货行情系统(_stock = False)不支持当前接口调用")
         if underlying_symbol not in ["SSE.000300", "SSE.510050", "SSE.510300", "SZSE.159919", "SZSE.159915", "SZSE.159922", "SSE.510500",
-                                     "SSE.000016", "SSE.000852"]:
+                                     "SSE.000016", "SSE.000852", "SSE.588000"]:
             raise Exception("不支持的标的合约")
         if option_class not in ['CALL', 'PUT']:
             raise Exception("option_class 参数错误，option_class 必须是 'CALL' 或者 'PUT'")
