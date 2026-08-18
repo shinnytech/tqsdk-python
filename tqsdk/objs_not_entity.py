@@ -189,6 +189,8 @@ class TqDataFrame(DataFrame):
 def _get_col_dtype(col):
     if col == "expired":
         return bool
+    if col == "price_decs":
+        return int
     if col in [
         "price_tick", "volume_multiple", "open_limit", "strike_price", "upper_limit", "lower_limit", "pre_settlement", "pre_close",
         "pre_open_interest", "max_limit_order_volume", "max_market_order_volume","min_limit_order_volume", "min_market_order_volume", 
@@ -210,6 +212,7 @@ class TqSymbolDataFrame(DataFrame):
             "instrument_id",
             "instrument_name",
             "price_tick",
+            "price_decs",
             "volume_multiple",
             "open_limit",
             "max_limit_order_volume",

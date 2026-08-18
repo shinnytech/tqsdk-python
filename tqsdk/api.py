@@ -29,6 +29,11 @@ import warnings
 from datetime import datetime, date, timedelta
 from typing import Union, List, Any, Optional, Coroutine, Callable, Tuple, Dict
 from asyncio.events import _get_running_loop, _set_running_loop
+if sys.version_info >= (3, 14):
+    from asyncio.tasks import _swap_current_task
+else:
+    _swap_current_task = None
+
 from packaging import version
 
 import numpy as np
@@ -48,6 +53,7 @@ elif pd_version < version.parse("2.1.0"):
 else:
     from pandas.core.internals.blocks import NumpyBlock as FloatBlock
 
+from tqsdk import translator
 from tqsdk.auth import TqAuth
 from tqsdk.baseApi import TqBaseApi
 from tqsdk.multiaccount import TqMultiAccount
@@ -111,9 +117,9 @@ class TqApi(TqBaseApi):
 
                 * :py:class:`~tqsdk.TqAccount` : 使用实盘账号, 直连行情和交易服务器, 需提供期货公司/帐号/密码
 
-                * :py:class:`~tqsdk.TqKq` : 使用快期账号登录，直连行情和快期模拟交易服务器
+                * :py:class:`~tqsdk.TqKq` : 使用快期账户登录，直连行情和快期模拟交易服务器
 
-                * :py:class:`~tqsdk.TqKqStock` : 使用快期账号登录，直连行情和快期股票模拟交易服务器
+                * :py:class:`~tqsdk.TqKqStock` : 使用快期账户登录，直连行情和快期股票模拟交易服务器
 
                 * :py:class:`~tqsdk.TqSim` : 使用 TqApi 自带的内部模拟账号
 
@@ -326,6 +332,28 @@ class TqApi(TqBaseApi):
         level = level if isinstance(level, str) else logging.getLevelName(level)
         print(f"{(dt + ' - ') if dt else ''}{level:>8} - {msg}")
 
+    @staticmethod
+    def _clear_running_loop():
+        other_loop = _get_running_loop()
+        other_task = None
+        if other_loop:
+            if sys.version_info >= (3, 14) and _swap_current_task is not None:
+                # Python 3.14 stores the current asyncio task in thread state.
+                # Clearing only the running loop leaves Jupyter's task active and
+                # causes task re-entry errors when TqSdk drives its own loop.
+                other_task = asyncio.current_task(loop=other_loop)
+                if other_task:
+                    _swap_current_task(other_loop, None)
+            _set_running_loop(None)
+        return other_loop, other_task
+
+    @staticmethod
+    def _restore_running_loop(other_loop, other_task):
+        if other_loop:
+            _set_running_loop(other_loop)
+            if sys.version_info >= (3, 14) and other_task and _swap_current_task is not None:
+                _swap_current_task(other_loop, other_task)
+
     @property
     def _base_headers(self):
         return self._auth._base_headers
@@ -368,13 +396,12 @@ class TqApi(TqBaseApi):
         if self._loop.is_closed():
             return
         other_loop = None
+        other_task = None
         try:
             if self._loop.is_running():
                 raise Exception("不能在协程中调用 close, 如需关闭 api 实例需在 wait_update 返回后再关闭")
             else:
-                other_loop = _get_running_loop()
-                if other_loop:
-                    _set_running_loop(None)
+                other_loop, other_task = self._clear_running_loop()
             # 总会发送 serial_extra_array 数据，由 TqWebHelper 处理
             for _, serial in self._serials.items():
                 self._process_serial_extra_array(serial)
@@ -385,8 +412,7 @@ class TqApi(TqBaseApi):
             mem = psutil.virtual_memory()
             self._logger.debug("process end", mem_total=mem.total, mem_free=mem.free)
         finally:
-            if other_loop:
-                _set_running_loop(other_loop)
+            self._restore_running_loop(other_loop, other_task)
 
     def __enter__(self):
         return self
@@ -1162,7 +1188,8 @@ class TqApi(TqBaseApi):
     # ----------------------------------------------------------------------
     def insert_order(self, symbol: str, direction: str, offset: str = "", volume: int = 0,
                      limit_price: Union[str, float, None] = None, advanced: Optional[str] = None,
-                     order_id: Optional[str] = None, account: Optional[UnionTradeable] = None) -> Order:
+                     order_id: Optional[str] = None, account: Optional[UnionTradeable] = None,
+                     offset_leg2: str = "") -> Order:
         """
         发送下单指令。调用后会立即返回，委托请求会在下一次 :py:meth:`~tqsdk.api.TqApi.wait_update` 时发出。
 
@@ -1191,6 +1218,8 @@ class TqApi(TqBaseApi):
             order_id (str): [可选]指定下单单号, 默认由 api 自动生成
 
             account (TqAccount/TqKq/TqKqStock/TqSim): [可选]指定发送下单指令的账户实例, 多账户模式下，该参数必须指定
+
+            offset_leg2 (str): 第二腿开平标志, "OPEN", "CLOSE" 或 "CLOSETODAY"，仅上期所/上期能源组合合约套利指令支持
 
         Returns:
             :py:class:`~tqsdk.objs.Order`: 返回一个委托单对象引用. 其内容将在 :py:meth:`~tqsdk.api.TqApi.wait_update` 时更新.
@@ -1279,6 +1308,19 @@ class TqApi(TqBaseApi):
             已成交: 200 股
             ...
 
+        Example6::
+            
+            # 上期所/能源中心组合套利指令下单
+            from tqsdk import TqApi, TqAuth, TqAccount
+            account = TqAccount("H海通期货", "123456", "123456")
+            symbol = "SHFE.SP au2610&au2704"
+            quote = api.get_quote(symbol)
+            with TqApi(account=account, auth=TqAuth("快期账户", "账户密码")) as api:
+                order = api.insert_order(symbol=symbol, direction="BUY", offset="OPEN", offset_leg2="OPEN", volume=1, limit_price=quote.ask_price1)
+                while order.status != "FINISHED":
+                    api.wait_update()
+                    print("已成交: %d 手" % (order.volume_orign - order.volume_left))
+
         """
         (exchange_id, instrument_id) = symbol.split(".", 1)
         account = self._account._check_valid(account)
@@ -1297,12 +1339,16 @@ class TqApi(TqBaseApi):
             raise Exception(f"快期模拟暂不支持股票及 ETF 期权交易，股票交易请使用 TqKqStock。")
         if not (advanced is None or advanced in ["FAK", "FOK"]):
             raise Exception("advanced 参数错误，只支持以下选项之一 'FAK', 'FOK', None。")
+        if offset_leg2 not in ("", "OPEN", "CLOSE", "CLOSETODAY"):
+            raise Exception("第二腿开平标志(offset_leg2) %s 错误, 请检查 offset_leg2 是否填写正确" % (offset_leg2))
         order_id = order_id if order_id else _generate_uuid("PYSDK_insert")
 
         # 股票下单时, 不支持 offset 参数
         if self._account._is_stock_type(account):
             if offset:
                 raise Exception(f"股票交易无需指定开平标志 {offset}")
+            if offset_leg2:
+                raise Exception(f"股票交易无需指定第二腿开平标志 {offset_leg2}")
         else:
             if offset not in ("OPEN", "CLOSE", "CLOSETODAY"):
                 raise Exception("开平标志(offset) %s 错误, 请检查 offset 是否填写正确" % (offset))
@@ -1310,7 +1356,8 @@ class TqApi(TqBaseApi):
         if self._loop.is_running():
             # 需要在异步代码中发送合约信息请求和下单请求
             self.create_task(
-                self._insert_order_async(symbol, direction, offset, volume, limit_price, advanced, order_id, account),
+                self._insert_order_async(symbol, direction, offset, volume, limit_price, advanced, order_id, account,
+                                         offset_leg2=offset_leg2),
                 _caller_api=True)
             order = self.get_order(order_id, account=account)
             order.update({
@@ -1325,6 +1372,8 @@ class TqApi(TqBaseApi):
             })
             if offset:
                 order.update({"offset": offset})
+            if offset_leg2:
+                order.update({"offset_leg2": offset_leg2})
             return order
         else:
             self._ensure_symbol(symbol)  # 合约是否存在
@@ -1333,7 +1382,8 @@ class TqApi(TqBaseApi):
             if quote.ins_class == "STOCK":
                 pack = self._get_insert_order_stock_pack(symbol, direction, volume, limit_price, order_id, account)
             else:
-                pack = self._get_insert_order_future_pack(symbol, direction, offset, volume, limit_price, advanced, order_id, account)
+                pack = self._get_insert_order_future_pack(symbol, direction, offset, volume, limit_price, advanced,
+                                                          order_id, account, offset_leg2=offset_leg2)
             self._send_pack(pack)
             order = self.get_order(order_id, account=account)
             order.update({
@@ -1355,12 +1405,28 @@ class TqApi(TqBaseApi):
                     "volume_condition": pack["volume_condition"],
                     "time_condition": pack["time_condition"]
                 })
+                if offset_leg2:
+                    order.update({"offset_leg2": offset_leg2})
             return order
 
+    @staticmethod
+    def _ensure_shfe_ine_combination_supported(
+            account: Optional[UnionTradeable], exchange_id: str, quote: Quote) -> None:
+        if (exchange_id not in ("SHFE", "INE")
+                or quote.ins_class not in ("COMBINE", "FUTURE_COMBINE")):
+            return
+        capabilities = getattr(account, "_otg_capabilities", {})
+        if (isinstance(account, BaseOtg)
+                and isinstance(capabilities, dict)
+                and capabilities.get("shfe_ine_combination") is True):
+            return
+        raise Exception("当前账户类型不支持上期所/上期能源组合套利指令")
+
     def _get_insert_order_future_pack(self, symbol, direction, offset, volume, limit_price, advanced, order_id,
-                                      account: Optional[UnionTradeable] = None):
+                                      account: Optional[UnionTradeable] = None, offset_leg2: str = ""):
         quote = self._data["quotes"][symbol]
         (exchange_id, instrument_id) = symbol.split(".", 1)
+        self._ensure_shfe_ine_combination_supported(account, exchange_id, quote)
         msg = {
             "aid": "insert_order",
             "account_key": self._account._get_account_key(account),
@@ -1372,6 +1438,11 @@ class TqApi(TqBaseApi):
             "offset": offset,
             "volume": volume
         }
+        if offset_leg2:
+            if (exchange_id not in ("SHFE", "INE")
+                    or quote.ins_class not in ("COMBINE", "FUTURE_COMBINE")):
+                raise Exception("offset_leg2 仅支持上期所/上期能源组合合约套利指令")
+            msg["offset_leg2"] = offset_leg2
         if limit_price == "BEST" or limit_price == "FIVELEVEL":
             if exchange_id != "CFFEX":
                 raise Exception(f"{symbol} 不支持 {limit_price} 市价单，请修改 limit_price 参数。仅中金所支持 BEST / FIVELEVEL")
@@ -1422,14 +1493,15 @@ class TqApi(TqBaseApi):
         return msg
 
     async def _insert_order_async(self, symbol, direction, offset, volume, limit_price, advanced, order_id,
-                                  account: Optional[UnionTradeable] = None):
+                                  account: Optional[UnionTradeable] = None, offset_leg2: str = ""):
         await self._ensure_symbol_async(symbol)  # 合约是否存在
         self._auth._has_td_grants(symbol)  # 用户是否有该合约交易权限
         quote = self._data["quotes"][symbol]
         if quote.ins_class == "STOCK":
             pack = self._get_insert_order_stock_pack(symbol, direction, volume, limit_price, order_id, account)
         else:
-            pack = self._get_insert_order_future_pack(symbol, direction, offset, volume, limit_price, advanced, order_id, account)
+            pack = self._get_insert_order_future_pack(symbol, direction, offset, volume, limit_price, advanced,
+                                                      order_id, account, offset_leg2=offset_leg2)
         self._send_pack(pack)
 
     # ----------------------------------------------------------------------
@@ -1998,17 +2070,15 @@ class TqApi(TqBaseApi):
             可能输出 ""(空字符串), 表示还没有收到该合约的行情
         """
         other_loop = None
+        other_task = None
         try:
             if self._loop.is_running():
                 raise Exception("不能在协程中调用 wait_update, 如需在协程中等待业务数据更新请使用 register_update_notify")
             else:
-                other_loop = _get_running_loop()
-                if other_loop:
-                    _set_running_loop(None)
+                other_loop, other_task = self._clear_running_loop()
             return self._wait_update(deadline=deadline, _task=_task)
         finally:
-            if other_loop:
-                _set_running_loop(other_loop)
+            self._restore_running_loop(other_loop, other_task)
 
     def _wait_update(self, deadline: Optional[float] = None, _task: Union[asyncio.Task, List[asyncio.Task], None] = None) -> bool:
         # 先尝试执行各个task,再请求下个业务数据，可能用户的同步代码会在 chan 中 send 数据，需要先 run_tasks
@@ -2523,7 +2593,7 @@ class TqApi(TqBaseApi):
 
             from tqsdk import TqApi, TqAuth
 
-            api = TqApi(auth=TqAuth("快期账号", "快期密码"))
+            api = TqApi(auth=TqAuth("快期账户", "快期密码"))
             try:
                 df = api.query_edb_data(ids=[472, 497, 10350], start_dt=date(2024, 1, 1), end_dt=date(2024, 1, 31))
                 print(df.to_string())
@@ -2537,7 +2607,7 @@ class TqApi(TqBaseApi):
 
             from tqsdk import BacktestFinished, TqApi, TqAuth, TqBacktest
 
-            TQ_USER = os.getenv("TQ_USER", "快期账号")
+            TQ_USER = os.getenv("TQ_USER", "快期账户")
             TQ_PASS = os.getenv("TQ_PASS", "快期密码")
 
             SYMBOL = "SHFE.ni2512"
@@ -3098,6 +3168,7 @@ class TqApi(TqBaseApi):
             * exchange_id: 交易所代码，参考 :ref:`mddatas`
             * product_id: 品种代码
             * price_tick: 合约价格变动单位
+            * price_decs: 合约价格小数位数
             * volume_multiple: 合约乘数
             * open_limit: 日内开仓限额，交易所规定的当日该合约买开仓+卖开仓手数限额，目前只对期货生效
             * max_limit_order_volume: 最大限价单手数
@@ -3280,6 +3351,9 @@ class TqApi(TqBaseApi):
                 * "SZSE.159915" 为深交所易方达创业板 ETF 期权标的
                 * "SZSE.159922" 为深交所嘉实中证 500 ETF 期权标的
                 * "SSE.510500" 为上交所南方中证 500 ETF 期权标的
+                * "SSE.588000" 为上交所华夏科创 50 ETF 期权标的
+                * "SSE.588080" 为上交所易方达科创 50 ETF 期权标的
+                * "SZSE.159901" 为深交所易方达深证 100 ETF 期权标的
 
             underlying_price (float): [必填] 标的价格，该价格用户输入可以是任意值，例如合约最新价，最高价，开盘价等然后以该值去对比实值/虚值/平值期权
 
@@ -3337,7 +3411,7 @@ class TqApi(TqBaseApi):
         if self._stock is False:
             raise Exception("期货行情系统(_stock = False)不支持当前接口调用")
         if underlying_symbol not in ["SSE.000300", "SSE.510050", "SSE.510300", "SZSE.159919", "SZSE.159915", "SZSE.159922", "SSE.510500",
-                                     "SSE.000016", "SSE.000852"]:
+                                     "SSE.000016", "SSE.000852", "SSE.588000", "SSE.588080", "SZSE.159901"]:
             raise Exception("不支持的标的合约")
         if option_class not in ['CALL', 'PUT']:
             raise Exception("option_class 参数错误，option_class 必须是 'CALL' 或者 'PUT'")
@@ -3668,6 +3742,10 @@ class TqApi(TqBaseApi):
         """获取合约信息"""
         rsp = requests.get(url, headers=self._base_headers, timeout=30)
         rsp.raise_for_status()
+        raw_symbols = translator.loads(
+            rsp.text,
+            rules=translator.MD_TO_CTP,
+        )
         quotes = {
             k: {
                 "ins_class": v.get("class", ""),
@@ -3691,7 +3769,7 @@ class TqApi(TqBaseApi):
                 "delivery_year": v.get("delivery_year"),
                 "option_class": v.get("option_class", ""),
                 "product_id": v.get("product_id", ""),
-            } for k, v in rsp.json().items()
+            } for k, v in raw_symbols.items()
         }
         # 补丁：将旧版合约服务中 "CSI.000300" 全部修改成 "SSE.000300"
         quotes["SSE.000300"] = quotes.pop("CSI.000300", {})
@@ -3946,7 +4024,7 @@ class TqApi(TqBaseApi):
                 serial["update_row"] = 0  # 只有在第一次添加某个列时，才会赋值为 0。
             # klines["ma_MAIN"] = ma.ma 不是在原来的序列上原地修改，而是返回一个新的序列，
             # 所以这里 serial["extra_array"] 中的列每次需要重新赋值。
-            serial["extra_array"][col] = serial["df"][col].to_numpy()
+            serial["extra_array"][col] = serial["df"][col].to_numpy(copy=True)
         # 如果策略中删除了之前添加到 df 中的序列，则 extra_array 中也将其删除
         for col in serial["all_attr"] - set(serial["df"].columns.values):
             del serial["extra_array"][col]

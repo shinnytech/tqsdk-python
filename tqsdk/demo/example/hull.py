@@ -65,7 +65,7 @@ print("开始运行Hull移动平均线期货策略...")
 
 # 创建API实例
 api = TqApi(backtest=TqBacktest(start_dt=START_DATE, end_dt=END_DATE),
-            auth=TqAuth("快期账号", "快期密码"))
+            auth=TqAuth("快期账户", "快期密码"))
 
 # 订阅合约的K线数据
 klines = api.get_kline_serial(SYMBOL, 60 * 60 * 24)

@@ -16,7 +16,7 @@ from tqsdk.datetime import _cst_tz, datetime
 
 
 class TqAuth(object):
-    """信易用户认证类"""
+    """用户认证类"""
 
     def __init__(self, user_name: str, password: str):
         """

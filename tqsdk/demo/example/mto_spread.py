@@ -28,7 +28,7 @@ PP_RATIO = 1      # 产出1吨聚丙烯
 
 # === 初始化API ===
 api = TqApi(backtest=TqBacktest(start_dt=START_DATE, end_dt=END_DATE),
-            auth=TqAuth("快期账号", "快期密码"))
+            auth=TqAuth("快期账户", "快期密码"))
 
 # 获取合约行情和K线
 ma_quote = api.get_quote(MA)

@@ -15,7 +15,7 @@ ORDER_TYPE = "对价"         # "对价"为对价报单，"报价"为挂价报�
 
 # === 初始化API ===
 acc = TqKq()
-api = TqApi(account=acc, auth=TqAuth("快期账号", "快期密码"))
+api = TqApi(account=acc, auth=TqAuth("快期账户", "快期密码"))
 quote = api.get_quote(SYMBOL)
 
 # === 初始化变量 ===

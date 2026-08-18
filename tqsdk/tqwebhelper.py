@@ -11,9 +11,16 @@ from urllib.parse import urlparse
 
 import numpy as np
 import simplejson
-from aiohttp import web
-from tqsdk.tradeable.sim.basesim import BaseSim
+from aiohttp import web, web_fileresponse
+# Windows 上 SelectorEventLoop 的 loop.sendfile 会退回 asyncio fallback
+# GitHub Actions Windows Server 2025 上静态资源加载偶发异常，禁用 aiohttp sendfile 路径
+# aiohttp 目前只提供了环境变量方案 AIOHTTP_NOSENDFILE
+# 不过由于此环境变量是在 aiohttp.web_fileresponse 模块加载时读取，所以如果用户在进入 tqwebhelper 前导入了 aiohttp.we_fileresponse 模块，则不会生效
+# 所以使用 monkey patch 强行修改 aiohttp.web_fileresponse 模块的 NOSENDFILE 变量
+if sys.platform.startswith("win"):
+    web_fileresponse.NOSENDFILE = True
 
+from tqsdk.tradeable.sim.basesim import BaseSim
 from tqsdk.auth import TqAuth
 from tqsdk.backtest import TqBacktest
 from tqsdk.channel import TqChan

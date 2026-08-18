@@ -3,7 +3,6 @@
 __author__ = 'yanqiong'
 
 import asyncio
-import json
 import random
 import ssl
 import time
@@ -20,6 +19,7 @@ import websockets.exceptions
 from packaging import version
 from shinny_structlog import ShinnyLoggerAdapter
 
+from tqsdk import translator
 from tqsdk.datetime import _cst_now
 from tqsdk.diff import _merge_diff, _get_obj
 from tqsdk.entity import Entity
@@ -45,6 +45,12 @@ TqReconnectHandler
 
 
 websocket_version_ge_14 = version.parse(websockets.__version__) >= version.parse("14.0")
+
+CTP_TO_MD_AIDS = {
+    "subscribe_quote",
+    "set_chart",
+    "ins_query",
+}
 
 
 class ReconnectTimer(object):
@@ -179,7 +185,7 @@ class TqConnect(object):
                         send_task = self._api.create_task(self._send_handler(send_chan, client))
                         try:
                             async for msg in client:
-                                pack = json.loads(msg)
+                                pack = translator.loads(msg, rules=translator.MD_TO_CTP)
                                 await self._api._wait_until_idle()
                                 self._logger.debug("websocket received data", pack=msg)
                                 await recv_chan.send(pack)
@@ -238,12 +244,13 @@ class TqConnect(object):
                 if pack.get("aid") == "ins_query":
                     if len(pack.get("query", "")) > self._query_max_length:
                         warnings.warn(f"订阅合约信息字段总长度大于 {self._query_max_length}，可能会引起服务器限制。", stacklevel=3)
-                msg = json.dumps(pack)
+                rules = translator.CTP_TO_MD if pack.get("aid") in CTP_TO_MD_AIDS else ()
+                msg = translator.dumps(pack, rules=rules)
                 await client.send(msg)
                 if pack.get("aid") == "req_login":
                     log_pack = pack.copy()
                     log_pack.pop("password", None)
-                    msg = json.dumps(log_pack)
+                    msg = translator.dumps(log_pack)
                 self._logger.debug("websocket send data", pack=msg)
         except asyncio.CancelledError:  # 取消任务不抛出异常，不然等待者无法区分是该任务抛出的取消异常还是有人直接取消等待者
             pass

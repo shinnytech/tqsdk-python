@@ -4,7 +4,7 @@ __author__ = 'mayanqiong'
 
 from typing import Optional, Union
 
-from pandas import DataFrame
+from pandas import DataFrame, isna
 
 from tqsdk.api import TqApi, TqAccount, TqSim, TqKq
 from tqsdk.channel import TqChan
@@ -146,7 +146,7 @@ class TargetPosScheduler(object):
         try:
             _index = 0  # _index 表示下标
             for index, row in self._time_table.iterrows():
-                if row['price'] is None:
+                if isna(row['price']):
                     target_pos_task = None
                     target_volume_chan = None
                 else:

@@ -36,7 +36,7 @@ last_day = None
 
 # === API初始化 ===
 api = TqApi(backtest=TqBacktest(start_dt=date(2022, 7, 4), end_dt=date(2022, 8, 31)),
-                auth=TqAuth("快期账号", "快期密码"))
+                auth=TqAuth("快期账户", "快期密码"))
 quote_y = api.get_quote(SYMBOL_Y)
 quote_x = api.get_quote(SYMBOL_X)
 klines_y = api.get_kline_serial(SYMBOL_Y, 60*60)

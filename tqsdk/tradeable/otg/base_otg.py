@@ -5,7 +5,7 @@ __author__ = 'yanqiong'
 import hashlib
 import base64
 from urllib.parse import urlparse
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from shinny_structlog import ShinnyLoggerAdapter
 
@@ -51,6 +51,7 @@ class BaseOtg(Tradeable):
         self._password = password
         self._td_url = td_url
         self._sm = sm
+        self._otg_capabilities: Dict[str, Any] = {}
 
         super(BaseOtg, self).__init__()
 
@@ -102,6 +103,11 @@ class BaseOtg(Tradeable):
                 # http://example.org/foo/bar -> http://example.org/smcfg/smuser/smpasswd/foo/bar
                 self._td_url = url_info._replace(scheme=sm_type, path=f"/{sm_config}/{url_account}/{url_password}{url_info.path}").geturl()
 
+    def _update_otg_capabilities(self, pack: Dict[str, Any]) -> None:
+        """保存交易连接返回的 OTG 能力。"""
+        capabilities = pack.get("capabilities")
+        self._otg_capabilities = dict(capabilities) if isinstance(capabilities, dict) else {}
+
     def _connect_td(self, api, index: int) -> Optional[str]:
         # 连接交易服务器
         log_td_url = type(self)._mask_sm_password_in_url(self._td_url)
@@ -142,6 +148,9 @@ class BaseOtg(Tradeable):
             else:
                 await self._api_recv_chan.send(pack)  # 有可能是另一个 account 的 rsp_login
         elif chan == self._td_recv_chan:  # 从交易收到的数据包
+            if pack.get("aid") == "rtn_brokers":
+                self._update_otg_capabilities(pack)
+                return
             # 收到通知时，在通知里加上 account_name 信息
             if pack["aid"] == "rtn_data":
                 for data in pack.get('data', []):
