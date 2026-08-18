@@ -29,7 +29,7 @@ print(f"额外参数: 短期EMA={SHORT_EMA_PERIOD}, 止损参数={STOP_LOSS_PCT}
 
 try:
     api = TqApi(backtest=TqBacktest(start_dt=START_DATE, end_dt=END_DATE),
-                auth=TqAuth("快期账号", "快期密码"))
+                auth=TqAuth("快期账户", "快期密码"))
 
     # 订阅K线数据
     klines = api.get_kline_serial(SYMBOL, 60 * 60 * 24)  # 日K线

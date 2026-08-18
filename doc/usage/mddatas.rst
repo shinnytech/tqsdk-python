@@ -47,6 +47,8 @@ GFEX               广州期货交易所
 	CZCE.SPD SR609&SR701  - 郑商所 SR609&SR701 跨期合约
 	DCE.SP a2609&a2705    - 大商所 a2609&a2705 跨期合约
 	GFEX.SP si2607&si2609 - 广期所 si2607&si2609 跨期组合
+    SHFE.SP au2610&au2704 - 上期所 au2610&au2704 跨期组合
+    INE.SP sc2609&sc2610  - 上期能源 sc2609&sc2610 跨期组合
 
 	DCE.m2609-C-2700    - 大商所豆粕期权
 	CZCE.CF609C13400    - 郑商所棉花期权
@@ -165,7 +167,6 @@ GFEX               广州期货交易所
         "option_class": "",  # 期权行权方式，看涨:'CALL'，看跌:'PUT'
         "exercise_type": "",  # 期权行权方式，美式:'A'，欧式:'E'
         "product_id": "cu",  # 品种代码
-        "iopv": NaN,  # ETF实时单位基金净值
         "public_float_share_quantity": 0,  # 日流通股数，只对证券产品有效。
         "stock_dividend_ratio": [],  # 除权表 ["20190601,0.15","20200107,0.2"…]
         "cash_dividend_ratio": [],  # 除息表 ["20190601,0.15","20200107,0.2"…]

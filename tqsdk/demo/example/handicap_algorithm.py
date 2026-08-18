@@ -16,7 +16,7 @@ ORDERBOOK_TYPE = "对手盘口"  # "对手盘口"或"挂单盘口"
 
 # === 初始化API ===
 acc = TqKq()
-api = TqApi(account=acc, auth=TqAuth("快期账号", "快期密码"))
+api = TqApi(account=acc, auth=TqAuth("快期账户", "快期密码"))
 quote = api.get_quote(SYMBOL)
 
 # === 初始化变量 ===

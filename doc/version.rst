@@ -2,6 +2,14 @@
 
 版本变更
 =============================
+3.10.2 (2026/08/17)
+
+* 新增: :py:meth:`~tqsdk.TqApi.insert_order` 支持上期所/能源中心组合套利指令
+* 新增: :py:meth:`~tqsdk.TqApi.query_symbol_info` 接口返回值中增加 ``price_decs`` 字段
+* 新增: :py:meth:`~tqsdk.TqApi.query_all_level_finance_options` 补充 ETF 期权标的: SSE.588000、SSE.588080 以及 SZSE.159901
+* docs: 优化文档
+
+
 3.10.1 (2026/06/11)
 
 * 优化: ::py:class:`~tqsdk.TqAuth` 增加本地账号密码判空

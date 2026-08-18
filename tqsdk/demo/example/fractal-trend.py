@@ -82,7 +82,7 @@ print(f"品种: {SYMBOL}, 回测周期: {START_DATE} 至 {END_DATE}")
 
 # 创建API实例
 api = TqApi(backtest=TqBacktest(start_dt=START_DATE, end_dt=END_DATE),
-            auth=TqAuth("快期账号", "快期密码"))
+            auth=TqAuth("快期账户", "快期密码"))
 
 # 订阅合约的K线数据
 klines = api.get_kline_serial(SYMBOL, KLINE_PERIOD)  # 1小时K线

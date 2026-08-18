@@ -11,7 +11,7 @@ STD_THRESHOLD = 2.0
 ORDER_VOLUME = 30
 CLOSE_THRESHOLD = 0.5
 
-api = TqApi(backtest=TqBacktest(start_dt=START_DATE, end_dt=END_DATE), auth=TqAuth("快期账号", "快期密码"))
+api = TqApi(backtest=TqBacktest(start_dt=START_DATE, end_dt=END_DATE), auth=TqAuth("快期账户", "快期密码"))
 
 cu_quote = api.get_quote(CU)
 al_quote = api.get_quote(AL)

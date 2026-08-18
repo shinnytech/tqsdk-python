@@ -32,7 +32,7 @@ total_profit = 0
 
 # === API初始化 ===
 api = TqApi(backtest=TqBacktest(start_dt=date(2023, 2, 1),end_dt=date(2023, 4, 27)),
-            auth=TqAuth("快期账号", "快期密码")
+            auth=TqAuth("快期账户", "快期密码")
 )
 quote1 = api.get_quote(SYMBOL1)
 quote2 = api.get_quote(SYMBOL2)

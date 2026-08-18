@@ -13,7 +13,7 @@ DIRECTION = "BUY"           # "BUY"为买入，"SELL"为卖出
 ORDER_TYPE = "ACTIVE"       # 对价 "ACTIVE" / 挂价 "PASSIVE" / 指定价 lambda direction: 价格
 
 # === 初始化 ===
-api = TqApi(account=TqKq(), auth=TqAuth("快期账号", "快期密码"))
+api = TqApi(account=TqKq(), auth=TqAuth("快期账户", "快期密码"))
 quote = api.get_quote(SYMBOL)
 
 # 创建目标持仓任务

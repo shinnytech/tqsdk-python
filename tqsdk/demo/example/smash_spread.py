@@ -30,7 +30,7 @@ SOYMEAL_RATIO = 0.6
 
 # === 初始化API ===
 api = TqApi(backtest=TqBacktest(start_dt=START_DATE, end_dt=END_DATE),
-            auth=TqAuth("快期账号", "快期密码"))
+            auth=TqAuth("快期账户", "快期密码"))
 
 # 获取合约行情和K线
 hog_quote = api.get_quote(LIVE_HOG)

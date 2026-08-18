@@ -26,7 +26,7 @@ JM_RATIO = 22  # 22手焦煤（约1.32配比）
 
 # === 初始化API ===
 api = TqApi(backtest=TqBacktest(start_dt=START_DATE, end_dt=END_DATE),
-            auth=TqAuth("快期账号", "快期密码"))
+            auth=TqAuth("快期账户", "快期密码"))
 
 # 获取合约行情和K线
 j_quote = api.get_quote(J)

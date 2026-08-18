@@ -18,7 +18,7 @@ END_DATE = date(2021, 1, 15)  # 回测结束日期
 
 # 创建API实例
 api = TqApi(backtest=TqBacktest(start_dt=START_DATE, end_dt=END_DATE),
-            auth=TqAuth("快期账号", "快期密码"))
+            auth=TqAuth("快期账户", "快期密码"))
 
 # 订阅行情
 near_quote = api.get_quote(NEAR_CONTRACT)

@@ -474,6 +474,8 @@ class Order(Entity):
         self.direction: str = ""
         #: 开平标志, OPEN=开仓, CLOSE=平仓, CLOSETODAY=平今
         self.offset: str = ""
+        #: 第二腿开平标志, 仅 SHFE/INE 组合套利指令有效
+        self.offset_leg2: str = ""
         #: 总报单手数
         self.volume_orign: int = 0
         #: 未成交手数

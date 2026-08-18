@@ -3,6 +3,7 @@
 __author__ = 'mayanqiong'
 
 import numpy as np
+import pandas as pd
 from pandas import DataFrame
 
 from tqsdk.datetime import _get_trading_timestamp, _get_trade_timestamp
@@ -71,7 +72,8 @@ def _check_time_table(time_table: DataFrame):
             raise Exception(f"interval 列必须为正数，请检查参数 {time_table['interval']}")
         if time_table['target_pos'].isnull().values.any() or not np.issubdtype(time_table['target_pos'].dtype, np.integer):
             raise Exception(f"target_pos 列必须为整数，请检查参数 {time_table['target_pos']}")
-        if not (np.isin(time_table['price'], ('PASSIVE', 'ACTIVE', None)) | time_table['price'].apply(isfunction)).all():
+        valid_prices = time_table['price'].apply(lambda price: pd.isna(price) or price in ('PASSIVE', 'ACTIVE') or isfunction(price))
+        if not valid_prices.all():
             raise Exception(f"price 列必须为 ('PASSIVE', 'ACTIVE', None, Callable) 之一，请检查参数 {time_table['price']}")
     return time_table
 
