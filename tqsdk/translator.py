@@ -85,6 +85,19 @@ CTP_TO_MD = (
 )
 
 
+_CTP_PLAIN_COMBO_PATTERN = re.compile(
+    r"\ASPC? (?P<left_product>[a-z]{2})&(?P<right_product>[a-z]{2})\Z"
+)
+
+
+CTP_PLAIN_COMBO_TO_MD = (
+    Converter(
+        pattern=_CTP_PLAIN_COMBO_PATTERN,
+        replacement=r"\g<left_product>-\g<right_product>",
+    ),
+)
+
+
 def loads(
         s: Union[str, bytes, bytearray],
         *args: Any,

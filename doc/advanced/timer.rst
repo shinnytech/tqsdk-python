@@ -8,7 +8,7 @@
 优先使用“行情时间”而不是本机时间
 -------------------------------------------------
 
-如果你的逻辑和交易时段、收盘前平仓、定时检查等场景有关，优先使用 ``quote.datetime`` 代表的行情时间::
+如果你的逻辑和交易时段、收盘前平仓、定时检查等场景有关，优先使用 :py:attr:`quote.datetime <tqsdk.objs.Quote.datetime>` 代表的行情时间::
 
     from datetime import datetime
     from tqsdk import TqApi, TqAuth, TargetPosTask
@@ -58,8 +58,8 @@
 常见误区
 -------------------------------------------------
 
-* 不要在主循环里频繁使用 ``time.sleep()``, 否则会阻塞 ``wait_update``，数据和后台任务都会停下来
+* 不要在主循环里频繁使用 ``time.sleep()``, 否则会阻塞 :py:meth:`wait_update <tqsdk.TqApi.wait_update>`，数据和后台任务都会停下来
 * ``deadline`` 是 unix 时间戳，不是“秒数”本身；通常写成 ``time.time() + 60``
-* 如果你在定时逻辑里调用了 ``insert_order`` 或 ``TargetPosTask.set_target_volume``，后面仍然要继续调用 ``wait_update``，否则报单不会真正发出
+* 如果你在定时逻辑里调用了 :py:meth:`insert_order <tqsdk.TqApi.insert_order>` 或 :py:meth:`TargetPosTask.set_target_volume <tqsdk.TargetPosTask.set_target_volume>`，后面仍然要继续调用 :py:meth:`wait_update <tqsdk.TqApi.wait_update>`，否则报单不会真正发出
 * 如果策略已经采用协程任务，优先考虑 :py:meth:`~tqsdk.TqApi.register_update_notify`，不要把同步和异步等待方式混在一起
 

@@ -71,16 +71,21 @@ TqSdk提供的功能可以支持从简单到复杂的各类策略程序：
 
 ## 配合 AI / Agent 使用 TqSdk
 
-如果你想让自己的 AI、Agent 或 OpenClaw 更好地理解和使用 TqSdk，可以把下面这段内容直接复制给它：
+推荐先把官方 Skills 交给你的 AI 编码工具，再描述需求。可以把下面这段内容直接复制给它：
 
-> 请先下载并解压 TqSdk 技能包：https://doc.shinnytech.com/tqsdk/latest/ai_editor/skills/tqsdk-trading-and-data.zip，然后先阅读其中的 SKILL.md，并按里面的说明再回答任何 TqSdk 问题或编写任何 TqSdk 代码。
+> 请先下载并解压 TqSdk 官方技能包：
+> https://doc.shinnytech.com/tqsdk/latest/ai_editor/skills/tqsdk-trading-and-data.zip
+> 先阅读其中的 SKILL.md，再按任务读取 references/ 中的说明。
+> 如果需要在本地运行代码，请先检查项目的 Python 环境和 TqSdk；未安装时按项目依赖要求安装到该环境，验证能导入后再继续，不要自动升级已有版本。
+
+技能包需要完整解压；它本身不会自动安装软件或连接账户。安装和运行需要有本地执行能力的 AI 工具。
 
 相关文档与资源：
 
 * [通过 AI 工具使用 TqSdk](https://doc.shinnytech.com/tqsdk/latest/ai_editor/index.html)
 * [在 Trae 中高效学习和使用 TqSdk](https://doc.shinnytech.com/tqsdk/latest/ai_editor/tqsdk_trae.html)
-* [在 CodeBuddy 中高效学习和使用 TqSdk](https://doc.shinnytech.com/tqsdk/latest/ai_editor/tqsdk_codebuddy.html)
-* [使用 Codex 协作开发 TqSdk 项目](https://doc.shinnytech.com/tqsdk/latest/ai_editor/tqsdk_codex.html)
+* [在 WorkBuddy 中高效学习和使用 TqSdk](https://doc.shinnytech.com/tqsdk/latest/ai_editor/tqsdk_codebuddy.html)
+* [使用 ChatGPT 中的 Codex 开发 TqSdk 项目](https://doc.shinnytech.com/tqsdk/latest/ai_editor/tqsdk_codex.html)
 * [TqSdk Skills 压缩包与使用说明](https://doc.shinnytech.com/tqsdk/latest/ai_editor/tqsdk_skills.html)
 * [下载 TqSdk 技能包 `tqsdk-trading-and-data.zip`](https://doc.shinnytech.com/tqsdk/latest/ai_editor/skills/tqsdk-trading-and-data.zip)
 
@@ -95,10 +100,6 @@ pip install tqsdk
 ## 文档与社区支持
 
 在线阅读HTML版本文档: https://doc.shinnytech.com/tqsdk/latest
-
-知乎账户【天勤量化】：https://www.zhihu.com/org/tian-qin-liang-hua/activities
-
-天勤AI助手：https://www.shinnytech.com/products/tqsdk - 解释函数，编写demo策略，分析报错原因，它都可以做到！
 
 用户交流QQ群: **611806823** (目前只允许给我们点过STAR的同学加入, 加群时请提供github用户名)
 

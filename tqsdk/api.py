@@ -78,7 +78,7 @@ from tqsdk.risk_manager import TqRiskManager
 from tqsdk.risk_rule import TqRiskRule
 from tqsdk.ins_schema import ins_schema, basic, derivative, future, option
 from tqsdk.symbols import TqSymbols
-from tqsdk.tradeable import TqAccount, TqZq, TqKq, TqKqStock, TqSim, TqSimStock, BaseSim, BaseOtg, TqCtp, TqRohon, TqJees, TqYida, TqO32, TqIS, TqXuntou, TqTradingUnit
+from tqsdk.tradeable import TqAccount, TqZq, TqKq, TqKqStock, TqSim, TqSimStock, BaseSim, BaseOtg, TqCtp, TqRohon, TqJees, TqYida, TqO32, TqIS, TqXuntou
 from tqsdk.trading_status import TqTradingStatus
 from tqsdk.tqwebhelper import TqWebHelper
 from tqsdk.utils import _generate_uuid, _query_for_quote, BlockManagerUnconsolidated, _quotes_add_night, _bisect_value, \
@@ -92,7 +92,7 @@ from .__version__ import __version__
 # 在 python 文档中对 type alias 的定义有多种：TypeAliasType, TypeAlias 以及 simple assignment https://docs.python.org/3.13/library/typing.html#type-aliases
 # Union 类型支持嵌套 Union 类型，但是不支持嵌套 Union TypeAliasType 类型：https://docs.python.org/3.13/library/typing.html#typing.Union
 # 但是 Union 文档没有明说是否支持嵌套 Union simple assignment 类型，从实现上看，目前所有版本都支持（最新 3.13）
-UnionTradeable = Union[TqAccount, TqKq, TqZq, TqKqStock, TqSim, TqSimStock, TqCtp, TqRohon, TqJees, TqYida, TqO32, TqIS, TqXuntou, TqTradingUnit]
+UnionTradeable = Union[TqAccount, TqKq, TqZq, TqKqStock, TqSim, TqSimStock, TqCtp, TqRohon, TqJees, TqYida, TqO32, TqIS, TqXuntou]
 
 
 class TqApi(TqBaseApi):
@@ -112,7 +112,7 @@ class TqApi(TqBaseApi):
         创建天勤接口实例
 
         Args:
-            account (None/TqAccount/TqKq/TqKqStock/TqSim/TqSimStock/TqZq/TqCtp/TqRohon/TqJees/TqYida/TqO32/TqIS/TqXuntou/TqTradingUnit/TqMultiAccount): [可选]交易账号:
+            account (None/TqAccount/TqKq/TqKqStock/TqSim/TqSimStock/TqZq/TqCtp/TqRohon/TqJees/TqYida/TqO32/TqIS/TqXuntou/TqMultiAccount): [可选]交易账号:
                 * None: 账号将根据环境变量决定, 默认为 :py:class:`~tqsdk.TqSim`
 
                 * :py:class:`~tqsdk.TqAccount` : 使用实盘账号, 直连行情和交易服务器, 需提供期货公司/帐号/密码
@@ -139,16 +139,14 @@ class TqApi(TqBaseApi):
 
                 * :py:class:`~tqsdk.TqIS` : 使用 IS 柜台账号
 
-                * :py:class:`~tqsdk.TqTradingUnit` : 使用交易单元账号
-
                 * :py:class:`~tqsdk.TqXuntou` : 使用迅投账号
 
                 * :py:class:`~tqsdk.TqMultiAccount` : 多账户列表，列表中支持
                   :py:class:`~tqsdk.TqAccount`、:py:class:`~tqsdk.TqKq`、:py:class:`~tqsdk.TqKqStock`、
                   :py:class:`~tqsdk.TqSim`、:py:class:`~tqsdk.TqSimStock`、:py:class:`~tqsdk.TqZq`、
                   :py:class:`~tqsdk.TqRohon`、:py:class:`~tqsdk.TqJees`、:py:class:`~tqsdk.TqYida`、
-                  :py:class:`~tqsdk.TqO32`、:py:class:`~tqsdk.TqIS`、:py:class:`~tqsdk.TqXuntou`、
-                  :py:class:`~tqsdk.TqTradingUnit` 和 :py:class:`~tqsdk.TqCtp` 中的 0 至 N 个或者组合
+                  :py:class:`~tqsdk.TqO32`、:py:class:`~tqsdk.TqIS`、:py:class:`~tqsdk.TqXuntou`
+                  和 :py:class:`~tqsdk.TqCtp` 中的 0 至 N 个或者组合
 
             auth (TqAuth/str): [必填]用户快期账户:
                 * :py:class:`~tqsdk.TqAuth` : 添加快期账户类，例如：TqAuth("tianqin@qq.com", "123456")
@@ -370,7 +368,7 @@ class TqApi(TqBaseApi):
         创建当前TqApi的一个副本. 这个副本可以在另一个线程中使用
 
         Returns:
-            :py:class:`~tqsdk.api.TqApi`: 返回当前TqApi的一个副本. 这个副本可以在另一个线程中使用
+            :py:class:`~tqsdk.TqApi`: 返回当前TqApi的一个副本. 这个副本可以在另一个线程中使用
         """
         slave_api = TqApi(self)
         # 将当前api的_data值复制到_copy_diff中, 然后merge到副本api的_data里
@@ -429,7 +427,7 @@ class TqApi(TqBaseApi):
             symbol (str): 指定合约代码。
 
         Returns:
-            :py:class:`~tqsdk.objs.Quote`: 返回一个盘口行情引用. 其内容将在 :py:meth:`~tqsdk.api.TqApi.wait_update` 时更新.
+            :py:class:`~tqsdk.objs.Quote`: 返回一个盘口行情引用. 其内容将在 :py:meth:`~tqsdk.TqApi.wait_update` 时更新.
 
         注意:
 
@@ -1191,7 +1189,7 @@ class TqApi(TqBaseApi):
                      order_id: Optional[str] = None, account: Optional[UnionTradeable] = None,
                      offset_leg2: str = "") -> Order:
         """
-        发送下单指令。调用后会立即返回，委托请求会在下一次 :py:meth:`~tqsdk.api.TqApi.wait_update` 时发出。
+        发送下单指令。调用后会立即返回，委托请求会在下一次 :py:meth:`~tqsdk.TqApi.wait_update` 时发出。
 
         Args:
             symbol (str): 拟下单的合约symbol, 格式为 交易所代码.合约代码,  例如 "SHFE.cu1801"
@@ -1222,7 +1220,7 @@ class TqApi(TqBaseApi):
             offset_leg2 (str): 第二腿开平标志, "OPEN", "CLOSE" 或 "CLOSETODAY"，仅上期所/上期能源组合合约套利指令支持
 
         Returns:
-            :py:class:`~tqsdk.objs.Order`: 返回一个委托单对象引用. 其内容将在 :py:meth:`~tqsdk.api.TqApi.wait_update` 时更新.
+            :py:class:`~tqsdk.objs.Order`: 返回一个委托单对象引用. 其内容将在 :py:meth:`~tqsdk.TqApi.wait_update` 时更新.
 
         Example1::
 
@@ -1507,7 +1505,7 @@ class TqApi(TqBaseApi):
     # ----------------------------------------------------------------------
     def cancel_order(self, order_or_order_id: Union[str, Order], account: Optional[UnionTradeable] = None) -> None:
         """
-        发送撤单指令. **注意: 指令将在下次调用** :py:meth:`~tqsdk.api.TqApi.wait_update` **时发出**
+        发送撤单指令. **注意: 指令将在下次调用** :py:meth:`~tqsdk.TqApi.wait_update` **时发出**
 
         Args:
             order_or_order_id (str/ :py:class:`~tqsdk.objs.Order` ): 拟撤委托单或单号
@@ -1676,7 +1674,7 @@ class TqApi(TqBaseApi):
             account (TqAccount/TqKq/TqKqStock/TqSim/TqSimStock): [可选]指定获取账户资金信息的账户实例, 多账户模式下, 该参数必须指定
 
         Returns:
-            :py:class:`~tqsdk.objs.Account` / :py:class:`~tqsdk.objs.SecurityAccount`: 返回一个账户对象引用. 其内容将在 :py:meth:`~tqsdk.api.TqApi.wait_update` 时更新.
+            :py:class:`~tqsdk.objs.Account` / :py:class:`~tqsdk.objs.SecurityAccount`: 返回一个账户对象引用. 其内容将在 :py:meth:`~tqsdk.TqApi.wait_update` 时更新.
 
             期货账户资金返回对象类型为 :py:class:`~tqsdk.objs.Account`，股票账户资金返回对象类型为 :py:class:`~tqsdk.objs.SecurityAccount`。
 
@@ -1731,7 +1729,7 @@ class TqApi(TqBaseApi):
 
         Returns:
             :py:class:`~tqsdk.objs.Position` / :py:class:`~tqsdk.objs.SecurityPosition`: 当指定了 symbol 时, 返回一个持仓对象引用.
-            其内容将在 :py:meth:`~tqsdk.api.TqApi.wait_update` 时更新.
+            其内容将在 :py:meth:`~tqsdk.TqApi.wait_update` 时更新.
 
             期货账户持仓返回对象类型为 :py:class:`~tqsdk.objs.Position`，股票账户持仓返回对象类型为 :py:class:`~tqsdk.objs.SecurityPosition`。
 
@@ -1804,7 +1802,7 @@ class TqApi(TqBaseApi):
 
         Returns:
             :py:class:`~tqsdk.objs.Order` / :py:class:`~tqsdk.objs.SecurityOrder` : 当指定了order_id时, 返回一个委托单对象引用. \
-            其内容将在 :py:meth:`~tqsdk.api.TqApi.wait_update` 时更新.
+            其内容将在 :py:meth:`~tqsdk.TqApi.wait_update` 时更新.
 
             期货账户委托单返回对象类型为 :py:class:`~tqsdk.objs.Order`，股票账户委托单返回对象类型为 :py:class:`~tqsdk.objs.SecurityOrder`。
 
@@ -1866,14 +1864,14 @@ class TqApi(TqBaseApi):
 
         Returns:
             :py:class:`~tqsdk.objs.Trade` / :py:class:`~tqsdk.objs.SecurityTrade`: 当指定了trade_id时, 返回一个成交对象引用. \
-            其内容将在 :py:meth:`~tqsdk.api.TqApi.wait_update` 时更新.
+            其内容将在 :py:meth:`~tqsdk.TqApi.wait_update` 时更新.
 
             期货账户成交返回对象类型为 :py:class:`~tqsdk.objs.Trade`，股票账户成交返回对象类型为 :py:class:`~tqsdk.objs.SecurityTrade`。
 
             不填 trade_id 参数调用本函数, 将返回包含用户当前交易日所有成交记录的一个 tqsdk.objs.Entity 对象引用，可像 dict 一样按 key 访问，\
             其中每个元素的 key 为成交号, value 为 :py:class:`~tqsdk.objs.Trade`
 
-            推荐优先使用 :py:meth:`~tqsdk.objs.Order.trade_records` 获取某个委托单的相应成交记录, 仅当确有需要时才使用本函数.
+            推荐优先使用 :py:attr:`~tqsdk.objs.Order.trade_records` 获取某个委托单的相应成交记录, 仅当确有需要时才使用本函数.
 
         Example::
 
@@ -1940,7 +1938,7 @@ class TqApi(TqBaseApi):
                                  trade_units_limit: Optional[int] = None, trade_position_ratio_limit: Optional[float] = None,
                                  account: Optional[UnionTradeable] = None) -> Optional[RiskManagementRule]:
         """
-        设置交易所风控规则. **注意: 指令将在下次调用** :py:meth:`~tqsdk.api.TqApi.wait_update` **时发出**
+        设置交易所风控规则. **注意: 指令将在下次调用** :py:meth:`~tqsdk.TqApi.wait_update` **时发出**
         调用本函数时，没有填写的可选参数会被服务器设置为默认值。
 
         Args:
@@ -1961,7 +1959,7 @@ class TqApi(TqBaseApi):
             trade_position_ratio_limit (float): [可选]成交持仓比例限额，为百分比，如果未填写，服务器将根据交易所不同赋不同的默认值，持仓数为该合约的净持仓。
 
         Returns:
-            :py:class:`~tqsdk.objs.RiskManagementRule`: 返回一个风控规则对象引用. 其内容将在 :py:meth:`~tqsdk.api.TqApi.wait_update` 时更新.
+            :py:class:`~tqsdk.objs.RiskManagementRule`: 返回一个风控规则对象引用. 其内容将在 :py:meth:`~tqsdk.TqApi.wait_update` 时更新.
 
         Example::
 
@@ -2025,7 +2023,7 @@ class TqApi(TqBaseApi):
 
         Returns:
             :py:class:`~tqsdk.objs.RiskManagementData`: 当指定了 symbol 时, 返回该合约下的风控统计数据对象引用.
-            其内容将在 :py:meth:`~tqsdk.api.TqApi.wait_update` 时更新.
+            其内容将在 :py:meth:`~tqsdk.TqApi.wait_update` 时更新.
 
             不填 symbol 参数调用本函数, 将返回包含用户所有持仓合约的一个 tqsdk.objs.Entity 对象引用, 使用方法与 dict 一致, \
             其中每个元素的 key 为合约代码, value为 :py:class:`~tqsdk.objs.RiskManagementData`。
@@ -2842,7 +2840,11 @@ class TqApi(TqBaseApi):
         if product_id is not None:
             if product_id == "":
                 raise Exception("product_id 参数不能为空字符串。")
-            variables["product_id"] = [product_id] if isinstance(product_id, str) else product_id
+            product_ids = [product_id] if isinstance(product_id, str) else list(product_id)
+            md_product_ids = [translator.translate(value, translator.CTP_PLAIN_COMBO_TO_MD)
+                              for value in product_ids]
+            product_ids += [value for value in md_product_ids if value not in product_ids]
+            variables["product_id"] = product_ids
         if expired is not None:
             variables["expired"] = expired
         if has_night is not None:

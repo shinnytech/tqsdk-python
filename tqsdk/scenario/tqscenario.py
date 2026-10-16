@@ -46,11 +46,11 @@ class TqScenario(object):
             api (TqApi): [必填] TqApi 实例
 
             account (Optional[Union[TqSim, TqAccount, TqKq]]): [可选] 保证金率来源账户。
-                不传时默认创建 :py:class:`~tqsdk.tradeable.TqSim` 模拟账户, 使用 Quote 中的保证金信息;
+                不传时默认创建 :py:class:`~tqsdk.TqSim` 模拟账户, 使用 Quote 中的保证金信息;
                 传入实盘账户时, 会按该账户对应的保证金率进行试算
 
             positions (Optional[Union[Position, Entity]]): [可选] 初始持仓截面。
-                可以传入 :py:meth:`~tqsdk.api.TqApi.get_position` 返回的全部持仓对象,
+                可以传入 :py:meth:`~tqsdk.TqApi.get_position` 返回的全部持仓对象,
                 也可以传入某一个合约的持仓对象; 不传时表示从空仓开始试算
 
             init_balance (float): [可选] 初始账户资金, 默认为一千万。
@@ -469,8 +469,8 @@ class TqScenario(object):
         获取当前试算账户信息。
 
         返回值仅保证金和风险度两个与场景试算直接相关的字段, 适合在每次调用
-        :py:meth:`~tqsdk.scenario.tqscenario.TqScenario.scenario_insert_order` 或
-        :py:meth:`~tqsdk.scenario.tqscenario.TqScenario.scenario_set_margin_rate` 后立即读取结果。
+        :py:meth:`~tqsdk.TqScenario.scenario_insert_order` 或
+        :py:meth:`~tqsdk.TqScenario.scenario_set_margin_rate` 后立即读取结果。
 
         Returns:
             :py:class:`~tqsdk.objs.Account`: 账户对象, 仅包含以下字段:

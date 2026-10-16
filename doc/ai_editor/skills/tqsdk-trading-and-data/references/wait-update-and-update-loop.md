@@ -45,39 +45,42 @@ This is why `get_quote`, `get_kline_serial`, `get_account`, `get_position`, `get
 Streaming quote:
 
 ```python
-from tqsdk import TqApi, TqAuth
+from tqsdk import TqApi, TqAuth, TqSim
 
-api = TqApi(auth=TqAuth("快期账户", "账户密码"))
-quote = api.get_quote("SHFE.au2608")
+with TqApi(TqSim(), auth=TqAuth("快期账户", "账户密码")) as api:
+    quote = api.get_quote("KQ.m@SHFE.au")
+    while True:
+        if api.wait_update() and api.is_changing(quote, ["last_price", "ask_price1", "bid_price1"]):
+            print(quote.datetime, quote.last_price, quote.ask_price1, quote.bid_price1)
 
-while True:
-    if not api.wait_update():
-        continue
-    if api.is_changing(quote, ["last_price", "ask_price1", "bid_price1"]):
-        print(quote.datetime, quote.last_price, quote.ask_price1, quote.bid_price1)
 ```
 
-New K-line only:
+New K-line only (fragment inside an existing API context):
 
 ```python
-klines = api.get_kline_serial("DCE.i2609", 60, data_length=200)
+klines = api.get_kline_serial("KQ.m@DCE.i", 60, data_length=200)
 
 while True:
     api.wait_update()
     if api.is_changing(klines.iloc[-1], "datetime"):
-        print("new bar", klines.iloc[-1].datetime, klines.iloc[-1].close)
+        print("previous closed bar", klines.iloc[-2].datetime, klines.iloc[-2].close)
 ```
 
 Order state tracking:
 
 ```python
-order = api.insert_order("DCE.m2609", "BUY", offset="OPEN", volume=1)
+symbol = api.get_quote("KQ.m@DCE.m").underlying_symbol
+if not symbol:
+    raise RuntimeError("尚未获取到主连标的合约")
+order = api.insert_order(symbol, "BUY", offset="OPEN", volume=1)
 
 while order.status != "FINISHED":
     api.wait_update()
     if api.is_changing(order, ["status", "volume_left", "last_msg"]):
         print(order.status, order.volume_left, order.last_msg)
 ```
+
+`FINISHED` includes fills, cancellations and rejections. Check `volume_left`, `last_msg` and trade records before saying an order filled. A deadline expiring does not cancel an order. Partial examples assume an open API context.
 
 ## `deadline` Guidance
 

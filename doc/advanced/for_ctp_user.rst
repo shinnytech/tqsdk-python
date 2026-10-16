@@ -95,7 +95,7 @@ TqSdk则不使用事件回调机制. :py:meth:`~tqsdk.TqApi.wait_update` 函数�
     print(x)                # <- 显示委托单最新状态
 
 
-一次 wait_update 可能更新多个实体, 在这种情况下, :py:meth:`~tqsdk.TqApi.is_changing` 被用来判断某个实体是否有变更::
+一次 :py:meth:`wait_update <tqsdk.TqApi.wait_update>` 可能更新多个实体, 在这种情况下, :py:meth:`~tqsdk.TqApi.is_changing` 被用来判断某个实体是否有变更::
 
   from tqsdk import TqApi, TqAuth
 
@@ -112,13 +112,13 @@ TqSdk则不使用事件回调机制. :py:meth:`~tqsdk.TqApi.wait_update` 函数�
       print(x)
 
 
-TqSdk针对行情数据和交易信息都采用相同的 wait_update/is_changing 方案. 用户需要记住的要点包括:
+TqSdk针对行情数据和交易信息都采用相同的 :py:meth:`wait_update <tqsdk.TqApi.wait_update>`/:py:meth:`is_changing <tqsdk.TqApi.is_changing>` 方案. 用户需要记住的要点包括:
 
-* get_quote、get_kline_serial、insert_order 等业务函数返回的是引用对象（reference, not value），它们的字段会在 wait_update 返回后刷新。
-* 用户程序除执行自己业务逻辑外，还需要反复调用 wait_update；在两次 wait_update 之间，数据不会继续推进。
-* 用 insert_order 函数下单后，还要继续调用 wait_update，报单指令才会真正发出。
+* :py:meth:`get_quote <tqsdk.TqApi.get_quote>`、:py:meth:`get_kline_serial <tqsdk.TqApi.get_kline_serial>`、:py:meth:`insert_order <tqsdk.TqApi.insert_order>` 等业务函数返回的是引用对象（reference, not value），它们的字段会在 :py:meth:`wait_update <tqsdk.TqApi.wait_update>` 返回后刷新。
+* 用户程序除执行自己业务逻辑外，还需要反复调用 :py:meth:`wait_update <tqsdk.TqApi.wait_update>`；在两次 :py:meth:`wait_update <tqsdk.TqApi.wait_update>` 之间，数据不会继续推进。
+* 用 :py:meth:`insert_order <tqsdk.TqApi.insert_order>` 函数下单后，还要继续调用 :py:meth:`wait_update <tqsdk.TqApi.wait_update>`，报单指令才会真正发出。
 * 用户程序中需要避免阻塞，不要直接用 sleep 暂停主循环；如果需要定时控制，请参考 :ref:`timer`。
 
-关于 wait_update 机制的详细说明, 请见 :ref:`framework`
+关于 :py:meth:`wait_update <tqsdk.TqApi.wait_update>` 机制的详细说明, 请见 :ref:`framework`
 
 

@@ -1,0 +1,53 @@
+{% extends "!layout.html" %}
+
+{% block extrabody %}
+  <a class="tq-skip-link" href="#tq-main">跳转到正文</a>
+  <header class="tq-topbar">
+    <a class="tq-wordmark" href="{{ pathto('index') }}">TqSdk <span>天勤量化</span></a>
+    <nav aria-label="快捷导航">
+      <a href="{{ pathto('quickstart') }}"{% if pagename == 'quickstart' %} aria-current="page"{% endif %}>快速入门</a>
+      <a href="{{ pathto('reference/index') }}"{% if pagename.startswith('reference/') %} aria-current="page"{% endif %}>API 参考</a>
+      <a href="{{ pathto('demo/index') }}"{% if pagename.startswith('demo/') %} aria-current="page"{% endif %}>示例</a>
+      <a href="{{ pathto('ai_editor/tqsdk_skills') }}"{% if pagename == 'ai_editor/tqsdk_skills' %} aria-current="page"{% endif %}>AI Skills</a>
+      <a href="https://github.com/shinnytech/tqsdk-python">GitHub <span aria-hidden="true">↗</span></a>
+    </nav>
+    <a class="tq-version" href="{{ pathto('version') }}">v{{ release }}</a>
+  </header>
+{% endblock %}
+
+{% block sidebartitle %}
+  <a class="tq-doc-label" href="{{ pathto('index') }}">开发者文档 <span>简体中文</span></a>
+  {% include "searchbox.html" %}
+{% endblock %}
+
+{% block mobile_nav %}
+  <button type="button" data-toggle="wy-nav-top" class="tq-menu-toggle" aria-label="打开文档导航" aria-expanded="false">
+    <span class="fa fa-bars" aria-hidden="true"></span><span>目录</span>
+  </button>
+  <a href="{{ pathto('index') }}">TqSdk 文档</a>
+{% endblock %}
+
+{% block content %}
+  <div class="tq-reading-layout{% if pagename == 'index' %} tq-home-layout{% endif %}">
+    <div class="rst-content">
+      {% include "breadcrumbs.html" %}
+      {% if display_toc and pagename != 'index' %}
+        <details class="tq-mobile-toc">
+          <summary>本页目录</summary>
+          <nav aria-label="移动端章节导航">{{ toc }}</nav>
+        </details>
+      {% endif %}
+      <main id="tq-main" class="document" role="main" tabindex="-1" itemscope itemtype="https://schema.org/Article">
+        <div itemprop="articleBody">{% block body %}{% endblock %}</div>
+      </main>
+      {% include "footer.html" %}
+    </div>
+    {% if display_toc and pagename != 'index' %}
+      <aside class="tq-page-toc" aria-label="本页目录">
+        <p class="tq-toc-title">本页内容</p>
+        <nav aria-label="章节导航">{{ toc }}</nav>
+        <a class="tq-back-top" href="#tq-main">回到顶部 ↑</a>
+      </aside>
+    {% endif %}
+  </div>
+{% endblock %}

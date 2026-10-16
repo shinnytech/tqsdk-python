@@ -39,9 +39,8 @@ def _generate_uuid(prefix=''):
 def _query_for_quote(symbol, single_symbol_set) -> List[Dict]:
     """
     返回请求某个或多个合约的合约信息的 query_packs
-    调用次函数应该全部都是sdk的代码主动请求合约信息
-    用户请求合约信息一定是 PYSDK_api 开头的请求，因为用户请求的合约信息在回测时带有 timestamp 参数，是不应该调用此函数的
-    即：以 PYSDK_quote_ 开头的 query_id 都是 sdk 主动请求合约信息
+    SDK 通过此函数向全局 Quote 缓存加载完整合约信息，query_id 以 PYSDK_quote_ 开头
+    get_quote、query_symbol_info 等接口共用这份缓存
     对于在 single_symbol_set 合约表中的待查询合约逐个查询, 即每个查询请求只查询一个合约
     对于不在 single_symbol_set 的合约表中的待查询合约批量查询一次
     """

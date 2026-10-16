@@ -70,28 +70,33 @@ Futures backtest example:
 
 ```python
 from datetime import date
-from tqsdk import TqApi, TqAuth, TqBacktest, TqSim, TargetPosTask
+from tqsdk import TqApi, TqAuth, TqBacktest, TqSim, TargetPosTask, BacktestFinished
 
-api = TqApi(
+# Frozen historical example: the contract and dates must be changed together.
+symbol = "SHFE.rb2505"
+with TqApi(
     TqSim(),
-    backtest=TqBacktest(start_dt=date(2025, 1, 1), end_dt=date(2025, 1, 31)),
+    backtest=TqBacktest(start_dt=date(2025, 3, 3), end_dt=date(2025, 3, 7)),
     auth=TqAuth("快期账户", "账户密码"),
-)
-
-klines = api.get_kline_serial("DCE.m2609", 60, data_length=200)
-target_pos = TargetPosTask(api, "DCE.m2609")
-
-while True:
-    api.wait_update()
-    if api.is_changing(klines.iloc[-1], "datetime"):
-        if klines.close.iloc[-1] > klines.close.iloc[-20:].mean():
-            target_pos.set_target_volume(1)
-        else:
-            target_pos.set_target_volume(0)
+) as api:
+    klines = api.get_kline_serial(symbol, 60, data_length=200)
+    target_pos = TargetPosTask(api, symbol)
+    try:
+        while True:
+            api.wait_update()
+            if api.is_changing(klines.iloc[-1], "datetime"):
+                closed = klines.close.iloc[-21:-1]
+                if len(closed) == 20 and not closed.isna().any():
+                    target_pos.set_target_volume(1 if closed.iloc[-1] > closed.mean() else 0)
+    except BacktestFinished:
+        print("历史回测结束")
 ```
 
 Important boundaries:
 
+- This is an API demonstration, not evidence that the strategy is profitable. Do not report a backtest as executed unless actual results were produced.
+- Match contract listing/trading coverage to the historical interval. Today's expired flag must not reject a valid historical contract.
+- Use completed bars for close-based signals; preserve the user's requested signal, execution and valuation timing when adapting an existing strategy.
 - backtest is for historical strategy execution, not arbitrary long-range data export
 - quote update behavior in backtest differs from live trading
 - one `wait_update()` call may update only order state, and the next one may advance market time

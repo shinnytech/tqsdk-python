@@ -37,13 +37,12 @@ Notes:
 ```python
 from tqsdk import TqApi, TqAuth
 
-api = TqApi(auth=TqAuth("快期账户", "账户密码"))
-quote = api.get_quote("SHFE.au2608")
-
-while True:
-    api.wait_update()
-    if api.is_changing(quote, ["last_price", "ask_price1", "bid_price1"]):
-        print(quote.datetime, quote.last_price, quote.ask_price1, quote.bid_price1)
+with TqApi(auth=TqAuth("快期账户", "账户密码")) as api:
+    quote = api.get_quote("KQ.m@SHFE.au")
+    while True:
+        api.wait_update()
+        if api.is_changing(quote, ["last_price", "ask_price1", "bid_price1"]):
+            print(quote.datetime, quote.last_price, quote.ask_price1, quote.bid_price1)
 ```
 
 Recommended quote fields:
@@ -72,18 +71,23 @@ For market-data examples where tradability is not required, prefer `KQ.m@...` ma
 K-line:
 
 ```python
-klines = api.get_kline_serial("DCE.i2609", 60, data_length=200)
+klines = api.get_kline_serial("KQ.m@DCE.i", 60, data_length=200)
 
 while True:
     api.wait_update()
     if api.is_changing(klines.iloc[-1], "datetime"):
-        print("new bar", klines.iloc[-1].datetime, klines.iloc[-1].close)
+        closed = klines.iloc[-2]
+        if closed.datetime > 0 and not klines.close.iloc[-2:-1].isna().any():
+            print("previous closed bar", closed.datetime, closed.close)
 ```
 
 Tick:
 
 ```python
-ticks = api.get_tick_serial("DCE.i2609", data_length=200)
+symbol = api.get_quote("KQ.m@DCE.i").underlying_symbol
+if not symbol:
+    raise RuntimeError("主连尚未返回标的合约，请检查行情与合约状态")
+ticks = api.get_tick_serial(symbol, data_length=200)
 
 while True:
     api.wait_update()
@@ -94,6 +98,9 @@ while True:
 Important semantics:
 
 - Both APIs return pandas `DataFrame` objects that update in place.
+- These fragments assume an existing API context; close it when finished. Do not recreate subscriptions on every update.
+- A new K-line starts at `iloc[-1]`; use `iloc[-2]` for the previous completed bar. Check startup padding/NaN before calculating signals.
+- Quote `datetime` is a string; K-line and Tick `datetime` are Unix timestamps in nanoseconds. Convert with the correct unit and explicitly choose a timezone for display.
 - `get_kline_serial(..., data_length=...)` and `get_tick_serial(..., data_length=...)` support up to 10000 rows per request.
 - For `get_kline_serial`, intraday durations can be arbitrary seconds; day-or-higher durations must be integer multiples of 86400, up to 28 days.
 - When `symbol` is a list in `get_kline_serial`, all secondary symbols align to the first symbol's timeline.

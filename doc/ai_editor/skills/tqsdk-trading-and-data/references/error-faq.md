@@ -10,6 +10,7 @@
 
 ## Table Of Contents
 
+- Environment and import failures
 - No data, `NaN`, or empty fields
 - `insert_order()` or `cancel_order()` does nothing
 - `TargetPosTask` does not act
@@ -24,6 +25,12 @@
 - "未初始化 TqApi"
 - Named exception classes
 - Error triage order
+
+## Environment And Import Failures
+
+Before changing account or strategy code for an import failure, read [environment-setup.md](environment-setup.md). Use the actual project interpreter to check TqSdk, install it only when absent, and recheck before continuing. An import failure caused by another dependency is not evidence that TqSdk is absent.
+
+Authentication failures occur after import: distinguish `TqAuth` service login from broker login. Do not print passwords, repeatedly retry rejected credentials, or silently switch a live account to simulation.
 
 ## No Data, `NaN`, Or Empty Fields
 
@@ -88,22 +95,6 @@ Fix:
 
 - pass `account=` to account-sensitive APIs
 - or switch to `account_obj.get_account()`, `account_obj.get_position()`, `account_obj.get_order()`, `account_obj.get_trade()`
-
-## Multi-Strategy Setup Errors
-
-Typical causes:
-
-- the local multi-strategy system has not been initialized with `tqsdk-zq`
-- the front account was not created in the multi-strategy management page
-- the strategy used a backend account directly instead of `TqTradingUnit(account_id=...)`
-- the user is asking about log export, automatic trading-day switching, or abnormal order assignment as if it were normal strategy code
-
-Fix:
-
-- initialize or update the local multi-strategy environment with `tqsdk-zq`
-- create and fund the front account in the management page first
-- in Python strategy code, use `TqTradingUnit(account_id="前端账户号")`
-- for log export, automatic trading-day switching, reset, web management, and abnormal order assignment, point to `doc/advanced/tq_trading_unit.rst`
 
 ## `offset` Errors
 
@@ -192,6 +183,8 @@ If the user reports one of these names directly, prefer explaining the meaning o
 
 When debugging, check in this order:
 
+Start at the failure stage shown by the traceback. Resolve import/environment and authentication failures before examining an update loop; use the following checks for a program that has connected successfully.
+
 1. wrong account type
 2. missing `wait_update()`
 3. futures versus stock mismatch
@@ -208,8 +201,6 @@ When debugging, check in this order:
 - `tqsdk/lib/target_pos_scheduler.py`
 - `tqsdk/tools/downloader.py`
 - `tqsdk/tradeable/mixin.py`
-- `tqsdk/tradeable/otg/tqtradingunit.py`
-- `doc/advanced/tq_trading_unit.rst`
 - `tqsdk/exceptions.py`
 - `doc/usage/framework.rst`
 - `doc/usage/backtest.rst`

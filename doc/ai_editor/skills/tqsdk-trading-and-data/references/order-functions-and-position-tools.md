@@ -45,22 +45,28 @@ Important behavior:
 Basic futures example:
 
 ```python
-from tqsdk import TqApi, TqAuth
+import math
+import time
+from tqsdk import TqApi, TqAuth, TqSim
 
-api = TqApi(auth=TqAuth("快期账户", "账户密码"))
-quote = api.get_quote("SHFE.au2608")
-order = api.insert_order(
-    symbol="SHFE.au2608",
-    direction="BUY",
-    offset="OPEN",
-    volume=1,
-    limit_price=quote.ask_price1,
-)
+with TqApi(TqSim(), auth=TqAuth("快期账户", "账户密码")) as api:
+    symbol = api.get_quote("KQ.m@SHFE.au").underlying_symbol
+    if not symbol:
+        raise RuntimeError("尚未获取到主连标的合约")
+    quote = api.get_quote(symbol)
+    if quote.expired or not math.isfinite(quote.ask_price1):
+        raise RuntimeError("合约已到期或卖一价不可用，请检查行情")
+    order = api.insert_order(symbol, "BUY", offset="OPEN", volume=1, limit_price=quote.ask_price1)
+    deadline = time.time() + 30
+    while order.status != "FINISHED":
+        if not api.wait_update(deadline=deadline):
+            print("等待超时；这不代表订单已撤销")
+            break
+    print("status", order.status, "remaining", order.volume_left, "message", order.last_msg)
 
-while order.status != "FINISHED":
-    api.wait_update()
-    print(order.status, order.volume_left, order.last_msg)
 ```
+
+`FINISHED` means no longer active, not necessarily fully filled. A timeout is only a waiting limit; report actual order state and follow the authorized cancellation policy. The complete example explicitly uses local simulation.
 
 Advanced order modes:
 
@@ -98,14 +104,17 @@ Prefer manual orders when the user wants:
 Use `TargetPosTask` when the user thinks in target net position, not individual orders.
 
 ```python
-from tqsdk import TqApi, TqAuth, TargetPosTask
+from tqsdk import TqApi, TqAuth, TqSim, TargetPosTask
 
-api = TqApi(auth=TqAuth("快期账户", "账户密码"))
-target_pos = TargetPosTask(api, "DCE.m2609")
-target_pos.set_target_volume(5)
+with TqApi(TqSim(), auth=TqAuth("快期账户", "账户密码")) as api:
+    symbol = api.get_quote("KQ.m@DCE.m").underlying_symbol
+    if not symbol:
+        raise RuntimeError("尚未获取到主连标的合约")
+    target_pos = TargetPosTask(api, symbol)
+    target_pos.set_target_volume(1)
+    while True:
+        api.wait_update()
 
-while True:
-    api.wait_update()
 ```
 
 Rules:
@@ -149,7 +158,9 @@ Example completion check:
 from tqsdk import TqApi, TqAuth, TargetPosTask
 
 api = TqApi(auth=TqAuth("快期账户", "账户密码"))
-symbol = "GFEX.ps2704"
+symbol = api.get_quote("KQ.m@GFEX.ps").underlying_symbol
+if not symbol:
+    raise RuntimeError("尚未获取到主连标的合约")
 target_volume = 20
 
 quote = api.get_quote(symbol)
@@ -210,7 +221,10 @@ from tqsdk import TqApi, TqAuth
 from tqsdk.algorithm import Twap
 
 api = TqApi(auth=TqAuth("快期账户", "账户密码"))
-twap = Twap(api, "CZCE.MA609", "BUY", "OPEN", 200, 300, 5, 10, support_open_min_volume=True)
+symbol = api.get_quote("KQ.m@CZCE.MA").underlying_symbol
+if not symbol:
+    raise RuntimeError("尚未获取到主连标的合约")
+twap = Twap(api, symbol, "BUY", "OPEN", 200, 300, 5, 10, support_open_min_volume=True)
 
 while True:
     api.wait_update()

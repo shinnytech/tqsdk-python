@@ -26,7 +26,7 @@ class FutureMixin:
         获取用户账户资金信息
 
         Returns:
-            :py:class:`~tqsdk.objs.Account`: 返回一个账户对象引用. 其内容将在 :py:meth:`~tqsdk.api.TqApi.wait_update` 时更新
+            :py:class:`~tqsdk.objs.Account`: 返回一个账户对象引用. 其内容将在 :py:meth:`~tqsdk.TqApi.wait_update` 时更新
 
         Example1::
 
@@ -70,7 +70,7 @@ class FutureMixin:
 
         Returns:
             :py:class:`~tqsdk.objs.Position`: 当指定了 symbol 时, 返回一个持仓对象引用。
-            其内容将在 :py:meth:`~tqsdk.api.TqApi.wait_update` 时更新。
+            其内容将在 :py:meth:`~tqsdk.TqApi.wait_update` 时更新。
 
             不填 symbol 参数调用本函数, 将返回包含用户所有持仓的一个 ``tqsdk.objs.Entity`` 对象引用，可像 dict 一样按 key 访问，\
             其中每个元素的 key 为合约代码, value 为 :py:class:`~tqsdk.objs.Position`。
@@ -126,7 +126,7 @@ class FutureMixin:
 
         Returns:
             :py:class:`~tqsdk.objs.Order`: 当指定了 order_id 时, 返回一个委托单对象引用。 \
-            其内容将在 :py:meth:`~tqsdk.api.TqApi.wait_update` 时更新。
+            其内容将在 :py:meth:`~tqsdk.TqApi.wait_update` 时更新。
 
             不填 order_id 参数调用本函数, 将返回包含用户所有委托单的一个 ``tqsdk.objs.Entity`` 对象引用，\
             可像 dict 一样按 key 访问，其中每个元素的 key 为委托单号, value 为 :py:class:`~tqsdk.objs.Order`
@@ -186,12 +186,12 @@ class FutureMixin:
 
         Returns:
             :py:class:`~tqsdk.objs.Trade`: 当指定了trade_id时, 返回一个成交对象引用. \
-            其内容将在 :py:meth:`~tqsdk.api.TqApi.wait_update` 时更新.
+            其内容将在 :py:meth:`~tqsdk.TqApi.wait_update` 时更新.
 
             不填 trade_id 参数调用本函数, 将返回包含用户当前交易日所有成交记录的一个 tqsdk.objs.Entity 对象引用，可像 dict 一样按 key 访问，\
             其中每个元素的 key 为成交号, value 为 :py:class:`~tqsdk.objs.Trade`
 
-            推荐优先使用 :py:meth:`~tqsdk.objs.Order.trade_records` 获取某个委托单的相应成交记录, 仅当确有需要时才使用本函数.
+            推荐优先使用 :py:attr:`~tqsdk.objs.Order.trade_records` 获取某个委托单的相应成交记录, 仅当确有需要时才使用本函数.
 
         Example::
 
@@ -225,7 +225,7 @@ class StockMixin:
         获取用户账户资金信息
 
         Returns:
-            :py:class:`~tqsdk.objs.SecurityAccount`: 返回一个账户对象引用. 其内容将在 :py:meth:`~tqsdk.api.TqApi.wait_update` 时更新
+            :py:class:`~tqsdk.objs.SecurityAccount`: 返回一个账户对象引用. 其内容将在 :py:meth:`~tqsdk.TqApi.wait_update` 时更新
 
         Example1::
 
@@ -269,7 +269,7 @@ class StockMixin:
 
         Returns:
             :py:class:`~tqsdk.objs.SecurityPosition`: 当指定了 symbol 时, 返回一个持仓对象引用。
-            其内容将在 :py:meth:`~tqsdk.api.TqApi.wait_update` 时更新。
+            其内容将在 :py:meth:`~tqsdk.TqApi.wait_update` 时更新。
 
             不填 symbol 参数调用本函数, 将返回包含用户所有持仓的一个 ``tqsdk.objs.Entity`` 对象引用，可像 dict 一样按 key 访问，\
             其中每个元素的 key 为合约代码, value 为 :py:class:`~tqsdk.objs.SecurityPosition`。
@@ -299,7 +299,7 @@ class StockMixin:
 
         Returns:
             :py:class:`~tqsdk.objs.SecurityOrder`: 当指定了 order_id 时, 返回一个委托单对象引用。 \
-            其内容将在 :py:meth:`~tqsdk.api.TqApi.wait_update` 时更新。
+            其内容将在 :py:meth:`~tqsdk.TqApi.wait_update` 时更新。
 
             不填 order_id 参数调用本函数, 将返回包含用户所有委托单的一个 ``tqsdk.objs.Entity`` 对象引用, \
             使用方法与 dict 一致, 其中每个元素的 key 为委托单号, value为 :py:class:`~tqsdk.objs.SecurityOrder`
@@ -329,12 +329,12 @@ class StockMixin:
 
         Returns:
             :py:class:`~tqsdk.objs.SecurityTrade`: 当指定了trade_id时, 返回一个成交对象引用. \
-            其内容将在 :py:meth:`~tqsdk.api.TqApi.wait_update` 时更新.
+            其内容将在 :py:meth:`~tqsdk.TqApi.wait_update` 时更新.
 
             不填 trade_id 参数调用本函数, 将返回包含用户当前交易日所有成交记录的一个 ``tqsdk.objs.Entity`` 对象引用，可像 dict 一样按 key 访问，\
             其中每个元素的 key 为成交号, value 为 :py:class:`~tqsdk.objs.SecurityTrade`
 
-            推荐优先使用 :py:meth:`~tqsdk.objs.SecurityOrder.trade_records` 获取某个委托单的相应成交记录, 仅当确有需要时才使用本函数.
+            推荐优先使用 :py:attr:`~tqsdk.objs.SecurityOrder.trade_records` 获取某个委托单的相应成交记录, 仅当确有需要时才使用本函数.
 
         Example::
 

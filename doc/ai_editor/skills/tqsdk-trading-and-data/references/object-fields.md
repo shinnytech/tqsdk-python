@@ -200,7 +200,8 @@ Useful related property:
 ## Practical Answering Rules
 
 - Futures timestamps and stock timestamps are generally nanoseconds since Unix epoch on order and trade objects.
-- Market-data `datetime` is usually a human-readable string.
+- Quote `datetime` is a human-readable exchange time string. K-line and Tick `datetime` are Unix timestamps in nanoseconds; specify `unit="ns"` when converting and choose the display timezone explicitly.
+- `Order.status == "FINISHED"` means the order is no longer active; it does not prove a full fill. Read `volume_left`, `last_msg`, and trade records.
 - When the user asks "what fields should I print", prefer 4 to 8 fields, not the full object.
 - For "all orders" or "all trades", explain that the getter returns a dict-like collection keyed by id.
 - For "what traded under this order", prefer `order.trade_records`.
