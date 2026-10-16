@@ -3,32 +3,31 @@
 __author__ = 'chenli'
 
 import hashlib
-from typing import Optional, List
 import inspect
+import warnings
+from typing import Optional, List
 
 from tqsdk.tradeable.otg.base_otg import BaseOtg
 from tqsdk.tradeable.mixin import FutureMixin
 
 
 class TqTradingUnit(BaseOtg, FutureMixin):
-    """交易单元类"""
+    """交易单元类（已停止支持，仅为兼容现有策略而保留）"""
 
     def __init__(self, account_id: str, tags: Optional[List[str]]=None) -> None:
         """
-        创建交易单元实例
+        创建交易单元实例（已停止支持）
+
+        此类仅为避免现有策略升级 TqSdk 后立即报错而暂时保留，请勿在新策略中使用。
+        创建实例时会发出 ``UserWarning`` 警告。
 
         Args:
             account_id (str): 众期子账户
 
             tags (None/list of str): 策略标签, 默认为调用 TqTradingUnit 的文件名及 account_id
 
-        Example1::
-
-            from tqsdk import TqApi, TqTradingUnit, TqAuth
-            account = TqTradingUnit(account_id="众期子账户", tags=["铜品种策略", "套利策略"])
-            api = TqApi(account, auth=TqAuth("快期账户", "账户密码"))
-
         """
+        warnings.warn("TqTradingUnit 多策略功能已停止支持，请勿继续使用。", stacklevel=2)
         self._tags = self._convert_tags(tags, account_id)
         super(TqTradingUnit, self).__init__(broker_id="", account_id=account_id, password="tqsdk_zq", td_url="zq://localhost/")
 

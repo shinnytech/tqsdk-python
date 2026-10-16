@@ -108,8 +108,6 @@ class TqKqStock(BaseOtg, StockMixin):
         Args:
             td_url (str): [可选]指定交易服务器的地址, 默认使用快期账户对应的交易服务地址
 
-            number (int): [可选]模拟交易账号编号, 默认为主模拟账号, 可以通过指定 1~99 的数字来使用辅模拟帐号, 各个帐号的数据完全独立
-
         Example::
 
             from tqsdk import TqApi, TqAuth, TqKqStock, TqChan

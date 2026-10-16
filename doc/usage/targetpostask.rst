@@ -41,8 +41,8 @@
 
 **使用** :py:class:`~tqsdk.TargetPosTask` **时，建议记住这几个要点：**
 
-* ``set_target_volume()`` 只会更新目标仓位；实际的下单和撤单动作，会在之后每次 ``wait_update()`` 时执行。因此设置目标后，需要继续驱动主循环。
-* 为每个合约只创建一个 :py:class:`~tqsdk.TargetPosTask` 实例。一旦创建完成，就可以重复调用 ``set_target_volume()`` 修改目标仓位，**它总是以最后一次设置的手数为工作目标。** 例如::
+* :py:meth:`set_target_volume() <tqsdk.TargetPosTask.set_target_volume>` 只会更新目标仓位；实际的下单和撤单动作，会在之后每次 :py:meth:`wait_update() <tqsdk.TqApi.wait_update>` 时执行。因此设置目标后，需要继续驱动主循环。
+* 为每个合约只创建一个 :py:class:`~tqsdk.TargetPosTask` 实例。一旦创建完成，就可以重复调用 :py:meth:`set_target_volume() <tqsdk.TargetPosTask.set_target_volume>` 修改目标仓位，**它总是以最后一次设置的手数为工作目标。** 例如::
 
         from tqsdk import TqApi, TqAuth, TargetPosTask
 
@@ -72,7 +72,7 @@
 
     如持有大商所某合约并且 offset_priority 为"今开", 而本交易日未下单(在今昨仓的概念上这是"昨仓", 则不进行平仓, 直接用开仓操作来调整净持仓以达到目标.
 * 如需主动取消当前 :py:class:`~tqsdk.TargetPosTask` 任务，请参考 :ref:`targetpostask2` 。
-* 请勿在使用 :py:class:`~tqsdk.TargetPosTask` 的同时混用 ``insert_order()``，否则容易导致 :py:class:`~tqsdk.TargetPosTask` 报错或出现错误下单。
+* 请勿在使用 :py:class:`~tqsdk.TargetPosTask` 的同时混用 :py:meth:`insert_order() <tqsdk.TqApi.insert_order>`，否则容易导致 :py:class:`~tqsdk.TargetPosTask` 报错或出现错误下单。
 
 .. _targetpostask_open_min_volume:
 
@@ -80,20 +80,20 @@
 ----------------------------------------------------
 
 默认情况下，:py:class:`~tqsdk.TargetPosTask` 不支持交易所限制最小开仓手数的合约。若合约的
-``open_min_market_order_volume`` 或 ``open_min_limit_order_volume`` 大于 1，
-创建后的调仓任务会在后续 ``wait_update()`` 中抛出异常。
+:py:attr:`open_min_market_order_volume <tqsdk.objs.Quote.open_min_market_order_volume>` 或 :py:attr:`open_min_limit_order_volume <tqsdk.objs.Quote.open_min_limit_order_volume>` 大于 1，
+创建后的调仓任务会在后续 :py:meth:`wait_update() <tqsdk.TqApi.wait_update>` 中抛出异常。
 
 如果确认需要在这类合约上继续使用追单逻辑，可以在创建实例时设置
 ``support_open_min_volume=True`` 。启用后请注意：
 
 * :py:class:`~tqsdk.TargetPosTask` 仍会根据行情变化撤单重报，但 **最终持仓只能保证满足**
   ``|当前持仓手数 - 目标持仓手数| < quote.open_min_limit_order_volume``
-  对于没有最小限价开仓手数限制的合约，由于该类合约的 ``open_min_limit_order_volume`` 值为 1，
+  对于没有最小限价开仓手数限制的合约，由于该类合约的 :py:attr:`open_min_limit_order_volume <tqsdk.objs.Quote.open_min_limit_order_volume>` 值为 1，
   因此可以通过 ``|当前持仓手数 - 目标持仓手数| < quote.open_min_limit_order_volume``
   准确判断净持仓是否调整到本次的目标任务持仓。
-* 当开仓追单剩余手数小于 ``quote.open_min_limit_order_volume`` 时，该次开仓追单会直接结束，不再继续报单
-* 如果启用了大单拆分，``min_volume`` 和 ``max_volume`` 都必须大于等于 ``quote.open_min_limit_order_volume``
-* 如果 ``offset_priority="开"`` 且本次需要开仓的总手数本身就小于 ``quote.open_min_limit_order_volume``，则不会发单，调仓任务会直接结束
+* 当开仓追单剩余手数小于 :py:attr:`quote.open_min_limit_order_volume <tqsdk.objs.Quote.open_min_limit_order_volume>` 时，该次开仓追单会直接结束，不再继续报单
+* 如果启用了大单拆分，``min_volume`` 和 ``max_volume`` 都必须大于等于 :py:attr:`quote.open_min_limit_order_volume <tqsdk.objs.Quote.open_min_limit_order_volume>`
+* 如果 ``offset_priority="开"`` 且本次需要开仓的总手数本身就小于 :py:attr:`quote.open_min_limit_order_volume <tqsdk.objs.Quote.open_min_limit_order_volume>`，则不会发单，调仓任务会直接结束
 
 示例：开启 ``support_open_min_volume`` 后判断调仓是否完成::
 

@@ -71,7 +71,7 @@ TqSdk 免费版本提供全部的期货、商品/金融期权和上证50、沪�
 -------------------------------------------------
 TqSdk 提供了 :py:class:`~tqsdk.TqKqStock` 方法供用户来进行股票的模拟交易
 
-需要注意股票模拟交易下，get_account，get_order，get_position 会返回对应股票交易模型下的 objs ，如 :py:class:`~tqsdk.objs.SecurityAccount`， :py:class:`~tqsdk.objs.SecurityOrder`，:py:class:`~tqsdk.objs.SecurityPosition`
+需要注意股票模拟交易下，:py:meth:`get_account <tqsdk.TqApi.get_account>`，:py:meth:`get_order <tqsdk.TqApi.get_order>`，:py:meth:`get_position <tqsdk.TqApi.get_position>` 会返回对应股票交易模型下的 objs ，如 :py:class:`~tqsdk.objs.SecurityAccount`， :py:class:`~tqsdk.objs.SecurityOrder`，:py:class:`~tqsdk.objs.SecurityPosition`
 
 参考代码如下::
 
@@ -110,8 +110,6 @@ EDB Server 数据服务
 - 非价量数据服务：获取基本面/宏观等 EDB 指标数据（如库存、交割量、现货、宏观经济指标等），便于研究、因子开发与报表看板构建。
 
 具体接口说明与使用方式可参考 `EDB 数据服务产品文档 <https://edb.shinnytech.com/docs/index.html#>`_ （Token 服务、行情历史服务、非价量数据服务）。
-
-如果你希望用自然语言完成“取数 → 验证想法 → 回测 → 产出代码/图表/报告”的投研闭环，可参考 :doc:`/ai_editor/nl_research`。
 
 其他相关函数
 -------------------------------------------------

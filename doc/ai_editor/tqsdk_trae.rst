@@ -22,7 +22,7 @@ Trae 官网：`https://www.trae.cn/ <https://www.trae.cn/>`_
 对于 TqSdk 用户而言，使用 Trae 进行开发与学习具有以下优势：
 
 * **快速理解 TqSdk API 与概念**：
-    * 面向 TqSdk 的类（如 ``TqApi``, ``TqAccount``）、函数或交易概念（如 ``KLine``, ``Backtest``, ``target_pos``）提出问题，获得结构化解释与示例。
+    * 面向 TqSdk 的类（如 :py:class:`TqApi <tqsdk.TqApi>`, :py:class:`TqAccount <tqsdk.TqAccount>`）、函数或交易概念（如 ``KLine``, ``Backtest``, :py:class:`target_pos <tqsdk.TargetPosTask>`）提出问题，获得结构化解释与示例。
     * 在编辑器内就地查询函数参数、返回值及常见用法。
 * **高效编写与改造策略代码**：
     * **对话生成**：用自然语言描述策略需求，如“订阅多个合约的 tick 并统计成交量阈值报警”，“基于布林带的简易开平仓框架”。
@@ -113,10 +113,10 @@ Trae 官网：`https://www.trae.cn/ <https://www.trae.cn/>`_
 
 **基础概念与用法：**
 
-* “TqSdk 中 ``TqApi`` 与 ``TqAccount`` 的关系与区别是什么？”
+* “TqSdk 中 :py:class:`TqApi <tqsdk.TqApi>` 与 :py:class:`TqAccount <tqsdk.TqAccount>` 的关系与区别是什么？”
 * “如何获取 ``SHFE.rb2610`` 的 1 分钟 K 线？请给完整示例。”
-* “回测 ``TqBacktest`` 的 ``start_dt`` 和 ``end_dt`` 该如何设置？”
-* “``insert_order`` 的 ``limit_price`` 与 ``offset`` 参数如何使用？”
+* “回测 :py:class:`TqBacktest <tqsdk.TqBacktest>` 的 ``start_dt`` 和 ``end_dt`` 该如何设置？”
+* “:py:meth:`insert_order <tqsdk.TqApi.insert_order>` 的 ``limit_price`` 与 ``offset`` 参数如何使用？”
 
 **结合源码提问（已将源码加入工作区）：**
 
@@ -131,8 +131,8 @@ Trae 官网：`https://www.trae.cn/ <https://www.trae.cn/>`_
 ---------------------------------
 
 * **生成代码片段**：
-    * “写个函数，输入合约列表，批量订阅这些合约的盘口行情 ``quote``。”
-    * “用 ``TqSim`` 做模拟交易，当资金变化超过 5% 时发送通知的框架。”
+    * “写个函数，输入合约列表，批量订阅这些合约的盘口行情 :py:class:`quote <tqsdk.objs.Quote>`。”
+    * “用 :py:class:`TqSim <tqsdk.TqSim>` 做模拟交易，当资金变化超过 5% 时发送通知的框架。”
 * **修改现有代码（选中后发起）**：
     * “将这段 TqSdk 代码的 ``datetime`` 格式化为 ``YYYY-MM-DD HH:MM:SS``。”
     * “为下单逻辑增加条件：只有当最新价大于过去 20 周期均线时才开多。”

@@ -5,280 +5,291 @@
 
 .. include:: _includes/tqsdk_ai_agent_intro.rst
 
-希望快速开始使用天勤量化 (TqSdk)？本页面按“安装 -> 登录 -> 行情 -> K 线 -> 下单 -> 回测”的顺序，带你跑通第一套程序。
+.. container:: tq-lead
 
-如果你已经熟悉其它量化框架，可以按需对照这些迁移文档，再回到本页上手：
+   希望快速开始使用天勤量化（TqSdk）？本页按“安装 → 登录 → 行情 → K 线 → 下单 → 回测”的顺序，带你跑通第一套程序。
 
-* :ref:`intro`
-* :ref:`for_ctp_user`
-* :ref:`for_vnpy_user`
+如果已经熟悉其他量化框架，可以先对照 :ref:`for_ctp_user` 或 :ref:`for_vnpy_user`，再回到本页上手。想先了解开发包的整体能力，可以阅读 :ref:`intro`。
 
-如果你正在使用带 AI 能力的开发工具，也可以结合 :ref:`tqsdk_trae` 、:ref:`tqsdk_codebuddy` 、:ref:`tqsdk_codex` 、VSCode 等提升排错和写示例的效率，更多内容请见 :ref:`ai_editor` 。
+.. note::
 
-
+   前面的示例默认使用 :py:class:`~tqsdk.TqSim` 本地模拟账户。快期账户用于登录服务，期货资金账户用于实盘交易，两者请分别填写。实盘接入放在本页最后介绍。
 
 .. _tqsdk_install:
 
-安装
+1. 安装 TqSdk
 -------------------------------------------------
-天勤量化的核心是TqSdk开发包, 在安装天勤量化 (TqSdk) 前, 你需要先准备适当的环境和Python包管理工具, 包括:
 
-* Python >= 3.9 版本
-* Windows 7 以上版本, macOS, 或 Linux
+先在电脑上安装 Python 3.9 或更高版本，Windows、macOS 和 Linux 均可使用。
 
+打开命令行窗口（Windows 可使用“命令提示符”或 PowerShell），输入下面的命令，按回车安装 TqSdk：
 
-你可以选择使用 `pip` 命令安装 TqSdk, 或者下载源代码安装. 对于一般用户, 我们推荐采用 `pip` 命令安装/升级 TqSdk::
+.. code-block:: console
 
-    pip install tqsdk -U
+   pip install tqsdk
 
-但是由于 `pip` 使用的是国外的服务器，普通用户往往下载速度过慢或不稳定，对于使用 `pip` 命令下载速度较慢的用户，我们推荐采用切换国内源的方式安装/升级 TqSdk::
+如果下载较慢，可以改用下面的国内镜像命令安装：
 
-    pip install tqsdk -U -i https://pypi.tuna.tsinghua.edu.cn/simple --trusted-host=pypi.tuna.tsinghua.edu.cn
+.. code-block:: console
+
+   pip install tqsdk -i https://pypi.tuna.tsinghua.edu.cn/simple
+
+安装完成后，继续下面的步骤，准备快期账户并运行第一个行情程序。安装遇到问题时，可查看 :doc:`qa`。
 
 .. _quickstart_0:
 
-注册快期账户
+2. 准备快期账户
 -------------------------------------------------
-在使用 TqSdk 之前，需要先准备自己的 **快期账户**。快期账户是运行任何 TqSdk 程序的前提，点击 `注册快期账户 <https://account.shinnytech.com/>`_
 
-快期账户可以使用注册时的手机号、用户名或邮箱登录，详细介绍请见 :ref:`shinny_account`
+在 `快期账户中心 <https://account.shinnytech.com/>`_ 注册账户。:py:class:`TqAuth <tqsdk.TqAuth>` 接收快期账户的手机号、用户名或邮箱，以及对应密码，详细说明见 :ref:`shinny_account`。
 
-在注册完快期账户后，建议先只跑通下面这个最小示例，确认安装、账户和行情连接都已经打通::
-
-    from tqsdk import TqApi, TqAuth
-
-    api = TqApi(auth=TqAuth("快期账户", "账户密码"))
-    quote = api.get_quote("SHFE.ni2607")
-
-    while True:
-        api.wait_update()
-        print(quote.datetime, quote.last_price)
-
-如果这段脚本可以稳定打印时间和最新价，就说明你已经具备继续阅读后续章节的基础。下面我们把这段脚本拆开讲清楚。
+将后面的 ``"快期账户"`` 和 ``"账户密码"`` 替换为你的登录信息。文件不要命名为 ``tqsdk.py``，以免遮蔽已安装的开发包。
 
 .. _quickstart_1:
 
-获取实时行情数据
+3. 打印一次行情
 -------------------------------------------------
-通过 TqSdk 获取实时行情数据是很容易的.
 
-首先, 必须引入 tqsdk 模块::
+把下面代码保存为 ``hello_tqsdk.py``，然后运行 ``python hello_tqsdk.py``：
 
-    from tqsdk import TqApi, TqAuth
+.. code-block:: python
+   :caption: hello_tqsdk.py · 打印螺纹钢合约行情
 
-创建API实例，并填入自己的快期账户::
+   from tqsdk import TqApi, TqAuth
 
-    api = TqApi(auth=TqAuth("快期账户", "账户密码"))
+   api = TqApi(auth=TqAuth("快期账户", "账户密码"))
+   quote = api.get_quote("SHFE.rb2701")
+   print(quote)
+   api.close()
 
-获得上期所 ni2607 合约的行情引用::
+运行后，终端会打印一次行情内容，然后程序结束。``SHFE.rb2701`` 表示上期所螺纹钢 2027 年 1 月合约；如果运行时该合约已到期，请换成仍在交易的合约代码。
 
-    quote = api.get_quote("SHFE.ni2607")
+这几行代码依次完成：导入开发包、登录服务、获取行情、打印行情、关闭连接。:py:class:`quote <tqsdk.objs.Quote>` 中包含行情时间、最新价、买卖价等字段，例如 :py:attr:`quote.last_price <tqsdk.objs.Quote.last_price>` 就是最新价。
 
-现在, 我们获得了一个对象 quote. 这个对象总是指向 SHFE.ni2607 合约的最新行情. 我们可以通过 quote 的各个字段访问行情数据::
+接下来：让行情持续更新
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    print (quote.last_price, quote.volume)
+如果想持续查看行情，把 ``hello_tqsdk.py`` 改成下面这样，再次运行：
 
+.. code-block:: python
+   :caption: hello_tqsdk.py · 持续打印行情时间和最新价
 
-要等待行情数据更新, 我们还需要一些代码::
+   from tqsdk import TqApi, TqAuth
 
-    while True:
-        api.wait_update()
-        print (quote.datetime, quote.last_price)
+   api = TqApi(auth=TqAuth("快期账户", "账户密码"))
+   quote = api.get_quote("SHFE.rb2701")
 
-:py:meth:`~tqsdk.TqApi.wait_update` 是一个阻塞函数, 程序在这行上等待, 直到收到数据包才返回.
+   while True:
+       api.wait_update()
+       print(quote.datetime, quote.last_price)
 
-上面这个例子的完整程序请见 :ref:`tutorial-t10` . 你也可以在自己电脑 Python 安装目录的 site-packages/tqsdk/demo 下找到它
+``while True`` 让程序反复执行循环中的两行代码：
 
-很简单, 对吗? 到这里, 你已经了解用 TqSdk 开发程序的几个关键点:
+1. :py:meth:`api.wait_update() <tqsdk.TqApi.wait_update>` 等待业务数据更新，收到数据后更新 :py:class:`quote <tqsdk.objs.Quote>` 等对象，再继续往下执行。
+2. ``print(...)`` 读取并打印此时的行情时间和最新价，然后回到下一轮等待。
 
-* 创建 TqApi 实例
-* 用 api.get_quote() 或 其它函数获取数据引用对象
-* 在循环中用 api.wait_update() 等待数据包.
-* 收到数据包以后通过引用对象获得所需数据
+:py:class:`quote <tqsdk.objs.Quote>` 是会更新的行情引用，因此 :py:meth:`get_quote() <tqsdk.TqApi.get_quote>` 只需在循环外调用一次。持续调用 :py:meth:`wait_update() <tqsdk.TqApi.wait_update>`，才能接收后续数据；只反复执行 ``print()`` 不会刷新行情。
 
-下面我们将继续介绍 TqSdk 更多的功能. 无论使用哪个功能函数, 都遵循上面的结构.
+**你会看到什么：** 收到业务数据更新后，终端打印行情时间和最新价。非交易时段可能暂时没有新输出；这不一定是程序出错。按 ``Ctrl+C`` 停止这个持续运行的示例。退出时释放连接的完整写法见 :ref:`framework`。
 
+.. tip::
+
+   :py:meth:`wait_update() <tqsdk.TqApi.wait_update>` 也会发送请求、推进后台任务。它返回并不意味着每个订阅都更新了，所以打印的最新价可能与上次相同。只想在这份行情变化时处理，可以用 :py:meth:`api.is_changing(quote) <tqsdk.TqApi.is_changing>` 判断。完整机制见 :ref:`framework`。
 
 .. _quickstart_2:
 
-使用K线数据
+4. 读取 K 线
 -------------------------------------------------
-你很可能会需要合约的K线数据. 在TqSdk中, 你可以很方便的获得K线数据. 我们来请求 ni2607 合约的10秒线::
 
-    klines = api.get_kline_serial("SHFE.ni2607", 10)
+:py:meth:`get_kline_serial() <tqsdk.TqApi.get_kline_serial>` 返回持续更新的 :py:class:`pandas.DataFrame <pandas.DataFrame>`。沿用上面的固定合约，下面单独运行一个简单程序，请求它的 10 秒 K 线：
 
-klines是一个pandas.DataFrame对象. 跟 api.get_quote() 一样, api.get_kline_serial() 也是返回K线序列的引用对象. K线序列数据也会跟实时行情一起同步自动更新. 你也同样需要用 api.wait_update() 等待数据刷新.
+.. code-block:: python
 
-一旦k线数据收到, 你可以通过 klines 访问 k线数据::
+   from tqsdk import TqApi, TqAuth
 
-    while True:
-        api.wait_update()
-        print("最后一根K线收盘价", klines.close.iloc[-1])
+   api = TqApi(auth=TqAuth("快期账户", "账户密码"))
+   klines = api.get_kline_serial("SHFE.rb2701", 10)
 
-这部分的完整示例程序请见 :ref:`tutorial-t30` .
+   while True:
+       api.wait_update()
+       print("最后一根 K 线的收盘价：", klines.close.iloc[-1])
 
-到这里为止, 你已经知道了如何获取实时行情和K线数据, 下面一段将介绍如何访问你的交易账户并发送交易指令
+``iloc[-1]`` 表示最后一根 K 线，其收盘价在形成过程中仍会变化。需要上一根已完成 K 线时，使用 ``iloc[-2]``。更多用法见 :ref:`tutorial-t30` 与 :ref:`ta`。
 
+.. _quickstart_4:
+.. _quickstart_5:
+
+5. 用目标持仓运行模拟策略
+-------------------------------------------------
+
+先用 :py:class:`~tqsdk.TargetPosTask` 表达“希望持有多少手”，由它管理下单和撤单。下面程序在启动时选择螺纹钢当前主力合约：上一根收盘价高于最近 15 根已完成 K 线的均价时，目标为多头 1 手；否则目标为空仓。
+
+这里开始使用 ``KQ.m@SHFE.rb``，它是螺纹钢的主连代码，用来查看当前主力合约行情。**主连本身不能下单**，所以先通过 :py:attr:`quote.underlying_symbol <tqsdk.objs.Quote.underlying_symbol>` 取得对应的实际合约，再用于 K 线订阅和模拟交易。合约代码详见 :ref:`mddatas`。
+
+.. code-block:: python
+   :caption: ma_sim.py · 在本地模拟账户运行
+
+   from tqsdk import TqApi, TqAuth, TargetPosTask
+   from tqsdk.tafunc import ma
+
+   api = TqApi(auth=TqAuth("快期账户", "账户密码"))
+   quote = api.get_quote("KQ.m@SHFE.rb")
+   symbol = quote.underlying_symbol  # 主力对应的实际合约
+   klines = api.get_kline_serial(symbol, 60)
+   target = TargetPosTask(api, symbol)
+
+   while True:
+       api.wait_update()
+       if api.is_changing(klines.iloc[-1], "datetime"):  # 新 K 线开始
+           ma15 = ma(klines.close, 15)  # 15 周期均线
+           if klines.close.iloc[-2] > ma15.iloc[-2]:  # 用上一根已完成 K 线判断
+               target.set_target_volume(1)  # 目标：多头 1 手
+           else:
+               target.set_target_volume(0)  # 目标：空仓
+
+**这里的 1 是最终目标持仓，不是每次再买 1 手。** 条件持续满足时，反复设置同一个目标不会把目标累加。调用后仍需继续 :py:meth:`wait_update() <tqsdk.TqApi.wait_update>`，调仓任务才会运行。
+
+:py:func:`~tqsdk.tafunc.ma` 直接计算均线，``15`` 表示每次用连续 15 根 K 线的收盘价求平均。``iloc[-2]`` 取倒数第 2 项，也就是上一根已完成 K 线；收盘价和均线都取这个位置，就不会把最后一根尚未完成的 K 线用于判断。
+
+此教学示例只在启动时选择一次合约，不处理跨交易日换月。它用于说明程序结构，策略效果需要另行评估。目标持仓详见 :ref:`targetpostask`，跨品种示例见 :ref:`tutorial-t80`。
 
 .. _quickstart_3:
 
-交易账户, 下单/撤单
+6. 了解账户、下单与撤单
 -------------------------------------------------
-要获得你的账户资金情况, 可以请求一个资金账户引用对象::
 
-    account = api.get_account()
+下面用几个短片段介绍账户和委托接口。请单独创建一个本地模拟会话，不要把这些片段加到前面的目标持仓程序中：
 
-要获得你交易账户中某个合约的持仓情况, 可以请求一个持仓引用对象::
+.. code-block:: python
 
-    position = api.get_position("DCE.m2609")
+   from tqsdk import TqApi, TqAuth
 
-与行情数据一样, 它们也通过 api.wait_update() 获得更新, 你也同样可以访问它们的成员变量::
+   api = TqApi(auth=TqAuth("快期账户", "账户密码"))
+   symbol = api.get_quote("KQ.m@SHFE.rb").underlying_symbol
 
-    print("可用资金: %.2f" % (account.available))
-    print("今多头: %d 手" % (position.volume_long_today))
+通过 :py:meth:`~tqsdk.TqApi.get_account` 和 :py:meth:`~tqsdk.TqApi.get_position` 获取
+:py:class:`account <tqsdk.objs.Account>` 和 :py:class:`position <tqsdk.objs.Position>` 引用，并读取字段：
 
-要在交易账户中发出一个委托单, 使用 api.insert_order() 函数::
+.. code-block:: python
 
-    order = api.insert_order(symbol="DCE.m2609", direction="BUY", offset="OPEN", volume=5, limit_price=3000)
+   account = api.get_account()
+   position = api.get_position(symbol)
+   print("可用资金：", account.available, "净持仓：", position.pos)
 
-这个函数调用后会立即返回, order 是一个指向此委托单的引用对象, 你总是可以通过它的成员变量来了解委托单的最新状态::
+使用 :py:meth:`~tqsdk.TqApi.insert_order` 发送一笔限价委托，得到 :py:class:`order <tqsdk.objs.Order>` 引用，并在循环中查看状态：
 
-    print("委托单状态: %s, 已成交: %d 手" % (order.status, order.volume_orign - order.volume_left))
+.. code-block:: python
 
-需要特别注意的是, ``insert_order()`` 只是把下单请求加入待发送队列, 实际报单会在下一次 :py:meth:`~tqsdk.TqApi.wait_update` 时发出。因此下单后请继续驱动主循环, 不要立刻退出程序。
+   order = api.insert_order(symbol, "BUY", "OPEN", volume=1, limit_price=3000)
+   while order.status == "ALIVE":
+       api.wait_update()
+       print("委托状态：", order.status, "未成交手数：", order.volume_left)
 
-要撤销一个委托单, 使用 api.cancel_order() 函数::
+这里的 ``3000`` 只是演示价格，不保证成交；委托没有成交时，上面的循环会持续等待。需要演示 :py:meth:`~tqsdk.TqApi.cancel_order` 撤单时，可以在 :py:meth:`insert_order() <tqsdk.TqApi.insert_order>` 之后使用下面的片段，替换上面的等待循环：
 
-    api.cancel_order(order)
+.. code-block:: python
 
-这部分的完整示例程序请见 :ref:`tutorial-t40` .
+   api.cancel_order(order)
+   while order.status == "ALIVE":
+       api.wait_update()
+   print("委托结束：", order.last_msg)
 
-到这里为止, 我们已经掌握了 TqSdk 中行情和交易相关功能的基本使用. 我们将在下一节中, 组合使用它们, 创建一个自动交易程序
+下单和撤单后都需要继续调用 :py:meth:`wait_update() <tqsdk.TqApi.wait_update>` 接收结果。完成这个短任务后调用 :py:meth:`api.close() <tqsdk.TqApi.close>`；需要限制等待时间时，参考 :doc:`qa` 中的超时示例。
 
+.. note::
 
+   :py:meth:`insert_order() <tqsdk.TqApi.insert_order>` 返回的是委托引用，不是成交确认。``FINISHED`` 表示委托结束，也可能是撤单或拒单；用 ``volume_orign - volume_left`` 了解已成交数量，用 :py:attr:`last_msg <tqsdk.objs.Order.last_msg>` 查看提示。不要同时对同一合约使用手动下单和目标持仓任务，避免相互干扰。
 
-.. _quickstart_4:
-
-构建一个自动交易程序
--------------------------------------------------
-在这一节中, 我们将创建一个简单的自动交易程序: 每当行情最新价高于最近15分钟均价时, 开仓买进. 这个程序是这样的::
-
-    klines = api.get_kline_serial("DCE.m2609", 60)
-    while True:
-        api.wait_update()
-        if api.is_changing(klines):
-            ma = sum(klines.close.iloc[-15:])/15
-            print("最新价", klines.close.iloc[-1], "MA", ma)
-            if klines.close.iloc[-1] > ma:
-                print("最新价大于MA: 市价开仓")
-                api.insert_order(symbol="DCE.m2609", direction="BUY", offset="OPEN", volume=5)
-
-上面的代码中出现了一个新函数 api.is_changing(). 这个函数用于判定指定对象是否在最近一次 wait_update 中被更新.
-
-这部分的完整示例程序请见 :ref:`tutorial-t60` .
-
-
-.. _quickstart_5:
-
-按照目标持仓自动交易
--------------------------------------------------
-在某些场景中, 我们可能会发现, 自己写代码管理下单撤单是一件很麻烦的事情. 在这种情况下, 你可以使用 :py:class:`tqsdk.TargetPosTask`. 你只需要指定账户中预期应有的持仓手数, TqSdk 会自动通过一系列指令调整仓位直到达成目标. 请看例子::
-
-    from tqsdk import TqApi, TqAuth, TargetPosTask
-
-    api = TqApi(auth=TqAuth("快期账户", "账户密码"))
-    quote_near = api.get_quote("SHFE.ni2607")
-    quote_deferred = api.get_quote("SHFE.ni2608")
-
-
-    # 创建 ni2607 的目标持仓 task，该 task 负责调整 ni2607 的仓位到指定的目标仓位
-    target_pos_near = TargetPosTask(api, "SHFE.ni2607")
-    # 创建 ni2608 的目标持仓 task，该 task 负责调整 ni2608 的仓位到指定的目标仓位
-    target_pos_deferred = TargetPosTask(api, "SHFE.ni2608")
-
-    while True:
-        api.wait_update()
-        if api.is_changing(quote_near) or api.is_changing(quote_deferred):
-            spread = quote_near.last_price - quote_deferred.last_price
-            print("当前价差:", spread)
-            if spread > 200:
-                print("目标持仓: 空近月，多远月")
-                # 设置目标持仓为正数表示多头，负数表示空头，0表示空仓
-                target_pos_near.set_target_volume(-1)
-                target_pos_deferred.set_target_volume(1)
-            elif spread < 150:
-                print("目标持仓: 空仓")
-                target_pos_near.set_target_volume(0)
-                target_pos_deferred.set_target_volume(0)
-
-
-这部分的完整示例程序请见 :ref:`tutorial-t80` .
-
+更完整的委托生命周期见 :ref:`trade`、:ref:`tutorial-t40`。
 
 .. _quickstart_backtest:
 
-策略回测
+7. 把策略放进历史回测
 -------------------------------------------------
-自己的交易程序写好以后, 我们总是希望在实盘运行前, 能先进行一下模拟测试. 要进行模拟测试, 只需要在创建TqApi实例时, 传入一个backtest参数::
 
-    from datetime import date
-    from tqsdk import TqApi, TqAuth, TqBacktest
+回测沿用前面的程序结构，只需要在创建 API 时传入 :py:class:`~tqsdk.TqBacktest`。下面先用一个简单例子观察历史 K 线如何更新：
 
-    api = TqApi(backtest=TqBacktest(start_dt=date(2018, 5, 1), end_dt=date(2018, 10, 1)), auth=TqAuth("快期账户", "账户密码"))
+.. code-block:: python
+   :caption: kline_backtest.py · 查看历史 K 线
 
-这样, 程序运行时就会按照 TqBacktest 指定的时间范围进行模拟交易测试, 并输出测试结果.
+   from datetime import date
+   from tqsdk import TqApi, TqAuth, TqBacktest, BacktestFinished
 
-此外 TqSdk 同时还支持股票的回测交易，请见 :ref:`security_backtest`
+   api = TqApi(
+       backtest=TqBacktest(start_dt=date(2025, 3, 3), end_dt=date(2025, 3, 7)),
+       auth=TqAuth("快期账户", "账户密码"),
+   )
+   klines = api.get_kline_serial("SHFE.rb2505", 60)
+   try:
+       while True:
+           api.wait_update()
+           print("历史 K 线收盘价：", klines.close.iloc[-1])
+   except BacktestFinished:
+       print("回测结束")
+   api.close()
 
-更多关于策略程序回测的详细信息, 请见 :ref:`backtest`
+:py:exc:`~tqsdk.exceptions.BacktestFinished` 表示历史数据回放结束，示例用 ``try / except`` 接住这个结束通知，再关闭 API。**合约的存续期需要覆盖回测区间**，因此示例合约和历史日期应一起调整。
 
-
-.. _real_trading:
-
-实盘交易
--------------------------------------------------
-要让策略程序在实盘账号运行, 请在创建TqApi时传入一个 :py:class:`~tqsdk.TqAccount` , 填入 期货公司, 账号, 密码 和快期账户信息(使用前请先 import TqAccount)::
-
-    from tqsdk import TqApi, TqAuth, TqAccount
-
-    # 如果要更换为徽商期货，只需要改为 H徽商期货
-    api = TqApi(TqAccount("H宏源期货", "412432343", "123456"), auth=TqAuth("快期账户", "账户密码"))
-
-更多关于实盘交易细节，请点击 :ref:`trade`
-
-其中实盘交易是属于 TqSdk 的专业版功能，用户需要购买 TqSdk 专业版才可以进行实盘交易， `点击申请试用或者购买 <https://account.shinnytech.com/>`_
-
-与此同时，TqSdk 支持在部分期货公司开户后进行免费的实盘交易，详细介绍请点击查看 `TqSdk支持的期货公司列表 <https://www.shinnytech.com/blog/tq-support-broker/>`_
-
+回测仍需登录服务并获取历史数据，具体数据权限以账户为准。需要回测自己的交易逻辑时，把行情示例中的处理部分换成策略；完整说明与图形化报告见 :ref:`backtest`、:ref:`web_gui`。
 
 .. _sim_trading:
 
-模拟交易和论坛
+选择适合的模拟账户
 -------------------------------------------------
-如果您需要使用能保存账户资金及持仓信息的模拟交易功能，通过 :py:class:`~tqsdk.TqKq` 对 auth 传入参数进行登录，可以得到一个长期有效的快期模拟账户。快期模拟账户在快期 APP、快期专业版、快期 v2、快期 v3 和天勤量化上是互通的，程序中使用 :py:class:`~tqsdk.TqKq` 产生的模拟持仓、委托和成交记录也可以在这些客户端中查看。
 
-快期模拟的资金可以通过快期 APP、快期专业版的模拟银行进行出入金，也可以通过快期专业版对该账户进行重置::
+.. list-table::
+   :header-rows: 1
+   :widths: 20 40 40
 
-  from tqsdk import TqApi, TqAuth, TqKq
+   * - 账户类型
+     - 记录保存在哪里
+     - 适合什么场景
+   * - :py:class:`TqSim() <tqsdk.TqSim>`
+     - 当前程序内；默认不跨进程保存
+     - 入门、临时模拟、历史回测
+   * - :py:class:`TqKq() <tqsdk.TqKq>`
+     - 快期模拟服务；可在快期客户端查看
+     - 希望持续跟踪模拟账户
+   * - :py:class:`TqAccount(...) <tqsdk.TqAccount>`
+     - 期货公司的实盘资金账户
+     - 完成验证后的实盘接入
 
-  api = TqApi(TqKq(), auth=TqAuth("快期账户", "账户密码"))
+使用快期模拟账户：
 
+.. code-block:: python
 
+   from tqsdk import TqApi, TqAuth, TqKq
 
-特别地，如果创建 TqApi 实例时没有显式提供账户实例，则会自动创建一个临时模拟账号。这个临时账号是 TqSdk 本地程序内的 :py:class:`~tqsdk.TqSim`，它的持仓、委托和成交记录不会显示在快期 APP、快期专业版、快期 v2 或快期 v3 中；当程序运行结束时，临时账号内的记录会全部丢失::
+   api = TqApi(TqKq(), auth=TqAuth("快期账户", "账户密码"))
+   # 订阅数据，并持续调用 api.wait_update()。
+   # 程序退出时调用 api.close()。
 
-  api = TqApi(auth=TqAuth("快期账户", "账户密码"))
+如果省略账户参数，:py:class:`TqApi <tqsdk.TqApi>` 默认使用 :py:class:`TqSim <tqsdk.TqSim>`。这类模拟记录不会出现在快期 APP 等客户端。详情见 :ref:`shinny_account`。
 
+.. _real_trading:
 
-
-TqSdk 学习视频
+了解实盘接入
 -------------------------------------------------
-TqSdk 提供简单易懂的十分钟上手视频 `供用户学习 <https://www.shinnytech.com/tqsdkquickstart/>`_
 
+实盘需要显式传入 :py:class:`~tqsdk.TqAccount`。下方仅展示配置，填写的是期货公司提供的资金账号与交易密码：
 
-更多内容
+.. code-block:: python
+
+   from tqsdk import TqApi, TqAuth, TqAccount
+
+   api = TqApi(
+       TqAccount("期货公司名称", "期货资金账号", "期货交易密码"),
+       auth=TqAuth("快期账户", "快期账户密码"),
+   )
+
+期货公司名称、接入要求与权限说明见 :ref:`trade`、:ref:`profession`。支持情况可在 `期货公司列表 <https://www.shinnytech.com/blog/tq-support-broker/>`_ 查询。
+
+下一步
 -------------------------------------------------
-* 要完整了解TqSdk的使用, 请阅读 :ref:`usage`
-* 更多TqSdk的示例, 请见 :ref:`demo_strategy`
 
-
+* **学习运行机制：** :ref:`framework`，理解数据引用和 :py:meth:`wait_update() <tqsdk.TqApi.wait_update>`。
+* **选择完整示例：** :ref:`demo`，从行情、K 线和交易基础逐步深入。
+* **遇到问题：** :doc:`qa`，按症状排查安装、登录、数据和委托问题。
+* **使用 AI 开发：** :ref:`tqsdk_skills`，让 AI 先读取 TqSdk 技能包。
+* **从其他框架迁移：** :ref:`for_ctp_user`、:ref:`for_vnpy_user`。
+* **观看入门视频：** `TqSdk 学习视频 <https://www.shinnytech.com/tqsdkquickstart/>`_。

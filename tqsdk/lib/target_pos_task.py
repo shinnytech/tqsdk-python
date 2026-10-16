@@ -689,11 +689,15 @@ class InsertOrderUntilAllTradedTask(object):
 
     async def _check_price(self, update_chan, order_price, order_id):
         """判断价格是否变化的task"""
+        order = self._api.get_order(order_id, account=self._account)
         async with self._api.register_update_notify(chan=update_chan):
             async for _ in update_chan:
                 new_price = self._get_price(self._direction)
-                if (self._direction == "BUY" and new_price > order_price) or (
-                        self._direction == "SELL" and new_price < order_price):
+                price_changed = (
+                    (self._direction == "BUY" and new_price > order_price)
+                    or (self._direction == "SELL" and new_price < order_price)
+                )
+                if price_changed and order.status == "ALIVE" and bool(order.exchange_order_id):
                     self._api.cancel_order(order_id, account=self._account)
                     break
 

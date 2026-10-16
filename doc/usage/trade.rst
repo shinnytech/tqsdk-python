@@ -24,9 +24,9 @@
 
 设定实盘交易账户
 ----------------------------------------------------
-TqSdk 要求在创建 TqApi 时指定交易账户。一旦TqApi创建成功，后续所有通过TqApi发出的交易指令均在此账户中进行.
+TqSdk 要求在创建 :py:class:`TqApi <tqsdk.TqApi>` 时指定交易账户。一旦 :py:class:`TqApi <tqsdk.TqApi>` 创建成功，后续所有通过 :py:class:`TqApi <tqsdk.TqApi>` 发出的交易指令均在此账户中进行.
 
-要使用实盘交易账户, 请使用 :py:class:`~tqsdk.TqAccount` (注：使用前请先 import TqAccount)::
+要使用实盘交易账户, 请使用 :py:class:`~tqsdk.TqAccount` (注：使用前请先 import :py:class:`TqAccount <tqsdk.TqAccount>`)::
 
     from tqsdk import TqAccount, TqApi, TqAuth
 
@@ -34,7 +34,7 @@ TqSdk 要求在创建 TqApi 时指定交易账户。一旦TqApi创建成功，�
 
 :py:class:`~tqsdk.TqAccount` 的三个参数分别为 <期货公司名>, <用户名> 和 <密码> (期货公司名前需加大写首字母). 目前TqSdk支持的期货公司列表请参见: `TqSdk支持的期货公司列表 <https://www.shinnytech.com/blog/tq-support-broker/>`_
 
-TqApi 创建成功即代表相应账户已登录成功. 如果在60秒内无法完成登录, 会抛出超时异常, 用户代码可以此判定登录失败::
+:py:class:`TqApi <tqsdk.TqApi>` 创建成功即代表相应账户已登录成功. 如果在60秒内无法完成登录, 会抛出超时异常, 用户代码可以此判定登录失败::
 
     try:
         api = TqApi(TqAccount("H宏源期货", "320102", "123456"), auth=TqAuth("快期账户", "账户密码"))
@@ -61,7 +61,7 @@ TqApi 创建成功即代表相应账户已登录成功. 如果在60秒内无法�
 
 设定模拟交易账户
 ----------------------------------------------------
-如果您需要使用模拟账户进行测试，只需在创建TqApi时传入一个 :py:class:`~tqsdk.TqSim` 的实例（不填写参数则默认为 TqSim() 模拟账号）::
+如果您需要使用模拟账户进行测试，只需在创建:py:class:`TqApi <tqsdk.TqApi>`时传入一个 :py:class:`~tqsdk.TqSim` 的实例（不填写参数则默认为 :py:class:`TqSim() <tqsdk.TqSim>` 模拟账号）::
 
     from tqsdk import TqApi, TqAuth, TqSim
 
@@ -73,11 +73,11 @@ TqApi 创建成功即代表相应账户已登录成功. 如果在60秒内无法�
 
 获取账户情况
 ----------------------------------------------------
-TqApi 提供以下函数来获取交易账户相关信息:
+:py:class:`TqApi <tqsdk.TqApi>` 提供以下函数来获取交易账户相关信息:
 
-* :py:meth:`~tqsdk.TqApi.get_account` - 获取账户资金情况
-* :py:meth:`~tqsdk.TqApi.get_position` - 获取持仓情况
-* :py:meth:`~tqsdk.TqApi.get_order` - 获取委托单
+* :py:meth:`~tqsdk.TqApi.get_account` - 获取账户资金情况 :py:class:`~tqsdk.objs.Account`
+* :py:meth:`~tqsdk.TqApi.get_position` - 获取持仓情况 :py:class:`~tqsdk.objs.Position`
+* :py:meth:`~tqsdk.TqApi.get_order` - 获取委托单 :py:class:`~tqsdk.objs.Order`
 
 以上函数返回的都是会在 :py:meth:`~tqsdk.TqApi.wait_update` 时自动刷新的对象引用，而不是一次性的静态快照。单账户模式下可以直接调用；多账户模式下需要显式传入账户实例。
 
@@ -109,14 +109,14 @@ TqApi 提供以下函数来获取交易账户相关信息:
         "last_msg": "",  # "报单成功" (委托单状态信息)
     }
 
-与其它所有数据一样, 委托单的信息也会在 api.wait_update() 时被自动更新::
+与其它所有数据一样, 委托单的信息也会在 :py:meth:`api.wait_update() <tqsdk.TqApi.wait_update>` 时被自动更新::
 
     order = api.insert_order(symbol="SHFE.rb2610", direction="BUY", offset="OPEN", limit_price=4310,volume=2)
     while order.status != "FINISHED":
         api.wait_update()
         print("委托单状态: %s, 未成交手数: %d 手" % (order.status, order.volume_left))
 
-需要特别注意的是，``insert_order()`` 只是把报单请求加入待发送队列，真正发单发生在下一次 :py:meth:`~tqsdk.TqApi.wait_update`。
+需要特别注意的是，:py:meth:`insert_order() <tqsdk.TqApi.insert_order>` 只是把报单请求加入待发送队列，真正发单发生在下一次 :py:meth:`~tqsdk.TqApi.wait_update`。
 
 要撤销一个委托单, 使用 :py:meth:`~tqsdk.TqApi.cancel_order` 函数::
 
@@ -129,4 +129,3 @@ TqApi 提供以下函数来获取交易账户相关信息:
 TqSdk支持的期货公司列表
 -----------------------------------------------------
 请点击查看: `TqSdk支持的期货公司列表 <https://www.shinnytech.com/blog/tq-support-broker/>`_
-

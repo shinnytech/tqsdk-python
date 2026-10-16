@@ -19,13 +19,13 @@ time_table 目标持仓任务列表
 
 :py:class:`~tqsdk.TargetPosScheduler` 使用 ``time_table`` 参数来描述具体的下单策略。
 
-``time_table`` 为 ``pandas.DataFrame`` 类型。每一行表示一项目标持仓任务，每项任务按照顺序一个个执行。其应该包含以下几列：
+``time_table`` 为 :py:class:`pandas.DataFrame <pandas.DataFrame>` 类型。每一行表示一项目标持仓任务，每项任务按照顺序一个个执行。其应该包含以下几列：
 
 + interval: 当前这项任务的持续时间长度，单位为秒，经过这么多秒之后，此项任务应该退出，剩余未调整到的目标持仓，会留到下一项任务中
     * 注意1：对于最后一项任务，会按照当前项参数，调整到目标持仓后立即退出（时间参数不对最后一项任务起作用）
     * 注意2：时间长度可以跨非交易时间段（可以跨小节等待），但是不可以跨交易日
 + target_pos: 当前这项任务的目标净持仓手数
-+ price: 当前这项任务的下单价格模式，此列中非 None 的项，会作为创建 TargetPosTask 实例的 price 参数，支持以下几种参数：
++ price: 当前这项任务的下单价格模式，此列中非 None 的项，会作为创建 :py:class:`TargetPosTask <tqsdk.TargetPosTask>` 实例的 price 参数，支持以下几种参数：
     * None: 不下单，表示暂停一段时间
     * "PASSIVE" : 排队价下单
     * "ACTIVE": 对价下单
@@ -74,13 +74,13 @@ TargetPosScheduler 执行目标持仓任务列表
 
 到此为止，您可以根据您的具体策略构造出任意的 ``time_table`` 对象，然后调用 :py:class:`~tqsdk.TargetPosScheduler` 来执行。
 
-为了方便用户使用，我们提供了 :py:meth:`~tqsdk.algorithm.time_table_generater.twap_table` 来生成一个默认的符合 twap 策略的 ``time_table`` 实例。
+为了方便用户使用，我们提供了 :py:func:`~tqsdk.algorithm.time_table_generater.twap_table` 来生成一个默认的符合 twap 策略的 ``time_table`` 实例。
 
 
 基于 TargetPosScheduler 的 twap 策略示例
 ------------------------------------------------------------------
 
-我们在 :ref:`tqsdk.algorithm` 模块中提供了 :py:meth:`~tqsdk.algorithm.time_table_generater.twap_table`，可方便的生成一个基于 twap 策略的 ``time_table`` 实例。
+我们在 :ref:`tqsdk.algorithm` 模块中提供了 :py:func:`~tqsdk.algorithm.time_table_generater.twap_table`，可方便的生成一个基于 twap 策略的 ``time_table`` 实例。
 
 在执行算法之前，您还可以定制化的调整 ``time_table`` 中的具体任务项。
 

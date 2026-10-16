@@ -51,7 +51,7 @@
     # tqsdk_punchline 天勤点评
 
 
-回测的详细信息保存在回测所用的模拟账户 TqSim 中, 可以直接访问它的成员变量 trade_log(格式为 日期->交易记录及收盘时的权益及持仓).
+回测的详细信息保存在回测所用的模拟账户 :py:class:`TqSim <tqsdk.TqSim>` 中, 可以直接访问它的成员变量 trade_log(格式为 日期->交易记录及收盘时的权益及持仓).
 
 
 同时我们也提供简单的图形化的回测报告功能供大家使用 :ref:`web_gui` ，使用效果参考下图
@@ -114,7 +114,7 @@
 -------------------------------------------------
 在天勤中回测时，除了期货、期权合约以外，我们还支持使用 **指数** 进行回测和在回测中交易，指数合约代码格式参见 :ref:`mddatas`
 
-策略回测时使用内置模拟账户 :py:class:`~tqsdk.TqSim` , 默认回测资金为1000w , 如果需要修改初始回测资金，只需给 TqSim 传入需要设定的金额即可::
+策略回测时使用内置模拟账户 :py:class:`~tqsdk.TqSim` , 默认回测资金为1000w , 如果需要修改初始回测资金，只需给 :py:class:`TqSim <tqsdk.TqSim>` 传入需要设定的金额即可::
 
   from datetime import date
   from tqsdk import TqApi, TqAuth, TqSim, TqBacktest
@@ -143,7 +143,7 @@
 -------------------------------------------------
 TqSdk 在 3.2.0 版本后支持了对股票合约进行回测功能，在回测过程中用户需要初始化 :py:class:`~tqsdk.TqSimStock` 类，且该类只能支持股票模拟交易
 
-由于股票市场 T+1 的规则, :py:class:`~tqsdk.TargetPosTask`  函数目前还不支持在股票交易中使用，股票合约交易时只支持使用 :py:class:`~tqsdk.TqApi.insert_order`
+由于股票市场 T+1 的规则, :py:class:`~tqsdk.TargetPosTask`  函数目前还不支持在股票交易中使用，股票合约交易时只支持使用 :py:meth:`~tqsdk.TqApi.insert_order`
 
 如果您想要在回测中同时交易期货和股票合约，则可以使用 :py:class:`~tqsdk.TqMultiAccount` 来实现该需求::
 
@@ -208,7 +208,7 @@ TqSdk回测框架使用一套复杂的规则来推进行情：
   else:
     回测框架会隐式的订阅一个1分钟K线, 确保quote的更新周期不会超过1分钟
   
-规则4: 策略程序中的多个序列的更新, 按时间顺序合并推进. 每次 wait_update 时, 优先处理用户事件, 当没有用户事件时, 从各序列中选择下一次更新时间最近的, 更新到这个时间::
+规则4: 策略程序中的多个序列的更新, 按时间顺序合并推进. 每次 :py:meth:`wait_update <tqsdk.TqApi.wait_update>` 时, 优先处理用户事件, 当没有用户事件时, 从各序列中选择下一次更新时间最近的, 更新到这个时间::
 
   ka = api.get_kline_serial("SHFE.cu2607", 10)              # 请求一个10秒线
   kb = api.get_kline_serial("SHFE.cu2608", 15)              # 请求一个15秒线

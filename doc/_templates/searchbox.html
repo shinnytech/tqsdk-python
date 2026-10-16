@@ -1,0 +1,12 @@
+{% if 'singlehtml' not in builder %}
+<div role="search">
+  <form id="rtd-search-form" class="wy-form tq-search" action="{{ pathto('search') }}" method="get">
+    <label class="tq-sr-only" for="tq-search-input">搜索文档</label>
+    <input id="tq-search-input" type="search" name="q" placeholder="搜索文档或 API…" autocomplete="off" aria-keyshortcuts="/" />
+    <button type="submit" aria-label="搜索"><span class="fa fa-search" aria-hidden="true"></span></button>
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+  <p class="tq-search-hint">在正文按 <kbd>/</kbd> 聚焦搜索框</p>
+</div>
+{% endif %}

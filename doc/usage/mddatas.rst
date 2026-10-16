@@ -175,7 +175,7 @@ GFEX               广州期货交易所
         "margin": 31617.0
     }
 
-对于每个合约, 只需要调用一次 get_quote 函数. 如果需要监控数据更新, 可以使用 :py:meth:`~tqsdk.TqApi.wait_update`::
+对于每个合约, 只需要调用一次 :py:meth:`get_quote <tqsdk.TqApi.get_quote>` 函数. 如果需要监控数据更新, 可以使用 :py:meth:`~tqsdk.TqApi.wait_update`::
 
     q = api.get_quote("SHFE.cu2607")  # 获取SHFE.cu2607合约的行情
 

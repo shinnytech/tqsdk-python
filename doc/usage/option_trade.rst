@@ -23,18 +23,18 @@ TqSdk 中期权和交易所官方组合的合约代码格式参考如下::
 ----------------------------------------------------
 TqSdk 内提供了丰富的期权指标计算&序列计算函数，参考如下：
 
-* :py:meth:`~tqsdk.ta.OPTION_GREEKS` - 计算期权希腊指标
-* :py:meth:`~tqsdk.ta.OPTION_IMPV` - 计算期权隐含波动率
-* :py:meth:`~tqsdk.ta.BS_VALUE` - 计算期权 BS 模型理论价格
-* :py:meth:`~tqsdk.ta.OPTION_VALUE` - 计算期权内在价值，期权时间价值
-* :py:meth:`~tqsdk.tafunc.get_bs_price` - 计算期权 BS 模型理论价格
-* :py:meth:`~tqsdk.tafunc.get_delta` - 计算期权希腊指标 delta 值
-* :py:meth:`~tqsdk.tafunc.get_gamma` - 计算期权希腊指标 gamma 值
-* :py:meth:`~tqsdk.tafunc.get_rho` - 计算期权希腊指标 rho 值
-* :py:meth:`~tqsdk.tafunc.get_theta` - 计算期权希腊指标 theta 值
-* :py:meth:`~tqsdk.tafunc.get_vega` - 计算期权希腊指标 vega 值
-* :py:meth:`~tqsdk.tafunc.get_his_volatility` - 计算某个合约的历史波动率
-* :py:meth:`~tqsdk.tafunc.get_t` - 计算 K 线序列对应的年化到期时间，主要用于计算期权相关希腊指标时，需要得到计算出序列对应的年化到期时间
+* :py:func:`~tqsdk.ta.OPTION_GREEKS` - 计算期权希腊指标
+* :py:func:`~tqsdk.ta.OPTION_IMPV` - 计算期权隐含波动率
+* :py:func:`~tqsdk.ta.BS_VALUE` - 计算期权 BS 模型理论价格
+* :py:func:`~tqsdk.ta.OPTION_VALUE` - 计算期权内在价值，期权时间价值
+* :py:func:`~tqsdk.tafunc.get_bs_price` - 计算期权 BS 模型理论价格
+* :py:func:`~tqsdk.tafunc.get_delta` - 计算期权希腊指标 delta 值
+* :py:func:`~tqsdk.tafunc.get_gamma` - 计算期权希腊指标 gamma 值
+* :py:func:`~tqsdk.tafunc.get_rho` - 计算期权希腊指标 rho 值
+* :py:func:`~tqsdk.tafunc.get_theta` - 计算期权希腊指标 theta 值
+* :py:func:`~tqsdk.tafunc.get_vega` - 计算期权希腊指标 vega 值
+* :py:func:`~tqsdk.tafunc.get_his_volatility` - 计算某个合约的历史波动率
+* :py:func:`~tqsdk.tafunc.get_t` - 计算 K 线序列对应的年化到期时间，主要用于计算期权相关希腊指标时，需要得到计算出序列对应的年化到期时间
 
 期权查询函数
 ----------------------------------------------------

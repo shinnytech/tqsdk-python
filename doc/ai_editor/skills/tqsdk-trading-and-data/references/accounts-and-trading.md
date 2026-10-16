@@ -51,35 +51,27 @@ Do not explain futures-only fields such as `offset`, `margin`, or `pos_long_toda
 Basic pattern:
 
 ```python
-from tqsdk import TqApi, TqAuth
+from tqsdk import TqApi, TqAuth, TqSim
 
-api = TqApi(auth=TqAuth("快期账户", "账户密码"))
-account = api.get_account()
-position = api.get_position("DCE.m2609")
-orders = api.get_order()
-trades = api.get_trade()
+with TqApi(TqSim(), auth=TqAuth("快期账户", "账户密码")) as api:
+    symbol = api.get_quote("KQ.m@DCE.m").underlying_symbol
+    if not symbol:
+        raise RuntimeError("尚未获取到主连标的合约")
+    account = api.get_account()
+    position = api.get_position(symbol)
+    orders = api.get_order()
+    trades = api.get_trade()
+    while True:
+        api.wait_update()
+        if api.is_changing(account, "available"):
+            print("available", account.available)
+        if api.is_changing(position, ["pos_long", "pos_short", "float_profit"]):
+            print(position.pos_long, position.pos_short, position.float_profit)
 
-while True:
-    api.wait_update()
-    if api.is_changing(account, "available"):
-        print("available", account.available)
-    if api.is_changing(position, ["pos_long", "pos_short", "float_profit"]):
-        print(position.pos_long, position.pos_short, position.float_profit)
 ```
 
 For generic examples, `TqApi(auth=...)` is enough and defaults to a local `TqSim()` account.
 Switch to `TqKq()`, `TqAccount(...)`, or another explicit account class only when the user needs that exact account mode.
-
-Local multi-strategy front-account pattern:
-
-```python
-from tqsdk import TqApi, TqAuth, TqTradingUnit
-
-account = TqTradingUnit(account_id="前端账户号")
-api = TqApi(account, auth=TqAuth("快期账户", "账户密码"))
-```
-
-Use this pattern only after the local multi-strategy system has been initialized and the front account has been created in `tqsdk-zq`.
 
 Important collection behavior:
 
@@ -114,17 +106,22 @@ Trade:
 
 ## Multi-Account Patterns
 
-API-based pattern:
+API-based setup fragment (requires the user-selected live account credentials; close this API after the task):
 
 ```python
 from tqsdk import TqApi, TqAuth, TqAccount, TqKq, TqMultiAccount
 
-real_acc = TqAccount("H海通期货", "123456", "123456")
+import os
+
+real_acc = TqAccount(os.environ["TQ_BROKER_ID"], os.environ["TQ_ACCOUNT_ID"], os.environ["TQ_ACCOUNT_PASSWORD"])
 sim_acc = TqKq()
 
 api = TqApi(TqMultiAccount([real_acc, sim_acc]), auth=TqAuth("快期账户", "账户密码"))
 account_info = api.get_account(account=sim_acc)
-position = api.get_position("DCE.m2609", account=sim_acc)
+symbol = api.get_quote("KQ.m@DCE.m").underlying_symbol
+if not symbol:
+    raise RuntimeError("尚未获取到主连标的合约")
+position = api.get_position(symbol, account=sim_acc)
 orders = api.get_order(account=sim_acc)
 trades = api.get_trade(account=sim_acc)
 ```
@@ -133,7 +130,7 @@ Account-object pattern:
 
 ```python
 account_info = sim_acc.get_account()
-position = sim_acc.get_position("DCE.m2609")
+position = sim_acc.get_position(symbol)
 orders = sim_acc.get_order()
 trades = sim_acc.get_trade()
 ```
@@ -142,8 +139,6 @@ trades = sim_acc.get_trade()
 
 - `tqsdk/api.py`
 - `tqsdk/tradeable/mixin.py`
-- `tqsdk/tradeable/otg/tqtradingunit.py`
-- `doc/advanced/tq_trading_unit.rst`
 - `tqsdk/demo/tutorial/t40.py`
 - `tqsdk/demo/download_orders.py`
 - `tqsdk/demo/multiaccount.py`

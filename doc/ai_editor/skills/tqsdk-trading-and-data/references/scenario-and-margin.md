@@ -52,7 +52,7 @@ Important behavior:
 - Pass `positions=api.get_position()` to start from the current futures position snapshot.
 - Pass one `Position` object if the user only wants to trial one symbol.
 - Omit `positions` to start from an empty futures account.
-- Use `init_balance` to choose the starting equity for the scenario snapshot.
+- Use `init_balance` to choose the starting equity for the scenario snapshot. For current-account risk, pass the actual valid account equity explicitly; the default 10000000 is not the user's balance.
 - When the user wants "current positions plus extra capital", read `balance = api.get_account().balance` first, then pass `init_balance=balance + extra`.
 
 Keep all related trial actions inside one `TqScenario` object so the margin and risk calculations stay cumulative.
@@ -77,59 +77,74 @@ Keep all related trial actions inside one `TqScenario` object so the margin and 
 ### "How many lots can I still open under a 200000 margin budget?"
 
 ```python
+import math
+import os
 from tqsdk import TqApi, TqAuth, TqAccount, TqScenario
 
-account = TqAccount("broker", "acct", "pwd")
-api = TqApi(account=account, auth=TqAuth("quick_user", "quick_pass"))
-symbol = "SHFE.rb2611"
-quote = api.get_quote(symbol)
-positions = api.get_position()
+account = TqAccount(os.environ["TQ_BROKER_ID"], os.environ["TQ_ACCOUNT_ID"], os.environ["TQ_ACCOUNT_PASSWORD"])
+with TqApi(account, auth=TqAuth(os.environ["TQ_AUTH_USER"], os.environ["TQ_AUTH_PASSWORD"])) as api:
+    symbol = api.get_quote("KQ.m@SHFE.rb").underlying_symbol
+    if not symbol:
+        raise RuntimeError("尚未获取到主连标的合约")
+    quote = api.get_quote(symbol)
+    funds = api.get_account()
+    if not all(math.isfinite(v) for v in (quote.last_price, funds.balance, funds.available)) or funds.balance <= 0:
+        raise RuntimeError("行情或账户资金无效，不能进行当前账户试算")
+    budget = min(200000.0, max(0.0, funds.available))
+    max_trial_lots = 100  # Bounded example; use a task-appropriate limit.
+    accepted = 0
+    with TqScenario(api, account=account, positions=api.get_position(), init_balance=funds.balance) as trial:
+        base_margin = trial.scenario_get_account().margin
+        for candidate in range(1, max_trial_lots + 1):
+            order = trial.scenario_insert_order(symbol, "BUY", "OPEN", 1, quote.last_price)
+            if order.status != "FINISHED" or order.volume_left:
+                break
+            if trial.scenario_get_account().margin - base_margin > budget:
+                break
+            accepted = candidate
+    print("本次试算边界内满足增量保证金预算的手数：", accepted)
+    if accepted == max_trial_lots:
+        print("已到试算上限，不能据此宣称是最大可开手数")
 
-with TqScenario(api, account=account, positions=positions) as s:
-    base_margin = s.scenario_get_account().margin
-    lots = 0
-    while True:
-        order = s.scenario_insert_order(symbol, "BUY", "OPEN", 1, quote.last_price)
-        if order.status == "FINISHED" and order.volume_left > 0:
-            break
-        lots += 1
-        if s.scenario_get_account().margin - base_margin > 200000:
-            s.scenario_insert_order(symbol, "SELL", "CLOSETODAY", 1, quote.last_price)
-            lots -= 1
-            break
 ```
 
 ### "What happens if the futures margin rate becomes 15%?"
 
 ```python
-account = TqAccount("broker", "acct", "pwd")
-api = TqApi(account=account, auth=TqAuth("quick_user", "quick_pass"))
+# Fragment inside an existing API context with the selected account.
 positions = api.get_position()
-
-with TqScenario(api, account=account, positions=positions) as s:
+balance = api.get_account().balance
+symbol = api.get_quote("KQ.m@SHFE.rb").underlying_symbol
+if not symbol:
+    raise RuntimeError("尚未获取到主连标的合约")
+with TqScenario(api, account=account, positions=positions, init_balance=balance) as s:
     before = s.scenario_get_account()
-    s.scenario_set_margin_rate("SHFE.rb2611", 0.15)
+    s.scenario_set_margin_rate(symbol, 0.15)
     after = s.scenario_get_account()
+    print(before.margin, before.risk_ratio, after.margin, after.risk_ratio)
+
 ```
 
 ### "What happens if I add 100000 equity and keep positions unchanged?"
 
 ```python
-account = TqAccount("broker", "acct", "pwd")
-api = TqApi(account=account, auth=TqAuth("quick_user", "quick_pass"))
+# Fragment inside an existing API context with the selected account.
 positions = api.get_position()
 balance = api.get_account().balance
-
 with TqScenario(api, account=account, positions=positions, init_balance=balance + 100000) as s:
     after = s.scenario_get_account()
+    print(after.margin, after.risk_ratio)
+
 ```
+
+The bounded loop reports only the explored scenario, not a guaranteed executable maximum. It does not model real liquidity, future price changes, all frozen funds or every broker margin preference. No `api.insert_order()` is sent by these trial calls. Validate funds and price before applying the remaining fragments.
 
 ## Boundaries
 
 - `TqScenario` currently supports futures only.
 - `TqScenario` currently supports one account snapshot at a time.
 - `TqScenario` is synchronous. Run it outside the hot `wait_update()` loop when possible.
-- `scenario_insert_order()` always fills immediately at the passed price inside the trial snapshot.
+- Valid trial orders match at the passed price inside the snapshot; invalid or rejected orders do not prove a fill. Check returned `status`, `volume_left` and `last_msg`.
 - `scenario_insert_order()` and `scenario_get_account()` return reduced objects, not the full live `Order` or `Account`.
 - Preserve `CLOSE` versus `CLOSETODAY` when closing SHFE or INE positions imported from a live snapshot.
 - Do not recommend `TqScenario` for stock trading, option pricing shocks, or arbitrary custom broker discount tables that the simulator does not model.

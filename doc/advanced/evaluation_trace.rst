@@ -131,6 +131,39 @@ TqSdk 解决的是“如何切换评测采集库”的问题，但评测账号�
 生产采集库和评测采集库会随安装包一起分发。您只需要切换环境变量，不需要再手工查找、复制或覆盖 DLL 文件。
 
 
+.. _evaluation_trace_wmic:
+
+柜台采集不到 CPU、BIOS 或硬盘序列号怎么办？
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+如果期货公司柜台采集不到 CPU、BIOS 或硬盘序列号，可能是新版 Windows 11 已移除 ``wmic.exe``，而当前部分天勤本机信息采集组件仍依赖 WMIC。
+可参考 `微软官方支持说明 <https://support.microsoft.com/en-us/servicing/os/windows/docs/2025/09/windows-management-instrumentation-command-line-wmic-removal-from-windows>`_，并按以下步骤临时恢复 WMIC：
+
+1. 从微软官方下载 `wmic_dlc.zip <https://download.microsoft.com/download/1f01d660-d821-49b3-b247-7bc2fe9f4561/wmic_dlc.zip>`_，解压到本地目录。
+2. 以管理员身份打开 PowerShell，进入解压后包含 ``install.ps1`` 的目录，依次运行：
+
+   .. code-block:: powershell
+
+      Set-ExecutionPolicy Bypass -Scope Process
+      .\install.ps1
+
+   如果提示确认执行策略变更，请选择“是”；确认脚本提示 ``WMIC has been installed successfully.``。
+
+3. 安装完成后运行以下命令，确认三类序列号均能正常返回：
+
+   .. code-block:: powershell
+
+      wmic cpu get ProcessorId
+      wmic bios get serialnumber
+      wmic path win32_physicalmedia get SerialNumber
+
+4. 完全退出并重启天勤、TqSdk 和 Python 进程，然后重新登录评测柜台进行采集。
+
+.. warning::
+
+   微软将该安装方式定义为临时缓解方案，并明确说明它不是安全的长期解决方案。
+
+
 正式交易前需要做什么？
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

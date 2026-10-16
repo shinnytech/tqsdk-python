@@ -11,7 +11,6 @@
     order.rst
     targetpostask2.rst
     emergency_stop.rst
-    tq_trading_unit.rst
 
 .. toctree::
     :maxdepth: 1

@@ -1,0 +1,17 @@
+{% extends "!search.html" %}
+{% block body %}
+  <h1>搜索文档</h1>
+  <p class="tq-lead">输入功能名称或 API 名称，找到教程、示例和接口说明。</p>
+  <form class="tq-search-page" action="{{ pathto('search') }}" method="get" role="search">
+    <label class="tq-sr-only" for="tq-search-page-input">搜索关键词</label>
+    <input id="tq-search-page-input" type="search" name="q" placeholder="例如：回测、目标持仓、get_kline_serial" aria-keyshortcuts="/" />
+    <button class="tq-button" type="submit">搜索</button>
+  </form>
+  <div class="tq-search-suggestions" aria-label="常用搜索">
+    <span>常用搜索</span>
+    {% for term in ['回测', '目标持仓', '快期账户', 'wait_update'] %}
+      <a href="?q={{ term|urlencode }}">{{ term }}</a>
+    {% endfor %}
+  </div>
+  {{ super() }}
+{% endblock %}

@@ -203,6 +203,14 @@ def _get_col_dtype(col):
 
 class TqSymbolDataFrame(DataFrame):
 
+    _SYMBOL_INFO_FIELD_NAMES = {
+        "pre_open_interest",
+        "pre_close",
+        "pre_settlement",
+        "upper_limit",
+        "lower_limit",
+    }
+
     def __init__(self, api, symbol_list, backtest_timestamp, *args, **kwargs):
         self.__dict__["_api"] = api
         self.__dict__["_symbol_list"] = symbol_list
@@ -250,6 +258,11 @@ class TqSymbolDataFrame(DataFrame):
         self.__dict__["_task"] = api.create_task(self.async_update(), _caller_api=True)
 
     async def async_update(self):
+        if self.__dict__["_backtest_timestamp"] is None:
+            api = self.__dict__["_api"]
+            await api._ensure_symbol_async(self.__dict__["_symbol_list"])
+            self._quotes_to_dataframe(api._data["quotes"])
+            return self
         query_id = _generate_uuid("PYSDK_api")
         op = Operation(ins_schema.rootQuery)
         variables = {"instrument_id": self.__dict__["_symbol_list"]}
@@ -286,14 +299,29 @@ class TqSymbolDataFrame(DataFrame):
         v = quotes[symbol].get('trading_time', {'day': [], 'night': []}).get(key, [])
         return v if v else None
 
+    def _get_symbol_info_value(self, quote, key, default):
+        symbol_info_fields = quote.get("_symbol_info_fields", {})
+        if key in self._SYMBOL_INFO_FIELD_NAMES and key in symbol_info_fields:
+            return symbol_info_fields[key]
+        if key in quote.get("_symbol_info_none_fields", []):
+            return None
+        return quote.get(key, default)
+
     def _quotes_to_dataframe(self, quotes):
         default_quote = Quote(None)
         for col in self.__dict__["_columns"]:
             if col == "expire_rest_days":
                 current_dt = self._api._get_current_datetime().timestamp()
-                self[col] = [_get_expire_rest_days(quotes[s]['expire_datetime'], current_dt)
-                                    if quotes[s].get('expire_datetime') else float('nan')
-                                    for s in self.__dict__["_symbol_list"]]
+                expire_datetimes = [
+                    self._get_symbol_info_value(quotes[s], "expire_datetime", default_quote["expire_datetime"])
+                    for s in self.__dict__["_symbol_list"]
+                ]
+                self[col] = [
+                    _get_expire_rest_days(expire_datetime, current_dt)
+                    if expire_datetime and expire_datetime == expire_datetime
+                    else float("nan")
+                    for expire_datetime in expire_datetimes
+                ]
             elif col == "trading_time_day" or col == "trading_time_night":
                 k = 'day' if col == "trading_time_day" else 'night'
                 self[col] = Series(
@@ -302,7 +330,10 @@ class TqSymbolDataFrame(DataFrame):
                 )
             else:
                 self[col] = Series(
-                    [quotes[s].get(col, default_quote[col]) for s in self.__dict__["_symbol_list"]],
+                    [
+                        self._get_symbol_info_value(quotes[s], col, default_quote[col])
+                        for s in self.__dict__["_symbol_list"]
+                    ],
                     dtype=_get_col_dtype(col)
                 )
 

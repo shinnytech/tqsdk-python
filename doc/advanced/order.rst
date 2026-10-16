@@ -5,7 +5,7 @@
 
 在实盘交易中, 除常见的限价委托指令外, tqsdk 提供了 FAK / FOK 两种高级市价指令。
 
-insert_order 为用户提供了 limit_price，advanced 两个参数指定下单指令，两个参数支持的值的组合为：
+:py:meth:`insert_order <tqsdk.TqApi.insert_order>` 为用户提供了 limit_price，advanced 两个参数指定下单指令，两个参数支持的值的组合为：
 
 =========== ======== ====================================
 limit_price advanced  memo

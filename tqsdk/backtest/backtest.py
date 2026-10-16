@@ -223,10 +223,10 @@ class TqBacktest(object):
         # 从 quotes 返回只剩余合约信息的字段的 quotes，防止发生未来数据发送给下游
         # backtest 模块会生成的数据
         invalid_keys = {f"{d}{i+1}" for d in ['ask_price', 'ask_volume', 'bid_price', 'bid_volume'] for i in range(5)}
-        invalid_keys.union({'datetime', 'last_price', 'highest', 'lowest', 'average', 'volume', 'amount', 'open_interest'})
-        invalid_keys.union({'cash_dividend_ratio', 'stock_dividend_ratio'})  # 这两个字段完全由 self._stock_dividend 负责处理
+        invalid_keys = invalid_keys.union({'datetime', 'last_price', 'highest', 'lowest', 'average', 'volume', 'amount', 'open_interest'})
+        invalid_keys = invalid_keys.union({'cash_dividend_ratio', 'stock_dividend_ratio'})  # 这两个字段完全由 self._stock_dividend 负责处理
         # backtest 模块不会生成的数据，下游服务也不应该收到的数据
-        invalid_keys.union({'open', 'close', 'settlement', 'lowest', 'lower_limit', 'upper_limit', 'pre_open_interest', 'pre_settlement', 'pre_close', 'expired'})
+        invalid_keys = invalid_keys.union({'open', 'close', 'settlement', 'lowest', 'lower_limit', 'upper_limit', 'pre_open_interest', 'pre_settlement', 'pre_close', 'expired'})
         for symbol, quote in quotes.items():
             [quote.pop(k, None) for k in invalid_keys]
             if symbol.startswith("KQ.m"):

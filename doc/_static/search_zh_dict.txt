@@ -11,7 +11,6 @@ TqNotify 100000
 TqRiskRule 100000
 TqRiskRuleError 100000
 TqSim 100000
-TqTradingUnit 100000
 TargetPosScheduler 100000
 TargetPosTask 100000
 DataDownloader 100000

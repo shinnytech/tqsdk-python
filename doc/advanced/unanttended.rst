@@ -16,7 +16,7 @@ TqSdk可以在windows/linux或macosx环境下运行. 无论您选择使用window
 
 在每个策略程序中设置实盘账号
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-将每个策略程序配置为独立直连实盘账号. 在创建 TqApi 时, 传入TqAccount实例. 注意期货公司名称需要与天勤中的名称一致::
+将每个策略程序配置为独立直连实盘账号. 在创建 :py:class:`TqApi <tqsdk.TqApi>` 时, 传入 :py:class:`TqAccount <tqsdk.TqAccount>` 实例. 注意期货公司名称需要与天勤中的名称一致::
 
   from tqsdk import TqApi, TqAccount, TqAuth
 
@@ -28,7 +28,7 @@ TqSdk可以在windows/linux或macosx环境下运行. 无论您选择使用window
 将策略代码投入无人监控运行前, 除对策略代码进行全面测试外, 还应注意以下事项:
 
 * 使用 python 的 logging 模块输出日志信息到文件, 不要使用 print 打印日志信息
-* 策略代码退出时记得调用 api.close() 函数, 或者用 with closing(api) 的格式确保退出时自动关闭
+* 策略代码退出时记得调用 :py:meth:`api.close() <tqsdk.TqApi.close>` 函数, 或者用 with closing(api) 的格式确保退出时自动关闭
 * 目前api在运行过程中抛出的异常, 默认处理都是整个策略进程直接退出. 如无特殊需求, 不要使用 except: 的方式捕获异常并阻止程序退出, 这种情况如果没有正确处理, 可能产生难以预测的后果.
 
 
@@ -118,6 +118,5 @@ TqSdk可以在windows/linux或macosx环境下运行. 无论您选择使用window
 在 Edit Configuration 中配置好以后, 通过 Run... 菜单选择保存好的运行项, 即可实现带参数运行
 
 .. image:: ../images/pycharm_run_configuration.png
-
 
 

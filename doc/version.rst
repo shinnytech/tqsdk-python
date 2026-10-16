@@ -2,6 +2,13 @@
 
 版本变更
 =============================
+3.10.3 (2026/10/16)
+
+* 修复: :py:class:`~tqsdk.TargetPosTask` 撤销尚未取得交易所委托号的本地委托时，算法可能停滞的问题
+* 优化: 穿管信息上报时使用当前交易连接所在网卡的 MAC 地址
+* docs: 优化文档
+
+
 3.10.2 (2026/08/17)
 
 * 新增: :py:meth:`~tqsdk.TqApi.insert_order` 支持上期所/能源中心组合套利指令
@@ -19,7 +26,7 @@
 3.10.0 (2026/05/26)
 
 * 新增: :py:class:`~tqsdk.TargetPosScheduler` 支持有最小开仓手数限制的合约
-* 新增: :py:class:`~tqsdk.algorithm.twap` 支持有最小开仓手数限制的合约
+* 新增: :py:class:`~tqsdk.algorithm.twap.Twap` 支持有最小开仓手数限制的合约
 * 优化: 多策略支持日志导出和自动切换交易日功能，详情见 :ref:`tq_trading_unit`
 * docs: 优化文档
 
@@ -65,7 +72,7 @@
 3.9.2 (2026/04/07)
 
 * 新增：:py:class:`~tqsdk.TqScenario` 类，支持场景试算，比如实盘保证金查询、持仓保证金占用试算、保证金率变更引起的风险度变化等
-* 新增：:py:class:`~tqsdk.TqApi.query_options` :py:class:`~tqsdk.TqApi.query_atm_options` :py:class:`~tqsdk.TqApi.query_all_level_options` 接口添加 has_MS 参数，用于过滤系列期权
+* 新增：:py:meth:`~tqsdk.TqApi.query_options` :py:meth:`~tqsdk.TqApi.query_atm_options` :py:meth:`~tqsdk.TqApi.query_all_level_options` 接口添加 has_MS 参数，用于过滤系列期权
 * docs: 优化文档
 
 
@@ -119,7 +126,7 @@
 
 3.8.4 (2025/07/18)
 
-* 新增: :py:class:`~tqsdk.TqApi.get_trading_status` 支持订阅期权交易状态
+* 新增: :py:meth:`~tqsdk.TqApi.get_trading_status` 支持订阅期权交易状态
 * 修复: :py:class:`~tqsdk.tools.DataDownloader` 计算复权因子错误
 * 修复: 回测模式下，:py:meth:`~tqsdk.TqApi.get_kline_serial` 订阅多合约 K 线时可能出现的越界报错
 * docs: 优化文档
@@ -148,7 +155,7 @@
 
 * 新增: :py:class:`~tqsdk.TqTradingUnit` 账户类型，支持多策略交易，详情参考 :ref:`tq_trading_unit`
 * 修复: numpy 移除 NaN 常量导致的指标函数执行失败
-* 修复: TqAuth 参数类型错误
+* 修复: :py:class:`TqAuth <tqsdk.TqAuth>` 参数类型错误
 * docs: 修正部分文档
 
 
@@ -166,7 +173,7 @@
 
 3.7.7 (2025/01/14)
 
-* docs: 修正部分文档，补充 wait_update 的 deadline 参数说明
+* docs: 修正部分文档，补充 :py:meth:`wait_update <tqsdk.TqApi.wait_update>` 的 deadline 参数说明
 * 自该版本起不再支持使用 api._data['quotes'] 获取全部合约
 
 
@@ -202,7 +209,7 @@
 
 3.7.1 (2024/08/29)
 
-* 修复：在 Windows 系统上使用 :py:class:`~tqsdk.TqCtp` 账户导致多 TqApi 实例无法运行的问题
+* 修复：在 Windows 系统上使用 :py:class:`~tqsdk.TqCtp` 账户导致多 :py:class:`TqApi <tqsdk.TqApi>` 实例无法运行的问题
 * 修复：:py:class:`~tqsdk.TqCtp` 文档 demo 代码拼写错误
 
 
@@ -260,9 +267,9 @@
 
 3.5.5 (2024/03/27)
 
-* 修复：TqSim 在调用 set_margin 之后，使用 is_changing 判断某个对象是否更新，可能返回的结果不正确
-* 优化：多账户下使用 :py:meth:`~tqsdk.algorithm.time_table_generater.vwap_table`，
-    :py:meth:`~tqsdk.algorithm.time_table_generater.twap_table` 不需要用户多次指定账户
+* 修复：:py:class:`TqSim <tqsdk.TqSim>` 在调用 set_margin 之后，使用 :py:meth:`is_changing <tqsdk.TqApi.is_changing>` 判断某个对象是否更新，可能返回的结果不正确
+* 优化：多账户下使用 :py:func:`~tqsdk.algorithm.time_table_generater.vwap_table`，
+    :py:func:`~tqsdk.algorithm.time_table_generater.twap_table` 不需要用户多次指定账户
 
 
 3.5.4 (2024/03/01)
@@ -324,7 +331,7 @@
 
 3.4.7 (2023/08/29)
 
-* 修复：:py:class:`~tqsdk.TargetPosTask` 及 :py:class:`~tqsdk.algorithm.twap` 添加纯碱期货 2309 合约及 2310 合约暂不支持的提示
+* 修复：:py:class:`~tqsdk.TargetPosTask` 及 :py:class:`~tqsdk.algorithm.twap.Twap` 添加纯碱期货 2309 合约及 2310 合约暂不支持的提示
 * docs：完善 :py:class:`~tqsdk.TqKq` 快期模拟辅模拟账户使用说明
 
 
@@ -332,12 +339,12 @@
 
 * 增加：支持同时使用多个快期模拟账户，:py:class:`~tqsdk.TqKq`、:py:class:`~tqsdk.TqKqStock` 加入多帐号支持
 * 修复：回测后 trade_log 中持仓信息增加 pos_long、pos_short、pos 字段
-* 优化：TqApi 初始化时账户相关参数的提示信息
+* 优化：:py:class:`TqApi <tqsdk.TqApi>` 初始化时账户相关参数的提示信息
 
 
 3.4.5 (2023/07/17)
 
-* 修复：:py:class:`~tqsdk.TargetPosTask` 及 :py:class:`~tqsdk.algorithm.twap` 支持红枣期货下单
+* 修复：:py:class:`~tqsdk.TargetPosTask` 及 :py:class:`~tqsdk.algorithm.twap.Twap` 支持红枣期货下单
 
 
 3.4.4 (2023/07/12)
@@ -395,7 +402,7 @@
 * 增加：:py:meth:`~tqsdk.TqApi.get_tick_data_series` 接口返回值中增加 average 列
 * 优化：下载数据时优化 cpu 占用
 * 优化：tqsdk 内部各个模块使用统一的时间处理函数
-* 修复：:py:class:`~tqsdk.TargetPosTask` 及 :py:class:`~tqsdk.algorithm.twap` 增加添加普麦、早籼稻、粳稻及晚籼稻期货暂不支持的提示
+* 修复：:py:class:`~tqsdk.TargetPosTask` 及 :py:class:`~tqsdk.algorithm.twap.Twap` 增加添加普麦、早籼稻、粳稻及晚籼稻期货暂不支持的提示
 * 修复：:py:meth:`~tqsdk.TqApi.query_symbol_ranking` 接口某些情况可能报错的问题
 
 
@@ -408,7 +415,7 @@
 3.2.7 (2022/04/22)
 
 * 优化：对多线程用例，增加可能的错误提示
-* 优化：TqApi 的 debug 默认值修改为 None，且 debug 为 None 情况下在磁盘剩余空间大于 3G 时才可能开启日志
+* 优化：:py:class:`TqApi <tqsdk.TqApi>` 的 debug 默认值修改为 None，且 debug 为 None 情况下在磁盘剩余空间大于 3G 时才可能开启日志
 * docs：增加 ETF 期权本地计算卖方保证金示例 o74，完善 targetpostask 的示例文档，完善 Position 下 orders 定义，统一修正文档大小写、变量命名等
 
 
@@ -420,21 +427,21 @@
 3.2.5 (2022/03/09)
 
 * 修复：修正上交所 ETF 期权的昨结算（pre_settlement）字段未正确显示的问题
-* 修复：:py:class:`~tqsdk.TargetPosTask` 及 :py:class:`~tqsdk.algorithm.twap` 添加强麦期货暂不支持的提示
-* 修复：api.insert_order 没有检查 advanced 参数
+* 修复：:py:class:`~tqsdk.TargetPosTask` 及 :py:class:`~tqsdk.algorithm.twap.Twap` 添加强麦期货暂不支持的提示
+* 修复：:py:meth:`api.insert_order <tqsdk.TqApi.insert_order>` 没有检查 advanced 参数
 
 
 3.2.4 (2022/03/07)
 
 * 优化：某些情况下启用 web_gui 后网页卡顿的问题
 * 修复：修正上交所 ETF 期权的昨结算（pre_settlement）字段
-* 修复：:py:class:`~tqsdk.TargetPosTask` 及 :py:class:`~tqsdk.algorithm.twap` 添加动力煤期货暂不支持的提示
+* 修复：:py:class:`~tqsdk.TargetPosTask` 及 :py:class:`~tqsdk.algorithm.twap.Twap` 添加动力煤期货暂不支持的提示
 * docs：修正文档，增加 tqkq() 的示例，增加 tqsdk2ctptest 文档
 
 
 3.2.3 (2022/02/16)
 
-* 修复：query_all_level_options 接口查询 ETF 期权可能报错的问题
+* 修复：:py:meth:`query_all_level_options <tqsdk.TqApi.query_all_level_options>` 接口查询 ETF 期权可能报错的问题
 * 修复：提升程序在连续订阅 K 线时的运行速度
 * 修复：使用快期模拟账户交易，在断线重连后程序可能报错的问题
 * docs：修正文档
@@ -472,12 +479,12 @@
 3.1.0 (2021/12/24)
 
 * 新增：为各种账户类型增加接口调用，支持 IDE 更好的提供代码提示。TqSdk 目前支持以下账户类型 :py:class:`~tqsdk.TqAccount`、:py:class:`~tqsdk.TqKq`、
-  :py:class:`~tqsdk.TqKqStock`、:py:class:`~tqsdk.TqSim`，本次重构为以上账户类型分别添加了 ``get_account``、``get_position``、``get_order``、``get_trade`` 几个接口，明确了其返回值的类型。
+  :py:class:`~tqsdk.TqKqStock`、:py:class:`~tqsdk.TqSim`，本次重构为以上账户类型分别添加了 :py:meth:`get_account <tqsdk.TqApi.get_account>`、:py:meth:`get_position <tqsdk.TqApi.get_position>`、:py:meth:`get_order <tqsdk.TqApi.get_order>`、:py:meth:`get_trade <tqsdk.TqApi.get_trade>` 几个接口，明确了其返回值的类型。
 
   例如：:py:class:`~tqsdk.TqKq` 实例调用 :py:meth:`~tqsdk.TqKq.get_account` ，返回 :py:class:`~tqsdk.objs.Account` 类型实例；
 
   :py:class:`~tqsdk.TqKqStock` 实例调用 :py:meth:`~tqsdk.TqKqStock.get_account` ，返回 :py:class:`~tqsdk.objs.SecurityAccount` 类型实例。
-* 修复：:py:class:`~tqsdk.TargetPosTask` 及 :py:class:`~tqsdk.algorithm.twap` 增加添加红枣期货暂不支持的提示
+* 修复：:py:class:`~tqsdk.TargetPosTask` 及 :py:class:`~tqsdk.algorithm.twap.Twap` 增加添加红枣期货暂不支持的提示
 * docs：更新开盘抢单示例代码
 
 
@@ -490,7 +497,7 @@
 
 * 修复：调用 :py:meth:`~tqsdk.TqApi.get_kline_serial` 接口获取股票前复权 Kline 时，复权计算结果可能出错的问题
 * 新增：节假日表添加 2022 年节假日信息
-* 新增：支持在 python 3.10 下使用 TqApi
+* 新增：支持在 python 3.10 下使用 :py:class:`TqApi <tqsdk.TqApi>`
 * web_gui：支持多账户下使用
 * docs：更新示例合约代码
 
@@ -499,7 +506,7 @@
 
 * 修复：调用 :py:meth:`~tqsdk.TqApi.query_symbol_info`，当参数中包含主连/指数合约会报错的问题
 * 修复：在某些情况下，回测时获取期权及标的合约的多合约 Kline 可能报错的问题
-* 修复：回测时取主连合约，如果用 ``quote.underlying_quote`` 直接读取标的合约，在标的合约变更时，可能未重新订阅行情的问题
+* 修复：回测时取主连合约，如果用 :py:attr:`quote.underlying_quote <tqsdk.objs.Quote.underlying_quote>` 直接读取标的合约，在标的合约变更时，可能未重新订阅行情的问题
 * 优化：取消网络连接关闭时屏幕输出，改为存入日志文件
 * docs：完善 :py:meth:`~tqsdk.TqApi.get_account`、:py:meth:`~tqsdk.TqApi.get_position`、:py:meth:`~tqsdk.TqApi.get_order`、
   :py:meth:`~tqsdk.TqApi.get_trade` 函数返回值类型文档说明，完善专业版 :ref:`profession_tqkqstock` 文档，完善 :ref:`tqsdk.tqrohon` 融航接入文档
@@ -537,7 +544,7 @@
 
 * 增加：:py:meth:`~tqsdk.TqApi.get_trading_status` 接口，支持开盘抢单功能
 * 增加：:py:meth:`~tqsdk.TqApi.query_symbol_info` 接口返回值中增加 ``product_id``, ``expire_rest_days``, ``trading_time_day``, ``trading_time_night`` 几个字段
-* 优化：TqSim 回测报告增加部分字段，和 web_gui 显示回测报告一致
+* 优化：:py:class:`TqSim <tqsdk.TqSim>` 回测报告增加部分字段，和 web_gui 显示回测报告一致
 * 优化：:py:meth:`~tqsdk.TqApi.get_kline_data_series`、:py:meth:`~tqsdk.TqApi.get_tick_data_series` 接口报错
 
 
@@ -553,39 +560,39 @@
 
 2.8.6 (2021/09/16)
 
-* 增加：TqApi 增加 :py:meth:`~tqsdk.TqApi.query_his_cont_quotes` 接口，可以获取过去 n 个交易日的历史主连信息
+* 增加：:py:class:`TqApi <tqsdk.TqApi>` 增加 :py:meth:`~tqsdk.TqApi.query_his_cont_quotes` 接口，可以获取过去 n 个交易日的历史主连信息
 * 增加：通知模块 :py:class:`~tqsdk.TqNotify`，帮助用户收集通知信息并做定制化处理
 * docs：完善风控文档，增加专业版权限函数说明
 
 
 2.8.5 (2021/09/06)
 
-* 增加：TqApi 增加 :py:meth:`~tqsdk.TqApi.query_symbol_ranking` 接口，支持查询合约成交排名/持仓排名。
-* 增加：TqApi 增加 :py:meth:`~tqsdk.TqApi.query_option_greeks` 接口，返回指定期权的希腊指标。
+* 增加：:py:class:`TqApi <tqsdk.TqApi>` 增加 :py:meth:`~tqsdk.TqApi.query_symbol_ranking` 接口，支持查询合约成交排名/持仓排名。
+* 增加：:py:class:`TqApi <tqsdk.TqApi>` 增加 :py:meth:`~tqsdk.TqApi.query_option_greeks` 接口，返回指定期权的希腊指标。
 * 修复：pyinstaller 工具由于缺少初始合约文件导致打包失败
-* 优化：:py:meth:`~tqsdk.tafunc.get_delta`、:py:meth:`~tqsdk.tafunc.get_theta`、:py:meth:`~tqsdk.tafunc.get_rho`、
-  :py:meth:`~tqsdk.tafunc.get_bs_price`、:py:meth:`~tqsdk.tafunc.get_impv` 接口中 ``option_class`` 参数支持类型扩展为
+* 优化：:py:func:`~tqsdk.tafunc.get_delta`、:py:func:`~tqsdk.tafunc.get_theta`、:py:func:`~tqsdk.tafunc.get_rho`、
+  :py:func:`~tqsdk.tafunc.get_bs_price`、:py:func:`~tqsdk.tafunc.get_impv` 接口中 ``option_class`` 参数支持类型扩展为
   ``str 或者 pandas.Series``，详情见文档
 
 
 
 2.8.4 (2021/08/31)
 
-* 修复：由于缺少初始合约文件，TqApi 初始化可能失败的问题
+* 修复：由于缺少初始合约文件，:py:class:`TqApi <tqsdk.TqApi>` 初始化可能失败的问题
 
 
 2.8.3 (2021/08/30)
 
-* 增加：is_changing 接口增加对于委托单 :py:meth:`~tqsdk.objs.Order.is_dead`、:py:meth:`~tqsdk.objs.Order.is_online`、
+* 增加：:py:meth:`is_changing <tqsdk.TqApi.is_changing>` 接口增加对于委托单 :py:meth:`~tqsdk.objs.Order.is_dead`、:py:meth:`~tqsdk.objs.Order.is_online`、
   :py:meth:`~tqsdk.objs.Order.is_error`、:py:meth:`~tqsdk.objs.Order.trade_price` 字段支持判断是否更新
-* 修复：TqApi 初始化可能失败的问题
-* 优化：将已知下市合约直接打包在代码中，缩短 TqApi 初始化时间
+* 修复：:py:class:`TqApi <tqsdk.TqApi>` 初始化可能失败的问题
+* 优化：将已知下市合约直接打包在代码中，缩短 :py:class:`TqApi <tqsdk.TqApi>` 初始化时间
 * docs：完善主力切换规则说明，将阿里源替换为清华源
 
 
 2.8.2 (2021/08/17)
 
-* 增加：is_changing 接口增加对于合约 :py:meth:`~tqsdk.objs.Quote.expire_rest_days`，持仓 :py:meth:`~tqsdk.objs.Position.pos_long`、
+* 增加：:py:meth:`is_changing <tqsdk.TqApi.is_changing>` 接口增加对于合约 :py:meth:`~tqsdk.objs.Quote.expire_rest_days`，持仓 :py:meth:`~tqsdk.objs.Position.pos_long`、
   :py:meth:`~tqsdk.objs.Position.pos_short`、:py:meth:`~tqsdk.objs.Position.pos` 字段支持判断是否更新
 * 修复：2.8.1 版本重构后，不支持多线程运行的问题
 * docs：更新合约字段示例说明
@@ -598,9 +605,9 @@
   :py:meth:`~tqsdk.TqApi.query_symbol_info`，:py:meth:`~tqsdk.TqApi.query_all_level_options`，
   :py:meth:`~tqsdk.TqApi.query_all_level_finance_options`，支持协程中
   ``in_options, at_options, out_options = await api.query_all_level_finance_options("SSE.510300", 4.60, "CALL", nearbys = 1)`` 写法，参考文档：:ref:`multi_async_task`
-* 修复：target_pos_task 优化报错提示，已经结束的 TargetPosTask 实例再调用 set_target_volume 设置手数会报错。参考文档：:py:meth:`~tqsdk.TargetPosTask.cancel`
+* 修复：target_pos_task 优化报错提示，已经结束的 :py:class:`TargetPosTask <tqsdk.TargetPosTask>` 实例再调用 set_target_volume 设置手数会报错。参考文档：:py:meth:`~tqsdk.TargetPosTask.cancel`
 * 修复：下载历史数据时，某些数据未按照最小价格变动单位保留相应小数位数的问题
-* 重构：优化 wait_update、is_changing 接口的实现，增强对协程的支持
+* 重构：优化 :py:meth:`wait_update <tqsdk.TqApi.wait_update>`、:py:meth:`is_changing <tqsdk.TqApi.is_changing>` 接口的实现，增强对协程的支持
 * docs：完善回测字段规则文档说明
 
 
@@ -628,7 +635,7 @@
 
 * 增加：**去除 Cython 编译，本地代码全部开源**
 * 增加：**支持 ARM 架构下 CPU 的安装使用**
-* 增加：TqApi 增加 :py:meth:`~tqsdk.TqApi.query_all_level_finance_options` 接口，支持查询指定当月、下月、季月等到期月份的金融期权。
+* 增加：:py:class:`TqApi <tqsdk.TqApi>` 增加 :py:meth:`~tqsdk.TqApi.query_all_level_finance_options` 接口，支持查询指定当月、下月、季月等到期月份的金融期权。
 * 增加：支持上期能源下载 ticks 5 档行情
 * 修复：某些参数可能造成 twap 无法执行的问题
 * 修复：客户端发送的 variables 中变量值不支持空字符串、空列表或者列表中包括空字符串
@@ -648,7 +655,7 @@
 
 * 增加：为期权持仓、成交、委托单对象添加部分期权合约信息，方便用户查看
 * 增加：回测时，Quote 对象支持读取 expired 值
-* 修复：TargetPosScheduler 最后一项等到目标持仓完成退出，最后一项设置的超时时间无效
+* 修复：:py:class:`TargetPosScheduler <tqsdk.TargetPosScheduler>` 最后一项等到目标持仓完成退出，最后一项设置的超时时间无效
 * 修复：回测时如果先订阅日线，可能出现无法成交的问题
 * doc：完善期权文档、增加 :ref:`enterprise` 文档说明
 
@@ -656,9 +663,9 @@
 2.6.4 (2021/06/23)
 
 * 增加：:py:class:`~tqsdk.objs.Quote` 增加 :py:class:`~tqsdk.objs.Quote.expire_rest_days` 属性，表示距离到期日天数
-* 增加：TqApi 增加 :py:meth:`~tqsdk.TqApi.query_symbol_info` 接口，支持批量查询合约信息
-* 增加：TqApi 增加 :py:meth:`~tqsdk.TqApi.query_all_level_options` 接口，返回标的对应的全部的实值、平值、虚值期权
-* 增加：TqApi 中 :py:meth:`~tqsdk.TqApi.query_atm_options` 接口，扩大参数 price_level 支持范围
+* 增加：:py:class:`TqApi <tqsdk.TqApi>` 增加 :py:meth:`~tqsdk.TqApi.query_symbol_info` 接口，支持批量查询合约信息
+* 增加：:py:class:`TqApi <tqsdk.TqApi>` 增加 :py:meth:`~tqsdk.TqApi.query_all_level_options` 接口，返回标的对应的全部的实值、平值、虚值期权
+* 增加：:py:class:`TqApi <tqsdk.TqApi>` 中 :py:meth:`~tqsdk.TqApi.query_atm_options` 接口，扩大参数 price_level 支持范围
 * 增加：sim.tqsdk_stat 增加总手续费字段
 * 修复：回测中某些有夜盘的合约，报夜盘时间不在可交易时间段的问题
 * 修复：回测报告中，在有期权交易时，每日收益值有错误
@@ -674,7 +681,7 @@
 2.6.3 (2021/06/11)
 
 * 修复：twap 策略某些参数组合无法执行的问题，修改后生成随机手数可能最后一笔的下单手数小于设置的最小手数
-* 修复：TqSim 模拟交易期权时，某些情况下标的行情不更新的问题
+* 修复：:py:class:`TqSim <tqsdk.TqSim>` 模拟交易期权时，某些情况下标的行情不更新的问题
 * 完善文档：增加指数、主连行情、期权使用文档说明
 * web_gui：增加回测报告图表页面（增加每日资金、每日盈亏、滚动夏普比率、滚动索提诺比率图表）
 * web_gui：指标线可以绘制虚线
@@ -683,7 +690,7 @@
 2.6.2 (2021/06/03)
 
 * 修复：在回测某些时间段时，指数无法交易的问题
-* 重构：TqSim 回测统计函数重构，增加 sortino_ratio 索提诺比率指标
+* 重构：:py:class:`TqSim <tqsdk.TqSim>` 回测统计函数重构，增加 sortino_ratio 索提诺比率指标
 * 重构：算法模块中产生随机序列的方法
 * 优化：target_pos_task 报错提示文字
 * 优化：网络链接建立、断连时的报错提示文字
@@ -698,19 +705,19 @@
 * 增加：增强在协程中的支持，以下接口 :py:meth:`~tqsdk.TqApi.get_quote`，:py:meth:`~tqsdk.TqApi.get_quote_list`，
   :py:meth:`~tqsdk.TqApi.get_kline_serial`，:py:meth:`~tqsdk.TqApi.get_tick_serial` 支持协程中
   ``quote = await api.get_quote('SHFE.cu2106')`` 写法，参考文档：:ref:`multi_async_task`
-* 增加：:py:meth:`~tqsdk.algorithm.time_table_generater.vwap_table` 的示例代码，参考链接 :ref:`demo-algorithm-vwap`
-* 优化：:py:meth:`~tqsdk.algorithm.time_table_generater.twap_table` 的示例代码，参考链接 :ref:`demo-algorithm-twap`
+* 增加：:py:func:`~tqsdk.algorithm.time_table_generater.vwap_table` 的示例代码，参考链接 :ref:`demo-algorithm-vwap`
+* 优化：:py:func:`~tqsdk.algorithm.time_table_generater.twap_table` 的示例代码，参考链接 :ref:`demo-algorithm-twap`
 * 优化：在网络链接开始尝试重连时，增加通知和日志
-* 修复：多次创建同合约 TargetPosTask 实例，可能抛错的问题
+* 修复：多次创建同合约 :py:class:`TargetPosTask <tqsdk.TargetPosTask>` 实例，可能抛错的问题
 * 完善文档：补充期权示例文档
 
 
 2.6.0 (2021/05/20)
 
-* 增加：``tqsdk.algorithm`` 模块提供 :py:meth:`~tqsdk.algorithm.time_table_generater.vwap_table` 帮助用户完成 vwap 算法下单。
+* 增加：``tqsdk.algorithm`` 模块提供 :py:func:`~tqsdk.algorithm.time_table_generater.vwap_table` 帮助用户完成 vwap 算法下单。
 * 增加：:py:class:`~tqsdk.exceptions.TqTimeoutError` 错误类型，方便用于捕获此错误
 * 增加：:py:class:`~tqsdk.TargetPosTask` 实例提供 :py:meth:`~tqsdk.TargetPosTask.cancel`、:py:meth:`~tqsdk.TargetPosTask.is_finished` 方法
-* 修复：在异步代码中调用 get_quote 函数时，可能遇到 Task 未被引用而引发的错误
+* 修复：在异步代码中调用 :py:meth:`get_quote <tqsdk.TqApi.get_quote>` 函数时，可能遇到 Task 未被引用而引发的错误
 * 修复：Windows 中下载数据时，文件已经被占用而无法继续下载时，TqSdk 没有正常退出的错误
 * 优化：针对初始化时的可能出现超时退出的问题，增加错误收集和提示
 
@@ -718,8 +725,8 @@
 2.5.1 (2021/05/13)
 
 * 增加：负责策略执行工具 :py:class:`~tqsdk.TargetPosScheduler`，帮助用户完成复杂的下单策略，同时提供给用户极大的调整空间。文档参考 :ref:`target_pos_scheduler`
-* 增加：TqSim 支持用户设置期权手续费
-* 修复：协程中调用 get_quote 可能超时的问题
+* 增加：:py:class:`TqSim <tqsdk.TqSim>` 支持用户设置期权手续费
+* 修复：协程中调用 :py:meth:`get_quote <tqsdk.TqApi.get_quote>` 可能超时的问题
 * 修复：首次登录期货账户可能会抛错的问题
 * 优化：修改文档，增加测试脚本日志输出
 
@@ -728,14 +735,14 @@
 
 + 增加：:py:meth:`~tqsdk.TqApi.get_quote_list` 接口，支持批量订阅合约。注意其参数和返回值都是 list 类型。
 + 增加：版本通知功能，后续版本升级将在 TqSdk 版本大于等于 2.5.0 以上版本做通知
-+ 优化：TqApi 初始化逻辑，减少了一大半 TqApi 初始化时间
++ 优化：:py:class:`TqApi <tqsdk.TqApi>` 初始化逻辑，减少了一大半 :py:class:`TqApi <tqsdk.TqApi>` 初始化时间
 
 
 2.4.1 (2021/04/16)
 
-* 增加：TqSim 支持 BEST / FIVELEVEL 市价单
+* 增加：:py:class:`TqSim <tqsdk.TqSim>` 支持 BEST / FIVELEVEL 市价单
 * 修复：回测情况下可能遇到单个合约行情回退的问题
-* 修复：get_position 获取持仓添加默认的 exchange_id, instrument_id
+* 修复：:py:meth:`get_position <tqsdk.TqApi.get_position>` 获取持仓添加默认的 exchange_id, instrument_id
 * 修复：回测时用到多合约 Kline 且其中某个合约在回测区间内下市，可能导致程序崩溃
 * 重构：合约服务模块独立为一个模块，增加了查询合约服务等待时间，减少了api初始化创建失败的概率
 * 完善文档
@@ -743,8 +750,8 @@
 
 2.4.0 (2021/03/30)
 
-* 增加：:py:class:`~tqsdk.algorithm.twap` 增加 trades，average_trade_price 属性，用于获取成交记录和成交均价
-* 增加：query_cont_quotes 接口增加 has_night 参数，详情参考 :py:meth:`~tqsdk.TqApi.query_cont_quotes`
+* 增加：:py:class:`~tqsdk.algorithm.twap.Twap` 增加 trades，average_trade_price 属性，用于获取成交记录和成交均价
+* 增加：:py:meth:`query_cont_quotes <tqsdk.TqApi.query_cont_quotes>` 接口增加 has_night 参数，详情参考 :py:meth:`~tqsdk.TqApi.query_cont_quotes`
 * 增加：**支持用户回测中设置 TqSim 的保证金和手续费**，详情参考 :py:meth:`~tqsdk.TqSim.set_margin`、:py:meth:`~tqsdk.TqSim.set_commission`、:py:meth:`~tqsdk.TqSim.get_margin`、:py:meth:`~tqsdk.TqSim.get_commission`
 * 增加：**支持用户回测中使用 quote.underlying_symbol 获取主连对应的主力合约**，详情参考 :ref:`backtest_underlying_symbol`
 * 修复：回测时大于日线周期的 K 线的收盘时间错误
@@ -752,20 +759,20 @@
 
 2.3.5 (2021/03/19)
 
-* 增加：:py:class:`~tqsdk.algorithm.twap` 支持在多账户下使用
-* 重构： TqSim 模拟交易模块，修复了 TqSim 模拟交易期权时部分字段计算错误的问题，增加测试用例覆盖，提高 TqSim 模块准确性
+* 增加：:py:class:`~tqsdk.algorithm.twap.Twap` 支持在多账户下使用
+* 重构： :py:class:`TqSim <tqsdk.TqSim>` 模拟交易模块，修复了 :py:class:`TqSim <tqsdk.TqSim>` 模拟交易期权时部分字段计算错误的问题，增加测试用例覆盖，提高 :py:class:`TqSim <tqsdk.TqSim>` 模块准确性
 * 修复：:py:class:`~tqsdk.TargetPosTask` 能支持多账户下使用
 * 修复：之前版本下载无任何成交的合约会显示在 0% 卡住或退出程序，修改为超时（30s）之后跳过该无成交合约下载后续合约
-* 完善文档：增加 TargetPosTask 大单拆分模式用法示例，修改完善期权文档等
+* 完善文档：增加 :py:class:`TargetPosTask <tqsdk.TargetPosTask>` 大单拆分模式用法示例，修改完善期权文档等
 * 依赖库升级：pandas 版本要求为 >= 1.1.0
 
 
 2.3.4 (2021/03/11)
 
 * 增加：**TargetPosTask 增加 min_volume, max_volume 参数，支持大单拆分模式**，详情参考 :py:class:`~tqsdk.TargetPosTask`
-* 重构：TqSim 模拟交易模块，修复了 TqSim 模拟交易时账户、持仓部分资金字段计算错误的 bug
+* 重构：:py:class:`TqSim <tqsdk.TqSim>` 模拟交易模块，修复了 :py:class:`TqSim <tqsdk.TqSim>` 模拟交易时账户、持仓部分资金字段计算错误的 bug
 * 修复：:py:meth:`~tqsdk.TqApi.query_options`, :py:meth:`~tqsdk.TqApi.query_atm_options` 接口中 `has_A` 参数不生效的 bug
-* 修复：在使用 TargetPosTask 时，主动调用 api.close() 程序不能正常退出的错误的 bug
+* 修复：在使用 :py:class:`TargetPosTask <tqsdk.TargetPosTask>` 时，主动调用 :py:meth:`api.close() <tqsdk.TqApi.close>` 程序不能正常退出的错误的 bug
 * 修复：回测时使用多合约 Kline 可能引起的 bug
 * 修复：在节假日时回测，由于节假日当日无夜盘而导致部分夜盘品种的交易时间段错误
 * 修复：web_gui 在切换合约/周期时未更新用户绘图数据的 bug
@@ -784,7 +791,7 @@
 * 修复在回测时订阅当天上市的合约可能出现报错的情况
 * 修复 web_gui 回测时某些情况下定位不准确的问题
 * 优化 :py:meth:`~tqsdk.TqApi.query_quotes` , 支持用户查询交易所的全部主连或指数
-* 优化 TqSim 交易失败的提示
+* 优化 :py:class:`TqSim <tqsdk.TqSim>` 交易失败的提示
 * 优化客户端发送的数据包量，降低流量占用
 
 
@@ -800,7 +807,7 @@
 
 * 股票实盘交易即将上线
 * 回测增加支持获取多合约 Kline，现在可以在回测中使用期权相关函数
-* TqSim 增加属性 tqsdk_stat，提供给用户查看回测交易统计信息，详情参考 :ref:`backtest`
+* :py:class:`TqSim <tqsdk.TqSim>` 增加属性 tqsdk_stat，提供给用户查看回测交易统计信息，详情参考 :ref:`backtest`
 * 修复 twap 可能少下单的问题，增加针对 twap 的测试用例
 
 
@@ -810,7 +817,7 @@
 * 修复 web 需要拖拽才能更新 K 线的问题，支持自动更新 K 线
 * 修复下载多合约 K 线，列名顺序错误的问题
 * 修复 web 盘口总手数可能显示错误的问题
-* 修复 draw_text 设置颜色无效的问题
+* 修复 :py:meth:`draw_text <tqsdk.TqApi.draw_text>` 设置颜色无效的问题
 
 
 2.2.5 (2020/12/29)
@@ -818,7 +825,7 @@
 * 复权统一命名规范 "F" 表示前复权，"B" 表示后复权，请检查您的代码是否符合规范
 * 修复下载复权数据时，由于下载时间段无复权信息，可能导致失败的问题
 * 修复复盘时，下单可能会报错的问题
-* 修复在 get_kline_serial / get_tick_serial 在 pandas=1.2.0 版本下用法不兼容的问题
+* 修复在 :py:meth:`get_kline_serial <tqsdk.TqApi.get_kline_serial>` / :py:meth:`get_tick_serial <tqsdk.TqApi.get_tick_serial>` 在 pandas=1.2.0 版本下用法不兼容的问题
 * 完善期权相关文档
 
 2.2.4 (2020/12/23)
@@ -831,7 +838,7 @@
 
 * 修复 twap 在退出时由于未等待撤单完成，可能造成重复下单的问题
 * 修复 twap 未按时间随机，成交后立即退出的问题
-* 修复在复盘模式下 TqSim 设置初始资金无效
+* 修复在复盘模式下 :py:class:`TqSim <tqsdk.TqSim>` 设置初始资金无效
 * 修复 web 绘制线型无法设置颜色的问题
 * 修复回测模式下连接老版行情服务器无法运行问题
 
@@ -860,7 +867,7 @@
 
 2.1.4 (2020/11/26)
 
-* 增加计算波动率曲面函数，详情参考 :py:meth:`~tqsdk.ta.VOLATILITY_CURVE`
+* 增加计算波动率曲面函数，详情参考 :py:func:`~tqsdk.ta.VOLATILITY_CURVE`
 * **TargetPosTask 支持 price 参数为函数类型**，详情参考 :py:class:`~tqsdk.TargetPosTask`
 * 优化下载数据体验，已下市无数据合约提前退出
 * 修复在复盘情况下会持续重复发送订阅合约请求的问题，可以改善复盘连接成功率
@@ -877,7 +884,7 @@
 2.1.2 (2020/11/19)
 
 * 下载数据工具支持默认下载 ticks 五档行情
-* 下载数据工具增加 get_data_series 接口，可以获取 dataframe 格式数据，详情请参考 :py:meth:`~tqsdk.tools.DataDownloader.get_data_series`
+* 下载数据工具增加 ``DataDownloader.get_data_series()`` 接口，可以获取 dataframe 格式数据（该历史接口已在 2.1.3 下线；当前获取历史序列请参考 :py:meth:`~tqsdk.TqApi.get_kline_data_series` 和 :py:meth:`~tqsdk.TqApi.get_tick_data_series`）
 * 优化下载数据体验，无数据合约提前退出
 * 修复 twap 算法可能无法持续下单的 bug
 * web_gui 替换新版 logo
@@ -891,8 +898,8 @@
 
 2.1.0 (2020/11/17)
 
-* **增加多账户功能**，详情请参考 :py:class:`~tqsdk.multiaccount`
-* 优化日志模块，明确区分屏幕输出、日志文件中的日志格式，并在 TqApi 中提供参数 `disable_print`，可以禁止 TqApi 在屏幕输出内容，详情请参考 :py:class:`~tqsdk.TqApi`
+* **增加多账户功能**，详情请参考 :py:class:`~tqsdk.TqMultiAccount`
+* 优化日志模块，明确区分屏幕输出、日志文件中的日志格式，并在 :py:class:`TqApi <tqsdk.TqApi>` 中提供参数 `disable_print`，可以禁止 :py:class:`TqApi <tqsdk.TqApi>` 在屏幕输出内容，详情请参考 :py:class:`~tqsdk.TqApi`
 * 修复复盘时 web_gui 时间显示错误
 * 优化测试用例执行流程，支持并行运行测试
 * 修改、优化优化文档
@@ -902,7 +909,7 @@
 2.0.5 (2020/11/03)
 
 * 优化：Quote 对象增加若干字段：instrument_name、 exercise_year、exercise_month、last_exercise_datetime、exercise_type、public_float_share_quantity，详情请参考文档 :py:class:`~tqsdk.objs.Quote`
-* 修改：query_options 接口参数名调整，兼容之前的用法
+* 修改：:py:meth:`query_options <tqsdk.TqApi.query_options>` 接口参数名调整，兼容之前的用法
 * 修复：CFFEX.IO 指数回测可能报错的bug
 * 修复：快期模拟在 web_gui 中优化用户名显示
 * 修复：未设置过 ETF 期权风控规则的账户首次设置风控规则时可能报错
@@ -920,14 +927,14 @@
 
 * 修复 api 对不存在合约名称的错误处理
 * 增加下载委托单和成交记录的示例 :ref:`tutorial-downloader-orders`
-* 增加 algorithm 算法模块，增加 :py:class:`~tqsdk.algorithm.twap` 算法以及对应的 demo 示例 :ref:`demo-algorithm-twap`
+* 增加 algorithm 算法模块，增加 :py:class:`~tqsdk.algorithm.twap.Twap` 算法以及对应的 demo 示例 :ref:`demo-algorithm-twap`
 
 
 2.0.2 (2020/09/18)
 
 * 2020/10/01 以后，免费版用户不再支持回测，下载数据等功能，`点击了解专业版和免费版区别 <https://www.shinnytech.com/tqsdk-buy/>`_
 * 修改中证 500 的合约名称为 SSE.000905
-* 修改 TqAccount 检查参数类型并提示用户
+* 修改 :py:class:`TqAccount <tqsdk.TqAccount>` 检查参数类型并提示用户
 
 
 2.0.1 (2020/09/17)
@@ -937,17 +944,17 @@
 * 支持 ETF 期权交易，支持的期货公司名单参见 `点击查看详细说明 <https://www.shinnytech.com/blog/tq-support-broker/>`_
 * 提供新版合约接口服务 :py:meth:`~tqsdk.TqApi.query_quotes`、:py:meth:`~tqsdk.TqApi.query_cont_quotes`、:py:meth:`~tqsdk.TqApi.query_options`，替代原有 _data 用法，建议尽早换用
 * 增加设置、读取 ETF 期权风控规则的接口，:py:meth:`~tqsdk.TqApi.set_risk_management_rule`、:py:meth:`~tqsdk.TqApi.get_risk_management_rule`
-* 增加 TqAuth 用户认证类，使用 TqApi 时 auth 为必填参数，:py:class:`~tqsdk.TqAuth`，兼容原有 auth 用法。
+* 增加 :py:class:`TqAuth <tqsdk.TqAuth>` 用户认证类，使用 :py:class:`TqApi <tqsdk.TqApi>` 时 auth 为必填参数，:py:class:`~tqsdk.TqAuth`，兼容原有 auth 用法。
 * 增加权限校验，提示用户限制信息
 * 修改为默认不开启 debug 记录日志
-* 修复 TqKq 登录失败的问题
+* 修复 :py:class:`TqKq <tqsdk.TqKq>` 登录失败的问题
 * 修改、优化文档及测试用例
 
 
 1.8.3 (2020/07/29)
 
 * 修复：pandas 的 consolidate 函数调用可能会造成 K 线数据不更新
-* 修复：api.insert_order 没有检查大商所期权不支持市价单
+* 修复：:py:meth:`api.insert_order <tqsdk.TqApi.insert_order>` 没有检查大商所期权不支持市价单
 * 优化用户 import pandas 遇到 ImportError 时问题提示
 * 更新优化文档，增加股票相关示例，更新示例中的期货合约，标注文档中 objs 对象类型说明
 
@@ -963,7 +970,7 @@
 
 1.8.1 (2020/06/19)
 
-* 增加 :py:class:`~tqsdk.account.TqKq` 账户类型，可以使用统一的快期模拟账户登录，详情点击 :ref:`sim_trading`
+* 增加 :py:class:`~tqsdk.TqKq` 账户类型，可以使用统一的快期模拟账户登录，详情点击 :ref:`sim_trading`
 * 增加支持指数回测
 * 支持 `with TqApi() as api` 写法
 * quote 对象增加 exchange_id 字段，表示交易所代码
@@ -979,7 +986,7 @@
 1.8.0 (2020/05/12)
 
 * 股票行情测试版发布，**_stock 参数设置为 True 可以连接测试行情服务器，提供股票数据** `详细说明请点击查看 <https://www.shinnytech.com/blog/%e5%a4%a9%e5%8b%a4%e9%87%8f%e5%8c%961-8-0_beta%ef%bc%8c%e6%94%af%e6%8c%81%e8%82%a1%e7%a5%a8%e8%a1%8c%e6%83%85%e8%8e%b7%e5%8f%96%ef%bc%81/>`_
-* 增加计算 ticks 开平方向函数(详见: :py:meth:`~tqsdk.tafunc.get_ticks_info` )
+* 增加计算 ticks 开平方向函数(详见: :py:func:`~tqsdk.tafunc.get_ticks_info` )
 * 修复 sim 撤单未检查单号是否可撤
 * 重构代码，优化模块划分
 * 修改测试脚本和测试用例，提高持续集成效率
@@ -1023,7 +1030,7 @@
 1.6.0 (2020/02/11)
 
 * 交易网关升级, **所有用户需升级至 1.6.0 版本以上**
-* 修复参数搜索时由于 TargetPosTask 单实例造成的内存泄漏
+* 修复参数搜索时由于 :py:class:`TargetPosTask <tqsdk.TargetPosTask>` 单实例造成的内存泄漏
 * web_gui 参数格式改成 [ip]:port, 允许公网访问
 * 改进 web 界面，增加分时图，优化盘口显示内容，修复相关问题
 * 修改 barlast() 的返回值为 pandas.Series 类型序列
@@ -1033,12 +1040,12 @@
 
 1.5.1 (2020/01/13)
 
-* 优化 TqApi 参数 web_gui, 允许指定网页地址和端口(详见: :ref:`web_gui` )
+* 优化 :py:class:`TqApi <tqsdk.TqApi>` 参数 web_gui, 允许指定网页地址和端口(详见: :ref:`web_gui` )
 * 更新优化 vscode 插件以及web 页面
 * 简化画图函数color的参数
-* 增加 barlast 功能函数(详见: :py:meth:`~tqsdk.tafunc.barlast` )
+* 增加 barlast 功能函数(详见: :py:func:`~tqsdk.tafunc.barlast` )
 * 优化多合约k线报错提示及示例
-* 修复 TargetPosTask 进行参数搜索时无法正确执行的bug
+* 修复 :py:class:`TargetPosTask <tqsdk.TargetPosTask>` 进行参数搜索时无法正确执行的bug
 * 修复可能触发的回测结果计算报错的问题
 * 增加测试用例
 * 完善文档内容
@@ -1047,7 +1054,7 @@
 1.5.0 (2020/01/06)
 
 * 支持股票上线准备，增加天勤用户认证
-* TqSim 的 trade_log 改为公开变量
+* :py:class:`TqSim <tqsdk.TqSim>` 的 trade_log 改为公开变量
 * 完善文档内容
 
 
@@ -1084,7 +1091,7 @@
 
 1.2.1 (2019/12/04)
 
-* 完善 insert_order() 函数返回的 order 的初始化字段：增加 limit_price、price_type、volume_condition、time_condition 字段
+* 完善 :py:meth:`insert_order() <tqsdk.TqApi.insert_order>` 函数返回的 order 的初始化字段：增加 limit_price、price_type、volume_condition、time_condition 字段
 * 增加 quote 行情数据中的 trading_time、expire_datetime、delivery_month、delivery_year、ins_class 字段
 * 删除 quote 行情数据中的 change、change_percent 字段
 * 修复重复发送K线订阅指令给服务器的bug
@@ -1096,8 +1103,8 @@
 1.2.0 (2019/11/21)
 
 * 支持同时获取对齐的多合约 K 线 (详见 :py:meth:`~tqsdk.TqApi.get_kline_serial` )
-* 修复回测时未将非 TqSim 账号转换为 TqSim 的 bug
-* 修复 wait_update() 填写 deadline 参数并等待超时后向服务器发送大量消息
+* 修复回测时未将非 :py:class:`TqSim <tqsdk.TqSim>` 账号转换为 :py:class:`TqSim <tqsdk.TqSim>` 的 bug
+* 修复 :py:meth:`wait_update() <tqsdk.TqApi.wait_update>` 填写 deadline 参数并等待超时后向服务器发送大量消息
 * 完善测试用例
 * 完善示例程序
 * 完善文档内容
@@ -1124,7 +1131,7 @@
 0.9.18 (2019/09/11)
 
 * 修复: 断线重连时触发的一系列bug
-* 修复: register_update_notify 以 klines 作为参数输入时报错的bug
+* 修复: :py:meth:`register_update_notify <tqsdk.TqApi.register_update_notify>` 以 klines 作为参数输入时报错的bug
 * 修复: 因不能删除业务数据导致的内存泄漏bug
 * 部分修复: diff中的数据不是dict类型导致的bug
 * 增加gui相关示例程序及文档
@@ -1159,7 +1166,7 @@
 
 0.9.8 (2019/06/17):
 
-* :py:class:`~tqsdk.TqApi` 增加 copy 函数，支持在一个进程中用master/slave模式创建多个TqApi实例
+* :py:class:`~tqsdk.TqApi` 增加 :py:meth:`~tqsdk.TqApi.copy` 函数，支持在一个进程中用 master/slave 模式创建多个 :py:class:`TqApi <tqsdk.TqApi>` 实例
 
 
 0.9.7 (2019/06/03):
@@ -1180,7 +1187,7 @@
 
 0.9.5 (2019/05/24):
 
-* 加入期货公司次席支持, 创建 TqAccount 时可以通过 front_broker 和 front_url 参数指定次席服务器
+* 加入期货公司次席支持, 创建 :py:class:`TqAccount <tqsdk.TqAccount>` 时可以通过 front_broker 和 front_url 参数指定次席服务器
 
 
 0.9.4 (2019/05/22):
@@ -1201,7 +1208,7 @@
 
 0.9.1 (2019/04/15):
 
-* (BREAKING) TqApi.get_quote, get_kline_serial, get_account 等函数, 现在调用时会等待初始数据到位后才返回
+* (BREAKING) TqApi.get_quote, :py:meth:`get_kline_serial <tqsdk.TqApi.get_kline_serial>`, :py:meth:`get_account <tqsdk.TqApi.get_account>` 等函数, 现在调用时会等待初始数据到位后才返回
 * (BREAKING) k线序列和tick序列格式改用pandas.DataFrame
 * 支持上期所五档行情
 * 增加 数十个技术指标 和 序列计算函数, 使用纯python实现. 加入ta和ta_func库
@@ -1242,14 +1249,14 @@
 
 2018/08/30:
 
-* 目标持仓模型(TargetPosTask)支持上期所的平今平昨和中金所禁止平今
+* 目标持仓模型(:py:class:`TargetPosTask <tqsdk.TargetPosTask>`)支持上期所的平今平昨和中金所禁止平今
 * K线/Tick序列加入 to_dataframe 函数将数据转为 pandas.DataFrame
 * 加入 close 函数用于退出时清理各种资源
-* wait_update 由设定超时秒数改为设定截止时间, 并返回是否超时
+* :py:meth:`wait_update <tqsdk.TqApi.wait_update>` 由设定超时秒数改为设定截止时间, 并返回是否超时
 * 加入调试模式，将调试信息写入指定的文件中
 * 修正和某些开发环境不兼容的问题
 * 规范了各业务数据的类型
-* register_update_notify 支持监控特定的业务数据
+* :py:meth:`register_update_notify <tqsdk.TqApi.register_update_notify>` 支持监控特定的业务数据
 
 
 2018/08/10:

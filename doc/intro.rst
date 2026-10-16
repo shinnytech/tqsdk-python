@@ -3,42 +3,31 @@
 TqSdk 介绍
 =================================================
 
-.. include:: _includes/tqsdk_ai_agent_intro.rst
-
-源码仓库地址：
-
-* GitHub: `https://github.com/shinnytech/tqsdk-python <https://github.com/shinnytech/tqsdk-python>`_
-* Gitee: `https://gitee.com/tianqin_quantification_tqsdk/tqsdk-python <https://gitee.com/tianqin_quantification_tqsdk/tqsdk-python>`_
+源码仓库：`GitHub <https://github.com/shinnytech/tqsdk-python>`_ · `Gitee <https://gitee.com/tianqin_quantification_tqsdk/tqsdk-python>`_
 
 TqSdk是什么
 -------------------------------------------------
-TqSdk 是一个由 `信易科技 <https://www.shinnytech.com>`_ 发起并贡献主要代码的开源 python 库. 
-依托 `快期多年积累成熟的交易及行情服务器体系 <https://www.shinnytech.com/diff>`_ , TqSdk 支持用户使用很少的代码量构建各种类型的量化交易策略程序, 
-并提供包含 历史数据-实时数据-开发调试-策略回测-模拟交易-实盘交易-运行监控-风险管理 的全套解决方案::
 
-  from tqsdk import TqApi, TqAuth, TqAccount, TargetPosTask
+TqSdk 是由信易科技发起并贡献主要代码的开源 Python 库。依托快期的行情和交易服务，它支持用较少的代码构建各种类型的量化交易策略程序。
 
-  api = TqApi(TqAccount("H宏源期货", "4003242", "123456"), auth=TqAuth("快期账户", "账户密码"))      # 创建 TqApi 实例, 指定交易账户
-  q_2610 = api.get_quote("SHFE.rb2610")                         # 订阅近月合约行情
-  t_2610 = TargetPosTask(api, "SHFE.rb2610")                    # 创建近月合约调仓工具
-  q_2701 = api.get_quote("SHFE.rb2701")                         # 订阅远月合约行情
-  t_2701 = TargetPosTask(api, "SHFE.rb2701")                    # 创建远月合约调仓工具
+从历史数据、实时行情，到开发调试、策略回测、模拟交易、实盘交易，再到运行监控与风险管理，TqSdk 提供了完整的策略开发能力。
 
-  while True:
-    api.wait_update()                                           # 等待数据更新
-    spread = q_2610.last_price - q_2701.last_price        # 计算近月合约-远月合约价差
-    print("当前价差:", spread)
-    if spread > 250:
-      print("价差过高: 空近月，多远月")                            
-      t_2610.set_target_volume(-1)                              # 要求把近月合约调整为空头1手
-      t_2701.set_target_volume(1)                               # 要求把远月合约调整为多头1手
-    elif spread < 200:
-      print("价差回复: 清空持仓")                               # 要求把近月和远月合约都调整为不持仓
-      t_2610.set_target_volume(0)
-      t_2701.set_target_volume(0)
+先创建 API 和数据引用，然后用 :py:meth:`wait_update() <tqsdk.TqApi.wait_update>` 持续驱动更新。下面的程序只读取行情：
 
-要快速了解如何使用TqSdk, 可以访问我们的 :ref:`quickstart`
+.. code-block:: python
 
+   from tqsdk import TqApi, TqAuth, TqSim
+
+   with TqApi(TqSim(), auth=TqAuth("快期账户", "账户密码")) as api:
+       quote = api.get_quote("KQ.m@SHFE.rb")
+       while True:
+           api.wait_update()
+           if api.is_changing(quote, "last_price"):
+               print(quote.datetime, quote.last_price)
+
+:py:class:`quote <tqsdk.objs.Quote>` 会随业务数据更新，不需要每次重新获取。K 线、账户、持仓和委托也通过类似的引用方式访问；程序结构详见 :ref:`framework`。
+
+要快速了解如何使用 TqSdk，可以阅读 :ref:`quickstart`，从安装、登录和获取行情开始。
 
 系统架构
 ----------------------------------------------------
@@ -51,20 +40,20 @@ TqSdk 是一个由 `信易科技 <https://www.shinnytech.com>`_ 发起并贡献�
 * 这两个网关统一以 `Diff协议 <https://doc.shinnytech.com/diff/latest>`_ 对下方提供服务
 * TqSdk按照Diff协议连接到行情网关和交易中继网关, 实现行情和交易功能
 
-
 功能要点
 ----------------------------------------------------
-TqSdk 提供的功能可以支持从简单到复杂的各类策略程序.
+TqSdk 提供的功能可以支持从简单到复杂的各类策略程序。
 
-* 提供当前所有可交易合约从上市开始的 :ref:`全部Tick数据和K线数据 <mddatas>`
-* 支持数十家期货公司的 `实盘交易 <https://www.shinnytech.com/articles/reference/tqsdk-brokers>`_
-* 支持 **模拟交易** :py:class:`~tqsdk.tradeable.otg.tqkq.TqKq` 
-* 支持 :ref:`Tick级和K线级回测 <backtest>`, 支持 **复杂策略回测**
-* 提供近百个 **技术指标函数及源码**
-* 用户无须建立和维护数据库, 行情和交易数据全在 **内存数据库** , 无访问延迟
-* 优化支持 **pandas** 和 **numpy** 库
-* 无强制框架结构, 支持任意复杂度的策略, 在一个交易策略程序中使用多个品种的K线/实时行情并交易多个品种
+* **行情数据**：提供 :ref:`Tick 数据和 K 线数据 <mddatas>`，可用范围取决于合约历史与账户权限。
+* **实盘交易**：支持数十家期货公司的 `实盘接入 <https://www.shinnytech.com/articles/reference/tqsdk-brokers>`_，账户与委托管理见 :ref:`trade`。
+* **模拟交易**：支持 :py:class:`~tqsdk.TqSim` 本地模拟账户与 :py:class:`~tqsdk.TqKq` 快期模拟账户。
+* **策略回测**：支持 :ref:`Tick 级、K 线级及复杂策略回测 <backtest>`。
+* **指标计算**：提供近百个 :ref:`技术指标函数及源码 <ta>`。
+* **数据更新**：行情和交易数据通过内存中的引用对象访问，并随 :py:meth:`~tqsdk.TqApi.wait_update` 更新。
+* **数据处理**：支持 pandas 和 numpy 库，方便进一步分析行情与策略结果。
+* **策略组织**：无强制框架结构，可在一个策略程序中使用多个品种的 K 线、实时行情并交易多个品种。
 
+不同账户的数据和交易权限可能不同，接入前可查阅 :ref:`profession` 与 :ref:`shinny_account`。
 
 .. _linear_framework:
 
@@ -77,8 +66,10 @@ TqSdk使用单线程异步模型, 它支持构建各类复杂结构的策略程�
 * :ref:`for_ctp_user`
 * :ref:`for_vnpy_user`
 
+.. _ai:
+
+使用 AI 辅助开发时，可以将 :ref:`TqSdk Skills <tqsdk_skills>` 交给你的 AI 编码工具，让它先阅读使用规则和示例。
 
 License
 -------------------------------------------------
 TqSdk 在 Apache License 2.0 协议下提供, 使用者可在遵循此协议的前提下自由使用本软件.
-

@@ -3,6 +3,7 @@
 __author__ = 'mayanqiong'
 
 import asyncio
+from typing import Any, Dict
 
 from tqsdk.objs import Quote
 
@@ -11,6 +12,24 @@ class TqSymbols(object):
     """
     天勤合约服务类
     """
+
+    _SYMBOL_INFO_FIELD_NAMES = (
+        "pre_open_interest",
+        "pre_close",
+        "pre_settlement",
+        "upper_limit",
+        "lower_limit",
+    )
+
+    def _set_symbol_info_fields(self, quote: Dict[str, Any]) -> None:
+        quote["_symbol_info_fields"] = {
+            key: quote[key]
+            for key in self._SYMBOL_INFO_FIELD_NAMES
+            if key in quote
+        }
+        quote["_symbol_info_none_fields"] = [
+            key for key, value in quote.items() if value is None
+        ]
 
     async def _run(self, api, sim_send_chan, sim_recv_chan, md_send_chan, md_recv_chan):
         """回测task"""
@@ -40,12 +59,19 @@ class TqSymbols(object):
                                 if query_result.get("error", None):
                                     try:
                                         for ins in query_result['variables']['instrument_id']:
-                                            updated_quotes[ins] = self._api._pre20_ins_info[ins]
+                                            quote = self._api._pre20_ins_info[ins].copy()
+                                            self._set_symbol_info_fields(quote)
+                                            updated_quotes[ins] = quote
                                     except KeyError:
                                         raise Exception(f"查询合约服务报错 {query_result['error']}") from None
                                 elif query_id.startswith("PYSDK_quote"):
-                                    quotes = self._api._symbols_to_quotes(query_result, self._quotes_all_keys)
+                                    query_keys = self._quotes_all_keys.union(self._SYMBOL_INFO_FIELD_NAMES)
+                                    quotes = self._api._symbols_to_quotes(query_result, query_keys)
                                     for quote in quotes.values():
+                                        self._set_symbol_info_fields(quote)
+                                        for key in self._SYMBOL_INFO_FIELD_NAMES:
+                                            if key != "pre_settlement":
+                                                quote.pop(key, None)
                                         if quote["ins_class"] == "OPTION" and quote["exchange_id"] in ["SSE", "SZSE"]:
                                             self._etf_options.add(quote["instrument_id"])
                                         else:

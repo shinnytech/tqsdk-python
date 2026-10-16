@@ -3,6 +3,7 @@
 __author__ = 'yanqiong'
 
 import asyncio
+import ipaddress
 import random
 import ssl
 import time
@@ -14,6 +15,7 @@ from typing import Optional
 from urllib.parse import urlparse
 
 import certifi
+import psutil
 import websockets
 import websockets.exceptions
 from packaging import version
@@ -51,6 +53,48 @@ CTP_TO_MD_AIDS = {
     "set_chart",
     "ins_query",
 }
+
+
+def _format_mac_address(address: str) -> Optional[str]:
+    """Return a six-byte MAC address in the format expected by OTG."""
+    value = address.strip().replace(":", "").replace("-", "")
+    if len(value) != 12 or any(c not in "0123456789abcdefABCDEF" for c in value):
+        return None
+    if value == "0" * 12:
+        return None
+    value = value.upper()
+    return "-".join(value[i:i + 2] for i in range(0, 12, 2))
+
+
+def _get_mac_address_for_ip(local_ip: str) -> Optional[str]:
+    """Find the MAC of the interface which owns *local_ip*."""
+    if not isinstance(local_ip, str):
+        return None
+    try:
+        expected_ip = ipaddress.ip_address(local_ip.split("%", 1)[0])
+    except ValueError:
+        return None
+
+    for addresses in psutil.net_if_addrs().values():
+        owns_ip = False
+        for address in addresses:
+            if not isinstance(address.address, str):
+                continue
+            try:
+                current_ip = ipaddress.ip_address(address.address.split("%", 1)[0])
+            except ValueError:
+                continue
+            if current_ip == expected_ip:
+                owns_ip = True
+                break
+        if not owns_ip:
+            continue
+        for address in addresses:
+            if address.family == psutil.AF_LINK:
+                mac = _format_mac_address(address.address)
+                if mac:
+                    return mac
+    return None
 
 
 class ReconnectTimer(object):
@@ -230,10 +274,29 @@ class TqConnect(object):
                     count += 1
                     self._api._reconnect_timer.set_count(count)
 
+    def _get_connection_mac(self, client) -> Optional[str]:
+        """Return the MAC of the interface used by this WebSocket connection."""
+        try:
+            local_address = getattr(client, "local_address", None)
+            if not isinstance(local_address, tuple) or not local_address:
+                return None
+            return _get_mac_address_for_ip(local_address[0])
+        except Exception as e:
+            # MAC collection must never prevent the login request from being sent.
+            self._logger.debug("failed to get connection mac address", error=str(e))
+            return None
+
     async def _send_handler(self, send_chan, client):
         """websocket客户端数据发送协程"""
         try:
             async for pack in send_chan:
+                if pack.get("aid") == "req_login" and "client_mac_address" in pack:
+                    mac = self._get_connection_mac(client)
+                    if mac:
+                        # TdReconnectHandler keeps the original pack for reconnects.
+                        # Do not mutate that cached object in place.
+                        pack = pack.copy()
+                        pack["client_mac_address"] = mac
                 if pack.get("aid") == "subscribe_quote":
                     if len(pack.get("ins_list", "")) > self._ins_list_max_length:
                         warnings.warn(f"订阅合约字符串总长度大于 {self._ins_list_max_length}，可能会引起服务器限制。", stacklevel=3)
