@@ -502,6 +502,8 @@ class Order(Entity):
         self.is_error: bool = None
         #: 平均成交价
         self.trade_price: float = float('nan')
+        #: 是否为交易所移仓委托，以服务器的委托回报为准
+        self.is_swap_order: bool = False
 
         self._this_session = False
 

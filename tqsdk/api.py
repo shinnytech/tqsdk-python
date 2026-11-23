@@ -1159,7 +1159,7 @@ class TqApi(TqBaseApi):
     # ----------------------------------------------------------------------
     def add_risk_rule(self, rule: TqRiskRule) -> None:
         """
-        添加一项风控规则实例。
+        添加一项本地风控规则。
 
         Args:
             rule (TqRiskRule): 风控规则实例，必须是 TqRiskRule 的子类型
@@ -1187,7 +1187,7 @@ class TqApi(TqBaseApi):
     def insert_order(self, symbol: str, direction: str, offset: str = "", volume: int = 0,
                      limit_price: Union[str, float, None] = None, advanced: Optional[str] = None,
                      order_id: Optional[str] = None, account: Optional[UnionTradeable] = None,
-                     offset_leg2: str = "") -> Order:
+                     offset_leg2: str = "", is_swap_order: bool = False) -> Order:
         """
         发送下单指令。调用后会立即返回，委托请求会在下一次 :py:meth:`~tqsdk.TqApi.wait_update` 时发出。
 
@@ -1218,6 +1218,9 @@ class TqApi(TqBaseApi):
             account (TqAccount/TqKq/TqKqStock/TqSim): [可选]指定发送下单指令的账户实例, 多账户模式下，该参数必须指定
 
             offset_leg2 (str): 第二腿开平标志, "OPEN", "CLOSE" 或 "CLOSETODAY"，仅上期所/上期能源组合合约套利指令支持
+
+            is_swap_order (bool): [可选]是否为交易所移仓指令，默认为 False。
+                仅支持郑商所/大商所期货组合委托。该参数必须为 bool 类型。
 
         Returns:
             :py:class:`~tqsdk.objs.Order`: 返回一个委托单对象引用. 其内容将在 :py:meth:`~tqsdk.TqApi.wait_update` 时更新.
@@ -1320,6 +1323,8 @@ class TqApi(TqBaseApi):
                     print("已成交: %d 手" % (order.volume_orign - order.volume_left))
 
         """
+        if type(is_swap_order) is not bool:
+            raise Exception("is_swap_order 参数类型必须为 bool")
         (exchange_id, instrument_id) = symbol.split(".", 1)
         account = self._account._check_valid(account)
         if account is None:
@@ -1333,8 +1338,8 @@ class TqApi(TqBaseApi):
             raise Exception(f"limit_price 参数不支持设置为 {limit_price}。")
         if isinstance(account, TqAccount) and exchange_id == "KQ":
             raise Exception(f"账户 {account._broker_id}, {account._account_id} 不支持交易合约 {symbol}。")
-        if isinstance(account, TqKq) and exchange_id in ["SSE", "SZSE"]:  # 快期模拟暂不支持，提前抛错
-            raise Exception(f"快期模拟暂不支持股票及 ETF 期权交易，股票交易请使用 TqKqStock。")
+        if isinstance(account, TqKq) and exchange_id in ["SSE", "SZSE"] and len(instrument_id) == 6:  # 快期模拟暂不支持，提前抛错  沪深现货证券代码为 6 位，股票期权合约编码为 8 位
+            raise Exception(f"快期模拟暂不支持股票交易，股票交易请使用 TqKqStock。")
         if not (advanced is None or advanced in ["FAK", "FOK"]):
             raise Exception("advanced 参数错误，只支持以下选项之一 'FAK', 'FOK', None。")
         if offset_leg2 not in ("", "OPEN", "CLOSE", "CLOSETODAY"):
@@ -1343,6 +1348,8 @@ class TqApi(TqBaseApi):
 
         # 股票下单时, 不支持 offset 参数
         if self._account._is_stock_type(account):
+            if is_swap_order:
+                raise Exception("股票交易不支持交易所移仓指令")
             if offset:
                 raise Exception(f"股票交易无需指定开平标志 {offset}")
             if offset_leg2:
@@ -1355,7 +1362,7 @@ class TqApi(TqBaseApi):
             # 需要在异步代码中发送合约信息请求和下单请求
             self.create_task(
                 self._insert_order_async(symbol, direction, offset, volume, limit_price, advanced, order_id, account,
-                                         offset_leg2=offset_leg2),
+                                         offset_leg2=offset_leg2, is_swap_order=is_swap_order),
                 _caller_api=True)
             order = self.get_order(order_id, account=account)
             order.update({
@@ -1381,7 +1388,7 @@ class TqApi(TqBaseApi):
                 pack = self._get_insert_order_stock_pack(symbol, direction, volume, limit_price, order_id, account)
             else:
                 pack = self._get_insert_order_future_pack(symbol, direction, offset, volume, limit_price, advanced,
-                                                          order_id, account, offset_leg2=offset_leg2)
+                                                          order_id, account, offset_leg2=offset_leg2, is_swap_order=is_swap_order)
             self._send_pack(pack)
             order = self.get_order(order_id, account=account)
             order.update({
@@ -1421,7 +1428,7 @@ class TqApi(TqBaseApi):
         raise Exception("当前账户类型不支持上期所/上期能源组合套利指令")
 
     def _get_insert_order_future_pack(self, symbol, direction, offset, volume, limit_price, advanced, order_id,
-                                      account: Optional[UnionTradeable] = None, offset_leg2: str = ""):
+                                      account: Optional[UnionTradeable] = None, offset_leg2: str = "", is_swap_order: bool = False):
         quote = self._data["quotes"][symbol]
         (exchange_id, instrument_id) = symbol.split(".", 1)
         self._ensure_shfe_ine_combination_supported(account, exchange_id, quote)
@@ -1436,6 +1443,8 @@ class TqApi(TqBaseApi):
             "offset": offset,
             "volume": volume
         }
+        if is_swap_order:
+            msg["is_swap_order"] = True
         if offset_leg2:
             if (exchange_id not in ("SHFE", "INE")
                     or quote.ins_class not in ("COMBINE", "FUTURE_COMBINE")):
@@ -1491,7 +1500,7 @@ class TqApi(TqBaseApi):
         return msg
 
     async def _insert_order_async(self, symbol, direction, offset, volume, limit_price, advanced, order_id,
-                                  account: Optional[UnionTradeable] = None, offset_leg2: str = ""):
+                                  account: Optional[UnionTradeable] = None, offset_leg2: str = "", is_swap_order: bool = False):
         await self._ensure_symbol_async(symbol)  # 合约是否存在
         self._auth._has_td_grants(symbol)  # 用户是否有该合约交易权限
         quote = self._data["quotes"][symbol]
@@ -1499,7 +1508,7 @@ class TqApi(TqBaseApi):
             pack = self._get_insert_order_stock_pack(symbol, direction, volume, limit_price, order_id, account)
         else:
             pack = self._get_insert_order_future_pack(symbol, direction, offset, volume, limit_price, advanced,
-                                                      order_id, account, offset_leg2=offset_leg2)
+                                                      order_id, account, offset_leg2=offset_leg2, is_swap_order=is_swap_order)
         self._send_pack(pack)
 
     # ----------------------------------------------------------------------
