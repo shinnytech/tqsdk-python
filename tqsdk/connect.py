@@ -112,7 +112,7 @@ class ReconnectTimer(object):
 if websocket_version_ge_14:
     # https://websockets.readthedocs.io/en/stable/reference/exceptions.html#module-websockets.exceptions
     websocket_expect_exc = (
-        websockets.exceptions.ConnectionClosedError, websockets.exceptions.InvalidHandshake, websockets.exceptions.InvalidURI,
+        websockets.exceptions.ConnectionClosed, websockets.exceptions.InvalidHandshake, websockets.exceptions.InvalidURI,
         websockets.exceptions.InvalidState, websockets.exceptions.ProtocolError
     )
 else:
@@ -228,7 +228,8 @@ class TqConnect(object):
                         self._api._reconnect_timer.set_count(count)
                         send_task = self._api.create_task(self._send_handler(send_chan, client))
                         try:
-                            async for msg in client:
+                            while True:
+                                msg = await client.recv()
                                 pack = translator.loads(msg, rules=translator.MD_TO_CTP)
                                 await self._api._wait_until_idle()
                                 self._logger.debug("websocket received data", pack=msg)
