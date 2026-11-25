@@ -2,6 +2,13 @@
 
 版本变更
 =============================
+3.10.6 (2026/11/25)
+
+* 新增: :py:meth:`~tqsdk.TqApi.get_settlement_info` 支持使用 :py:class:`~tqsdk.TqAccount` 查询期货结算单，须通过 ``trading_day`` 指定交易日（YYYYMMDD）
+* 新增: ``tqsdk.lib.parse_settlement_info`` 支持从结算单文本中解析资金、持仓和成交信息
+* docs: 补充 :py:meth:`~tqsdk.TqApi.insert_order` 的组合多仓双向移仓示例
+
+
 3.10.5 (2026/11/23)
 
 * 新增: :py:meth:`~tqsdk.TqApi.insert_order` 支持郑商所、大商所期货组合移仓指令

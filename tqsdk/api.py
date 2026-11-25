@@ -1184,6 +1184,52 @@ class TqApi(TqBaseApi):
         self._risk_manager.remove(rule)
 
     # ----------------------------------------------------------------------
+    def get_settlement_info(self, trading_day: int, account: Optional[UnionTradeable] = None):
+        """
+        查询结算单信息
+        此接口主要用于非实时交易场景，不建议与交易接口同时使用。
+        Args:
+            account (TqAccount): [可选]指定发送下单指令的账户实例, 多账户模式下，该参数必须指定
+            trading_day (int): 指定查询的交易日，格式为 YYYYMMDD
+        
+        Returns:
+            str: 结算单信息
+            
+        Examples:
+            >>> from tqsdk.lib import parse_settlement_info
+            >>> raw_str = api.get_settlement_info(trading_day=20261123) # 获取交易所原始结算单信息
+            >>> parsed_dict = parse_settlement_info(raw_str) # 解析结算单的资金持仓和成交
+        
+        """
+        if type(trading_day) is not int:
+            raise Exception("trading_day 参数必须是 int")
+        if self._loop.is_running():
+            raise Exception("事件循环运行中不支持同步查询结算单信息")
+        if isinstance(self._backtest, TqBacktest):
+            raise Exception(f"回测模式下, 不支持查询结算单信息")
+        account = self._account._check_valid(account)
+        if account is None:
+            raise Exception(f"多账户模式下, 需要指定账户实例 account")
+        if not isinstance(account, TqAccount):
+            raise Exception("当前账户类型不支持查询结算单信息")
+        if trading_day in account._settlement_info:
+            return account._settlement_info[trading_day]
+        msg = {
+            "aid": "qry_settlement_info",
+            "account_key": self._account._get_account_key(account),
+            "trading_day": trading_day,
+        }
+        self._send_pack(msg)
+        deadline = time.time() + 30
+        poll_interval = 0.5
+        while trading_day not in account._settlement_info:
+            now = time.time()
+            if now >= deadline:
+                raise TqTimeoutError(f"获取 {account._account_id} 交易日 {trading_day} 的结算单信息超时，请检查客户端及网络是否正常")
+            self.wait_update(deadline=min(deadline, now + poll_interval))
+        return account._settlement_info[trading_day]
+
+    # ----------------------------------------------------------------------
     def insert_order(self, symbol: str, direction: str, offset: str = "", volume: int = 0,
                      limit_price: Union[str, float, None] = None, advanced: Optional[str] = None,
                      order_id: Optional[str] = None, account: Optional[UnionTradeable] = None,
@@ -1221,6 +1267,7 @@ class TqApi(TqBaseApi):
 
             is_swap_order (bool): [可选]是否为交易所移仓指令，默认为 False。
                 仅支持郑商所/大商所期货组合委托。该参数必须为 bool 类型。
+                设为 True 时，direction 和 offset 指定第一腿的买卖和开平，第二腿的买卖和开平均与第一腿相反。
 
         Returns:
             :py:class:`~tqsdk.objs.Order`: 返回一个委托单对象引用. 其内容将在 :py:meth:`~tqsdk.TqApi.wait_update` 时更新.
@@ -1321,6 +1368,34 @@ class TqApi(TqBaseApi):
                 while order.status != "FINISHED":
                     api.wait_update()
                     print("已成交: %d 手" % (order.volume_orign - order.volume_left))
+
+        .. _insert-order-swap-example:
+
+        Example7::
+
+            # 用跨期组合 A&B 移仓 1 手多仓。两个移仓方向都使用同一个组合代码。
+            from tqsdk import TqApi, TqAuth, TqAccount
+
+            account = TqAccount("期货公司", "资金账号", "交易密码")
+            symbol = "DCE.SP m2701&m2705"  # 请换成当前挂牌的组合。本例中 A 是 m2701，B 是 m2705。
+            limit_price = 10  # 示例价差限价，按实际委托价格填写
+            held_leg = "A"  # 持有 A 多仓填 "A"，持有 B 多仓填 "B"
+
+            with TqApi(account=account, auth=TqAuth("快期账户", "账户密码")) as api:
+                if held_leg == "A":
+                    # 平 A 开 B：卖平 A 的多仓，同时买开 B 的多仓。
+                    order = api.insert_order(symbol, direction="SELL", offset="CLOSE", volume=1,
+                                             limit_price=limit_price, is_swap_order=True)
+                elif held_leg == "B":
+                    # 平 B 开 A：买开第一腿 A，同时卖平 B，因此第一腿填 BUY、OPEN。
+                    order = api.insert_order(symbol, direction="BUY", offset="OPEN", volume=1,
+                                             limit_price=limit_price, is_swap_order=True)
+                else:
+                    raise ValueError("held_leg 请填写 A 或 B")
+
+                while order.status != "FINISHED":
+                    api.wait_update()
+                print("已成交手数：", order.volume_orign - order.volume_left, "委托信息：", order.last_msg)
 
         """
         if type(is_swap_order) is not bool:
