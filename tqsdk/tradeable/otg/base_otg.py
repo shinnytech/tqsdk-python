@@ -52,6 +52,7 @@ class BaseOtg(Tradeable):
         self._td_url = td_url
         self._sm = sm
         self._otg_capabilities: Dict[str, Any] = {}
+        self._settlement_info: Dict[int, str] = {}
 
         super(BaseOtg, self).__init__()
 
@@ -81,6 +82,11 @@ class BaseOtg(Tradeable):
             "password": self._password
         }
         await self._td_send_chan.send(req)
+
+    def _update_settlement_info(self, pack: Dict[str, Any]) -> None:
+        if "trading_day" not in pack:
+            return
+        self._settlement_info[pack["trading_day"]] = "" if "settlement_info" not in pack else pack["settlement_info"]
 
     def _update_otg_info(self, api):
         """更新 otg 登录需要的基本信息"""
@@ -150,6 +156,9 @@ class BaseOtg(Tradeable):
         elif chan == self._td_recv_chan:  # 从交易收到的数据包
             if pack.get("aid") == "rtn_brokers":
                 self._update_otg_capabilities(pack)
+                return
+            if pack.get("aid") == "qry_settlement_info":
+                self._update_settlement_info(pack)
                 return
             # 收到通知时，在通知里加上 account_name 信息
             if pack["aid"] == "rtn_data":
